@@ -12,7 +12,7 @@ test("recovers autosaved state after reload", async ({ page }) => {
   const objectChip = page.getByRole("button", { name: "AutoRecover" })
   await expect(objectChip).toBeVisible()
 
-  await page.getByTestId("inspector-x-input").fill("123")
+  await page.getByTestId("add-object-event-button").click()
   await expect(page.getByTestId("save-status")).toContainText("Saved", { timeout: 10000 })
   await page.reload()
 

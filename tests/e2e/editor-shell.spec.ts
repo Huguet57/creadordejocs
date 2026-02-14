@@ -41,7 +41,7 @@ test("creates sprite, sound, object and object listener", async ({ page }) => {
   await page.getByTestId("object-event-type-select").selectOption("Create")
   await page.getByTestId("add-object-event-button").click()
   await expect(page.locator(".mvp2-object-event-row")).toHaveCount(1)
-  await page.getByRole("button", { name: "+ Action block" }).click()
+  await page.getByRole("button", { name: "Add action block" }).click()
   await expect(page.locator(".mvp2-object-action-row")).toHaveCount(1)
 })
 

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ChangeEvent, type KeyboardEvent } from "react"
 import type { ObjectActionDraft } from "@creadordejocs/project-format"
+import { ChevronDown, ChevronUp, Plus, Trash2, X } from "lucide-react"
 import type { EditorController } from "../editor-state/use-editor-controller.js"
 import {
   OBJECT_ACTION_TYPES,
@@ -83,28 +84,6 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
         <CardTitle>Object editor</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="object-name-input">Object name</Label>
-          <div className="flex gap-2">
-            <Input
-              id="object-name-input"
-              data-testid="object-name-input"
-              value={objectName}
-              onKeyDown={blockUndoShortcuts}
-              onChange={(event: ChangeEvent<HTMLInputElement>) => setObjectName(event.target.value)}
-            />
-            <Button
-              data-testid="add-object-button"
-              onClick={() => {
-                controller.addObject(objectName)
-                setObjectName("Objecte nou")
-              }}
-            >
-              + Objecte
-            </Button>
-          </div>
-        </div>
-
         <div className="mvp3-object-editor-grid grid gap-3 lg:grid-cols-[220px_240px_1fr]">
           <aside className="mvp3-object-sidebar rounded-md border border-slate-200 p-3">
             <p className="text-xs font-semibold text-slate-600">Objects</p>
@@ -127,13 +106,43 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
                 </button>
               ))}
             </div>
+            <div className="mvp3-object-create mt-3 space-y-2">
+              <Label htmlFor="object-name-input" className="text-xs">
+                Create object
+              </Label>
+              <div className="flex gap-2">
+                <Input
+                  id="object-name-input"
+                  data-testid="object-name-input"
+                  value={objectName}
+                  onKeyDown={blockUndoShortcuts}
+                  onChange={(event: ChangeEvent<HTMLInputElement>) => setObjectName(event.target.value)}
+                />
+                <Button
+                  data-testid="add-object-button"
+                  size="sm"
+                  className="px-2"
+                  title="Add object"
+                  aria-label="Add object"
+                  onClick={() => {
+                    controller.addObject(objectName)
+                    setObjectName("Objecte nou")
+                  }}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
             <Button
               data-testid="delete-object-button"
               variant="outline"
               className="mvp3-object-delete-button mt-3 w-full"
               onClick={() => controller.deleteSelectedObject()}
               disabled={!selectedObject}
+              title="Delete selected object"
+              aria-label="Delete selected object"
             >
+              <Trash2 className="mr-2 h-4 w-4" />
               Delete selected object
             </Button>
           </aside>
@@ -173,12 +182,15 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
                   <Button
                     data-testid="add-object-event-button"
                     className="mvp3-listener-add-button w-full"
+                    title="Add listener"
+                    aria-label="Add listener"
                     onClick={() => {
                       controller.addObjectEvent(eventType, eventType === "Keyboard" ? eventKey : null, null)
                       setSelectNewestListener(true)
                     }}
                   >
-                    + Add listener
+                    <Plus className="h-4 w-4" />
+                    <span className="sr-only">Add listener</span>
                   </Button>
                 </div>
 
@@ -204,6 +216,8 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
                         variant="outline"
                         size="sm"
                         className="mvp3-listener-remove-button mt-2 h-7 w-full px-2"
+                        title="Remove listener"
+                        aria-label="Remove listener"
                         onClick={() => {
                           controller.removeObjectEvent(eventEntry.id)
                           if (activeEventId === eventEntry.id) {
@@ -211,7 +225,8 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
                           }
                         }}
                       >
-                        Remove
+                        <X className="h-4 w-4" />
+                        <span className="sr-only">Remove listener</span>
                       </Button>
                     </div>
                   ))}
@@ -225,54 +240,6 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
               <p className="text-sm text-slate-500">Selecciona un objecte per programar-lo.</p>
             ) : (
               <div className="space-y-3">
-                <div className="mvp3-object-properties grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <Label>x</Label>
-                    <Input
-                      data-testid="inspector-x-input"
-                      type="number"
-                      value={selectedObject.x}
-                      onKeyDown={blockUndoShortcuts}
-                      onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                        controller.updateSelectedObjectProperty("x", Number(event.target.value))
-                      }
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>y</Label>
-                    <Input
-                      type="number"
-                      value={selectedObject.y}
-                      onKeyDown={blockUndoShortcuts}
-                      onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                        controller.updateSelectedObjectProperty("y", Number(event.target.value))
-                      }
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>speed</Label>
-                    <Input
-                      type="number"
-                      value={selectedObject.speed}
-                      onKeyDown={blockUndoShortcuts}
-                      onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                        controller.updateSelectedObjectProperty("speed", Number(event.target.value))
-                      }
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>direction</Label>
-                    <Input
-                      type="number"
-                      value={selectedObject.direction}
-                      onKeyDown={blockUndoShortcuts}
-                      onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                        controller.updateSelectedObjectProperty("direction", Number(event.target.value))
-                      }
-                    />
-                  </div>
-                </div>
-
                 {!activeEvent ? (
                   <p className="text-sm text-slate-500">Selecciona un listener a la sidebar central.</p>
                 ) : (
@@ -346,6 +313,9 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
                       <Button
                         variant="outline"
                         size="sm"
+                        className="px-2"
+                        title="Add action block"
+                        aria-label="Add action block"
                         onClick={() => {
                           const nextType = actionTypeByEvent[activeEvent.id] ?? "move"
                           const nextAction = defaultActionFromType(nextType)
@@ -353,7 +323,8 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
                           controller.addObjectEventAction(activeEvent.id, nextAction)
                         }}
                       >
-                        + Action block
+                        <Plus className="h-4 w-4" />
+                        <span className="sr-only">Add action block</span>
                       </Button>
                     </div>
 
@@ -371,26 +342,35 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
                                 size="sm"
                                 className="h-7 px-2"
                                 disabled={index === 0}
+                                title="Move action up"
+                                aria-label="Move action up"
                                 onClick={() => controller.moveObjectEventAction(activeEvent.id, actionEntry.id, "up")}
                               >
-                                Up
+                                <ChevronUp className="h-4 w-4" />
+                                <span className="sr-only">Move action up</span>
                               </Button>
                               <Button
                                 variant="outline"
                                 size="sm"
                                 className="h-7 px-2"
                                 disabled={index === activeEvent.actions.length - 1}
+                                title="Move action down"
+                                aria-label="Move action down"
                                 onClick={() => controller.moveObjectEventAction(activeEvent.id, actionEntry.id, "down")}
                               >
-                                Down
+                                <ChevronDown className="h-4 w-4" />
+                                <span className="sr-only">Move action down</span>
                               </Button>
                               <Button
                                 variant="outline"
                                 size="sm"
                                 className="h-7 px-2"
+                                title="Remove action"
+                                aria-label="Remove action"
                                 onClick={() => controller.removeObjectEventAction(activeEvent.id, actionEntry.id)}
                               >
-                                Remove
+                                <X className="h-4 w-4" />
+                                <span className="sr-only">Remove action</span>
                               </Button>
                             </div>
                           </div>
