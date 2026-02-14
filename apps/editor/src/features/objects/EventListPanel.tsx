@@ -16,7 +16,8 @@ const EVENT_ICONS: Record<ObjectEventType, React.ElementType> = {
   Step: Activity,
   Draw: MousePointerClick, // Placeholder
   Collision: Zap,
-  Keyboard: Keyboard,
+  KeyDown: Keyboard,
+  KeyPress: Keyboard,
   OnDestroy: X,
   OutsideRoom: Scan,
   Timer: Timer
@@ -35,7 +36,11 @@ export function EventListPanel({
   const [timerIntervalMs, setTimerIntervalMs] = useState(1000)
 
   const handleAddEvent = () => {
-    onAddEvent(eventType, eventType === "Keyboard" ? eventKey : null, eventType === "Timer" ? timerIntervalMs : null)
+    onAddEvent(
+      eventType,
+      eventType === "KeyDown" || eventType === "KeyPress" ? eventKey : null,
+      eventType === "Timer" ? timerIntervalMs : null
+    )
     setIsAdding(false)
   }
 
@@ -71,7 +76,7 @@ export function EventListPanel({
                     <span className={`truncate text-sm ${activeEventId === event.id ? "font-medium text-slate-900" : "text-slate-600"}`}>
                       {event.type}
                     </span>
-                    {event.type === "Keyboard" && event.key && (
+                    {(event.type === "KeyDown" || event.type === "KeyPress") && event.key && (
                       <span className="truncate text-[10px] text-slate-400">Key: {event.key}</span>
                     )}
                     {event.type === "Timer" && (
@@ -134,7 +139,7 @@ export function EventListPanel({
               </Button>
             </div>
 
-            {eventType === "Keyboard" && (
+            {(eventType === "KeyDown" || eventType === "KeyPress") && (
               <select
                 className="h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-none"
                 value={eventKey}

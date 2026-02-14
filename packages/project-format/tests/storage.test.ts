@@ -143,4 +143,35 @@ describe("project format v1", () => {
     expect(serializeProjectV1(loaded)).toContain("\"items\"")
     expect(serializeProjectV1(loaded)).not.toContain("\"actions\"")
   })
+
+  it("loads legacy Keyboard events and normalizes them to KeyDown", () => {
+    const project = createEmptyProjectV1("Legacy keyboard event")
+    const legacySource = JSON.stringify({
+      ...project,
+      objects: [
+        {
+          id: "object-player",
+          name: "Player",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-keyboard",
+              type: "Keyboard",
+              key: "Space",
+              targetObjectId: null,
+              intervalMs: null,
+              items: [{ id: "item-score", type: "action", action: { id: "action-score", type: "changeScore", delta: 1 } }]
+            }
+          ]
+        }
+      ]
+    })
+
+    const loaded = parseProjectV1(legacySource)
+    expect(loaded.objects[0]?.events[0]?.type).toBe("KeyDown")
+  })
 })

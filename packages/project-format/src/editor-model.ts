@@ -31,7 +31,16 @@ export type UpdateObjectPropertiesInput = {
   direction: number
 }
 
-export type ObjectEventType = "Create" | "Step" | "Draw" | "Collision" | "Keyboard" | "OnDestroy" | "OutsideRoom" | "Timer"
+export type ObjectEventType =
+  | "Create"
+  | "Step"
+  | "Draw"
+  | "Collision"
+  | "KeyDown"
+  | "KeyPress"
+  | "OnDestroy"
+  | "OutsideRoom"
+  | "Timer"
 export type ObjectEventKey = "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight" | "Space"
 export type ObjectEventItem = ProjectV1["objects"][number]["events"][number]["items"][number]
 export type ObjectAction = Extract<ObjectEventItem, { type: "action" }>["action"]

@@ -2,7 +2,7 @@ import type { ProjectV1, ObjectActionDraft } from "@creadordejocs/project-format
 
 export type EditorSection = "sprites" | "sounds" | "objects" | "rooms" | "run" | "templates" | "globalVariables"
 
-export type ObjectEventType = "Create" | "Step" | "Draw" | "Collision" | "Keyboard" | "OnDestroy" | "OutsideRoom" | "Timer"
+export type ObjectEventType = "Create" | "Step" | "Draw" | "Collision" | "KeyDown" | "KeyPress" | "OnDestroy" | "OutsideRoom" | "Timer"
 export type ObjectEventKey = "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight" | "Space"
 export type ObjectActionType =
   | "move"
@@ -34,7 +34,8 @@ export const OBJECT_EVENT_TYPES: ObjectEventType[] = [
   "Step",
   "Draw",
   "Collision",
-  "Keyboard",
+  "KeyDown",
+  "KeyPress",
   "OnDestroy",
   "OutsideRoom",
   "Timer"

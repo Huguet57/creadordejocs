@@ -15,6 +15,11 @@ type RunSectionProps = {
 export function RunSection({ controller }: RunSectionProps) {
   const { runtimeState } = controller
   const [resolvedSpriteSources, setResolvedSpriteSources] = useState<Record<string, string>>({})
+  const globalVariableEntries = controller.project.variables.global.map((variableEntry) => ({
+    id: variableEntry.id,
+    name: variableEntry.name,
+    value: runtimeState.globalVariables[variableEntry.id]
+  }))
 
   const sprites = controller.project.resources.sprites
   const spriteById = useMemo(
@@ -97,6 +102,24 @@ export function RunSection({ controller }: RunSectionProps) {
                 </p>
               )}
             </div>
+          </div>
+
+          <div className="mvp16-run-global-vars space-y-2">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Global variables</p>
+            {globalVariableEntries.length === 0 ? (
+              <p className="mvp16-run-global-vars-empty text-[11px] text-slate-400">No globals defined</p>
+            ) : (
+              <div className="mvp16-run-global-vars-list space-y-1.5">
+                {globalVariableEntries.map((variableEntry) => (
+                  <div key={variableEntry.id} className="mvp16-run-global-var-row flex items-center justify-between">
+                    <span className="mvp16-run-global-var-name text-xs text-slate-500">{variableEntry.name}</span>
+                    <span className="mvp16-run-global-var-value text-xs font-medium text-slate-800">
+                      {String(variableEntry.value)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </aside>

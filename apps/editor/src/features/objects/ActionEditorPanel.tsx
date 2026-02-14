@@ -152,7 +152,7 @@ export function ActionEditorPanel({
           When <span className="font-semibold text-slate-900">{activeEvent.type}</span>
         </h3>
 
-        {activeEvent.type === "Keyboard" && (
+        {(activeEvent.type === "KeyDown" || activeEvent.type === "KeyPress") && (
           <div className="flex items-center gap-2">
             <Label className="text-xs text-slate-400">Key</Label>
             <select

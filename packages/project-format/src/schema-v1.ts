@@ -189,24 +189,38 @@ const ObjectEventItemSchema = z.discriminatedUnion("type", [
   })
 ])
 
-const ObjectEventSchema = z.object({
-  id: z.string().min(1),
-  type: z.enum(["Create", "Step", "Draw", "Collision", "Keyboard", "OnDestroy", "OutsideRoom", "Timer"]),
-  key: z.enum(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"]).nullable().default(null),
-  targetObjectId: z.string().nullable().default(null),
-  intervalMs: z.number().positive().nullable().default(null),
-  items: z.array(ObjectEventItemSchema).optional(),
-  actions: z.array(ObjectActionSchema).optional()
-}).transform(({ items, actions, ...eventEntry }) => ({
-  ...eventEntry,
-  items:
-    items ??
-    (actions ?? []).map((actionEntry) => ({
-      id: `item-${actionEntry.id}`,
-      type: "action" as const,
-      action: actionEntry
-    }))
-}))
+const ObjectEventSchema = z
+  .preprocess((input) => {
+    if (!input || typeof input !== "object") {
+      return input
+    }
+    const eventEntry = input as Record<string, unknown>
+    if (eventEntry.type === "Keyboard") {
+      return {
+        ...eventEntry,
+        type: "KeyDown"
+      }
+    }
+    return input
+  }, z.object({
+    id: z.string().min(1),
+    type: z.enum(["Create", "Step", "Draw", "Collision", "KeyDown", "KeyPress", "OnDestroy", "OutsideRoom", "Timer"]),
+    key: z.enum(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"]).nullable().default(null),
+    targetObjectId: z.string().nullable().default(null),
+    intervalMs: z.number().positive().nullable().default(null),
+    items: z.array(ObjectEventItemSchema).optional(),
+    actions: z.array(ObjectActionSchema).optional()
+  }))
+  .transform(({ items, actions, ...eventEntry }) => ({
+    ...eventEntry,
+    items:
+      items ??
+      (actions ?? []).map((actionEntry) => ({
+        id: `item-${actionEntry.id}`,
+        type: "action" as const,
+        action: actionEntry
+      }))
+  }))
 
 const ObjectSchema = z.object({
   id: z.string().min(1),

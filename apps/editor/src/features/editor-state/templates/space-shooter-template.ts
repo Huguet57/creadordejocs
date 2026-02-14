@@ -81,19 +81,19 @@ export function createSpaceShooterTemplateProject(): TemplateProjectResult {
   })
   const weaponHeatId = withWeaponHeat.variableId
   let project = withWeaponHeat.project
-  project = addEventWithActions(project, shipObject.objectId, { type: "Keyboard", key: "ArrowLeft" }, [
+  project = addEventWithActions(project, shipObject.objectId, { type: "KeyDown", key: "ArrowLeft" }, [
     { type: "move", dx: -6, dy: 0 }
   ])
-  project = addEventWithActions(project, shipObject.objectId, { type: "Keyboard", key: "ArrowRight" }, [
+  project = addEventWithActions(project, shipObject.objectId, { type: "KeyDown", key: "ArrowRight" }, [
     { type: "move", dx: 6, dy: 0 }
   ])
-  project = addEventWithActions(project, shipObject.objectId, { type: "Keyboard", key: "ArrowUp" }, [
+  project = addEventWithActions(project, shipObject.objectId, { type: "KeyDown", key: "ArrowUp" }, [
     { type: "move", dx: 0, dy: -4 }
   ])
-  project = addEventWithActions(project, shipObject.objectId, { type: "Keyboard", key: "ArrowDown" }, [
+  project = addEventWithActions(project, shipObject.objectId, { type: "KeyDown", key: "ArrowDown" }, [
     { type: "move", dx: 0, dy: 4 }
   ])
-  project = addEventWithActions(project, shipObject.objectId, { type: "Keyboard", key: "Space" }, [])
+  project = addEventWithActions(project, shipObject.objectId, { type: "KeyDown", key: "Space" }, [])
   project = addIfBlockToLatestEvent(
     project,
     shipObject.objectId,

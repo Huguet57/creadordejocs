@@ -788,7 +788,8 @@ export function runRuntimeTick(
   project: ProjectV1,
   roomId: string,
   pressedKeys: Set<string>,
-  runtime: RuntimeState
+  runtime: RuntimeState,
+  justPressedKeys = new Set<string>()
 ): { project: ProjectV1; runtime: RuntimeState; activeRoomId: string; restartRoomRequested: boolean } {
   const room = project.rooms.find((roomEntry) => roomEntry.id === roomId)
   if (!room || runtime.gameOver) {
@@ -847,10 +848,13 @@ export function runRuntimeTick(
         }
         return elapsed >= intervalMs
       }
-      if (eventEntry.type !== "Keyboard" || !eventEntry.key) {
-        return false
+      if (eventEntry.type === "KeyDown" && eventEntry.key) {
+        return pressedKeys.has(eventEntry.key)
       }
-      return pressedKeys.has(eventEntry.key)
+      if (eventEntry.type === "KeyPress" && eventEntry.key) {
+        return justPressedKeys.has(eventEntry.key)
+      }
+      return false
     })
 
     let destroySelf = false

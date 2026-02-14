@@ -87,16 +87,16 @@ export function createLaneCrosserTemplateProject(): TemplateProjectResult {
   })
   const livesVariableId = withLives.variableId
   let project = withLives.project
-  project = addEventWithActions(project, playerObject.objectId, { type: "Keyboard", key: "ArrowUp" }, [
+  project = addEventWithActions(project, playerObject.objectId, { type: "KeyDown", key: "ArrowUp" }, [
     { type: "move", dx: 0, dy: -24 }
   ])
-  project = addEventWithActions(project, playerObject.objectId, { type: "Keyboard", key: "ArrowDown" }, [
+  project = addEventWithActions(project, playerObject.objectId, { type: "KeyDown", key: "ArrowDown" }, [
     { type: "move", dx: 0, dy: 24 }
   ])
-  project = addEventWithActions(project, playerObject.objectId, { type: "Keyboard", key: "ArrowLeft" }, [
+  project = addEventWithActions(project, playerObject.objectId, { type: "KeyDown", key: "ArrowLeft" }, [
     { type: "move", dx: -18, dy: 0 }
   ])
-  project = addEventWithActions(project, playerObject.objectId, { type: "Keyboard", key: "ArrowRight" }, [
+  project = addEventWithActions(project, playerObject.objectId, { type: "KeyDown", key: "ArrowRight" }, [
     { type: "move", dx: 18, dy: 0 }
   ])
   project = addEventWithActions(project, playerObject.objectId, { type: "Step" }, [{ type: "clampToRoom" }])

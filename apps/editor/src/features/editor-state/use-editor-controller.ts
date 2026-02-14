@@ -103,6 +103,7 @@ export function useEditorController() {
   const [snapshots, setSnapshots] = useState<LocalSnapshot[]>(() => loadSnapshotsFromLocalStorage())
   const [startedAtMs] = useState<number>(() => Date.now())
   const pressedKeysRef = useRef<Set<string>>(new Set())
+  const justPressedKeysRef = useRef<Set<string>>(new Set())
   const runtimeRef = useRef<RuntimeState>(createInitialRuntimeState(initial.project))
 
   const activeRoom = useMemo(() => selectActiveRoom(project, activeRoomId), [project, activeRoomId])
@@ -157,46 +158,56 @@ export function useEditorController() {
       return
     }
     const interval = window.setInterval(() => {
-      setProject((previous) => {
-        const result = runRuntimeTick(previous, activeRoom.id, pressedKeysRef.current, runtimeRef.current)
-        let nextProject = result.project
-        let nextRuntime = result.runtime
+      const result = runRuntimeTick(
+        project,
+        activeRoom.id,
+        pressedKeysRef.current,
+        runtimeRef.current,
+        justPressedKeysRef.current
+      )
+      let nextProject = result.project
+      let nextRuntime = result.runtime
 
-        if (result.restartRoomRequested && runSnapshot) {
-          const snapshotRoom = runSnapshot.rooms.find((roomEntry) => roomEntry.id === activeRoom.id)
-          if (snapshotRoom) {
-            nextProject = {
-              ...nextProject,
-              rooms: nextProject.rooms.map((roomEntry) =>
-                roomEntry.id === activeRoom.id
-                  ? {
-                      ...roomEntry,
-                      instances: snapshotRoom.instances.map((instanceEntry) => ({ ...instanceEntry }))
-                    }
-                  : roomEntry
-              )
-            }
-            nextRuntime = createInitialRuntimeState(nextProject)
+      if (result.restartRoomRequested && runSnapshot) {
+        const snapshotRoom = runSnapshot.rooms.find((roomEntry) => roomEntry.id === activeRoom.id)
+        if (snapshotRoom) {
+          nextProject = {
+            ...nextProject,
+            rooms: nextProject.rooms.map((roomEntry) =>
+              roomEntry.id === activeRoom.id
+                ? {
+                    ...roomEntry,
+                    instances: snapshotRoom.instances.map((instanceEntry) => ({ ...instanceEntry }))
+                  }
+                : roomEntry
+            )
           }
+          nextRuntime = createInitialRuntimeState(nextProject)
         }
+      }
 
-        runtimeRef.current = nextRuntime
-        setRuntimeState(nextRuntime)
-        if (result.activeRoomId !== activeRoom.id) {
-          setActiveRoomId(result.activeRoomId)
-        }
-        return nextProject
-      })
+      runtimeRef.current = nextRuntime
+      setRuntimeState(nextRuntime)
+      setProject(nextProject)
+      if (result.activeRoomId !== activeRoom.id) {
+        setActiveRoomId(result.activeRoomId)
+      }
+      justPressedKeysRef.current.clear()
     }, 80)
     return () => window.clearInterval(interval)
-  }, [activeRoom, isRunning, runSnapshot])
+  }, [activeRoom, isRunning, project, runSnapshot])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
-      pressedKeysRef.current.add(getRuntimeKeyFromKeyboardEvent(event))
+      const runtimeKey = getRuntimeKeyFromKeyboardEvent(event)
+      if (!pressedKeysRef.current.has(runtimeKey)) {
+        justPressedKeysRef.current.add(runtimeKey)
+      }
+      pressedKeysRef.current.add(runtimeKey)
     }
     const onKeyUp = (event: KeyboardEvent): void => {
-      pressedKeysRef.current.delete(getRuntimeKeyFromKeyboardEvent(event))
+      const runtimeKey = getRuntimeKeyFromKeyboardEvent(event)
+      pressedKeysRef.current.delete(runtimeKey)
     }
     window.addEventListener("keydown", onKeyDown)
     window.addEventListener("keyup", onKeyUp)
@@ -205,6 +216,14 @@ export function useEditorController() {
       window.removeEventListener("keyup", onKeyUp)
     }
   }, [])
+
+  useEffect(() => {
+    if (isRunning) {
+      return
+    }
+    pressedKeysRef.current.clear()
+    justPressedKeysRef.current.clear()
+  }, [isRunning])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
