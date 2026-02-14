@@ -9,6 +9,10 @@
   "scripts": {
     "editor:dev": "npm run dev -w @creadordejocs/editor",
     "editor:build": "npm run build -w @creadordejocs/editor",
+    "supabase:init": "npx supabase init",
+    "supabase:start": "npx supabase start",
+    "supabase:status": "npx supabase status",
+    "supabase:stop": "npx supabase stop",
     "typecheck": "tsc -p tsconfig.eslint.json --pretty false --noEmit",
     "lint": "eslint .",
     "format": "prettier --write .",

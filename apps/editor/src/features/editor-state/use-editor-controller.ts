@@ -36,6 +36,7 @@ import { selectActiveRoom, selectObject } from "./selectors.js"
 import { createTemplateProject, type GameTemplateId } from "./game-templates.js"
 import { createInitialRuntimeState, runRuntimeTick, type RuntimeState } from "./runtime.js"
 import type { EditorSection, ObjectEventKey, ObjectEventType } from "./types.js"
+import { resolveAssetSource } from "../assets/asset-source-resolver.js"
 
 const AUTOSAVE_MS = 4000
 
@@ -172,6 +173,38 @@ export function useEditorController() {
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
   }, [past, future, project])
+
+  useEffect(() => {
+    if (!runtimeState.playedSoundIds.length) {
+      return
+    }
+
+    let cancelled = false
+    const playedSet = new Set(runtimeState.playedSoundIds)
+
+    const playTriggeredSounds = async () => {
+      for (const soundId of playedSet) {
+        const soundEntry = project.resources.sounds.find((entry) => entry.id === soundId)
+        if (!soundEntry?.assetSource) {
+          continue
+        }
+        const resolvedSource = await resolveAssetSource(soundEntry.assetSource)
+        if (cancelled || !resolvedSource) {
+          continue
+        }
+        const audio = new Audio(resolvedSource)
+        void audio.play().catch(() => {
+          // Ignore autoplay restrictions and failed decodes in MVP mode.
+        })
+      }
+    }
+
+    void playTriggeredSounds()
+
+    return () => {
+      cancelled = true
+    }
+  }, [project.resources.sounds, runtimeState.playedSoundIds])
 
   const undo = (): void => {
     const previous = past[past.length - 1]

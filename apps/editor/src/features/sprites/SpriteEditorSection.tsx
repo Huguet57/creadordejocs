@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ChangeEvent, type Keyboa
 import { Image, Plus, Upload } from "lucide-react"
 import type { EditorController } from "../editor-state/use-editor-controller.js"
 import { Button } from "../../components/ui/button.js"
+import { AssetUploadError, uploadAsset, validateAssetFile } from "../assets/asset-upload.js"
 
 type SpriteEditorSectionProps = {
   controller: EditorController
@@ -11,6 +12,7 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
   const [isAdding, setIsAdding] = useState(false)
   const [spriteName, setSpriteName] = useState("Sprite nou")
   const [validationMessage, setValidationMessage] = useState("")
+  const [uploadingSpriteId, setUploadingSpriteId] = useState<string | null>(null)
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const resetIdleTimer = () => {
@@ -155,26 +157,50 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
                     onChange={(e: ChangeEvent<HTMLInputElement>) =>
                       controller.updateSpriteSource(sprite.id, e.target.value)
                     }
+                    disabled={uploadingSpriteId === sprite.id}
                     className="flex h-8 flex-1 rounded-md border border-slate-200 bg-slate-50 px-3 py-1 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
                   />
 
-                  <label className="flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 text-xs text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900">
+                  <label className="mvp15-sprite-upload-label flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 text-xs text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900">
                     <Upload className="h-3.5 w-3.5" />
-                    Import
+                    {uploadingSpriteId === sprite.id ? "Uploading..." : "Import"}
                     <input
                       className="hidden"
                       type="file"
                       accept=".png,.jpg,.jpeg,.gif,.webp"
+                      disabled={uploadingSpriteId === sprite.id}
                       onChange={(event) => {
-                        const selectedFile = event.target.files?.[0]
+                        const inputElement = event.currentTarget
+                        const selectedFile = inputElement.files?.[0]
                         if (!selectedFile) return
-                        const valid = /\.(png|jpe?g|gif|webp)$/i.test(selectedFile.name)
-                        if (!valid) {
-                          setValidationMessage("Invalid format. Use PNG, JPG, GIF or WEBP.")
-                          return
-                        }
-                        setValidationMessage("")
-                        controller.updateSpriteSource(sprite.id, selectedFile.name)
+
+                        void (async () => {
+                          if (!validateAssetFile(selectedFile, "sprite")) {
+                            setValidationMessage("Invalid format. Use PNG, JPG, GIF or WEBP.")
+                            inputElement.value = ""
+                            return
+                          }
+
+                          setValidationMessage("")
+                          setUploadingSpriteId(sprite.id)
+                          try {
+                            const uploadResult = await uploadAsset({
+                              file: selectedFile,
+                              kind: "sprite",
+                              resourceId: sprite.id
+                            })
+                            controller.updateSpriteSource(sprite.id, uploadResult.assetSource)
+                          } catch (error) {
+                            if (error instanceof AssetUploadError) {
+                              setValidationMessage(`Upload failed: ${error.message}`)
+                            } else {
+                              setValidationMessage("Upload failed. Verify storage configuration and retry.")
+                            }
+                          } finally {
+                            setUploadingSpriteId(null)
+                            inputElement.value = ""
+                          }
+                        })()
                       }}
                     />
                   </label>

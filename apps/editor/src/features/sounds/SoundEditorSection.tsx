@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ChangeEvent, type Keyboa
 import { Music, Plus, Upload } from "lucide-react"
 import type { EditorController } from "../editor-state/use-editor-controller.js"
 import { Button } from "../../components/ui/button.js"
+import { AssetUploadError, uploadAsset, validateAssetFile } from "../assets/asset-upload.js"
 
 type SoundEditorSectionProps = {
   controller: EditorController
@@ -11,6 +12,7 @@ export function SoundEditorSection({ controller }: SoundEditorSectionProps) {
   const [isAdding, setIsAdding] = useState(false)
   const [soundName, setSoundName] = useState("So nou")
   const [validationMessage, setValidationMessage] = useState("")
+  const [uploadingSoundId, setUploadingSoundId] = useState<string | null>(null)
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const resetIdleTimer = () => {
@@ -155,26 +157,50 @@ export function SoundEditorSection({ controller }: SoundEditorSectionProps) {
                     onChange={(e: ChangeEvent<HTMLInputElement>) =>
                       controller.updateSoundSource(sound.id, e.target.value)
                     }
+                    disabled={uploadingSoundId === sound.id}
                     className="flex h-8 flex-1 rounded-md border border-slate-200 bg-slate-50 px-3 py-1 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
                   />
 
-                  <label className="flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 text-xs text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900">
+                  <label className="mvp15-sound-upload-label flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 text-xs text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900">
                     <Upload className="h-3.5 w-3.5" />
-                    Import
+                    {uploadingSoundId === sound.id ? "Uploading..." : "Import"}
                     <input
                       className="hidden"
                       type="file"
                       accept=".wav,.mp3,.ogg"
+                      disabled={uploadingSoundId === sound.id}
                       onChange={(event) => {
-                        const selectedFile = event.target.files?.[0]
+                        const inputElement = event.currentTarget
+                        const selectedFile = inputElement.files?.[0]
                         if (!selectedFile) return
-                        const valid = /\.(wav|mp3|ogg)$/i.test(selectedFile.name)
-                        if (!valid) {
-                          setValidationMessage("Invalid format. Use WAV, MP3 or OGG.")
-                          return
-                        }
-                        setValidationMessage("")
-                        controller.updateSoundSource(sound.id, selectedFile.name)
+
+                        void (async () => {
+                          if (!validateAssetFile(selectedFile, "sound")) {
+                            setValidationMessage("Invalid format. Use WAV, MP3 or OGG.")
+                            inputElement.value = ""
+                            return
+                          }
+
+                          setValidationMessage("")
+                          setUploadingSoundId(sound.id)
+                          try {
+                            const uploadResult = await uploadAsset({
+                              file: selectedFile,
+                              kind: "sound",
+                              resourceId: sound.id
+                            })
+                            controller.updateSoundSource(sound.id, uploadResult.assetSource)
+                          } catch (error) {
+                            if (error instanceof AssetUploadError) {
+                              setValidationMessage(`Upload failed: ${error.message}`)
+                            } else {
+                              setValidationMessage("Upload failed. Verify storage configuration and retry.")
+                            }
+                          } finally {
+                            setUploadingSoundId(null)
+                            inputElement.value = ""
+                          }
+                        })()
                       }}
                     />
                   </label>

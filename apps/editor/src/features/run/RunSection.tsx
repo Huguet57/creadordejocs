@@ -1,6 +1,8 @@
+import { useEffect, useMemo, useState } from "react"
 import { Play, RotateCcw } from "lucide-react"
 import type { EditorController } from "../editor-state/use-editor-controller.js"
 import { Button } from "../../components/ui/button.js"
+import { resolveAssetSource } from "../assets/asset-source-resolver.js"
 
 const ROOM_WIDTH = 560
 const ROOM_HEIGHT = 320
@@ -11,6 +13,35 @@ type RunSectionProps = {
 
 export function RunSection({ controller }: RunSectionProps) {
   const { runtimeState } = controller
+  const [resolvedSpriteSources, setResolvedSpriteSources] = useState<Record<string, string>>({})
+
+  const sprites = controller.project.resources.sprites
+  const spriteById = useMemo(
+    () => Object.fromEntries(sprites.map((spriteEntry) => [spriteEntry.id, spriteEntry])),
+    [sprites]
+  )
+
+  useEffect(() => {
+    let cancelled = false
+
+    const resolveSprites = async () => {
+      const pairs = await Promise.all(
+        sprites.map(async (spriteEntry) => {
+          const resolved = await resolveAssetSource(spriteEntry.assetSource)
+          return [spriteEntry.id, resolved ?? ""] as const
+        })
+      )
+      if (!cancelled) {
+        setResolvedSpriteSources(Object.fromEntries(pairs))
+      }
+    }
+
+    void resolveSprites()
+
+    return () => {
+      cancelled = true
+    }
+  }, [sprites])
 
   return (
     <div className="mvp15-run-container flex h-[600px] w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
@@ -94,13 +125,23 @@ export function RunSection({ controller }: RunSectionProps) {
             >
               {controller.activeRoom.instances.map((instanceEntry) => {
                 const objectEntry = controller.project.objects.find((entry) => entry.id === instanceEntry.objectId)
+                const spriteEntry = objectEntry?.spriteId ? spriteById[objectEntry.spriteId] : undefined
+                const spriteSource = spriteEntry ? resolvedSpriteSources[spriteEntry.id] : undefined
                 return (
                   <div
                     key={instanceEntry.id}
-                    className="absolute flex h-8 w-8 items-center justify-center rounded bg-indigo-500 text-[10px] text-white"
+                    className="mvp15-run-instance absolute flex h-8 w-8 items-center justify-center overflow-hidden rounded bg-indigo-500 text-[10px] text-white"
                     style={{ left: instanceEntry.x, top: instanceEntry.y }}
                   >
-                    {objectEntry?.name.slice(0, 2).toUpperCase() ?? "??"}
+                    {spriteSource ? (
+                      <img
+                        className="mvp15-run-instance-sprite h-full w-full object-cover"
+                        src={spriteSource}
+                        alt={spriteEntry?.name ?? objectEntry?.name ?? "Sprite"}
+                      />
+                    ) : (
+                      objectEntry?.name.slice(0, 2).toUpperCase() ?? "??"
+                    )}
                   </div>
                 )
               })}

@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent } from "react"
 import { Box, Grid3X3, Plus, X } from "lucide-react"
 import type { EditorController } from "../editor-state/use-editor-controller.js"
 import { Button } from "../../components/ui/button.js"
+import { resolveAssetSource } from "../assets/asset-source-resolver.js"
 
 const ROOM_WIDTH = 560
 const ROOM_HEIGHT = 320
@@ -13,7 +14,13 @@ type RoomEditorSectionProps = {
 export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
   const [isAddingRoom, setIsAddingRoom] = useState(false)
   const [roomName, setRoomName] = useState("Sala nova")
+  const [resolvedSpriteSources, setResolvedSpriteSources] = useState<Record<string, string>>({})
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const sprites = controller.project.resources.sprites
+  const spriteById = useMemo(
+    () => Object.fromEntries(sprites.map((spriteEntry) => [spriteEntry.id, spriteEntry])),
+    [sprites]
+  )
 
   const resetIdleTimer = () => {
     if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
@@ -28,6 +35,28 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
       if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
     }
   }, [isAddingRoom])
+
+  useEffect(() => {
+    let cancelled = false
+
+    const resolveSprites = async () => {
+      const pairs = await Promise.all(
+        sprites.map(async (spriteEntry) => {
+          const resolved = await resolveAssetSource(spriteEntry.assetSource)
+          return [spriteEntry.id, resolved ?? ""] as const
+        })
+      )
+      if (!cancelled) {
+        setResolvedSpriteSources(Object.fromEntries(pairs))
+      }
+    }
+
+    void resolveSprites()
+
+    return () => {
+      cancelled = true
+    }
+  }, [sprites])
 
   const inputCallbackRef = useCallback((node: HTMLInputElement | null) => {
     if (node) node.select()
@@ -183,10 +212,12 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
               >
                 {controller.activeRoom.instances.map((instanceEntry) => {
                   const objectEntry = controller.project.objects.find((entry) => entry.id === instanceEntry.objectId)
+                  const spriteEntry = objectEntry?.spriteId ? spriteById[objectEntry.spriteId] : undefined
+                  const spriteSource = spriteEntry ? resolvedSpriteSources[spriteEntry.id] : undefined
                   return (
                     <div
                       key={instanceEntry.id}
-                      className="group absolute flex h-8 w-8 cursor-move items-center justify-center rounded bg-blue-500 text-[10px] text-white"
+                      className="mvp15-room-instance group absolute flex h-8 w-8 cursor-move items-center justify-center overflow-hidden rounded bg-blue-500 text-[10px] text-white"
                       style={{ left: instanceEntry.x, top: instanceEntry.y }}
                       draggable
                       onDragStart={(event) => event.dataTransfer.setData("text/plain", instanceEntry.id)}
@@ -196,7 +227,15 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                           : "Instance"
                       }
                     >
-                      {objectEntry?.name.slice(0, 2).toUpperCase() ?? "??"}
+                      {spriteSource ? (
+                        <img
+                          className="mvp15-room-instance-sprite h-full w-full object-cover"
+                          src={spriteSource}
+                          alt={spriteEntry?.name ?? objectEntry?.name ?? "Sprite"}
+                        />
+                      ) : (
+                        objectEntry?.name.slice(0, 2).toUpperCase() ?? "??"
+                      )}
                       <button
                         type="button"
                         className="absolute -right-1.5 -top-1.5 hidden h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white group-hover:flex"

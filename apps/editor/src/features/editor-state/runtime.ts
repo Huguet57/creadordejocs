@@ -10,6 +10,7 @@ type RuntimeActionResult = {
   spawned: ProjectV1["rooms"][number]["instances"][number][]
   scoreDelta: number
   gameOverMessage: string | null
+  playedSoundIds: string[]
 }
 
 export type RuntimeState = {
@@ -17,6 +18,7 @@ export type RuntimeState = {
   gameOver: boolean
   message: string
   initializedInstanceIds: string[]
+  playedSoundIds: string[]
 }
 
 function clampValue(value: number, min: number, max: number): number {
@@ -31,7 +33,8 @@ function getDefaultRuntimeActionResult(
     destroySelf: false,
     spawned: [],
     scoreDelta: 0,
-    gameOverMessage: null
+    gameOverMessage: null,
+    playedSoundIds: []
   }
 }
 
@@ -116,6 +119,12 @@ function runEventActions(
       }
       continue
     }
+    if (actionEntry.type === "playSound") {
+      result = {
+        ...result,
+        playedSoundIds: [...result.playedSoundIds, actionEntry.soundId]
+      }
+    }
   }
 
   return result
@@ -180,7 +189,8 @@ function applyCollisionEvents(
         mutableInstances[firstIndex] = eventResult.instance
         nextRuntime = {
           ...nextRuntime,
-          score: nextRuntime.score + eventResult.scoreDelta
+          score: nextRuntime.score + eventResult.scoreDelta,
+          playedSoundIds: [...nextRuntime.playedSoundIds, ...eventResult.playedSoundIds]
         }
         if (eventResult.gameOverMessage) {
           nextRuntime = {
@@ -214,7 +224,8 @@ function applyCollisionEvents(
         mutableInstances[secondIndex] = eventResult.instance
         nextRuntime = {
           ...nextRuntime,
-          score: nextRuntime.score + eventResult.scoreDelta
+          score: nextRuntime.score + eventResult.scoreDelta,
+          playedSoundIds: [...nextRuntime.playedSoundIds, ...eventResult.playedSoundIds]
         }
         if (eventResult.gameOverMessage) {
           nextRuntime = {
@@ -245,7 +256,8 @@ export function createInitialRuntimeState(): RuntimeState {
     score: 0,
     gameOver: false,
     message: "",
-    initializedInstanceIds: []
+    initializedInstanceIds: [],
+    playedSoundIds: []
   }
 }
 
@@ -260,7 +272,7 @@ export function runRuntimeTick(
     return { project, runtime }
   }
 
-  let nextRuntime: RuntimeState = { ...runtime }
+  let nextRuntime: RuntimeState = { ...runtime, playedSoundIds: [] }
   let nextInstances: ProjectV1["rooms"][number]["instances"] = []
   for (const instanceEntry of room.instances) {
     const objectEntry = project.objects.find((candidate) => candidate.id === instanceEntry.objectId)
@@ -293,7 +305,8 @@ export function runRuntimeTick(
       spawned = [...spawned, ...eventResult.spawned]
       nextRuntime = {
         ...nextRuntime,
-        score: nextRuntime.score + eventResult.scoreDelta
+        score: nextRuntime.score + eventResult.scoreDelta,
+        playedSoundIds: [...nextRuntime.playedSoundIds, ...eventResult.playedSoundIds]
       }
       if (eventResult.gameOverMessage) {
         nextRuntime = {
