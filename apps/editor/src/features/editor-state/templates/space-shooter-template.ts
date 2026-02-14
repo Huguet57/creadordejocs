@@ -90,16 +90,20 @@ export function createSpaceShooterTemplateProject(): TemplateProjectResult {
     project,
     bulletObject.objectId,
     { type: "Collision", targetObjectId: asteroidObject.objectId },
-    [{ type: "changeScore", delta: 10 }, { type: "destroySelf" }]
+    [{ type: "destroySelf" }, { type: "destroyOther" }]
   )
   project = addEventWithActions(project, asteroidObject.objectId, { type: "Step" }, [
     { type: "setVelocity", speed: 1.8, direction: 90 }
+  ])
+  project = addEventWithActions(project, asteroidObject.objectId, { type: "OnDestroy" }, [
+    { type: "playSound", soundId: soundExplosion.soundId },
+    { type: "changeScore", delta: 10 }
   ])
   project = addEventWithActions(
     project,
     asteroidObject.objectId,
     { type: "Collision", targetObjectId: bulletObject.objectId },
-    [{ type: "playSound", soundId: soundExplosion.soundId }, { type: "destroySelf" }]
+    [{ type: "destroySelf" }]
   )
   project = addEventWithActions(
     project,

@@ -112,4 +112,34 @@ describe("runtime regressions", () => {
     expect(asteroidIdsAfter).toContain(untouchedAsteroid?.id ?? "")
     expect(asteroidIdsAfter).toHaveLength(2)
   })
+
+  it("runs OnDestroy actions when destroyOther removes an instance", () => {
+    const template = createCoinDashTemplateProject()
+    const playerObjectId = template.project.objects.find((objectEntry) => objectEntry.name === "Explorer")?.id
+    const coinObjectId = template.project.objects.find((objectEntry) => objectEntry.name === "Coin")?.id
+    expect(playerObjectId).toBeTruthy()
+    expect(coinObjectId).toBeTruthy()
+
+    const room = template.project.rooms.find((roomEntry) => roomEntry.id === template.roomId)
+    const player = room?.instances.find((instanceEntry) => instanceEntry.objectId === playerObjectId)
+    expect(player).toBeTruthy()
+
+    const projectWithForcedCollision = updateRoomInstances(template.project, template.roomId, (instances) =>
+      instances.map((instanceEntry) =>
+        instanceEntry.objectId === coinObjectId
+          ? {
+              ...instanceEntry,
+              x: player?.x ?? instanceEntry.x,
+              y: player?.y ?? instanceEntry.y
+            }
+          : instanceEntry
+      )
+    )
+
+    const result = runRuntimeTick(projectWithForcedCollision, template.roomId, new Set(), createInitialRuntimeState())
+
+    expect(result.runtime.score).toBe(100)
+    expect(result.runtime.gameOver).toBe(true)
+    expect(result.runtime.message).toBe("Has recollit la moneda. Has guanyat!")
+  })
 })

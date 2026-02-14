@@ -26,6 +26,7 @@ const ACTION_ICONS: Record<ObjectActionType, React.ElementType> = {
   endGame: Flag,
   clampToRoom: Maximize,
   destroySelf: Trash,
+  destroyOther: X,
 }
 
 export function ActionBlock({

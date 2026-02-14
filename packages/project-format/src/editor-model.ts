@@ -31,7 +31,7 @@ export type UpdateObjectPropertiesInput = {
   direction: number
 }
 
-export type ObjectEventType = "Create" | "Step" | "Draw" | "Collision" | "Keyboard"
+export type ObjectEventType = "Create" | "Step" | "Draw" | "Collision" | "Keyboard" | "OnDestroy"
 export type ObjectEventKey = "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight" | "Space"
 export type ObjectAction = ProjectV1["objects"][number]["events"][number]["actions"][number]
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never

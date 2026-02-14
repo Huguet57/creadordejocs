@@ -6,7 +6,7 @@ const INSTANCE_SIZE = 32
 
 type RuntimeActionResult = {
   instance: ProjectV1["rooms"][number]["instances"][number]
-  destroySelf: boolean
+  destroyedInstanceIds: string[]
   spawned: ProjectV1["rooms"][number]["instances"][number][]
   scoreDelta: number
   gameOverMessage: string | null
@@ -30,7 +30,7 @@ function getDefaultRuntimeActionResult(
 ): RuntimeActionResult {
   return {
     instance,
-    destroySelf: false,
+    destroyedInstanceIds: [],
     spawned: [],
     scoreDelta: 0,
     gameOverMessage: null,
@@ -38,10 +38,93 @@ function getDefaultRuntimeActionResult(
   }
 }
 
+function mergeDestroyedIds(existing: string[], nextId: string): string[] {
+  return existing.includes(nextId) ? existing : [...existing, nextId]
+}
+
+function applyActionResultToRuntime(runtime: RuntimeState, actionResult: RuntimeActionResult): RuntimeState {
+  let nextRuntime = {
+    ...runtime,
+    score: runtime.score + actionResult.scoreDelta,
+    playedSoundIds: [...runtime.playedSoundIds, ...actionResult.playedSoundIds]
+  }
+  if (actionResult.gameOverMessage) {
+    nextRuntime = {
+      ...nextRuntime,
+      gameOver: true,
+      message: actionResult.gameOverMessage
+    }
+  }
+  return nextRuntime
+}
+
+function runOnDestroyEvents(
+  project: ProjectV1,
+  instance: ProjectV1["rooms"][number]["instances"][number]
+): RuntimeActionResult {
+  const objectEntry = project.objects.find((candidate) => candidate.id === instance.objectId)
+  if (!objectEntry) {
+    return getDefaultRuntimeActionResult(instance)
+  }
+  const onDestroyEvents = objectEntry.events.filter((eventEntry) => eventEntry.type === "OnDestroy")
+  if (onDestroyEvents.length === 0) {
+    return getDefaultRuntimeActionResult(instance)
+  }
+
+  let aggregate = getDefaultRuntimeActionResult(instance)
+  for (const eventEntry of onDestroyEvents) {
+    const eventResult = runEventActions(project, aggregate.instance, eventEntry.actions)
+    aggregate = {
+      ...aggregate,
+      instance: eventResult.instance,
+      spawned: [...aggregate.spawned, ...eventResult.spawned],
+      scoreDelta: aggregate.scoreDelta + eventResult.scoreDelta,
+      gameOverMessage: eventResult.gameOverMessage ?? aggregate.gameOverMessage,
+      playedSoundIds: [...aggregate.playedSoundIds, ...eventResult.playedSoundIds]
+    }
+  }
+  return aggregate
+}
+
+function destroyInstancesAndRunOnDestroy(
+  project: ProjectV1,
+  instances: ProjectV1["rooms"][number]["instances"],
+  instanceIds: string[],
+  runtime: RuntimeState
+): {
+  instances: ProjectV1["rooms"][number]["instances"]
+  runtime: RuntimeState
+  removedIndices: number[]
+} {
+  let mutableInstances = [...instances]
+  let nextRuntime = { ...runtime }
+  const removedIndices: number[] = []
+
+  for (const instanceId of instanceIds) {
+    const index = mutableInstances.findIndex((instanceEntry) => instanceEntry.id === instanceId)
+    if (index === -1) {
+      continue
+    }
+    const target = mutableInstances[index]
+    if (!target) {
+      continue
+    }
+    mutableInstances.splice(index, 1)
+    removedIndices.push(index)
+
+    const onDestroyResult = runOnDestroyEvents(project, target)
+    nextRuntime = applyActionResultToRuntime(nextRuntime, onDestroyResult)
+    mutableInstances = [...mutableInstances, ...onDestroyResult.spawned]
+  }
+
+  return { instances: mutableInstances, runtime: nextRuntime, removedIndices }
+}
+
 function runEventActions(
   project: ProjectV1,
   instance: ProjectV1["rooms"][number]["instances"][number],
-  actions: ProjectV1["objects"][number]["events"][number]["actions"]
+  actions: ProjectV1["objects"][number]["events"][number]["actions"],
+  collisionOtherInstanceId: string | null = null
 ): RuntimeActionResult {
   let result = getDefaultRuntimeActionResult(instance)
   for (const actionEntry of actions) {
@@ -82,7 +165,16 @@ function runEventActions(
     if (actionEntry.type === "destroySelf") {
       result = {
         ...result,
-        destroySelf: true
+        destroyedInstanceIds: mergeDestroyedIds(result.destroyedInstanceIds, result.instance.id)
+      }
+      continue
+    }
+    if (actionEntry.type === "destroyOther") {
+      if (collisionOtherInstanceId) {
+        result = {
+          ...result,
+          destroyedInstanceIds: mergeDestroyedIds(result.destroyedInstanceIds, collisionOtherInstanceId)
+        }
       }
       continue
     }
@@ -147,7 +239,7 @@ function applyCollisionEvents(
   instances: ProjectV1["rooms"][number]["instances"],
   runtime: RuntimeState
 ): { instances: ProjectV1["rooms"][number]["instances"]; runtime: RuntimeState } {
-  const mutableInstances = [...instances]
+  let mutableInstances = [...instances]
   let nextRuntime = { ...runtime }
   for (let i = 0; i < mutableInstances.length; i += 1) {
     for (let j = i + 1; j < mutableInstances.length; j += 1) {
@@ -185,28 +277,31 @@ function applyCollisionEvents(
         if (!firstInstance) {
           break
         }
-        const eventResult = runEventActions(project, firstInstance, eventEntry.actions)
-        mutableInstances[firstIndex] = eventResult.instance
-        nextRuntime = {
-          ...nextRuntime,
-          score: nextRuntime.score + eventResult.scoreDelta,
-          playedSoundIds: [...nextRuntime.playedSoundIds, ...eventResult.playedSoundIds]
+        const eventResult = runEventActions(project, firstInstance, eventEntry.actions, secondId)
+        const firstGetsDestroyed = eventResult.destroyedInstanceIds.includes(firstId)
+        if (!firstGetsDestroyed) {
+          mutableInstances[firstIndex] = eventResult.instance
         }
-        if (eventResult.gameOverMessage) {
-          nextRuntime = {
-            ...nextRuntime,
-            gameOver: true,
-            message: eventResult.gameOverMessage
+        nextRuntime = applyActionResultToRuntime(nextRuntime, eventResult)
+        if (eventResult.destroyedInstanceIds.length > 0) {
+          const destroyResult = destroyInstancesAndRunOnDestroy(
+            project,
+            mutableInstances,
+            eventResult.destroyedInstanceIds,
+            nextRuntime
+          )
+          mutableInstances = destroyResult.instances
+          nextRuntime = destroyResult.runtime
+          for (const removedIndex of destroyResult.removedIndices) {
+            if (removedIndex <= i) {
+              i -= 1
+            }
+            if (removedIndex <= j) {
+              j -= 1
+            }
           }
         }
-        if (eventResult.destroySelf) {
-          mutableInstances.splice(firstIndex, 1)
-          if (firstIndex <= i) {
-            i -= 1
-          }
-          if (firstIndex <= j) {
-            j -= 1
-          }
+        if (firstGetsDestroyed) {
           break
         }
       }
@@ -220,28 +315,31 @@ function applyCollisionEvents(
         if (!secondInstance) {
           break
         }
-        const eventResult = runEventActions(project, secondInstance, eventEntry.actions)
-        mutableInstances[secondIndex] = eventResult.instance
-        nextRuntime = {
-          ...nextRuntime,
-          score: nextRuntime.score + eventResult.scoreDelta,
-          playedSoundIds: [...nextRuntime.playedSoundIds, ...eventResult.playedSoundIds]
+        const eventResult = runEventActions(project, secondInstance, eventEntry.actions, firstId)
+        const secondGetsDestroyed = eventResult.destroyedInstanceIds.includes(secondId)
+        if (!secondGetsDestroyed) {
+          mutableInstances[secondIndex] = eventResult.instance
         }
-        if (eventResult.gameOverMessage) {
-          nextRuntime = {
-            ...nextRuntime,
-            gameOver: true,
-            message: eventResult.gameOverMessage
+        nextRuntime = applyActionResultToRuntime(nextRuntime, eventResult)
+        if (eventResult.destroyedInstanceIds.length > 0) {
+          const destroyResult = destroyInstancesAndRunOnDestroy(
+            project,
+            mutableInstances,
+            eventResult.destroyedInstanceIds,
+            nextRuntime
+          )
+          mutableInstances = destroyResult.instances
+          nextRuntime = destroyResult.runtime
+          for (const removedIndex of destroyResult.removedIndices) {
+            if (removedIndex <= i) {
+              i -= 1
+            }
+            if (removedIndex <= j) {
+              j -= 1
+            }
           }
         }
-        if (eventResult.destroySelf) {
-          mutableInstances.splice(secondIndex, 1)
-          if (secondIndex <= i) {
-            i -= 1
-          }
-          if (secondIndex <= j) {
-            j -= 1
-          }
+        if (secondGetsDestroyed) {
           break
         }
       }
@@ -274,6 +372,7 @@ export function runRuntimeTick(
 
   let nextRuntime: RuntimeState = { ...runtime, playedSoundIds: [] }
   let nextInstances: ProjectV1["rooms"][number]["instances"] = []
+  const pendingDestroyedInstanceIds = new Set<string>()
   for (const instanceEntry of room.instances) {
     const objectEntry = project.objects.find((candidate) => candidate.id === instanceEntry.objectId)
     if (!objectEntry) {
@@ -301,24 +400,23 @@ export function runRuntimeTick(
     for (const eventEntry of matchingEvents) {
       const eventResult = runEventActions(project, nextInstance, eventEntry.actions)
       nextInstance = eventResult.instance
-      destroySelf = destroySelf || eventResult.destroySelf
-      spawned = [...spawned, ...eventResult.spawned]
-      nextRuntime = {
-        ...nextRuntime,
-        score: nextRuntime.score + eventResult.scoreDelta,
-        playedSoundIds: [...nextRuntime.playedSoundIds, ...eventResult.playedSoundIds]
-      }
-      if (eventResult.gameOverMessage) {
-        nextRuntime = {
-          ...nextRuntime,
-          gameOver: true,
-          message: eventResult.gameOverMessage
+      for (const instanceId of eventResult.destroyedInstanceIds) {
+        if (instanceId === nextInstance.id) {
+          destroySelf = true
+        } else {
+          pendingDestroyedInstanceIds.add(instanceId)
         }
       }
+      spawned = [...spawned, ...eventResult.spawned]
+      nextRuntime = applyActionResultToRuntime(nextRuntime, eventResult)
     }
 
     if (!destroySelf) {
       nextInstances.push(nextInstance)
+    } else {
+      const onDestroyResult = runOnDestroyEvents(project, nextInstance)
+      nextRuntime = applyActionResultToRuntime(nextRuntime, onDestroyResult)
+      spawned = [...spawned, ...onDestroyResult.spawned]
     }
     nextInstances = [...nextInstances, ...spawned]
 
@@ -328,6 +426,17 @@ export function runRuntimeTick(
         initializedInstanceIds: [...nextRuntime.initializedInstanceIds, instanceEntry.id]
       }
     }
+  }
+
+  if (pendingDestroyedInstanceIds.size > 0) {
+    const destroyResult = destroyInstancesAndRunOnDestroy(
+      project,
+      nextInstances,
+      Array.from(pendingDestroyedInstanceIds),
+      nextRuntime
+    )
+    nextInstances = destroyResult.instances
+    nextRuntime = destroyResult.runtime
   }
 
   const collisionResult = applyCollisionEvents(project, nextInstances, nextRuntime)

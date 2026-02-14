@@ -100,27 +100,32 @@ export function createLaneCrosserTemplateProject(): TemplateProjectResult {
   project = addEventWithActions(project, carLeftObject.objectId, { type: "Step" }, [
     { type: "setVelocity", speed: 2.4, direction: 180 }
   ])
+  project = addEventWithActions(project, playerObject.objectId, { type: "OnDestroy" }, [
+    { type: "playSound", soundId: soundCrash.soundId },
+    { type: "endGame", message: "Atropellat! Torna-ho a provar." }
+  ])
   project = addEventWithActions(
     project,
     playerObject.objectId,
     { type: "Collision", targetObjectId: carRightObject.objectId },
-    [{ type: "playSound", soundId: soundCrash.soundId }, { type: "endGame", message: "Atropellat! Torna-ho a provar." }]
+    [{ type: "destroySelf" }]
   )
   project = addEventWithActions(
     project,
     playerObject.objectId,
     { type: "Collision", targetObjectId: carLeftObject.objectId },
-    [{ type: "playSound", soundId: soundCrash.soundId }, { type: "endGame", message: "Atropellat! Torna-ho a provar." }]
+    [{ type: "destroySelf" }]
   )
+  project = addEventWithActions(project, goalObject.objectId, { type: "OnDestroy" }, [
+    { type: "playSound", soundId: soundGoal.soundId },
+    { type: "changeScore", delta: 100 },
+    { type: "endGame", message: "Meta assolida. Has guanyat!" }
+  ])
   project = addEventWithActions(
     project,
     playerObject.objectId,
     { type: "Collision", targetObjectId: goalObject.objectId },
-    [
-      { type: "playSound", soundId: soundGoal.soundId },
-      { type: "changeScore", delta: 100 },
-      { type: "endGame", message: "Meta assolida. Has guanyat!" }
-    ]
+    [{ type: "destroyOther" }]
   )
 
   return {

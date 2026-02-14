@@ -57,6 +57,10 @@ const ObjectActionSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     id: z.string().min(1),
+    type: z.literal("destroyOther")
+  }),
+  z.object({
+    id: z.string().min(1),
     type: z.literal("spawnObject"),
     objectId: z.string().min(1),
     offsetX: z.number(),
@@ -81,7 +85,7 @@ const ObjectActionSchema = z.discriminatedUnion("type", [
 
 const ObjectEventSchema = z.object({
   id: z.string().min(1),
-  type: z.enum(["Create", "Step", "Draw", "Collision", "Keyboard"]),
+  type: z.enum(["Create", "Step", "Draw", "Collision", "Keyboard", "OnDestroy"]),
   key: z.enum(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"]).nullable().default(null),
   targetObjectId: z.string().nullable().default(null),
   actions: z.array(ObjectActionSchema).default([])

@@ -16,7 +16,8 @@ const EVENT_ICONS: Record<ObjectEventType, React.ElementType> = {
   Step: Activity,
   Draw: MousePointerClick, // Placeholder
   Collision: Zap,
-  Keyboard: Keyboard
+  Keyboard: Keyboard,
+  OnDestroy: X
 }
 
 export function EventListPanel({

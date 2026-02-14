@@ -79,16 +79,16 @@ export function createCoinDashTemplateProject(): TemplateProjectResult {
   project = addEventWithActions(project, enemyObject.objectId, { type: "Step" }, [
     { type: "setVelocity", speed: 1.9, direction: 0 }
   ])
+  project = addEventWithActions(project, coinObject.objectId, { type: "OnDestroy" }, [
+    { type: "playSound", soundId: soundCoin.soundId },
+    { type: "changeScore", delta: 100 },
+    { type: "endGame", message: "Has recollit la moneda. Has guanyat!" }
+  ])
   project = addEventWithActions(
     project,
-    coinObject.objectId,
-    { type: "Collision", targetObjectId: playerObject.objectId },
-    [
-      { type: "playSound", soundId: soundCoin.soundId },
-      { type: "changeScore", delta: 100 },
-      { type: "destroySelf" },
-      { type: "endGame", message: "Has recollit la moneda. Has guanyat!" }
-    ]
+    playerObject.objectId,
+    { type: "Collision", targetObjectId: coinObject.objectId },
+    [{ type: "destroyOther" }]
   )
   project = addEventWithActions(
     project,

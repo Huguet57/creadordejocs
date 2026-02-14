@@ -25,6 +25,7 @@ const ACTION_ICONS: Record<ObjectActionType, React.ElementType> = {
   endGame: Flag,
   clampToRoom: Maximize,
   destroySelf: Trash,
+  destroyOther: Trash,
 }
 
 export function ActionEditorPanel({
