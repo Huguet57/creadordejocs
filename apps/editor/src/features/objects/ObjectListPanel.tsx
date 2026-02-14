@@ -1,4 +1,4 @@
-import { Box, Plus, Trash2 } from "lucide-react"
+import { Box, Plus, X } from "lucide-react"
 import { useCallback, useState, type ChangeEvent, type KeyboardEvent } from "react"
 import { Button } from "../../components/ui/button.js"
 import type { ProjectV1 } from "@creadordejocs/project-format"
@@ -50,19 +50,37 @@ export function ObjectListPanel({
             <p className="px-2 py-4 text-center text-xs text-slate-400">No objects yet</p>
           )}
           {objects.map((objectEntry) => (
-            <button
+            <div
               key={objectEntry.id}
-              type="button"
-              className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm transition-colors ${
+              className={`group flex items-center justify-between rounded px-2 py-1.5 transition-colors ${
                 activeObjectId === objectEntry.id
-                  ? "bg-white font-medium text-slate-900 shadow-sm ring-1 ring-slate-200"
-                  : "text-slate-600 hover:bg-slate-100"
+                  ? "bg-white shadow-sm ring-1 ring-slate-200"
+                  : "hover:bg-slate-100"
               }`}
-              onClick={() => onSelectObject(objectEntry.id)}
             >
-              <Box className={`h-3.5 w-3.5 ${activeObjectId === objectEntry.id ? "text-blue-500" : "text-slate-400"}`} />
-              <span className="truncate">{objectEntry.name}</span>
-            </button>
+              <button
+                type="button"
+                className="flex flex-1 items-center gap-2 text-left text-sm"
+                onClick={() => onSelectObject(objectEntry.id)}
+              >
+                <Box className={`h-3.5 w-3.5 ${activeObjectId === objectEntry.id ? "text-blue-500" : "text-slate-400"}`} />
+                <span className={`truncate ${activeObjectId === objectEntry.id ? "font-medium text-slate-900" : "text-slate-600"}`}>
+                  {objectEntry.name}
+                </span>
+              </button>
+              <button
+                type="button"
+                className={`opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100 ${activeObjectId === objectEntry.id ? "opacity-100" : ""}`}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onSelectObject(objectEntry.id)
+                  onDeleteObject()
+                }}
+                title="Delete object"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
           ))}
         </div>
       </div>
@@ -105,17 +123,6 @@ export function ObjectListPanel({
             Add Object
           </Button>
         )}
-        
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full justify-start text-red-500 hover:bg-red-50 hover:text-red-600 h-8 text-xs"
-          onClick={onDeleteObject}
-          disabled={!activeObjectId}
-        >
-          <Trash2 className="mr-2 h-3.5 w-3.5" />
-          Delete Object
-        </Button>
       </div>
     </aside>
   )
