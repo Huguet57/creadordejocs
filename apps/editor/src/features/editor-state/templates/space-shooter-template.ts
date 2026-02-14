@@ -6,7 +6,7 @@ import {
   quickCreateSound,
   quickCreateSprite
 } from "@creadordejocs/project-format"
-import { addEventWithActions, addGlobalVariableWithId, addObjectVariableWithId } from "./helpers.js"
+import { addEventWithActions } from "./helpers.js"
 import type { TemplateProjectResult } from "./types.js"
 
 export function createSpaceShooterTemplateProject(): TemplateProjectResult {
@@ -36,30 +36,7 @@ export function createSpaceShooterTemplateProject(): TemplateProjectResult {
     y: 20
   })
 
-  const shipShieldVar = addObjectVariableWithId(asteroidObject.project, {
-    objectId: shipObject.objectId,
-    name: "shield",
-    type: "number",
-    initialValue: 3
-  })
-  const asteroidDestroyedVar = addObjectVariableWithId(shipShieldVar.project, {
-    objectId: asteroidObject.objectId,
-    name: "destroyed",
-    type: "boolean",
-    initialValue: false
-  })
-  const shotsFiredGlobal = addGlobalVariableWithId(asteroidDestroyedVar.project, {
-    name: "shots_fired",
-    type: "number",
-    initialValue: 0
-  })
-  const shipDestroyedGlobal = addGlobalVariableWithId(shotsFiredGlobal.project, {
-    name: "ship_destroyed",
-    type: "boolean",
-    initialValue: false
-  })
-
-  const room = createRoom(shipDestroyedGlobal.project, "Asteroid Field")
+  const room = createRoom(asteroidObject.project, "Asteroid Field")
   const withShip = addRoomInstance(room.project, {
     roomId: room.roomId,
     objectId: shipObject.objectId,
@@ -99,7 +76,6 @@ export function createSpaceShooterTemplateProject(): TemplateProjectResult {
     { type: "move", dx: 0, dy: 4 }
   ])
   project = addEventWithActions(project, shipObject.objectId, { type: "Keyboard", key: "Space" }, [
-    { type: "setGlobalVariable", variableId: shotsFiredGlobal.variableId, value: 1 },
     { type: "playSound", soundId: soundShoot.soundId },
     { type: "spawnObject", objectId: bulletObject.objectId, offsetX: 0, offsetY: -18 }
   ])
@@ -120,7 +96,6 @@ export function createSpaceShooterTemplateProject(): TemplateProjectResult {
     { type: "setVelocity", speed: 1.8, direction: 90 }
   ])
   project = addEventWithActions(project, asteroidObject.objectId, { type: "OnDestroy" }, [
-    { type: "setObjectVariable", variableId: asteroidDestroyedVar.variableId, target: "self", targetInstanceId: null, value: true },
     { type: "playSound", soundId: soundExplosion.soundId },
     { type: "changeScore", delta: 10 }
   ])
@@ -134,11 +109,7 @@ export function createSpaceShooterTemplateProject(): TemplateProjectResult {
     project,
     shipObject.objectId,
     { type: "Collision", targetObjectId: asteroidObject.objectId },
-    [
-      { type: "setObjectVariable", variableId: shipShieldVar.variableId, target: "self", targetInstanceId: null, value: 0 },
-      { type: "setGlobalVariable", variableId: shipDestroyedGlobal.variableId, value: true },
-      { type: "endGame", message: "La nau ha estat destruïda" }
-    ]
+    [{ type: "endGame", message: "La nau ha estat destruïda" }]
   )
 
   return {

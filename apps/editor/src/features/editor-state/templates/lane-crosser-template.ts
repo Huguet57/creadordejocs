@@ -6,7 +6,7 @@ import {
   quickCreateSound,
   quickCreateSprite
 } from "@creadordejocs/project-format"
-import { addEventWithActions, addGlobalVariableWithId, addObjectVariableWithId } from "./helpers.js"
+import { addEventWithActions } from "./helpers.js"
 import type { TemplateProjectResult } from "./types.js"
 
 export function createLaneCrosserTemplateProject(): TemplateProjectResult {
@@ -42,30 +42,7 @@ export function createLaneCrosserTemplateProject(): TemplateProjectResult {
     y: 16
   })
 
-  const runnerLivesVar = addObjectVariableWithId(goalObject.project, {
-    objectId: playerObject.objectId,
-    name: "lives",
-    type: "number",
-    initialValue: 1
-  })
-  const goalReachedVar = addObjectVariableWithId(runnerLivesVar.project, {
-    objectId: goalObject.objectId,
-    name: "reached",
-    type: "boolean",
-    initialValue: false
-  })
-  const goalReachedGlobal = addGlobalVariableWithId(goalReachedVar.project, {
-    name: "goal_reached",
-    type: "boolean",
-    initialValue: false
-  })
-  const crashCountGlobal = addGlobalVariableWithId(goalReachedGlobal.project, {
-    name: "crash_count",
-    type: "number",
-    initialValue: 0
-  })
-
-  const room = createRoom(crashCountGlobal.project, "Lane Crosser")
+  const room = createRoom(goalObject.project, "Lane Crosser")
   const withPlayer = addRoomInstance(room.project, {
     roomId: room.roomId,
     objectId: playerObject.objectId,
@@ -124,7 +101,6 @@ export function createLaneCrosserTemplateProject(): TemplateProjectResult {
     { type: "setVelocity", speed: 2.4, direction: 180 }
   ])
   project = addEventWithActions(project, playerObject.objectId, { type: "OnDestroy" }, [
-    { type: "setGlobalVariable", variableId: crashCountGlobal.variableId, value: 1 },
     { type: "playSound", soundId: soundCrash.soundId },
     { type: "endGame", message: "Atropellat! Torna-ho a provar." }
   ])
@@ -132,23 +108,15 @@ export function createLaneCrosserTemplateProject(): TemplateProjectResult {
     project,
     playerObject.objectId,
     { type: "Collision", targetObjectId: carRightObject.objectId },
-    [{ type: "setObjectVariable", variableId: runnerLivesVar.variableId, target: "self", targetInstanceId: null, value: 0 }, { type: "destroySelf" }]
+    [{ type: "destroySelf" }]
   )
   project = addEventWithActions(
     project,
     playerObject.objectId,
     { type: "Collision", targetObjectId: carLeftObject.objectId },
-    [{ type: "setObjectVariable", variableId: runnerLivesVar.variableId, target: "self", targetInstanceId: null, value: 0 }, { type: "destroySelf" }]
+    [{ type: "destroySelf" }]
   )
   project = addEventWithActions(project, goalObject.objectId, { type: "OnDestroy" }, [
-    { type: "setObjectVariable", variableId: goalReachedVar.variableId, target: "self", targetInstanceId: null, value: true },
-    {
-      type: "setGlobalVariableFromObject",
-      globalVariableId: goalReachedGlobal.variableId,
-      source: "self",
-      sourceInstanceId: null,
-      objectVariableId: goalReachedVar.variableId
-    },
     { type: "playSound", soundId: soundGoal.soundId },
     { type: "changeScore", delta: 100 },
     { type: "endGame", message: "Meta assolida. Has guanyat!" }

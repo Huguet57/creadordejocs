@@ -55,6 +55,13 @@ const ACTION_ICONS: Record<ObjectActionType, React.ElementType> = {
   destroyOther: X,
 }
 
+const ACTION_LABELS: Partial<Record<ObjectActionType, string>> = {
+  setGlobalVariable: "Set Global",
+  setObjectVariable: "Set Var",
+  setObjectVariableFromGlobal: "Var ← Global",
+  setGlobalVariableFromObject: "Global ← Var"
+}
+
 function parseValueForType(type: VariableType, rawValue: string): VariableValue {
   if (type === "number") {
     const parsed = Number(rawValue)
@@ -114,9 +121,11 @@ export function ActionBlock({
 
   return (
     <div className="group flex items-center gap-3 rounded-md border border-slate-200 bg-white p-2 shadow-sm transition-all hover:shadow-md">
-      <div className="flex items-center gap-2 min-w-[120px]">
-        <Icon className="h-4 w-4 text-slate-500" />
-        <span className="text-xs font-semibold uppercase tracking-wide text-slate-700">{action.type}</span>
+      <div className="flex items-center gap-1.5 min-w-[90px] shrink-0">
+        <Icon className="h-4 w-4 text-slate-500 shrink-0" />
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-700 leading-tight">
+          {ACTION_LABELS[action.type] ?? action.type}
+        </span>
       </div>
 
       <div className="flex-1 flex items-center gap-3 flex-wrap">
@@ -259,27 +268,21 @@ export function ActionBlock({
         {action.type === "setGlobalVariable" && (
           <>
             <select
-              className="h-6 min-w-[140px] rounded border border-slate-300 bg-white/50 px-1 text-xs focus:outline-none"
+              className="h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs focus:outline-none"
               value={action.variableId}
               onChange={(event) => {
                 const selected = globalVariables.find((definition) => definition.id === event.target.value)
                 if (!selected) return
-                onUpdate({
-                  ...action,
-                  variableId: selected.id,
-                  value: selected.initialValue
-                })
+                onUpdate({ ...action, variableId: selected.id, value: selected.initialValue })
               }}
             >
               {globalVariables.map((definition) => (
-                <option key={definition.id} value={definition.id}>
-                  {definition.name}
-                </option>
+                <option key={definition.id} value={definition.id}>{definition.name}</option>
               ))}
             </select>
             {typeof action.value === "boolean" ? (
               <select
-                className="h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
+                className="h-6 w-16 rounded border border-slate-300 bg-white/50 px-1 text-xs"
                 value={String(action.value)}
                 onChange={(event) => onUpdate({ ...action, value: event.target.value === "true" })}
               >
@@ -289,15 +292,12 @@ export function ActionBlock({
             ) : (
               <Input
                 type={typeof action.value === "number" ? "number" : "text"}
-                className="h-6 w-24 px-1 text-xs bg-white/50 border-slate-300"
+                className="h-6 w-16 px-1 text-xs bg-white/50 border-slate-300"
                 value={formatValue(action.value)}
                 onChange={(event) => {
                   const selected = globalVariables.find((definition) => definition.id === action.variableId)
                   if (!selected) return
-                  onUpdate({
-                    ...action,
-                    value: parseValueForType(selected.type, event.target.value)
-                  })
+                  onUpdate({ ...action, value: parseValueForType(selected.type, event.target.value) })
                 }}
               />
             )}
@@ -307,7 +307,7 @@ export function ActionBlock({
         {action.type === "setObjectVariable" && (
           <>
             <select
-              className="h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
+              className="h-6 w-14 rounded border border-slate-300 bg-white/50 px-1 text-xs"
               value={action.target}
               onChange={(event) =>
                 onUpdate({
@@ -319,23 +319,21 @@ export function ActionBlock({
             >
               <option value="self">self</option>
               <option value="other">other</option>
-              <option value="instanceId">instance</option>
+              <option value="instanceId">id</option>
             </select>
             {action.target === "instanceId" && (
               <select
-                className="h-6 min-w-[120px] rounded border border-slate-300 bg-white/50 px-1 text-xs"
+                className="h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
                 value={action.targetInstanceId ?? roomInstances[0]?.id ?? ""}
                 onChange={(event) => onUpdate({ ...action, targetInstanceId: event.target.value })}
               >
                 {roomInstances.map((instanceEntry) => (
-                  <option key={instanceEntry.id} value={instanceEntry.id}>
-                    {instanceEntry.id}
-                  </option>
+                  <option key={instanceEntry.id} value={instanceEntry.id}>{instanceEntry.id}</option>
                 ))}
               </select>
             )}
             <select
-              className="h-6 min-w-[160px] rounded border border-slate-300 bg-white/50 px-1 text-xs"
+              className="h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
               value={action.variableId}
               onChange={(event) => {
                 const selected = objectVariableOptions.find((option) => option.id === event.target.value)
@@ -344,14 +342,12 @@ export function ActionBlock({
               }}
             >
               {objectVariableOptions.map((option) => (
-                <option key={`${option.objectName}-${option.id}`} value={option.id}>
-                  {option.label}
-                </option>
+                <option key={`${option.objectName}-${option.id}`} value={option.id}>{option.label}</option>
               ))}
             </select>
             {typeof action.value === "boolean" ? (
               <select
-                className="h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
+                className="h-6 w-16 rounded border border-slate-300 bg-white/50 px-1 text-xs"
                 value={String(action.value)}
                 onChange={(event) => onUpdate({ ...action, value: event.target.value === "true" })}
               >
@@ -361,15 +357,12 @@ export function ActionBlock({
             ) : (
               <Input
                 type={typeof action.value === "number" ? "number" : "text"}
-                className="h-6 w-24 px-1 text-xs bg-white/50 border-slate-300"
+                className="h-6 w-16 px-1 text-xs bg-white/50 border-slate-300"
                 value={formatValue(action.value)}
                 onChange={(event) => {
                   const selected = objectVariableOptions.find((option) => option.id === action.variableId)
                   if (!selected) return
-                  onUpdate({
-                    ...action,
-                    value: parseValueForType(selected.type, event.target.value)
-                  })
+                  onUpdate({ ...action, value: parseValueForType(selected.type, event.target.value) })
                 }}
               />
             )}
@@ -379,7 +372,7 @@ export function ActionBlock({
         {action.type === "setObjectVariableFromGlobal" && (
           <>
             <select
-              className="h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
+              className="h-6 w-14 rounded border border-slate-300 bg-white/50 px-1 text-xs"
               value={action.target}
               onChange={(event) =>
                 onUpdate({
@@ -391,41 +384,36 @@ export function ActionBlock({
             >
               <option value="self">self</option>
               <option value="other">other</option>
-              <option value="instanceId">instance</option>
+              <option value="instanceId">id</option>
             </select>
             {action.target === "instanceId" && (
               <select
-                className="h-6 min-w-[120px] rounded border border-slate-300 bg-white/50 px-1 text-xs"
+                className="h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
                 value={action.targetInstanceId ?? roomInstances[0]?.id ?? ""}
                 onChange={(event) => onUpdate({ ...action, targetInstanceId: event.target.value })}
               >
                 {roomInstances.map((instanceEntry) => (
-                  <option key={instanceEntry.id} value={instanceEntry.id}>
-                    {instanceEntry.id}
-                  </option>
+                  <option key={instanceEntry.id} value={instanceEntry.id}>{instanceEntry.id}</option>
                 ))}
               </select>
             )}
             <select
-              className="h-6 min-w-[160px] rounded border border-slate-300 bg-white/50 px-1 text-xs"
+              className="h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
               value={action.variableId}
               onChange={(event) => onUpdate({ ...action, variableId: event.target.value })}
             >
               {compatibleObjectOptionsForObjectTarget.map((option) => (
-                <option key={`${option.objectName}-${option.id}`} value={option.id}>
-                  {option.label}
-                </option>
+                <option key={`${option.objectName}-${option.id}`} value={option.id}>{option.label}</option>
               ))}
             </select>
+            <label className="text-[10px] font-medium opacity-60">←</label>
             <select
-              className="h-6 min-w-[140px] rounded border border-slate-300 bg-white/50 px-1 text-xs"
+              className="h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
               value={action.globalVariableId}
               onChange={(event) => onUpdate({ ...action, globalVariableId: event.target.value })}
             >
               {globalVariables.map((definition) => (
-                <option key={definition.id} value={definition.id}>
-                  {definition.name}
-                </option>
+                <option key={definition.id} value={definition.id}>{definition.name}</option>
               ))}
             </select>
           </>
@@ -435,6 +423,16 @@ export function ActionBlock({
           <>
             <select
               className="h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
+              value={action.globalVariableId}
+              onChange={(event) => onUpdate({ ...action, globalVariableId: event.target.value })}
+            >
+              {globalVariables.map((definition) => (
+                <option key={definition.id} value={definition.id}>{definition.name}</option>
+              ))}
+            </select>
+            <label className="text-[10px] font-medium opacity-60">←</label>
+            <select
+              className="h-6 w-14 rounded border border-slate-300 bg-white/50 px-1 text-xs"
               value={action.source}
               onChange={(event) =>
                 onUpdate({
@@ -446,41 +444,26 @@ export function ActionBlock({
             >
               <option value="self">self</option>
               <option value="other">other</option>
-              <option value="instanceId">instance</option>
+              <option value="instanceId">id</option>
             </select>
             {action.source === "instanceId" && (
               <select
-                className="h-6 min-w-[120px] rounded border border-slate-300 bg-white/50 px-1 text-xs"
+                className="h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
                 value={action.sourceInstanceId ?? roomInstances[0]?.id ?? ""}
                 onChange={(event) => onUpdate({ ...action, sourceInstanceId: event.target.value })}
               >
                 {roomInstances.map((instanceEntry) => (
-                  <option key={instanceEntry.id} value={instanceEntry.id}>
-                    {instanceEntry.id}
-                  </option>
+                  <option key={instanceEntry.id} value={instanceEntry.id}>{instanceEntry.id}</option>
                 ))}
               </select>
             )}
             <select
-              className="h-6 min-w-[160px] rounded border border-slate-300 bg-white/50 px-1 text-xs"
+              className="h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
               value={action.objectVariableId}
               onChange={(event) => onUpdate({ ...action, objectVariableId: event.target.value })}
             >
               {compatibleObjectOptionsForGlobalTarget.map((option) => (
-                <option key={`${option.objectName}-${option.id}`} value={option.id}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <select
-              className="h-6 min-w-[140px] rounded border border-slate-300 bg-white/50 px-1 text-xs"
-              value={action.globalVariableId}
-              onChange={(event) => onUpdate({ ...action, globalVariableId: event.target.value })}
-            >
-              {globalVariables.map((definition) => (
-                <option key={definition.id} value={definition.id}>
-                  {definition.name}
-                </option>
+                <option key={`${option.objectName}-${option.id}`} value={option.id}>{option.label}</option>
               ))}
             </select>
           </>

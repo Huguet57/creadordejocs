@@ -6,7 +6,7 @@ import {
   quickCreateSound,
   quickCreateSprite
 } from "@creadordejocs/project-format"
-import { addEventWithActions, addGlobalVariableWithId, addObjectVariableWithId } from "./helpers.js"
+import { addEventWithActions } from "./helpers.js"
 import type { TemplateProjectResult } from "./types.js"
 
 export function createCoinDashTemplateProject(): TemplateProjectResult {
@@ -36,30 +36,7 @@ export function createCoinDashTemplateProject(): TemplateProjectResult {
     y: 150
   })
 
-  const playerHealthVar = addObjectVariableWithId(enemyObject.project, {
-    objectId: playerObject.objectId,
-    name: "health",
-    type: "number",
-    initialValue: 1
-  })
-  const enemyTouchedVar = addObjectVariableWithId(playerHealthVar.project, {
-    objectId: enemyObject.objectId,
-    name: "wasTouched",
-    type: "boolean",
-    initialValue: false
-  })
-  const coinsCollectedGlobal = addGlobalVariableWithId(enemyTouchedVar.project, {
-    name: "coins_collected",
-    type: "number",
-    initialValue: 0
-  })
-  const playerDownGlobal = addGlobalVariableWithId(coinsCollectedGlobal.project, {
-    name: "player_down",
-    type: "boolean",
-    initialValue: false
-  })
-
-  const room = createRoom(playerDownGlobal.project, "Coin Dash")
+  const room = createRoom(enemyObject.project, "Coin Dash")
   const withPlayer = addRoomInstance(room.project, {
     roomId: room.roomId,
     objectId: playerObject.objectId,
@@ -103,7 +80,6 @@ export function createCoinDashTemplateProject(): TemplateProjectResult {
     { type: "setVelocity", speed: 1.9, direction: 0 }
   ])
   project = addEventWithActions(project, coinObject.objectId, { type: "OnDestroy" }, [
-    { type: "setGlobalVariable", variableId: coinsCollectedGlobal.variableId, value: 1 },
     { type: "playSound", soundId: soundCoin.soundId },
     { type: "changeScore", delta: 100 },
     { type: "endGame", message: "Has recollit la moneda. Has guanyat!" }
@@ -119,15 +95,6 @@ export function createCoinDashTemplateProject(): TemplateProjectResult {
     playerObject.objectId,
     { type: "Collision", targetObjectId: enemyObject.objectId },
     [
-      { type: "setObjectVariable", variableId: playerHealthVar.variableId, target: "self", targetInstanceId: null, value: 0 },
-      { type: "setObjectVariable", variableId: enemyTouchedVar.variableId, target: "other", targetInstanceId: null, value: true },
-      {
-        type: "setGlobalVariableFromObject",
-        globalVariableId: playerDownGlobal.variableId,
-        source: "other",
-        sourceInstanceId: null,
-        objectVariableId: enemyTouchedVar.variableId
-      },
       { type: "playSound", soundId: soundHit.soundId },
       { type: "endGame", message: "T'ha tocat un enemic" }
     ]
