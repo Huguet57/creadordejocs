@@ -16,7 +16,8 @@ const SceneSchema = z.object({
 const ProjectMetricsSchema = z.object({
   appStart: z.number().int().nonnegative().default(0),
   projectLoad: z.number().int().nonnegative().default(0),
-  runtimeErrors: z.number().int().nonnegative().default(0)
+  runtimeErrors: z.number().int().nonnegative().default(0),
+  timeToFirstPlayableFunMs: z.number().int().nonnegative().nullable().default(null)
 })
 
 export const ProjectSchemaV1 = z.object({
@@ -46,7 +47,8 @@ export function createEmptyProjectV1(name: string): ProjectV1 {
     metrics: {
       appStart: 0,
       projectLoad: 0,
-      runtimeErrors: 0
+      runtimeErrors: 0,
+      timeToFirstPlayableFunMs: null
     }
   }
 }

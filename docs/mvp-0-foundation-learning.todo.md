@@ -23,15 +23,15 @@ Objective: establish a robust technical foundation to iterate quickly without re
 ## Cycle 0.2 - Base runtime and project v1
 
 ### Must
-- [ ] Implement base game loop in the runtime (`update` + `draw`) with a stable contract.
-- [ ] Implement JSON project format `schema v1`.
-- [ ] Implement project save/load with schema validation.
-- [ ] Instrument base metrics (`appStart`, `projectLoad`, runtime errors).
-- [ ] Deliver a "Hello Scene" demo verifiable via CI.
+- [x] Implement base game loop in the runtime (`update` + `draw`) with a stable contract.
+- [x] Implement JSON project format `schema v1`.
+- [x] Implement project save/load with schema validation.
+- [x] Instrument base metrics (`appStart`, `projectLoad`, runtime errors).
+- [x] Deliver a "Hello Scene" demo verifiable via CI.
 
 ### Should
-- [ ] Add basic error messages for internal development.
-- [ ] Add `timeToFirstPlayableFun` telemetry (baseline).
+- [x] Add basic error messages for internal development.
+- [x] Add `timeToFirstPlayableFun` telemetry (baseline).
 
 ### Could
 - [ ] Add initial performance benchmark (reference scene).

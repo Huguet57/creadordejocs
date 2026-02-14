@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest"
-import { createEmptyProjectV1, parseProjectV1, serializeProjectV1 } from "../src/index.js"
+import {
+  createEmptyProjectV1,
+  loadProjectV1,
+  parseProjectV1,
+  serializeProjectV1,
+  setTimeToFirstPlayableFunMs
+} from "../src/index.js"
 
 describe("project format v1", () => {
   it("serializes and parses a valid project", () => {
@@ -15,5 +21,22 @@ describe("project format v1", () => {
   it("rejects invalid payloads", () => {
     const invalid = JSON.stringify({ version: 2 })
     expect(() => parseProjectV1(invalid)).toThrow()
+  })
+
+  it("increments projectLoad when loading from storage helper", () => {
+    const project = createEmptyProjectV1("Load metrics")
+    const source = serializeProjectV1(project)
+    const loaded = loadProjectV1(source)
+
+    expect(loaded.metrics.projectLoad).toBe(1)
+  })
+
+  it("stores timeToFirstPlayableFun only once", () => {
+    const project = createEmptyProjectV1("Telemetry baseline")
+    const first = setTimeToFirstPlayableFunMs(project, 1200)
+    const second = setTimeToFirstPlayableFunMs(first, 900)
+
+    expect(first.metrics.timeToFirstPlayableFunMs).toBe(1200)
+    expect(second.metrics.timeToFirstPlayableFunMs).toBe(1200)
   })
 })

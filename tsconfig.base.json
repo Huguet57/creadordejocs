@@ -3,6 +3,11 @@
     "target": "ES2022",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "baseUrl": ".",
+    "paths": {
+      "@creadordejocs/engine-core": ["packages/engine-core/src/index.ts"],
+      "@creadordejocs/project-format": ["packages/project-format/src/index.ts"]
+    },
     "strict": true,
     "noImplicitOverride": true,
     "noUnusedLocals": true,
