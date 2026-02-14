@@ -21,15 +21,15 @@ Objective: build the core UX for create/edit/run/save with minimal friction.
 ## Cycle 1.2 - Safe iteration (never lose work)
 
 ### Must
-- [ ] Implement periodic autosave and recovery on editor reopen.
-- [ ] Implement reliable undo/redo for main editing actions.
-- [ ] Implement short local version history (snapshot checkpoints).
-- [ ] Cover safety flows with E2E tests (simulated crash, recovery, undo).
-- [ ] Show clear save status in UI (`Saved`, `Saving`, `Error`).
+- [x] Implement periodic autosave and recovery on editor reopen.
+- [x] Implement reliable undo/redo for main editing actions.
+- [x] Implement short local version history (snapshot checkpoints).
+- [x] Cover safety flows with E2E tests (simulated crash, recovery, undo).
+- [x] Show clear save status in UI (`Saved`, `Saving`, `Error`).
 
 ### Should
-- [ ] Add keyboard shortcut for undo/redo.
-- [ ] Add confirmation before destructive changes.
+- [x] Add keyboard shortcut for undo/redo.
+- [x] Add confirmation before destructive changes.
 
 ### Could
 - [ ] Add version recovery by timestamp.

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ChangeEvent } from "react"
+import { useEffect, useMemo, useState, type ChangeEvent, type KeyboardEvent as ReactKeyboardEvent } from "react"
 import {
   addRoomInstance,
   createEmptyProjectV1,
@@ -17,12 +17,17 @@ import { Input } from "./components/ui/input.js"
 import { Label } from "./components/ui/label.js"
 import {
   loadProjectFromLocalStorage,
+  loadSnapshotProject,
+  loadSnapshotsFromLocalStorage,
+  saveCheckpointSnapshot,
   saveProjectLocally,
+  type LocalSnapshot,
   type SaveStatus
 } from "./features/project-storage.js"
 
 const ROOM_WIDTH = 560
 const ROOM_HEIGHT = 320
+const AUTOSAVE_MS = 4000
 
 function ensureProjectHasRoom(project: ProjectV1): { project: ProjectV1; roomId: string } {
   const firstRoom = project.rooms[0]
@@ -37,27 +42,23 @@ function formatStatus(status: SaveStatus): string {
   if (status === "saved") return "Saved"
   if (status === "saving") return "Saving"
   if (status === "error") return "Error"
-  return "Idle"
+  return "Saved"
+}
+
+function buildInitialEditorState(): { project: ProjectV1; roomId: string } {
+  const loadedProject = loadProjectFromLocalStorage()
+  if (loadedProject) {
+    return ensureProjectHasRoom(loadedProject)
+  }
+
+  const initial = incrementMetric(createEmptyProjectV1("Primer joc autònom"), "appStart")
+  return ensureProjectHasRoom(initial)
 }
 
 export function App() {
-  const [project, setProject] = useState<ProjectV1>(() => {
-    const loadedProject = loadProjectFromLocalStorage()
-    if (loadedProject) {
-      return loadedProject
-    }
-
-    const initial = createEmptyProjectV1("Primer joc autònom")
-    const withMetric = incrementMetric(initial, "appStart")
-    return ensureProjectHasRoom(withMetric).project
-  })
-  const [activeRoomId, setActiveRoomId] = useState<string>(() => {
-    const loadedProject = loadProjectFromLocalStorage()
-    if (loadedProject?.rooms[0]) {
-      return loadedProject.rooms[0].id
-    }
-    return "room-bootstrap"
-  })
+  const initialState = buildInitialEditorState()
+  const [project, setProject] = useState<ProjectV1>(initialState.project)
+  const [activeRoomId, setActiveRoomId] = useState<string>(initialState.roomId)
   const [activeObjectId, setActiveObjectId] = useState<string | null>(null)
   const [spriteName, setSpriteName] = useState("Sprite nou")
   const [soundName, setSoundName] = useState("So nou")
@@ -65,15 +66,11 @@ export function App() {
   const [roomName, setRoomName] = useState("Sala nova")
   const [isRunning, setIsRunning] = useState(false)
   const [runSnapshot, setRunSnapshot] = useState<ProjectV1 | null>(null)
-  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle")
-
-  useEffect(() => {
-    setProject((previous) => {
-      const { project: normalized, roomId } = ensureProjectHasRoom(previous)
-      setActiveRoomId((current) => (current === "room-bootstrap" ? roomId : current))
-      return normalized
-    })
-  }, [])
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("saved")
+  const [isDirty, setIsDirty] = useState(false)
+  const [past, setPast] = useState<ProjectV1[]>([])
+  const [future, setFuture] = useState<ProjectV1[]>([])
+  const [snapshots, setSnapshots] = useState<LocalSnapshot[]>(() => loadSnapshotsFromLocalStorage())
 
   const activeRoom = useMemo(
     () => project.rooms.find((room) => room.id === activeRoomId) ?? project.rooms[0] ?? null,
@@ -84,6 +81,52 @@ export function App() {
     () => project.objects.find((entry) => entry.id === activeObjectId) ?? null,
     [project.objects, activeObjectId]
   )
+
+  const pushProjectChange = (next: ProjectV1): void => {
+    setPast((previous) => [...previous.slice(-39), project])
+    setFuture([])
+    setProject(next)
+    setIsDirty(true)
+  }
+
+  const applyCheckpoint = (label: string, producer: (value: ProjectV1) => ProjectV1): void => {
+    const next = producer(project)
+    pushProjectChange(next)
+    setSnapshots(saveCheckpointSnapshot(next, label))
+  }
+
+  const persistProject = (source: ProjectV1): void => {
+    try {
+      setSaveStatus("saving")
+      saveProjectLocally(source)
+      setSaveStatus("saved")
+      setIsDirty(false)
+    } catch {
+      setSaveStatus("error")
+    }
+  }
+
+  useEffect(() => {
+    if (!isDirty) {
+      return
+    }
+
+    const timeout = window.setTimeout(() => {
+      persistProject(project)
+    }, AUTOSAVE_MS)
+
+    return () => window.clearTimeout(timeout)
+  }, [isDirty, project])
+
+  useEffect(() => {
+    const onBeforeUnload = (): void => {
+      if (isDirty) {
+        saveProjectLocally(project)
+      }
+    }
+    window.addEventListener("beforeunload", onBeforeUnload)
+    return () => window.removeEventListener("beforeunload", onBeforeUnload)
+  }, [isDirty, project])
 
   useEffect(() => {
     if (!isRunning || !activeRoom) {
@@ -101,11 +144,10 @@ export function App() {
           return {
             ...room,
             instances: room.instances.map((instance) => {
-              const objectEntry = previous.objects.find((objectValue) => objectValue.id === instance.objectId)
+              const objectEntry = previous.objects.find((entry) => entry.id === instance.objectId)
               if (!objectEntry) {
                 return instance
               }
-
               const radians = (objectEntry.direction * Math.PI) / 180
               const nextX = Math.max(0, Math.min(ROOM_WIDTH - 32, instance.x + Math.cos(radians) * objectEntry.speed))
               const nextY = Math.max(0, Math.min(ROOM_HEIGHT - 32, instance.y + Math.sin(radians) * objectEntry.speed))
@@ -119,14 +161,49 @@ export function App() {
     return () => window.clearInterval(interval)
   }, [activeRoom, isRunning])
 
-  const handleSave = (): void => {
-    try {
-      setSaveStatus("saving")
-      saveProjectLocally(project)
-      setSaveStatus("saved")
-    } catch {
-      setSaveStatus("error")
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent): void => {
+      const metaOrCtrl = event.metaKey || event.ctrlKey
+      if (!metaOrCtrl) {
+        return
+      }
+
+      if (event.key.toLowerCase() === "z" && !event.shiftKey) {
+        event.preventDefault()
+        handleUndo()
+      } else if (event.key.toLowerCase() === "y" || (event.key.toLowerCase() === "z" && event.shiftKey)) {
+        event.preventDefault()
+        handleRedo()
+      }
     }
+
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [past, future, project])
+
+  const handleUndo = (): void => {
+    const previous = past[past.length - 1]
+    if (!previous) return
+    setFuture((value) => [project, ...value].slice(0, 40))
+    setPast((value) => value.slice(0, -1))
+    setProject(previous)
+    setIsRunning(false)
+    setRunSnapshot(null)
+    setIsDirty(true)
+  }
+
+  const handleRedo = (): void => {
+    const [next, ...rest] = future
+    if (!next) return
+    setPast((value) => [...value.slice(-39), project])
+    setFuture(rest)
+    setProject(next)
+    setIsDirty(true)
+  }
+
+  const handleSave = (): void => {
+    persistProject(project)
+    setSnapshots(saveCheckpointSnapshot(project, "Manual save"))
   }
 
   const handleLoad = (): void => {
@@ -138,10 +215,13 @@ export function App() {
         return
       }
       const { project: normalized, roomId } = ensureProjectHasRoom(loaded)
+      setPast((value) => [...value.slice(-39), project])
+      setFuture([])
       setProject(normalized)
       setActiveRoomId(roomId)
       setIsRunning(false)
       setRunSnapshot(null)
+      setIsDirty(false)
       setSaveStatus("saved")
     } catch {
       setSaveStatus("error")
@@ -150,15 +230,13 @@ export function App() {
 
   const addSprite = (): void => {
     if (!spriteName.trim()) return
-    const result = quickCreateSprite(project, spriteName.trim())
-    setProject(result.project)
+    applyCheckpoint(`Create sprite: ${spriteName.trim()}`, (value) => quickCreateSprite(value, spriteName.trim()).project)
     setSpriteName("Sprite nou")
   }
 
   const addSound = (): void => {
     if (!soundName.trim()) return
-    const result = quickCreateSound(project, soundName.trim())
-    setProject(result.project)
+    applyCheckpoint(`Create sound: ${soundName.trim()}`, (value) => quickCreateSound(value, soundName.trim()).project)
     setSoundName("So nou")
   }
 
@@ -173,7 +251,8 @@ export function App() {
       speed: 1,
       direction: 0
     })
-    setProject(result.project)
+    pushProjectChange(result.project)
+    setSnapshots(saveCheckpointSnapshot(result.project, `Create object: ${objectName.trim()}`))
     setActiveObjectId(result.objectId)
     setObjectName("Objecte nou")
   }
@@ -181,38 +260,36 @@ export function App() {
   const addRoom = (): void => {
     if (!roomName.trim()) return
     const result = createRoom(project, roomName.trim())
-    setProject(result.project)
+    pushProjectChange(result.project)
+    setSnapshots(saveCheckpointSnapshot(result.project, `Create room: ${roomName.trim()}`))
     setActiveRoomId(result.roomId)
     setRoomName("Sala nova")
   }
 
   const addInstanceToActiveRoom = (): void => {
     if (!activeRoom || !selectedObject) return
-    const result = addRoomInstance(project, {
-      roomId: activeRoom.id,
-      objectId: selectedObject.id,
-      x: 80,
-      y: 80
-    })
-    setProject(result.project)
+    applyCheckpoint("Add instance", (value) =>
+      addRoomInstance(value, {
+        roomId: activeRoom.id,
+        objectId: selectedObject.id,
+        x: 80,
+        y: 80
+      }).project
+    )
   }
 
-  const updateSelectedObjectProperty = (
-    key: "x" | "y" | "speed" | "direction",
-    value: number
-  ): void => {
+  const updateSelectedObjectProperty = (key: "x" | "y" | "speed" | "direction", value: number): void => {
     if (!selectedObject) return
     const normalized = Number.isFinite(value) ? value : 0
     const nextObject = { ...selectedObject, [key]: normalized }
-    setProject(
-      updateObjectProperties(project, {
-        objectId: selectedObject.id,
-        x: nextObject.x,
-        y: nextObject.y,
-        speed: nextObject.speed,
-        direction: nextObject.direction
-      })
-    )
+    const next = updateObjectProperties(project, {
+      objectId: selectedObject.id,
+      x: nextObject.x,
+      y: nextObject.y,
+      speed: nextObject.speed,
+      direction: nextObject.direction
+    })
+    pushProjectChange(next)
   }
 
   const handleRun = (): void => {
@@ -228,6 +305,45 @@ export function App() {
     setIsRunning(false)
   }
 
+  const handleDeleteSelectedObject = (): void => {
+    if (!selectedObject) return
+    const confirmed = window.confirm(`Vols eliminar l'objecte "${selectedObject.name}"?`)
+    if (!confirmed) return
+
+    applyCheckpoint(`Delete object: ${selectedObject.name}`, (value) => ({
+      ...value,
+      objects: value.objects.filter((entry) => entry.id !== selectedObject.id),
+      rooms: value.rooms.map((room) => ({
+        ...room,
+        instances: room.instances.filter((instance) => instance.objectId !== selectedObject.id)
+      }))
+    }))
+    setActiveObjectId(null)
+  }
+
+  const restoreSnapshot = (snapshotId: string): void => {
+    const restored = loadSnapshotProject(snapshotId)
+    if (!restored) {
+      setSaveStatus("error")
+      return
+    }
+    const normalized = ensureProjectHasRoom(restored)
+    setPast((value) => [...value.slice(-39), project])
+    setFuture([])
+    setProject(normalized.project)
+    setActiveRoomId(normalized.roomId)
+    setActiveObjectId(null)
+    setIsRunning(false)
+    setRunSnapshot(null)
+    setIsDirty(true)
+  }
+
+  const handleInputShortcutBlock = (event: ReactKeyboardEvent<HTMLInputElement>): void => {
+    if ((event.ctrlKey || event.metaKey) && (event.key.toLowerCase() === "z" || event.key.toLowerCase() === "y")) {
+      event.preventDefault()
+    }
+  }
+
   return (
     <main className="mvp1-editor-shell min-h-screen bg-slate-50 px-4 py-6 text-slate-900">
       <div className="mvp1-editor-layout mx-auto grid max-w-7xl gap-4 lg:grid-cols-[1.1fr_1.4fr_1fr]">
@@ -241,10 +357,12 @@ export function App() {
               <div className="mvp1-editor-row flex gap-2">
                 <Input
                   id="sprite-name"
+                  data-testid="sprite-name-input"
                   value={spriteName}
+                  onKeyDown={handleInputShortcutBlock}
                   onChange={(event: ChangeEvent<HTMLInputElement>) => setSpriteName(event.target.value)}
                 />
-                <Button onClick={addSprite} variant="secondary">
+                <Button data-testid="add-sprite-button" onClick={addSprite} variant="secondary">
                   + Sprite
                 </Button>
               </div>
@@ -256,6 +374,7 @@ export function App() {
                 <Input
                   id="sound-name"
                   value={soundName}
+                  onKeyDown={handleInputShortcutBlock}
                   onChange={(event: ChangeEvent<HTMLInputElement>) => setSoundName(event.target.value)}
                 />
                 <Button onClick={addSound} variant="secondary">
@@ -269,10 +388,14 @@ export function App() {
               <div className="mvp1-editor-row flex gap-2">
                 <Input
                   id="object-name"
+                  data-testid="object-name-input"
                   value={objectName}
+                  onKeyDown={handleInputShortcutBlock}
                   onChange={(event: ChangeEvent<HTMLInputElement>) => setObjectName(event.target.value)}
                 />
-                <Button onClick={addObject}>+ Objecte</Button>
+                <Button data-testid="add-object-button" onClick={addObject}>
+                  + Objecte
+                </Button>
               </div>
             </section>
 
@@ -282,6 +405,7 @@ export function App() {
                 <Input
                   id="room-name"
                   value={roomName}
+                  onKeyDown={handleInputShortcutBlock}
                   onChange={(event: ChangeEvent<HTMLInputElement>) => setRoomName(event.target.value)}
                 />
                 <Button onClick={addRoom} variant="outline">
@@ -314,9 +438,17 @@ export function App() {
           <CardHeader className="flex-row items-center justify-between space-y-0">
             <CardTitle>Room editor</CardTitle>
             <div className="mvp1-editor-row flex gap-2">
-              <Button onClick={handleRun}>Run</Button>
-              <Button onClick={handleReset} variant="secondary">
+              <Button data-testid="run-button" onClick={handleRun}>
+                Run
+              </Button>
+              <Button data-testid="reset-button" onClick={handleReset} variant="secondary">
                 Reset
+              </Button>
+              <Button data-testid="undo-button" onClick={handleUndo} variant="outline" disabled={past.length === 0}>
+                Undo
+              </Button>
+              <Button data-testid="redo-button" onClick={handleRedo} variant="outline" disabled={future.length === 0}>
+                Redo
               </Button>
             </div>
           </CardHeader>
@@ -349,7 +481,9 @@ export function App() {
                 const rect = event.currentTarget.getBoundingClientRect()
                 const x = Math.max(0, Math.min(ROOM_WIDTH - 32, event.clientX - rect.left - 16))
                 const y = Math.max(0, Math.min(ROOM_HEIGHT - 32, event.clientY - rect.top - 16))
-                setProject(moveRoomInstance(project, { roomId: activeRoom.id, instanceId, x, y }))
+                applyCheckpoint("Move instance", (value) =>
+                  moveRoomInstance(value, { roomId: activeRoom.id, instanceId, x, y })
+                )
               }}
             >
               {activeRoom?.instances.map((instance) => {
@@ -377,61 +511,94 @@ export function App() {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="mvp1-editor-row flex gap-2">
-              <Button onClick={handleSave} variant="secondary">
+              <Button data-testid="save-local-button" onClick={handleSave} variant="secondary">
                 Save local
               </Button>
-              <Button onClick={handleLoad} variant="outline">
+              <Button data-testid="load-local-button" onClick={handleLoad} variant="outline">
                 Load local
               </Button>
             </div>
-            <p className="text-xs text-slate-600">Save status: {formatStatus(saveStatus)}</p>
+            <p data-testid="save-status" className="text-xs text-slate-600">
+              Save status: {formatStatus(saveStatus)}
+            </p>
 
             {selectedObject ? (
-              <div className="mvp1-editor-inspector-grid grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <Label title="Posició horitzontal dins la room">x</Label>
-                  <Input
-                    type="number"
-                    value={selectedObject.x}
-                    onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                      updateSelectedObjectProperty("x", Number(event.target.value))
-                    }
-                  />
+              <>
+                <div className="mvp1-editor-inspector-grid grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label title="Posició horitzontal dins la room">x</Label>
+                    <Input
+                      data-testid="inspector-x-input"
+                      type="number"
+                      value={selectedObject.x}
+                      onKeyDown={handleInputShortcutBlock}
+                      onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                        updateSelectedObjectProperty("x", Number(event.target.value))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label title="Posició vertical dins la room">y</Label>
+                    <Input
+                      type="number"
+                      value={selectedObject.y}
+                      onKeyDown={handleInputShortcutBlock}
+                      onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                        updateSelectedObjectProperty("y", Number(event.target.value))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label title="Velocitat base per tick de simulació">speed</Label>
+                    <Input
+                      type="number"
+                      value={selectedObject.speed}
+                      onKeyDown={handleInputShortcutBlock}
+                      onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                        updateSelectedObjectProperty("speed", Number(event.target.value))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label title="Direcció en graus (0 = dreta, 90 = avall)">direction</Label>
+                    <Input
+                      type="number"
+                      value={selectedObject.direction}
+                      onKeyDown={handleInputShortcutBlock}
+                      onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                        updateSelectedObjectProperty("direction", Number(event.target.value))
+                      }
+                    />
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <Label title="Posició vertical dins la room">y</Label>
-                  <Input
-                    type="number"
-                    value={selectedObject.y}
-                    onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                      updateSelectedObjectProperty("y", Number(event.target.value))
-                    }
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label title="Velocitat base per tick de simulació">speed</Label>
-                  <Input
-                    type="number"
-                    value={selectedObject.speed}
-                    onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                      updateSelectedObjectProperty("speed", Number(event.target.value))
-                    }
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label title="Direcció en graus (0 = dreta, 90 = avall)">direction</Label>
-                  <Input
-                    type="number"
-                    value={selectedObject.direction}
-                    onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                      updateSelectedObjectProperty("direction", Number(event.target.value))
-                    }
-                  />
-                </div>
-              </div>
+                <Button data-testid="delete-object-button" onClick={handleDeleteSelectedObject} variant="outline">
+                  Delete selected object
+                </Button>
+              </>
             ) : (
               <p className="text-sm text-slate-500">Selecciona un objecte per editar-ne les propietats.</p>
             )}
+
+            <div className="mvp1-editor-snapshot-panel rounded-md border border-slate-200 p-2">
+              <p className="text-xs font-semibold text-slate-600">Snapshots locals</p>
+              <ul className="mt-2 space-y-1">
+                {snapshots.length === 0 && <li className="text-xs text-slate-500">No hi ha snapshots encara.</li>}
+                {snapshots.map((entry) => (
+                  <li key={entry.id} className="mvp1-editor-snapshot-row flex items-center justify-between gap-2 text-xs">
+                    <span className="truncate">{entry.label}</span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 px-2"
+                      onClick={() => restoreSnapshot(entry.id)}
+                    >
+                      Restore
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </CardContent>
         </Card>
       </div>
