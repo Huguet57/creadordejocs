@@ -1,4 +1,4 @@
-import { EditorSidebar } from "./layout/EditorSidebar.js"
+import { EditorSidebarCompact } from "./layout/EditorSidebarCompact.js"
 import { EditorTopbar } from "./layout/EditorTopbar.js"
 import { EditorWorkspace } from "./layout/EditorWorkspace.js"
 import { useEditorController } from "./features/editor-state/use-editor-controller.js"
@@ -29,8 +29,8 @@ export function App() {
           onLoadTemplate={() => controller.loadDodgeTemplate()}
         />
 
-        <div className="mvp15-editor-layout grid gap-4 lg:grid-cols-[220px_1fr]">
-          <EditorSidebar
+        <div className="mvp15-editor-layout grid gap-4 lg:grid-cols-[64px_1fr]">
+          <EditorSidebarCompact
             activeSection={controller.activeSection}
             onSectionChange={(section) => controller.setActiveSection(section)}
           />

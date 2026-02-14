@@ -1,37 +1,18 @@
-import { useEffect, useMemo, useState, type ChangeEvent, type KeyboardEvent } from "react"
+import { useEffect, useMemo, useState } from "react"
 import type { ObjectActionDraft } from "@creadordejocs/project-format"
-import { ChevronDown, ChevronUp, Plus, Trash2, X } from "lucide-react"
 import type { EditorController } from "../editor-state/use-editor-controller.js"
-import {
-  OBJECT_ACTION_TYPES,
-  OBJECT_EVENT_KEYS,
-  OBJECT_EVENT_TYPES,
-  type ObjectActionType,
-  type ObjectEventKey,
-  type ObjectEventType
-} from "../editor-state/types.js"
-import { Button } from "../../components/ui/button.js"
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card.js"
-import { Input } from "../../components/ui/input.js"
-import { Label } from "../../components/ui/label.js"
+import { type ObjectActionType } from "../editor-state/types.js"
+import { ObjectListPanel } from "./ObjectListPanel.js"
+import { EventListPanel } from "./EventListPanel.js"
+import { ActionEditorPanel } from "./ActionEditorPanel.js"
 
 type ObjectEditorSectionProps = {
   controller: EditorController
 }
 
 export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
-  const [objectName, setObjectName] = useState("Objecte nou")
-  const [eventType, setEventType] = useState<ObjectEventType>("Create")
-  const [eventKey, setEventKey] = useState<ObjectEventKey>("ArrowLeft")
-  const [actionTypeByEvent, setActionTypeByEvent] = useState<Record<string, ObjectActionType>>({})
   const [activeEventId, setActiveEventId] = useState<string | null>(null)
   const [selectNewestListener, setSelectNewestListener] = useState(false)
-
-  const blockUndoShortcuts = (event: KeyboardEvent<HTMLInputElement>): void => {
-    if ((event.metaKey || event.ctrlKey) && (event.key.toLowerCase() === "z" || event.key.toLowerCase() === "y")) {
-      event.preventDefault()
-    }
-  }
 
   const selectedObject = controller.selectedObject
   const selectableTargetObjects = useMemo(
@@ -78,459 +59,74 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
 
   const activeEvent = selectedObject?.events.find((eventEntry) => eventEntry.id === activeEventId) ?? null
 
+  const handleAddAction = (type: ObjectActionType) => {
+    if (!activeEvent) return
+    const action = defaultActionFromType(type)
+    if (action) {
+      controller.addObjectEventAction(activeEvent.id, action)
+    }
+  }
+
   return (
-    <Card className="mvp15-object-editor-panel">
-      <CardHeader>
-        <CardTitle>Object editor</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="mvp3-object-editor-grid grid gap-3 lg:grid-cols-[220px_240px_1fr]">
-          <aside className="mvp3-object-sidebar rounded-md border border-slate-200 p-3">
-            <p className="text-xs font-semibold text-slate-600">Objects</p>
-            <div className="mvp3-object-sidebar-list mt-2 flex flex-col gap-2">
-              {controller.project.objects.length === 0 && (
-                <p className="text-xs text-slate-500">Encara no hi ha objectes.</p>
-              )}
-              {controller.project.objects.map((objectEntry) => (
-                <button
-                  key={objectEntry.id}
-                  type="button"
-                  className={`mvp3-object-sidebar-item rounded border px-2 py-1 text-left text-xs ${
-                    controller.activeObjectId === objectEntry.id
-                      ? "border-slate-900 bg-slate-900 text-white"
-                      : "border-slate-300 bg-slate-100"
-                  }`}
-                  onClick={() => controller.setActiveObjectId(objectEntry.id)}
-                >
-                  {objectEntry.name}
-                </button>
-              ))}
-            </div>
-            <div className="mvp3-object-create mt-3 space-y-2">
-              <Label htmlFor="object-name-input" className="text-xs">
-                Create object
-              </Label>
-              <div className="flex gap-2">
-                <Input
-                  id="object-name-input"
-                  data-testid="object-name-input"
-                  value={objectName}
-                  onKeyDown={blockUndoShortcuts}
-                  onChange={(event: ChangeEvent<HTMLInputElement>) => setObjectName(event.target.value)}
-                />
-                <Button
-                  data-testid="add-object-button"
-                  size="sm"
-                  className="px-2"
-                  title="Add object"
-                  aria-label="Add object"
-                  onClick={() => {
-                    controller.addObject(objectName)
-                    setObjectName("Objecte nou")
-                  }}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-            <Button
-              data-testid="delete-object-button"
-              variant="outline"
-              className="mvp3-object-delete-button mt-3 w-full"
-              onClick={() => controller.deleteSelectedObject()}
-              disabled={!selectedObject}
-              title="Delete selected object"
-              aria-label="Delete selected object"
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete selected object
-            </Button>
-          </aside>
+    <div className="mvp15-object-editor-container flex h-[600px] w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+      <ObjectListPanel
+        objects={controller.project.objects}
+        activeObjectId={controller.activeObjectId}
+        onSelectObject={(id) => controller.setActiveObjectId(id)}
+        onAddObject={(name) => controller.addObject(name)}
+        onDeleteObject={() => controller.deleteSelectedObject()}
+      />
 
-          <aside className="mvp3-listener-sidebar rounded-md border border-slate-200 p-3">
-            <p className="text-xs font-semibold text-slate-600">Listeners</p>
-            {!selectedObject ? (
-              <p className="mt-2 text-xs text-slate-500">Selecciona un objecte primer.</p>
-            ) : (
-              <>
-                <div className="mvp3-listener-add mt-2 space-y-2">
-                  <select
-                    data-testid="object-event-type-select"
-                    className="mvp3-listener-type-select h-9 w-full rounded border border-slate-300 px-2 text-sm"
-                    value={eventType}
-                    onChange={(event) => setEventType(event.target.value as ObjectEventType)}
-                  >
-                    {OBJECT_EVENT_TYPES.map((eventOption) => (
-                      <option key={eventOption} value={eventOption}>
-                        {eventOption}
-                      </option>
-                    ))}
-                  </select>
-                  {eventType === "Keyboard" && (
-                    <select
-                      className="mvp3-listener-key-select h-9 w-full rounded border border-slate-300 px-2 text-sm"
-                      value={eventKey}
-                      onChange={(event) => setEventKey(event.target.value as ObjectEventKey)}
-                    >
-                      {OBJECT_EVENT_KEYS.map((keyOption) => (
-                        <option key={keyOption} value={keyOption}>
-                          {keyOption}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                  <Button
-                    data-testid="add-object-event-button"
-                    className="mvp3-listener-add-button w-full"
-                    title="Add listener"
-                    aria-label="Add listener"
-                    onClick={() => {
-                      controller.addObjectEvent(eventType, eventType === "Keyboard" ? eventKey : null, null)
-                      setSelectNewestListener(true)
-                    }}
-                  >
-                    <Plus className="h-4 w-4" />
-                    <span className="sr-only">Add listener</span>
-                  </Button>
-                </div>
-
-                <div className="mvp3-listener-sidebar-list mt-3 flex flex-col gap-2">
-                  {selectedObject.events.length === 0 && (
-                    <p className="text-xs text-slate-500">No listeners yet.</p>
-                  )}
-                  {selectedObject.events.map((eventEntry) => (
-                    <div
-                      key={eventEntry.id}
-                      className={`mvp2-object-event-row rounded border p-2 ${
-                        activeEventId === eventEntry.id ? "border-slate-900 bg-slate-100" : "border-slate-200"
-                      }`}
-                    >
-                      <button
-                        type="button"
-                        className="mvp3-listener-select-button w-full text-left text-xs font-semibold"
-                        onClick={() => setActiveEventId(eventEntry.id)}
-                      >
-                        {eventEntry.type}
-                      </button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="mvp3-listener-remove-button mt-2 h-7 w-full px-2"
-                        title="Remove listener"
-                        aria-label="Remove listener"
-                        onClick={() => {
-                          controller.removeObjectEvent(eventEntry.id)
-                          if (activeEventId === eventEntry.id) {
-                            setActiveEventId(null)
-                          }
-                        }}
-                      >
-                        <X className="h-4 w-4" />
-                        <span className="sr-only">Remove listener</span>
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-          </aside>
-
-          <section className="mvp3-action-editor rounded-md border border-slate-200 p-3">
-            {!selectedObject ? (
-              <p className="text-sm text-slate-500">Selecciona un objecte per programar-lo.</p>
-            ) : (
-              <div className="space-y-3">
-                {!activeEvent ? (
-                  <p className="text-sm text-slate-500">Selecciona un listener a la sidebar central.</p>
-                ) : (
-                  <div className="mvp3-listener-editor space-y-3 rounded border border-slate-200 p-3">
-                    <p className="text-xs font-semibold text-slate-700">Listener: {activeEvent.type}</p>
-
-                    {activeEvent.type === "Keyboard" && (
-                      <div className="mvp3-listener-key-config">
-                        <Label className="text-xs">Trigger key</Label>
-                        <select
-                          className="mvp3-listener-key-config-select mt-1 h-8 rounded border border-slate-300 px-2 text-xs"
-                          value={activeEvent.key ?? "ArrowLeft"}
-                          onChange={(event) =>
-                            controller.updateObjectEventConfig(
-                              activeEvent.id,
-                              event.target.value as ObjectEventKey,
-                              activeEvent.targetObjectId
-                            )
-                          }
-                        >
-                          {OBJECT_EVENT_KEYS.map((keyOption) => (
-                            <option key={keyOption} value={keyOption}>
-                              {keyOption}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-
-                    {activeEvent.type === "Collision" && (
-                      <div className="mvp3-listener-collision-config">
-                        <Label className="text-xs">Collision target</Label>
-                        <select
-                          className="mvp3-listener-collision-config-select mt-1 h-8 rounded border border-slate-300 px-2 text-xs"
-                          value={activeEvent.targetObjectId ?? "any"}
-                          onChange={(event) =>
-                            controller.updateObjectEventConfig(
-                              activeEvent.id,
-                              activeEvent.key,
-                              event.target.value === "any" ? null : event.target.value
-                            )
-                          }
-                        >
-                          <option value="any">Any object</option>
-                          {selectableTargetObjects.map((objectEntry) => (
-                            <option key={objectEntry.id} value={objectEntry.id}>
-                              {objectEntry.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-
-                    <div className="mvp3-action-add-row flex gap-2">
-                      <select
-                        className="mvp3-action-type-select h-8 rounded border border-slate-300 px-2 text-xs"
-                        value={actionTypeByEvent[activeEvent.id] ?? "move"}
-                        onChange={(event) =>
-                          setActionTypeByEvent((previous) => ({
-                            ...previous,
-                            [activeEvent.id]: event.target.value as ObjectActionType
-                          }))
-                        }
-                      >
-                        {OBJECT_ACTION_TYPES.map((actionType) => (
-                          <option key={actionType} value={actionType}>
-                            {actionType}
-                          </option>
-                        ))}
-                      </select>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="px-2"
-                        title="Add action block"
-                        aria-label="Add action block"
-                        onClick={() => {
-                          const nextType = actionTypeByEvent[activeEvent.id] ?? "move"
-                          const nextAction = defaultActionFromType(nextType)
-                          if (!nextAction) return
-                          controller.addObjectEventAction(activeEvent.id, nextAction)
-                        }}
-                      >
-                        <Plus className="h-4 w-4" />
-                        <span className="sr-only">Add action block</span>
-                      </Button>
-                    </div>
-
-                    <ul className="mvp3-action-list space-y-2">
-                      {activeEvent.actions.length === 0 && (
-                        <li className="text-xs text-slate-500">No actions yet. Add one with guided blocks.</li>
-                      )}
-                      {activeEvent.actions.map((actionEntry, index) => (
-                        <li key={actionEntry.id} className="mvp2-object-action-row rounded border border-slate-200 p-2">
-                          <div className="mb-2 flex items-center justify-between gap-2">
-                            <p className="text-xs font-semibold">{actionEntry.type}</p>
-                            <div className="flex gap-1">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-7 px-2"
-                                disabled={index === 0}
-                                title="Move action up"
-                                aria-label="Move action up"
-                                onClick={() => controller.moveObjectEventAction(activeEvent.id, actionEntry.id, "up")}
-                              >
-                                <ChevronUp className="h-4 w-4" />
-                                <span className="sr-only">Move action up</span>
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-7 px-2"
-                                disabled={index === activeEvent.actions.length - 1}
-                                title="Move action down"
-                                aria-label="Move action down"
-                                onClick={() => controller.moveObjectEventAction(activeEvent.id, actionEntry.id, "down")}
-                              >
-                                <ChevronDown className="h-4 w-4" />
-                                <span className="sr-only">Move action down</span>
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-7 px-2"
-                                title="Remove action"
-                                aria-label="Remove action"
-                                onClick={() => controller.removeObjectEventAction(activeEvent.id, actionEntry.id)}
-                              >
-                                <X className="h-4 w-4" />
-                                <span className="sr-only">Remove action</span>
-                              </Button>
-                            </div>
-                          </div>
-
-                          {actionEntry.type === "move" && (
-                            <div className="mvp3-action-move-fields grid grid-cols-2 gap-2">
-                              <Input
-                                type="number"
-                                value={actionEntry.dx}
-                                onChange={(event) =>
-                                  controller.updateObjectEventAction(activeEvent.id, actionEntry.id, {
-                                    type: "move",
-                                    dx: Number(event.target.value),
-                                    dy: actionEntry.dy
-                                  })
-                                }
-                              />
-                              <Input
-                                type="number"
-                                value={actionEntry.dy}
-                                onChange={(event) =>
-                                  controller.updateObjectEventAction(activeEvent.id, actionEntry.id, {
-                                    type: "move",
-                                    dx: actionEntry.dx,
-                                    dy: Number(event.target.value)
-                                  })
-                                }
-                              />
-                            </div>
-                          )}
-
-                          {actionEntry.type === "setVelocity" && (
-                            <div className="mvp3-action-velocity-fields grid grid-cols-2 gap-2">
-                              <Input
-                                type="number"
-                                value={actionEntry.speed}
-                                onChange={(event) =>
-                                  controller.updateObjectEventAction(activeEvent.id, actionEntry.id, {
-                                    type: "setVelocity",
-                                    speed: Number(event.target.value),
-                                    direction: actionEntry.direction
-                                  })
-                                }
-                              />
-                              <Input
-                                type="number"
-                                value={actionEntry.direction}
-                                onChange={(event) =>
-                                  controller.updateObjectEventAction(activeEvent.id, actionEntry.id, {
-                                    type: "setVelocity",
-                                    speed: actionEntry.speed,
-                                    direction: Number(event.target.value)
-                                  })
-                                }
-                              />
-                            </div>
-                          )}
-
-                          {actionEntry.type === "spawnObject" && (
-                            <div className="mvp3-action-spawn-fields grid grid-cols-3 gap-2">
-                              <select
-                                className="mvp3-action-spawn-object-select h-9 rounded border border-slate-300 px-2 text-sm"
-                                value={actionEntry.objectId}
-                                onChange={(event) =>
-                                  controller.updateObjectEventAction(activeEvent.id, actionEntry.id, {
-                                    type: "spawnObject",
-                                    objectId: event.target.value,
-                                    offsetX: actionEntry.offsetX,
-                                    offsetY: actionEntry.offsetY
-                                  })
-                                }
-                              >
-                                {selectableTargetObjects.map((objectEntry) => (
-                                  <option key={objectEntry.id} value={objectEntry.id}>
-                                    {objectEntry.name}
-                                  </option>
-                                ))}
-                              </select>
-                              <Input
-                                type="number"
-                                value={actionEntry.offsetX}
-                                onChange={(event) =>
-                                  controller.updateObjectEventAction(activeEvent.id, actionEntry.id, {
-                                    type: "spawnObject",
-                                    objectId: actionEntry.objectId,
-                                    offsetX: Number(event.target.value),
-                                    offsetY: actionEntry.offsetY
-                                  })
-                                }
-                              />
-                              <Input
-                                type="number"
-                                value={actionEntry.offsetY}
-                                onChange={(event) =>
-                                  controller.updateObjectEventAction(activeEvent.id, actionEntry.id, {
-                                    type: "spawnObject",
-                                    objectId: actionEntry.objectId,
-                                    offsetX: actionEntry.offsetX,
-                                    offsetY: Number(event.target.value)
-                                  })
-                                }
-                              />
-                            </div>
-                          )}
-
-                          {actionEntry.type === "changeScore" && (
-                            <Input
-                              className="mvp3-action-change-score-input"
-                              type="number"
-                              value={actionEntry.delta}
-                              onChange={(event) =>
-                                controller.updateObjectEventAction(activeEvent.id, actionEntry.id, {
-                                  type: "changeScore",
-                                  delta: Number(event.target.value)
-                                })
-                              }
-                            />
-                          )}
-
-                          {actionEntry.type === "endGame" && (
-                            <Input
-                              className="mvp3-action-endgame-input"
-                              value={actionEntry.message}
-                              onChange={(event) =>
-                                controller.updateObjectEventAction(activeEvent.id, actionEntry.id, {
-                                  type: "endGame",
-                                  message: event.target.value || "Game over"
-                                })
-                              }
-                            />
-                          )}
-
-                          {actionEntry.type === "playSound" && (
-                            <select
-                              className="mvp3-action-sound-select h-9 rounded border border-slate-300 px-2 text-sm"
-                              value={actionEntry.soundId}
-                              onChange={(event) =>
-                                controller.updateObjectEventAction(activeEvent.id, actionEntry.id, {
-                                  type: "playSound",
-                                  soundId: event.target.value
-                                })
-                              }
-                            >
-                              {controller.project.resources.sounds.map((soundEntry) => (
-                                <option key={soundEntry.id} value={soundEntry.id}>
-                                  {soundEntry.name}
-                                </option>
-                              ))}
-                            </select>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            )}
-          </section>
+      {selectedObject ? (
+        <>
+          <EventListPanel
+            events={selectedObject.events}
+            activeEventId={activeEventId}
+            onSelectEvent={setActiveEventId}
+            onAddEvent={(type, key) => {
+              controller.addObjectEvent(type, key ?? null, null)
+              setSelectNewestListener(true)
+            }}
+            onRemoveEvent={(id) => {
+              controller.removeObjectEvent(id)
+              if (activeEventId === id) setActiveEventId(null)
+            }}
+          />
+          
+          <ActionEditorPanel
+            selectedObject={selectedObject}
+            activeEvent={activeEvent}
+            selectableTargetObjects={selectableTargetObjects}
+            sounds={controller.project.resources.sounds}
+            onUpdateEventConfig={(key, targetId) => {
+              if (activeEvent) {
+                controller.updateObjectEventConfig(activeEvent.id, key, targetId)
+              }
+            }}
+            onAddAction={handleAddAction}
+            onUpdateAction={(actionId, action) => {
+              if (activeEvent) {
+                controller.updateObjectEventAction(activeEvent.id, actionId, action)
+              }
+            }}
+            onMoveAction={(actionId, direction) => {
+              if (activeEvent) {
+                controller.moveObjectEventAction(activeEvent.id, actionId, direction)
+              }
+            }}
+            onRemoveAction={(actionId) => {
+              if (activeEvent) {
+                controller.removeObjectEventAction(activeEvent.id, actionId)
+              }
+            }}
+          />
+        </>
+      ) : (
+        <div className="flex flex-1 items-center justify-center bg-slate-50 text-slate-400">
+          <p>Select an object to start editing</p>
         </div>
-      </CardContent>
-    </Card>
+      )}
+    </div>
   )
 }
+

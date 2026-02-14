@@ -9,12 +9,14 @@ const buttonVariants = cva(
       variant: {
         default: "bg-slate-900 text-white hover:bg-slate-700",
         secondary: "bg-slate-200 text-slate-900 hover:bg-slate-300",
-        outline: "border border-slate-300 bg-white hover:bg-slate-100"
+        outline: "border border-slate-300 bg-white hover:bg-slate-100",
+        ghost: "hover:bg-slate-100 hover:text-slate-900"
       },
       size: {
         default: "h-9 px-4 py-2",
         sm: "h-8 rounded-md px-3",
-        lg: "h-10 rounded-md px-6"
+        lg: "h-10 rounded-md px-6",
+        icon: "h-9 w-9"
       }
     },
     defaultVariants: {
