@@ -501,6 +501,106 @@ describe("runtime regressions", () => {
     expect(player?.y).toBe(50)
   })
 
+  it("jumpToStart works inside collision events after moving", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-collision-jump-start",
+        name: "Collision jumpToStart test",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: {
+        sprites: [],
+        sounds: []
+      },
+      variables: {
+        global: [],
+        objectByObjectId: {}
+      },
+      objects: [
+        {
+          id: "object-player",
+          name: "Player",
+          spriteId: null,
+          x: 100,
+          y: 200,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step-move",
+              type: "Step",
+              key: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [
+                {
+                  id: "item-action-move-to-enemy",
+                  type: "action",
+                  action: { id: "action-move-to-enemy", type: "move", dx: 200, dy: 0 }
+                }
+              ]
+            },
+            {
+              id: "event-collision-enemy",
+              type: "Collision",
+              key: null,
+              targetObjectId: "object-enemy",
+              intervalMs: null,
+              items: [
+                {
+                  id: "item-action-jump-start",
+                  type: "action",
+                  action: { id: "action-jump-start", type: "jumpToStart" }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          id: "object-enemy",
+          name: "Enemy",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: []
+        }
+      ],
+      rooms: [
+        {
+          id: "room-main",
+          name: "Main",
+          instances: [
+            { id: "instance-player", objectId: "object-player", x: 100, y: 200 },
+            { id: "instance-enemy", objectId: "object-enemy", x: 305, y: 200 }
+          ]
+        }
+      ],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    // First tick: player starts at (100,200), Step moves it to (300,200),
+    // now overlaps with enemy at (305,200), collision fires jumpToStart
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState())
+    const room = result.project.rooms.find((roomEntry) => roomEntry.id === "room-main")
+    const player = room?.instances.find((instanceEntry) => instanceEntry.id === "instance-player")
+
+    // Player should have jumped back to its start position (100, 200), not stay at (300, 200)
+    expect(player?.x).toBe(100)
+    expect(player?.y).toBe(200)
+  })
+
   it("applies jumpToPosition as an absolute move", () => {
     const project: ProjectV1 = {
       version: 1,

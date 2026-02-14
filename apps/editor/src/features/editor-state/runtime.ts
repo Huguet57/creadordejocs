@@ -696,7 +696,8 @@ function applyCollisionEvents(
         if (!firstInstance) {
           break
         }
-        const eventResult = runEventItems(project, firstInstance, getEventItems(eventEntry), nextRuntime, null, secondId)
+        const firstStartPosition = getInstanceStartPosition(nextRuntime, firstInstance)
+        const eventResult = runEventItems(project, firstInstance, getEventItems(eventEntry), nextRuntime, firstStartPosition, secondId)
         const firstGetsDestroyed = eventResult.destroyedInstanceIds.includes(firstId)
         if (!firstGetsDestroyed) {
           mutableInstances[firstIndex] = eventResult.instance
@@ -734,7 +735,8 @@ function applyCollisionEvents(
         if (!secondInstance) {
           break
         }
-        const eventResult = runEventItems(project, secondInstance, getEventItems(eventEntry), nextRuntime, null, firstId)
+        const secondStartPosition = getInstanceStartPosition(nextRuntime, secondInstance)
+        const eventResult = runEventItems(project, secondInstance, getEventItems(eventEntry), nextRuntime, secondStartPosition, firstId)
         const secondGetsDestroyed = eventResult.destroyedInstanceIds.includes(secondId)
         if (!secondGetsDestroyed) {
           mutableInstances[secondIndex] = eventResult.instance
