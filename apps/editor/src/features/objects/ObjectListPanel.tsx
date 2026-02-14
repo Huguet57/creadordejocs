@@ -1,7 +1,6 @@
 import { Box, Plus, Trash2 } from "lucide-react"
-import { useState, type ChangeEvent, type KeyboardEvent } from "react"
+import { useCallback, useState, type ChangeEvent, type KeyboardEvent } from "react"
 import { Button } from "../../components/ui/button.js"
-import { Input } from "../../components/ui/input.js"
 import type { ProjectV1 } from "@creadordejocs/project-format"
 
 type ObjectListPanelProps = {
@@ -19,7 +18,12 @@ export function ObjectListPanel({
   onAddObject,
   onDeleteObject
 }: ObjectListPanelProps) {
+  const [isAdding, setIsAdding] = useState(false)
   const [newObjectName, setNewObjectName] = useState("Objecte nou")
+
+  const inputCallbackRef = useCallback((node: HTMLInputElement | null) => {
+    if (node) node.select()
+  }, [])
 
   const blockUndoShortcuts = (event: KeyboardEvent<HTMLInputElement>): void => {
     if ((event.metaKey || event.ctrlKey) && (event.key.toLowerCase() === "z" || event.key.toLowerCase() === "y")) {
@@ -31,6 +35,7 @@ export function ObjectListPanel({
     if (!newObjectName.trim()) return
     onAddObject(newObjectName)
     setNewObjectName("Objecte nou")
+    setIsAdding(false)
   }
 
   return (
@@ -62,27 +67,44 @@ export function ObjectListPanel({
         </div>
       </div>
 
-      <div className="border-t border-slate-200 p-3 space-y-3">
-        <div className="flex gap-2">
-          <Input
-            value={newObjectName}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setNewObjectName(e.target.value)}
-            onKeyDown={(e) => {
-              blockUndoShortcuts(e)
-              if (e.key === "Enter") handleAddObject()
-            }}
-            className="h-8 text-xs"
-            placeholder="Name..."
-          />
+      <div className="border-t border-slate-200 p-3 space-y-2">
+        {isAdding ? (
+          <div className="flex gap-2">
+            <input
+              ref={inputCallbackRef}
+              value={newObjectName}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setNewObjectName(e.target.value)}
+              onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
+                blockUndoShortcuts(e)
+                if (e.key === "Enter") handleAddObject()
+                if (e.key === "Escape") setIsAdding(false)
+              }}
+              onBlur={() => {
+                if (!newObjectName.trim()) setIsAdding(false)
+              }}
+              className="flex h-8 w-full rounded-md border border-slate-300 bg-white px-3 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+              placeholder="Name..."
+            />
+            <Button
+              size="sm"
+              className="h-8 w-8 shrink-0 px-0"
+              onClick={handleAddObject}
+              title="Add object"
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+        ) : (
           <Button
+            variant="outline"
             size="sm"
-            className="h-8 w-8 px-0"
-            onClick={handleAddObject}
-            title="Add object"
+            className="w-full h-8 text-xs"
+            onClick={() => setIsAdding(true)}
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="mr-2 h-3.5 w-3.5" />
+            Add Object
           </Button>
-        </div>
+        )}
         
         <Button
           variant="ghost"

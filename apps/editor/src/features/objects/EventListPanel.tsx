@@ -26,11 +26,13 @@ export function EventListPanel({
   onAddEvent,
   onRemoveEvent
 }: EventListPanelProps) {
+  const [isAdding, setIsAdding] = useState(false)
   const [eventType, setEventType] = useState<ObjectEventType>("Create")
   const [eventKey, setEventKey] = useState<ObjectEventKey>("ArrowLeft")
 
   const handleAddEvent = () => {
     onAddEvent(eventType, eventType === "Keyboard" ? eventKey : null)
+    setIsAdding(false)
   }
 
   return (
@@ -87,39 +89,52 @@ export function EventListPanel({
         </div>
       </div>
 
-      <div className="p-3 border-t border-slate-200 bg-white space-y-2">
-        <div className="flex flex-col gap-2">
-          <select
-            className="h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-none"
-            value={eventType}
-            onChange={(e) => setEventType(e.target.value as ObjectEventType)}
-          >
-            {OBJECT_EVENT_TYPES.map((type) => (
-              <option key={type} value={type}>{type}</option>
-            ))}
-          </select>
-          
-          {eventType === "Keyboard" && (
-            <select
-              className="h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-none"
-              value={eventKey}
-              onChange={(e) => setEventKey(e.target.value as ObjectEventKey)}
-            >
-              {OBJECT_EVENT_KEYS.map((key) => (
-                <option key={key} value={key}>{key}</option>
-              ))}
-            </select>
-          )}
+      <div className="p-3 border-t border-slate-200 bg-white">
+        {isAdding ? (
+          <div className="flex flex-col gap-2">
+            <div className="flex gap-2">
+              <select
+                className="h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-none"
+                value={eventType}
+                onChange={(e) => setEventType(e.target.value as ObjectEventType)}
+              >
+                {OBJECT_EVENT_TYPES.map((type) => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
+              <Button
+                size="sm"
+                className="h-8 w-8 shrink-0 px-0"
+                onClick={handleAddEvent}
+                title="Add event"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
 
-          <Button 
-            size="sm" 
+            {eventType === "Keyboard" && (
+              <select
+                className="h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-none"
+                value={eventKey}
+                onChange={(e) => setEventKey(e.target.value as ObjectEventKey)}
+              >
+                {OBJECT_EVENT_KEYS.map((key) => (
+                  <option key={key} value={key}>{key}</option>
+                ))}
+              </select>
+            )}
+          </div>
+        ) : (
+          <Button
+            variant="outline"
+            size="sm"
             className="w-full h-8 text-xs"
-            onClick={handleAddEvent}
+            onClick={() => setIsAdding(true)}
           >
             <Plus className="mr-2 h-3.5 w-3.5" />
             Add Event
           </Button>
-        </div>
+        )}
       </div>
     </aside>
   )

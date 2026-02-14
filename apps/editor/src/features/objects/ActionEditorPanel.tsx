@@ -119,26 +119,26 @@ export function ActionEditorPanel({
               sounds={sounds}
             />
           ))}
+        </div>
+      </div>
 
-          <div className="mt-8">
-            <p className="mb-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Add Action</p>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
-              {OBJECT_ACTION_TYPES.map((type) => {
-                const Icon = ACTION_ICONS[type] ?? Plus
-                return (
-                  <button
-                    key={type}
-                    type="button"
-                    className="flex flex-col items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white p-3 text-slate-600 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 hover:shadow-md active:scale-95"
-                    onClick={() => onAddAction(type)}
-                  >
-                    <Icon className="h-5 w-5" />
-                    <span className="text-[10px] font-medium uppercase">{type}</span>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
+      <div className="border-t border-slate-200 p-3">
+        <p className="mb-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">Add Action</p>
+        <div className="grid grid-cols-4 gap-2">
+          {OBJECT_ACTION_TYPES.map((type) => {
+            const Icon = ACTION_ICONS[type] ?? Plus
+            return (
+              <button
+                key={type}
+                type="button"
+                className="flex flex-col items-center justify-center gap-1.5 rounded border border-slate-200 bg-white p-2 text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
+                onClick={() => onAddAction(type)}
+              >
+                <Icon className="h-4 w-4" />
+                <span className="text-[10px] font-medium uppercase">{type}</span>
+              </button>
+            )
+          })}
         </div>
       </div>
     </div>
