@@ -33,7 +33,7 @@ import {
   type SaveStatus
 } from "../project-storage.js"
 import { selectActiveRoom, selectObject } from "./selectors.js"
-import { createDodgeTemplateProject } from "./dodge-template.js"
+import { createTemplateProject, type GameTemplateId } from "./game-templates.js"
 import { createInitialRuntimeState, runRuntimeTick, type RuntimeState } from "./runtime.js"
 import type { EditorSection, ObjectEventKey, ObjectEventType } from "./types.js"
 
@@ -372,13 +372,13 @@ export function useEditorController() {
     saveNow() {
       persistProject(project, "Manual save")
     },
-    loadDodgeTemplate() {
-      const result = createDodgeTemplateProject()
+    loadTemplate(templateId: GameTemplateId) {
+      const result = createTemplateProject(templateId)
       setPast((value) => [...value.slice(-39), project])
       setFuture([])
       setProject(incrementMetric(result.project, "tutorialCompletion"))
       setActiveRoomId(result.roomId)
-      setActiveObjectId(result.playerObjectId)
+      setActiveObjectId(result.focusObjectId)
       setActiveSection("objects")
       setIsRunning(false)
       setRunSnapshot(null)

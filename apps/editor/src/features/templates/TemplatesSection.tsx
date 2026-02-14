@@ -1,19 +1,31 @@
-import { Gamepad2 } from "lucide-react"
+import { Coins, Crosshair, Gamepad2, Route } from "lucide-react"
 import { Button } from "../../components/ui/button.js"
+import {
+  GAME_TEMPLATES,
+  type GameTemplateDefinition,
+  type GameTemplateId
+} from "../editor-state/game-templates.js"
 import type { EditorController } from "../editor-state/use-editor-controller.js"
 
 type TemplatesSectionProps = {
   controller: EditorController
 }
 
-const templates = [
-  {
-    id: "dodge",
-    name: "Dodge",
-    description: "A simple dodge game with a player and enemies. Move with arrow keys and avoid collisions.",
-    icon: Gamepad2
-  }
-] as const
+const templateIcons: Record<GameTemplateId, React.ElementType> = {
+  dodge: Gamepad2,
+  "coin-dash": Coins,
+  "space-shooter": Crosshair,
+  "lane-crosser": Route
+}
+
+type TemplateCard = GameTemplateDefinition & {
+  icon: React.ElementType
+}
+
+const templates: TemplateCard[] = GAME_TEMPLATES.map((templateEntry) => ({
+  ...templateEntry,
+  icon: templateIcons[templateEntry.id]
+}))
 
 export function TemplatesSection({ controller }: TemplatesSectionProps) {
   return (
@@ -42,7 +54,7 @@ export function TemplatesSection({ controller }: TemplatesSectionProps) {
                 variant="outline"
                 size="sm"
                 className="w-full text-xs"
-                onClick={() => controller.loadDodgeTemplate()}
+                onClick={() => controller.loadTemplate(template.id)}
               >
                 Load Template
               </Button>
