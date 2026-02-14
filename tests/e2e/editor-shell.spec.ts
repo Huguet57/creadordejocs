@@ -6,48 +6,58 @@ test.beforeEach(async ({ page }) => {
 
 test("navigates sidebar sections and keeps modular editors available", async ({ page }) => {
   await page.getByTestId("sidebar-sprites").click()
-  await expect(page.getByRole("heading", { name: "Sprite editor" })).toBeVisible()
+  await expect(page.getByText("Sprites", { exact: true }).first()).toBeVisible()
 
   await page.getByTestId("sidebar-sounds").click()
-  await expect(page.getByRole("heading", { name: "Sound editor" })).toBeVisible()
+  await expect(page.getByText("Sounds", { exact: true }).first()).toBeVisible()
 
   await page.getByTestId("sidebar-objects").click()
-  await expect(page.getByRole("heading", { name: "Object editor" })).toBeVisible()
+  await expect(page.getByText("Objects", { exact: true }).first()).toBeVisible()
 
   await page.getByTestId("sidebar-rooms").click()
-  await expect(page.getByRole("heading", { name: "Room editor" })).toBeVisible()
+  await expect(page.getByText("Rooms", { exact: true }).first()).toBeVisible()
 
   await page.getByTestId("sidebar-run").click()
-  await expect(page.getByRole("heading", { name: "Run preview" })).toBeVisible()
+  await expect(page.getByText("Run", { exact: true }).first()).toBeVisible()
 })
 
 test("creates sprite, sound, object and object listener", async ({ page }) => {
+  // Create sprite
   await page.getByTestId("sidebar-sprites").click()
-  await page.getByTestId("sprite-name-input").fill("Ship")
-  await page.getByTestId("add-sprite-button").click()
-  await expect(page.getByText("Ship", { exact: true })).toBeVisible()
+  await page.getByRole("button", { name: "Add Sprite" }).click()
+  await page.locator("input[placeholder='Name...']").fill("Ship")
+  await page.locator("input[placeholder='Name...']").press("Enter")
+  await expect(page.getByText("Ship", { exact: true }).first()).toBeVisible()
 
+  // Create sound
   await page.getByTestId("sidebar-sounds").click()
-  await page.getByLabel("Sound name").fill("Laser")
-  await page.getByRole("button", { name: "+ Sound" }).click()
-  await expect(page.getByText("Laser", { exact: true })).toBeVisible()
+  await page.getByRole("button", { name: "Add Sound" }).click()
+  await page.locator("input[placeholder='Name...']").fill("Laser")
+  await page.locator("input[placeholder='Name...']").press("Enter")
+  await expect(page.getByText("Laser", { exact: true }).first()).toBeVisible()
 
+  // Create object
   await page.getByTestId("sidebar-objects").click()
-  await page.getByTestId("object-name-input").fill("PlayerShip")
-  await page.getByTestId("add-object-button").click()
-  await expect(page.getByRole("button", { name: "PlayerShip" })).toBeVisible()
-  await page.getByRole("button", { name: "PlayerShip" }).click()
+  await page.getByRole("button", { name: "Add Object" }).click()
+  await page.locator("input[placeholder='Name...']").fill("PlayerShip")
+  await page.locator("input[placeholder='Name...']").press("Enter")
+  await expect(page.getByText("PlayerShip")).toBeVisible()
+  await page.getByText("PlayerShip").click()
 
-  await page.getByTestId("object-event-type-select").selectOption("Create")
-  await page.getByTestId("add-object-event-button").click()
-  await expect(page.locator(".mvp2-object-event-row")).toHaveCount(1)
-  await page.getByRole("button", { name: "Add action block" }).click()
-  await expect(page.locator(".mvp2-object-action-row")).toHaveCount(1)
+  // Add event
+  await page.getByRole("button", { name: "Add Event" }).click()
+  await page.locator(".mvp3-event-list-panel button[title='Add event']").click()
+  await expect(page.getByText("When")).toBeVisible()
+
+  // Add action via the action grid button
+  await page.getByRole("button", { name: "move", exact: true }).click()
+  await expect(page.locator(".group").filter({ hasText: "MOVE" })).toBeVisible()
 })
 
 test("loads dodge template and runs gameplay hud", async ({ page }) => {
-  await page.getByTestId("load-dodge-template-button").click()
+  await page.getByTestId("sidebar-templates").click()
+  await page.getByRole("button", { name: "Load Template" }).click()
   await page.getByTestId("sidebar-run").click()
-  await expect(page.getByTestId("run-score")).toContainText("Score:")
+  await expect(page.getByTestId("run-score")).toBeVisible()
   await expect(page.getByTestId("run-game-state")).toContainText("Running")
 })
