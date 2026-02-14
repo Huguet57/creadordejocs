@@ -1,4 +1,4 @@
-import { CopyPlus, Flag, Maximize, Move, FastForward, Trash, Trophy, Volume2, Plus } from "lucide-react"
+import { CopyPlus, Flag, Maximize, Move, FastForward, Trash, Trophy, Volume2, Plus, Locate, LocateFixed } from "lucide-react"
 import { Label } from "../../components/ui/label.js"
 import { OBJECT_ACTION_TYPES, OBJECT_EVENT_KEYS, type ObjectActionDraft, type ObjectActionType, type ObjectEventKey, type ObjectEventEntry } from "../editor-state/types.js"
 import { ActionBlock } from "./ActionBlock.js"
@@ -24,6 +24,8 @@ const ACTION_ICONS: Record<ObjectActionType, React.ElementType> = {
   changeScore: Trophy,
   endGame: Flag,
   clampToRoom: Maximize,
+  jumpToPosition: Locate,
+  jumpToStart: LocateFixed,
   destroySelf: Trash,
   destroyOther: Trash,
 }

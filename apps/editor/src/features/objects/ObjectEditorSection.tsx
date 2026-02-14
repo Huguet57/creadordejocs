@@ -24,6 +24,8 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
     if (type === "move") return { type: "move", dx: 0, dy: 0 }
     if (type === "setVelocity") return { type: "setVelocity", speed: 1, direction: 0 }
     if (type === "clampToRoom") return { type: "clampToRoom" }
+    if (type === "jumpToPosition") return { type: "jumpToPosition", x: 0, y: 0 }
+    if (type === "jumpToStart") return { type: "jumpToStart" }
     if (type === "destroySelf") return { type: "destroySelf" }
     if (type === "destroyOther") return { type: "destroyOther" }
     if (type === "changeScore") return { type: "changeScore", delta: 1 }

@@ -142,4 +142,129 @@ describe("runtime regressions", () => {
     expect(result.runtime.gameOver).toBe(true)
     expect(result.runtime.message).toBe("Has recollit la moneda. Has guanyat!")
   })
+
+  it("triggers OutsideRoom and jumps back to instance start", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-outside-room",
+        name: "Outside room test",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: {
+        sprites: [],
+        sounds: []
+      },
+      objects: [
+        {
+          id: "object-player",
+          name: "Player",
+          spriteId: null,
+          x: 40,
+          y: 50,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step",
+              type: "Step",
+              key: null,
+              targetObjectId: null,
+              actions: [{ id: "action-move", type: "move", dx: 700, dy: 0 }]
+            },
+            {
+              id: "event-outside",
+              type: "OutsideRoom",
+              key: null,
+              targetObjectId: null,
+              actions: [{ id: "action-jump-start", type: "jumpToStart" }]
+            }
+          ]
+        }
+      ],
+      rooms: [
+        {
+          id: "room-main",
+          name: "Main",
+          instances: [{ id: "instance-player", objectId: "object-player", x: 40, y: 50 }]
+        }
+      ],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState())
+    const room = result.project.rooms.find((roomEntry) => roomEntry.id === "room-main")
+    const player = room?.instances.find((instanceEntry) => instanceEntry.id === "instance-player")
+
+    expect(player?.x).toBe(40)
+    expect(player?.y).toBe(50)
+  })
+
+  it("applies jumpToPosition as an absolute move", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-jump-pos",
+        name: "Jump position test",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: {
+        sprites: [],
+        sounds: []
+      },
+      objects: [
+        {
+          id: "object-teleporter",
+          name: "Teleporter",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step",
+              type: "Step",
+              key: null,
+              targetObjectId: null,
+              actions: [{ id: "action-jump-pos", type: "jumpToPosition", x: 123, y: 77 }]
+            }
+          ]
+        }
+      ],
+      rooms: [
+        {
+          id: "room-main",
+          name: "Main",
+          instances: [{ id: "instance-teleporter", objectId: "object-teleporter", x: 10, y: 20 }]
+        }
+      ],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState())
+    const room = result.project.rooms.find((roomEntry) => roomEntry.id === "room-main")
+    const teleporter = room?.instances.find((instanceEntry) => instanceEntry.id === "instance-teleporter")
+
+    expect(teleporter?.x).toBe(123)
+    expect(teleporter?.y).toBe(77)
+  })
 })

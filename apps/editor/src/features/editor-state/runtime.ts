@@ -19,6 +19,7 @@ export type RuntimeState = {
   message: string
   initializedInstanceIds: string[]
   playedSoundIds: string[]
+  instanceStartPositions: Record<string, { x: number; y: number }>
 }
 
 function clampValue(value: number, min: number, max: number): number {
@@ -58,9 +59,26 @@ function applyActionResultToRuntime(runtime: RuntimeState, actionResult: Runtime
   return nextRuntime
 }
 
+function isOutsideRoom(instance: ProjectV1["rooms"][number]["instances"][number]): boolean {
+  return (
+    instance.x < 0 ||
+    instance.y < 0 ||
+    instance.x > ROOM_WIDTH - INSTANCE_SIZE ||
+    instance.y > ROOM_HEIGHT - INSTANCE_SIZE
+  )
+}
+
+function getInstanceStartPosition(
+  runtime: RuntimeState,
+  instance: ProjectV1["rooms"][number]["instances"][number]
+): { x: number; y: number } {
+  return runtime.instanceStartPositions[instance.id] ?? { x: instance.x, y: instance.y }
+}
+
 function runOnDestroyEvents(
   project: ProjectV1,
-  instance: ProjectV1["rooms"][number]["instances"][number]
+  instance: ProjectV1["rooms"][number]["instances"][number],
+  runtime: RuntimeState
 ): RuntimeActionResult {
   const objectEntry = project.objects.find((candidate) => candidate.id === instance.objectId)
   if (!objectEntry) {
@@ -72,8 +90,9 @@ function runOnDestroyEvents(
   }
 
   let aggregate = getDefaultRuntimeActionResult(instance)
+  const startPosition = getInstanceStartPosition(runtime, instance)
   for (const eventEntry of onDestroyEvents) {
-    const eventResult = runEventActions(project, aggregate.instance, eventEntry.actions)
+    const eventResult = runEventActions(project, aggregate.instance, eventEntry.actions, startPosition)
     aggregate = {
       ...aggregate,
       instance: eventResult.instance,
@@ -112,7 +131,7 @@ function destroyInstancesAndRunOnDestroy(
     mutableInstances.splice(index, 1)
     removedIndices.push(index)
 
-    const onDestroyResult = runOnDestroyEvents(project, target)
+    const onDestroyResult = runOnDestroyEvents(project, target, nextRuntime)
     nextRuntime = applyActionResultToRuntime(nextRuntime, onDestroyResult)
     mutableInstances = [...mutableInstances, ...onDestroyResult.spawned]
   }
@@ -124,6 +143,7 @@ function runEventActions(
   project: ProjectV1,
   instance: ProjectV1["rooms"][number]["instances"][number],
   actions: ProjectV1["objects"][number]["events"][number]["actions"],
+  startPosition: { x: number; y: number } | null = null,
   collisionOtherInstanceId: string | null = null
 ): RuntimeActionResult {
   let result = getDefaultRuntimeActionResult(instance)
@@ -158,6 +178,31 @@ function runEventActions(
           ...result.instance,
           x: clampValue(result.instance.x, 0, ROOM_WIDTH - INSTANCE_SIZE),
           y: clampValue(result.instance.y, 0, ROOM_HEIGHT - INSTANCE_SIZE)
+        }
+      }
+      continue
+    }
+    if (actionEntry.type === "jumpToPosition") {
+      result = {
+        ...result,
+        instance: {
+          ...result.instance,
+          x: actionEntry.x,
+          y: actionEntry.y
+        }
+      }
+      continue
+    }
+    if (actionEntry.type === "jumpToStart") {
+      if (!startPosition) {
+        continue
+      }
+      result = {
+        ...result,
+        instance: {
+          ...result.instance,
+          x: startPosition.x,
+          y: startPosition.y
         }
       }
       continue
@@ -277,7 +322,7 @@ function applyCollisionEvents(
         if (!firstInstance) {
           break
         }
-        const eventResult = runEventActions(project, firstInstance, eventEntry.actions, secondId)
+      const eventResult = runEventActions(project, firstInstance, eventEntry.actions, null, secondId)
         const firstGetsDestroyed = eventResult.destroyedInstanceIds.includes(firstId)
         if (!firstGetsDestroyed) {
           mutableInstances[firstIndex] = eventResult.instance
@@ -315,7 +360,7 @@ function applyCollisionEvents(
         if (!secondInstance) {
           break
         }
-        const eventResult = runEventActions(project, secondInstance, eventEntry.actions, firstId)
+        const eventResult = runEventActions(project, secondInstance, eventEntry.actions, null, firstId)
         const secondGetsDestroyed = eventResult.destroyedInstanceIds.includes(secondId)
         if (!secondGetsDestroyed) {
           mutableInstances[secondIndex] = eventResult.instance
@@ -355,7 +400,8 @@ export function createInitialRuntimeState(): RuntimeState {
     gameOver: false,
     message: "",
     initializedInstanceIds: [],
-    playedSoundIds: []
+    playedSoundIds: [],
+    instanceStartPositions: {}
   }
 }
 
@@ -380,6 +426,17 @@ export function runRuntimeTick(
       continue
     }
 
+    const startPosition = getInstanceStartPosition(nextRuntime, instanceEntry)
+    if (!nextRuntime.instanceStartPositions[instanceEntry.id]) {
+      nextRuntime = {
+        ...nextRuntime,
+        instanceStartPositions: {
+          ...nextRuntime.instanceStartPositions,
+          [instanceEntry.id]: startPosition
+        }
+      }
+    }
+
     let nextInstance = instanceEntry
     const shouldInitialize = !runtime.initializedInstanceIds.includes(instanceEntry.id)
     const matchingEvents = objectEntry.events.filter((eventEntry) => {
@@ -398,7 +455,7 @@ export function runRuntimeTick(
     let destroySelf = false
     let spawned: ProjectV1["rooms"][number]["instances"] = []
     for (const eventEntry of matchingEvents) {
-      const eventResult = runEventActions(project, nextInstance, eventEntry.actions)
+      const eventResult = runEventActions(project, nextInstance, eventEntry.actions, startPosition)
       nextInstance = eventResult.instance
       for (const instanceId of eventResult.destroyedInstanceIds) {
         if (instanceId === nextInstance.id) {
@@ -411,10 +468,30 @@ export function runRuntimeTick(
       nextRuntime = applyActionResultToRuntime(nextRuntime, eventResult)
     }
 
+    if (!destroySelf && isOutsideRoom(nextInstance)) {
+      const outsideEvents = objectEntry.events.filter((eventEntry) => eventEntry.type === "OutsideRoom")
+      for (const eventEntry of outsideEvents) {
+        const eventResult = runEventActions(project, nextInstance, eventEntry.actions, startPosition)
+        nextInstance = eventResult.instance
+        for (const instanceId of eventResult.destroyedInstanceIds) {
+          if (instanceId === nextInstance.id) {
+            destroySelf = true
+          } else {
+            pendingDestroyedInstanceIds.add(instanceId)
+          }
+        }
+        spawned = [...spawned, ...eventResult.spawned]
+        nextRuntime = applyActionResultToRuntime(nextRuntime, eventResult)
+        if (destroySelf) {
+          break
+        }
+      }
+    }
+
     if (!destroySelf) {
       nextInstances.push(nextInstance)
     } else {
-      const onDestroyResult = runOnDestroyEvents(project, nextInstance)
+      const onDestroyResult = runOnDestroyEvents(project, nextInstance, nextRuntime)
       nextRuntime = applyActionResultToRuntime(nextRuntime, onDestroyResult)
       spawned = [...spawned, ...onDestroyResult.spawned]
     }
@@ -440,6 +517,14 @@ export function runRuntimeTick(
   }
 
   const collisionResult = applyCollisionEvents(project, nextInstances, nextRuntime)
+  const keptStartPositions: RuntimeState["instanceStartPositions"] = {}
+  for (const instanceEntry of collisionResult.instances) {
+    keptStartPositions[instanceEntry.id] = getInstanceStartPosition(collisionResult.runtime, instanceEntry)
+  }
+  const compactedRuntime: RuntimeState = {
+    ...collisionResult.runtime,
+    instanceStartPositions: keptStartPositions
+  }
   const nextProject: ProjectV1 = {
     ...project,
     rooms: project.rooms.map((roomEntry) =>
@@ -449,6 +534,6 @@ export function runRuntimeTick(
 
   return {
     project: nextProject,
-    runtime: collisionResult.runtime
+    runtime: compactedRuntime
   }
 }

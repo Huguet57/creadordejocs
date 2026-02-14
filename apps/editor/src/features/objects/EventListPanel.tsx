@@ -1,4 +1,4 @@
-import { Activity, Keyboard, MousePointerClick, Play, Zap, Plus, X } from "lucide-react"
+import { Activity, Keyboard, MousePointerClick, Play, Zap, Plus, X, Scan } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { Button } from "../../components/ui/button.js"
 import { OBJECT_EVENT_TYPES, OBJECT_EVENT_KEYS, type ObjectEventType, type ObjectEventKey, type ObjectEventEntry } from "../editor-state/types.js"
@@ -17,7 +17,8 @@ const EVENT_ICONS: Record<ObjectEventType, React.ElementType> = {
   Draw: MousePointerClick, // Placeholder
   Collision: Zap,
   Keyboard: Keyboard,
-  OnDestroy: X
+  OnDestroy: X,
+  OutsideRoom: Scan
 }
 
 export function EventListPanel({

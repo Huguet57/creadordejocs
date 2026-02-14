@@ -1,4 +1,18 @@
-import { ChevronDown, ChevronUp, CopyPlus, Flag, Maximize, Move, FastForward, Trash, Trophy, Volume2, X } from "lucide-react"
+import {
+  ChevronDown,
+  ChevronUp,
+  CopyPlus,
+  Flag,
+  Maximize,
+  Move,
+  FastForward,
+  Trash,
+  Trophy,
+  Volume2,
+  X,
+  Locate,
+  LocateFixed
+} from "lucide-react"
 import { Button } from "../../components/ui/button.js"
 import { Input } from "../../components/ui/input.js"
 import type { ObjectActionDraft } from "@creadordejocs/project-format"
@@ -25,6 +39,8 @@ const ACTION_ICONS: Record<ObjectActionType, React.ElementType> = {
   changeScore: Trophy,
   endGame: Flag,
   clampToRoom: Maximize,
+  jumpToPosition: Locate,
+  jumpToStart: LocateFixed,
   destroySelf: Trash,
   destroyOther: X,
 }
@@ -150,6 +166,29 @@ export function ActionBlock({
               onChange={(e) => onUpdate({ ...action, delta: Number(e.target.value) })}
             />
           </div>
+        )}
+
+        {action.type === "jumpToPosition" && (
+          <>
+            <div className="flex items-center gap-1">
+              <label className="text-[10px] font-medium opacity-60">X</label>
+              <Input
+                type="number"
+                className="h-6 w-16 px-1 text-xs bg-white/50 border-slate-300"
+                value={action.x}
+                onChange={(e) => onUpdate({ ...action, x: Number(e.target.value) })}
+              />
+            </div>
+            <div className="flex items-center gap-1">
+              <label className="text-[10px] font-medium opacity-60">Y</label>
+              <Input
+                type="number"
+                className="h-6 w-16 px-1 text-xs bg-white/50 border-slate-300"
+                value={action.y}
+                onChange={(e) => onUpdate({ ...action, y: Number(e.target.value) })}
+              />
+            </div>
+          </>
         )}
 
         {action.type === "endGame" && (

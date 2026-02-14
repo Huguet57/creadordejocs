@@ -80,12 +80,22 @@ const ObjectActionSchema = z.discriminatedUnion("type", [
     id: z.string().min(1),
     type: z.literal("playSound"),
     soundId: z.string().min(1)
+  }),
+  z.object({
+    id: z.string().min(1),
+    type: z.literal("jumpToPosition"),
+    x: z.number(),
+    y: z.number()
+  }),
+  z.object({
+    id: z.string().min(1),
+    type: z.literal("jumpToStart")
   })
 ])
 
 const ObjectEventSchema = z.object({
   id: z.string().min(1),
-  type: z.enum(["Create", "Step", "Draw", "Collision", "Keyboard", "OnDestroy"]),
+  type: z.enum(["Create", "Step", "Draw", "Collision", "Keyboard", "OnDestroy", "OutsideRoom"]),
   key: z.enum(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"]).nullable().default(null),
   targetObjectId: z.string().nullable().default(null),
   actions: z.array(ObjectActionSchema).default([])
