@@ -6,6 +6,7 @@ import { resolveAssetSource } from "../assets/asset-source-resolver.js"
 
 const ROOM_WIDTH = 560
 const ROOM_HEIGHT = 320
+const INSTANCE_SIZE = 32
 
 type RunSectionProps = {
   controller: EditorController
@@ -120,10 +121,18 @@ export function RunSection({ controller }: RunSectionProps) {
             </div>
           ) : (
             <div
-              className="mvp15-run-canvas relative rounded-md border border-dashed border-slate-300 bg-white"
+              className="mvp15-run-canvas relative overflow-hidden rounded-md border border-dashed border-slate-300 bg-white"
               style={{ width: ROOM_WIDTH, height: ROOM_HEIGHT }}
             >
               {controller.activeRoom.instances.map((instanceEntry) => {
+                const isOutsideRoom =
+                  instanceEntry.x < 0 ||
+                  instanceEntry.y < 0 ||
+                  instanceEntry.x > ROOM_WIDTH - INSTANCE_SIZE ||
+                  instanceEntry.y > ROOM_HEIGHT - INSTANCE_SIZE
+                if (isOutsideRoom) {
+                  return null
+                }
                 const objectEntry = controller.project.objects.find((entry) => entry.id === instanceEntry.objectId)
                 const spriteEntry = objectEntry?.spriteId ? spriteById[objectEntry.spriteId] : undefined
                 const spriteSource = spriteEntry ? resolvedSpriteSources[spriteEntry.id] : undefined

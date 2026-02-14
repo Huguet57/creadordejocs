@@ -318,11 +318,7 @@ export function runRuntimeTick(
     }
 
     if (!destroySelf) {
-      nextInstances.push({
-        ...nextInstance,
-        x: clampValue(nextInstance.x, 0, ROOM_WIDTH - INSTANCE_SIZE),
-        y: clampValue(nextInstance.y, 0, ROOM_HEIGHT - INSTANCE_SIZE)
-      })
+      nextInstances.push(nextInstance)
     }
     nextInstances = [...nextInstances, ...spawned]
 
