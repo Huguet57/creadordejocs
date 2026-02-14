@@ -35,6 +35,7 @@ type ActionBlockProps = {
   objectVariablesByObjectId: ProjectV1["variables"]["objectByObjectId"]
   roomInstances: ProjectV1["rooms"][number]["instances"]
   allObjects: ProjectV1["objects"]
+  rooms: ProjectV1["rooms"]
 }
 
 const ACTION_ICONS: Record<ObjectActionType, React.ElementType> = {
@@ -51,6 +52,14 @@ const ACTION_ICONS: Record<ObjectActionType, React.ElementType> = {
   setObjectVariable: Variable,
   setObjectVariableFromGlobal: Variable,
   setGlobalVariableFromObject: Globe2,
+  goToRoom: Locate,
+  restartRoom: LocateFixed,
+  addGlobalVariable: Globe2,
+  subtractGlobalVariable: Globe2,
+  multiplyGlobalVariable: Globe2,
+  addObjectVariable: Variable,
+  subtractObjectVariable: Variable,
+  multiplyObjectVariable: Variable,
   destroySelf: Trash,
   destroyOther: X,
 }
@@ -93,7 +102,8 @@ export function ActionBlock({
   globalVariables,
   objectVariablesByObjectId,
   roomInstances,
-  allObjects
+  allObjects,
+  rooms
 }: ActionBlockProps) {
   const Icon = ACTION_ICONS[action.type] ?? Move
   const objectVariableOptions = allObjects.flatMap((objectEntry) =>
@@ -118,6 +128,8 @@ export function ActionBlock({
   const compatibleObjectOptionsForGlobalTarget = selectedGlobalForGlobalTarget
     ? objectVariableOptions.filter((option) => option.type === selectedGlobalForGlobalTarget.type)
     : objectVariableOptions
+  const numberGlobalVariables = globalVariables.filter((definition) => definition.type === "number")
+  const numberObjectVariableOptions = objectVariableOptions.filter((option) => option.type === "number")
 
   return (
     <div className="group flex items-center gap-3 rounded-md border border-slate-200 bg-white p-2 shadow-sm transition-all hover:shadow-md">
@@ -263,6 +275,98 @@ export function ActionBlock({
               onChange={(e) => onUpdate({ ...action, message: e.target.value })}
             />
           </div>
+        )}
+
+        {action.type === "goToRoom" && (
+          <select
+            className="h-6 min-w-[140px] rounded border border-slate-300 bg-white/50 px-1 text-xs focus:outline-none"
+            value={action.roomId}
+            onChange={(event) => onUpdate({ ...action, roomId: event.target.value })}
+          >
+            {rooms.map((room) => (
+              <option key={room.id} value={room.id}>
+                {room.name}
+              </option>
+            ))}
+          </select>
+        )}
+
+        {action.type === "restartRoom" && <span className="text-[10px] font-medium text-slate-500">Current room</span>}
+
+        {(action.type === "addGlobalVariable" ||
+          action.type === "subtractGlobalVariable" ||
+          action.type === "multiplyGlobalVariable") && (
+          <>
+            <select
+              className="h-6 min-w-[140px] rounded border border-slate-300 bg-white/50 px-1 text-xs focus:outline-none"
+              value={action.variableId}
+              onChange={(event) => onUpdate({ ...action, variableId: event.target.value })}
+            >
+              {numberGlobalVariables.map((definition) => (
+                <option key={definition.id} value={definition.id}>
+                  {definition.name}
+                </option>
+              ))}
+            </select>
+            <Input
+              type="number"
+              className="h-6 w-24 px-1 text-xs bg-white/50 border-slate-300"
+              value={action.value}
+              onChange={(event) => onUpdate({ ...action, value: Number(event.target.value) })}
+            />
+          </>
+        )}
+
+        {(action.type === "addObjectVariable" ||
+          action.type === "subtractObjectVariable" ||
+          action.type === "multiplyObjectVariable") && (
+          <>
+            <select
+              className="h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
+              value={action.target}
+              onChange={(event) =>
+                onUpdate({
+                  ...action,
+                  target: event.target.value as "self" | "other" | "instanceId",
+                  targetInstanceId: event.target.value === "instanceId" ? action.targetInstanceId : null
+                })
+              }
+            >
+              <option value="self">self</option>
+              <option value="other">other</option>
+              <option value="instanceId">instance</option>
+            </select>
+            {action.target === "instanceId" && (
+              <select
+                className="h-6 min-w-[120px] rounded border border-slate-300 bg-white/50 px-1 text-xs"
+                value={action.targetInstanceId ?? roomInstances[0]?.id ?? ""}
+                onChange={(event) => onUpdate({ ...action, targetInstanceId: event.target.value })}
+              >
+                {roomInstances.map((instanceEntry) => (
+                  <option key={instanceEntry.id} value={instanceEntry.id}>
+                    {instanceEntry.id}
+                  </option>
+                ))}
+              </select>
+            )}
+            <select
+              className="h-6 min-w-[160px] rounded border border-slate-300 bg-white/50 px-1 text-xs"
+              value={action.variableId}
+              onChange={(event) => onUpdate({ ...action, variableId: event.target.value })}
+            >
+              {numberObjectVariableOptions.map((option) => (
+                <option key={`${option.objectName}-${option.id}`} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <Input
+              type="number"
+              className="h-6 w-24 px-1 text-xs bg-white/50 border-slate-300"
+              value={action.value}
+              onChange={(event) => onUpdate({ ...action, value: Number(event.target.value) })}
+            />
+          </>
         )}
 
         {action.type === "setGlobalVariable" && (

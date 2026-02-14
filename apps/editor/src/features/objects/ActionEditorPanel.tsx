@@ -30,7 +30,8 @@ type ActionEditorPanelProps = {
   objectVariablesByObjectId: ProjectV1["variables"]["objectByObjectId"]
   roomInstances: ProjectV1["rooms"][number]["instances"]
   allObjects: ProjectV1["objects"]
-  onUpdateEventConfig: (key: ObjectEventKey | null, targetId: string | null) => void
+  rooms: ProjectV1["rooms"]
+  onUpdateEventConfig: (key: ObjectEventKey | null, targetId: string | null, intervalMs: number | null) => void
   onAddAction: (type: ObjectActionType) => void
   onUpdateAction: (actionId: string, action: ObjectActionDraft) => void
   onMoveAction: (actionId: string, direction: "up" | "down") => void
@@ -51,6 +52,14 @@ const ACTION_ICONS: Record<ObjectActionType, React.ElementType> = {
   setObjectVariable: Variable,
   setObjectVariableFromGlobal: Variable,
   setGlobalVariableFromObject: Globe2,
+  goToRoom: Locate,
+  restartRoom: LocateFixed,
+  addGlobalVariable: Globe2,
+  subtractGlobalVariable: Globe2,
+  multiplyGlobalVariable: Globe2,
+  addObjectVariable: Variable,
+  subtractObjectVariable: Variable,
+  multiplyObjectVariable: Variable,
   destroySelf: Trash,
   destroyOther: Trash,
 }
@@ -64,6 +73,7 @@ export function ActionEditorPanel({
   objectVariablesByObjectId,
   roomInstances,
   allObjects,
+  rooms,
   onUpdateEventConfig,
   onAddAction,
   onUpdateAction,
@@ -106,7 +116,7 @@ export function ActionEditorPanel({
             <select
               className="h-7 rounded border border-slate-200 bg-slate-50 px-2 text-xs text-slate-700 focus:border-slate-400 focus:outline-none"
               value={activeEvent.key ?? "ArrowLeft"}
-              onChange={(e) => onUpdateEventConfig(e.target.value as ObjectEventKey, activeEvent.targetObjectId)}
+              onChange={(e) => onUpdateEventConfig(e.target.value as ObjectEventKey, activeEvent.targetObjectId, activeEvent.intervalMs)}
             >
               {OBJECT_EVENT_KEYS.map((key) => (
                 <option key={key} value={key}>{key}</option>
@@ -121,13 +131,28 @@ export function ActionEditorPanel({
             <select
               className="h-7 rounded border border-slate-200 bg-slate-50 px-2 text-xs text-slate-700 focus:border-slate-400 focus:outline-none"
               value={activeEvent.targetObjectId ?? "any"}
-              onChange={(e) => onUpdateEventConfig(activeEvent.key, e.target.value === "any" ? null : e.target.value)}
+              onChange={(e) =>
+                onUpdateEventConfig(activeEvent.key, e.target.value === "any" ? null : e.target.value, activeEvent.intervalMs)
+              }
             >
               <option value="any">Any object</option>
               {selectableTargetObjects.map((obj) => (
                 <option key={obj.id} value={obj.id}>{obj.name}</option>
               ))}
             </select>
+          </div>
+        )}
+
+        {activeEvent.type === "Timer" && (
+          <div className="flex items-center gap-2">
+            <Label className="text-xs text-slate-400">Interval (ms)</Label>
+            <input
+              type="number"
+              min={1}
+              className="h-7 w-24 rounded border border-slate-200 bg-slate-50 px-2 text-xs text-slate-700 focus:border-slate-400 focus:outline-none"
+              value={activeEvent.intervalMs ?? 1000}
+              onChange={(e) => onUpdateEventConfig(activeEvent.key, activeEvent.targetObjectId, Math.max(1, Number(e.target.value) || 1))}
+            />
           </div>
         )}
       </div>
@@ -158,6 +183,7 @@ export function ActionEditorPanel({
               objectVariablesByObjectId={objectVariablesByObjectId}
               roomInstances={roomInstances}
               allObjects={allObjects}
+              rooms={rooms}
             />
           ))}
         </div>

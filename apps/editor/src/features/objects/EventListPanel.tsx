@@ -1,4 +1,4 @@
-import { Activity, Keyboard, MousePointerClick, Play, Zap, Plus, X, Scan } from "lucide-react"
+import { Activity, Keyboard, MousePointerClick, Play, Zap, Plus, X, Scan, Timer } from "lucide-react"
 import { useState } from "react"
 import { Button } from "../../components/ui/button.js"
 import { OBJECT_EVENT_TYPES, OBJECT_EVENT_KEYS, type ObjectEventType, type ObjectEventKey, type ObjectEventEntry } from "../editor-state/types.js"
@@ -7,7 +7,7 @@ type EventListPanelProps = {
   events: ObjectEventEntry[]
   activeEventId: string | null
   onSelectEvent: (id: string) => void
-  onAddEvent: (type: ObjectEventType, key?: ObjectEventKey | null) => void
+  onAddEvent: (type: ObjectEventType, key?: ObjectEventKey | null, intervalMs?: number | null) => void
   onRemoveEvent: (id: string) => void
 }
 
@@ -18,7 +18,8 @@ const EVENT_ICONS: Record<ObjectEventType, React.ElementType> = {
   Collision: Zap,
   Keyboard: Keyboard,
   OnDestroy: X,
-  OutsideRoom: Scan
+  OutsideRoom: Scan,
+  Timer: Timer
 }
 
 export function EventListPanel({
@@ -31,9 +32,10 @@ export function EventListPanel({
   const [isAdding, setIsAdding] = useState(false)
   const [eventType, setEventType] = useState<ObjectEventType>("Create")
   const [eventKey, setEventKey] = useState<ObjectEventKey>("ArrowLeft")
+  const [timerIntervalMs, setTimerIntervalMs] = useState(1000)
 
   const handleAddEvent = () => {
-    onAddEvent(eventType, eventType === "Keyboard" ? eventKey : null)
+    onAddEvent(eventType, eventType === "Keyboard" ? eventKey : null, eventType === "Timer" ? timerIntervalMs : null)
     setIsAdding(false)
   }
 
@@ -71,6 +73,9 @@ export function EventListPanel({
                     </span>
                     {event.type === "Keyboard" && event.key && (
                       <span className="truncate text-[10px] text-slate-400">Key: {event.key}</span>
+                    )}
+                    {event.type === "Timer" && (
+                      <span className="truncate text-[10px] text-slate-400">Every: {event.intervalMs ?? 1000}ms</span>
                     )}
                   </div>
                 </button>
@@ -141,6 +146,19 @@ export function EventListPanel({
                   <option key={key} value={key}>{key}</option>
                 ))}
               </select>
+            )}
+
+            {eventType === "Timer" && (
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-medium uppercase tracking-wide text-slate-500">Interval (ms)</span>
+                <input
+                  type="number"
+                  min={1}
+                  className="h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-none"
+                  value={timerIntervalMs}
+                  onChange={(e) => setTimerIntervalMs(Math.max(1, Number(e.target.value) || 1))}
+                />
+              </div>
             )}
           </div>
         ) : (

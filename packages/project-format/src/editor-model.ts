@@ -31,7 +31,7 @@ export type UpdateObjectPropertiesInput = {
   direction: number
 }
 
-export type ObjectEventType = "Create" | "Step" | "Draw" | "Collision" | "Keyboard" | "OnDestroy" | "OutsideRoom"
+export type ObjectEventType = "Create" | "Step" | "Draw" | "Collision" | "Keyboard" | "OnDestroy" | "OutsideRoom" | "Timer"
 export type ObjectEventKey = "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight" | "Space"
 export type ObjectAction = ProjectV1["objects"][number]["events"][number]["actions"][number]
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never
@@ -45,6 +45,7 @@ export type AddObjectEventInput = {
   type: ObjectEventType
   key?: ObjectEventKey | null
   targetObjectId?: string | null
+  intervalMs?: number | null
 }
 
 export type RemoveObjectEventInput = {
@@ -83,6 +84,7 @@ export type UpdateObjectEventConfigInput = {
   eventId: string
   key?: ObjectEventKey | null
   targetObjectId?: string | null
+  intervalMs?: number | null
 }
 
 export type AddGlobalVariableInput = {
@@ -336,6 +338,7 @@ export function addObjectEvent(project: ProjectV1, input: AddObjectEventInput): 
                 type: input.type,
                 key: input.key ?? null,
                 targetObjectId: input.targetObjectId ?? null,
+                intervalMs: input.intervalMs ?? null,
                 actions: []
               }
             ]
@@ -476,7 +479,8 @@ export function updateObjectEventConfig(project: ProjectV1, input: UpdateObjectE
                 ? {
                     ...eventEntry,
                     key: input.key === undefined ? eventEntry.key : input.key,
-                    targetObjectId: input.targetObjectId === undefined ? eventEntry.targetObjectId : input.targetObjectId
+                    targetObjectId: input.targetObjectId === undefined ? eventEntry.targetObjectId : input.targetObjectId,
+                    intervalMs: input.intervalMs === undefined ? eventEntry.intervalMs : input.intervalMs
                   }
                 : eventEntry
             )

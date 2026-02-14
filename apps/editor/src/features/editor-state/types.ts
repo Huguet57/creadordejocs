@@ -2,7 +2,7 @@ import type { ProjectV1, ObjectActionDraft } from "@creadordejocs/project-format
 
 export type EditorSection = "sprites" | "sounds" | "objects" | "rooms" | "run" | "templates" | "globalVariables"
 
-export type ObjectEventType = "Create" | "Step" | "Draw" | "Collision" | "Keyboard" | "OnDestroy" | "OutsideRoom"
+export type ObjectEventType = "Create" | "Step" | "Draw" | "Collision" | "Keyboard" | "OnDestroy" | "OutsideRoom" | "Timer"
 export type ObjectEventKey = "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight" | "Space"
 export type ObjectActionType =
   | "move"
@@ -20,6 +20,14 @@ export type ObjectActionType =
   | "setObjectVariable"
   | "setObjectVariableFromGlobal"
   | "setGlobalVariableFromObject"
+  | "goToRoom"
+  | "restartRoom"
+  | "addGlobalVariable"
+  | "subtractGlobalVariable"
+  | "multiplyGlobalVariable"
+  | "addObjectVariable"
+  | "subtractObjectVariable"
+  | "multiplyObjectVariable"
 
 export type ObjectEventEntry = ProjectV1["objects"][number]["events"][number]
 export { type ObjectActionDraft }
@@ -31,7 +39,8 @@ export const OBJECT_EVENT_TYPES: ObjectEventType[] = [
   "Collision",
   "Keyboard",
   "OnDestroy",
-  "OutsideRoom"
+  "OutsideRoom",
+  "Timer"
 ]
 export const OBJECT_EVENT_KEYS: ObjectEventKey[] = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"]
 export const OBJECT_ACTION_TYPES: ObjectActionType[] = [
@@ -49,5 +58,13 @@ export const OBJECT_ACTION_TYPES: ObjectActionType[] = [
   "setGlobalVariable",
   "setObjectVariable",
   "setObjectVariableFromGlobal",
-  "setGlobalVariableFromObject"
+  "setGlobalVariableFromObject",
+  "goToRoom",
+  "restartRoom",
+  "addGlobalVariable",
+  "subtractGlobalVariable",
+  "multiplyGlobalVariable",
+  "addObjectVariable",
+  "subtractObjectVariable",
+  "multiplyObjectVariable"
 ]

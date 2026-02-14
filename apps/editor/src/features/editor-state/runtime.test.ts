@@ -175,6 +175,7 @@ describe("runtime regressions", () => {
               type: "Step",
               key: null,
               targetObjectId: null,
+              intervalMs: null,
               actions: [{ id: "action-move", type: "move", dx: 700, dy: 0 }]
             },
             {
@@ -182,6 +183,7 @@ describe("runtime regressions", () => {
               type: "OutsideRoom",
               key: null,
               targetObjectId: null,
+              intervalMs: null,
               actions: [{ id: "action-jump-start", type: "jumpToStart" }]
             }
           ]
@@ -245,6 +247,7 @@ describe("runtime regressions", () => {
               type: "Step",
               key: null,
               targetObjectId: null,
+              intervalMs: null,
               actions: [{ id: "action-jump-pos", type: "jumpToPosition", x: 123, y: 77 }]
             }
           ]
@@ -313,6 +316,7 @@ describe("runtime regressions", () => {
               type: "Step",
               key: null,
               targetObjectId: null,
+              intervalMs: null,
               actions: [
                 { id: "action-global", type: "setGlobalVariable", variableId: "gv-score", value: 9 },
                 {
@@ -382,6 +386,7 @@ describe("runtime regressions", () => {
               type: "Collision",
               key: null,
               targetObjectId: "object-target",
+              intervalMs: null,
               actions: [
                 {
                   id: "action-copy-to-other",
@@ -440,5 +445,366 @@ describe("runtime regressions", () => {
 
     expect(firstTick.runtime.globalVariables["gv-copied"]).toBe(5)
     expect(secondTick.runtime.objectInstanceVariables["instance-target"]?.["ov-received"]).toBe(5)
+  })
+
+  it("switches the active room when goToRoom is executed", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-go-to-room",
+        name: "Go to room test",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: {
+        sprites: [],
+        sounds: []
+      },
+      variables: {
+        global: [],
+        objectByObjectId: {}
+      },
+      objects: [
+        {
+          id: "object-portal",
+          name: "Portal",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step",
+              type: "Step",
+              key: null,
+              targetObjectId: null,
+              intervalMs: null,
+              actions: [{ id: "action-go-room", type: "goToRoom", roomId: "room-b" }]
+            }
+          ]
+        }
+      ],
+      rooms: [
+        {
+          id: "room-a",
+          name: "Room A",
+          instances: [{ id: "instance-portal", objectId: "object-portal", x: 10, y: 10 }]
+        },
+        {
+          id: "room-b",
+          name: "Room B",
+          instances: []
+        }
+      ],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const result = runRuntimeTick(project, "room-a", new Set(), createInitialRuntimeState(project))
+
+    expect(result.activeRoomId).toBe("room-b")
+  })
+
+  it("keeps the same active room when goToRoom points to a missing room", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-go-to-room-missing",
+        name: "Go to room missing test",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: {
+        sprites: [],
+        sounds: []
+      },
+      variables: {
+        global: [],
+        objectByObjectId: {}
+      },
+      objects: [
+        {
+          id: "object-portal",
+          name: "Portal",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step",
+              type: "Step",
+              key: null,
+              targetObjectId: null,
+              intervalMs: null,
+              actions: [{ id: "action-go-room", type: "goToRoom", roomId: "room-missing" }]
+            }
+          ]
+        }
+      ],
+      rooms: [
+        {
+          id: "room-a",
+          name: "Room A",
+          instances: [{ id: "instance-portal", objectId: "object-portal", x: 10, y: 10 }]
+        }
+      ],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const result = runRuntimeTick(project, "room-a", new Set(), createInitialRuntimeState(project))
+
+    expect(result.activeRoomId).toBe("room-a")
+  })
+
+  it("flags restartRoom requests so controller can restore room snapshot", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-restart-room",
+        name: "Restart room test",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: {
+        sprites: [],
+        sounds: []
+      },
+      variables: {
+        global: [],
+        objectByObjectId: {}
+      },
+      objects: [
+        {
+          id: "object-restarter",
+          name: "Restarter",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step",
+              type: "Step",
+              key: null,
+              targetObjectId: null,
+              intervalMs: null,
+              actions: [{ id: "action-restart", type: "restartRoom" }]
+            }
+          ]
+        }
+      ],
+      rooms: [{ id: "room-main", name: "Main", instances: [{ id: "instance-a", objectId: "object-restarter", x: 2, y: 3 }] }],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+
+    expect(result.restartRoomRequested).toBe(true)
+    expect(result.activeRoomId).toBe("room-main")
+  })
+
+  it("triggers Timer events only when interval elapsed", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-timer",
+        name: "Timer test",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: {
+        sprites: [],
+        sounds: []
+      },
+      variables: {
+        global: [],
+        objectByObjectId: {}
+      },
+      objects: [
+        {
+          id: "object-timer",
+          name: "TimerObject",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-timer",
+              type: "Timer",
+              key: null,
+              targetObjectId: null,
+              intervalMs: 1000,
+              actions: [{ id: "action-score", type: "changeScore", delta: 1 }]
+            }
+          ]
+        }
+      ],
+      rooms: [{ id: "room-main", name: "Main", instances: [{ id: "instance-timer", objectId: "object-timer", x: 0, y: 0 }] }],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    let state = createInitialRuntimeState(project)
+    let currentProject = project
+    for (let i = 0; i < 12; i += 1) {
+      const result = runRuntimeTick(currentProject, "room-main", new Set(), state)
+      state = result.runtime
+      currentProject = result.project
+    }
+    expect(state.score).toBe(0)
+
+    const firstTrigger = runRuntimeTick(currentProject, "room-main", new Set(), state)
+    expect(firstTrigger.runtime.score).toBe(1)
+
+    state = firstTrigger.runtime
+    currentProject = firstTrigger.project
+    for (let i = 0; i < 12; i += 1) {
+      const result = runRuntimeTick(currentProject, "room-main", new Set(), state)
+      state = result.runtime
+      currentProject = result.project
+    }
+    expect(state.score).toBe(1)
+
+    const secondTrigger = runRuntimeTick(currentProject, "room-main", new Set(), state)
+    expect(secondTrigger.runtime.score).toBe(2)
+  })
+
+  it("applies add/subtract/multiply for numeric variables and ignores non numeric targets", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-arithmetic",
+        name: "Arithmetic test",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: {
+        sprites: [],
+        sounds: []
+      },
+      variables: {
+        global: [
+          { id: "gv-number", name: "number", type: "number", initialValue: 2 },
+          { id: "gv-string", name: "text", type: "string", initialValue: "hola" }
+        ],
+        objectByObjectId: {
+          "object-calc": [
+            { id: "ov-number", name: "energy", type: "number", initialValue: 10 },
+            { id: "ov-bool", name: "flag", type: "boolean", initialValue: true }
+          ]
+        }
+      },
+      objects: [
+        {
+          id: "object-calc",
+          name: "Calculator",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step",
+              type: "Step",
+              key: null,
+              targetObjectId: null,
+              intervalMs: null,
+              actions: [
+                { id: "a1", type: "addGlobalVariable", variableId: "gv-number", value: 3 },
+                { id: "a2", type: "subtractGlobalVariable", variableId: "gv-number", value: 1 },
+                { id: "a3", type: "multiplyGlobalVariable", variableId: "gv-number", value: 5 },
+                { id: "a4", type: "addGlobalVariable", variableId: "gv-string", value: 9 },
+                {
+                  id: "a5",
+                  type: "addObjectVariable",
+                  variableId: "ov-number",
+                  target: "self",
+                  targetInstanceId: null,
+                  value: 5
+                },
+                {
+                  id: "a6",
+                  type: "subtractObjectVariable",
+                  variableId: "ov-number",
+                  target: "self",
+                  targetInstanceId: null,
+                  value: 3
+                },
+                {
+                  id: "a7",
+                  type: "multiplyObjectVariable",
+                  variableId: "ov-number",
+                  target: "self",
+                  targetInstanceId: null,
+                  value: 2
+                },
+                {
+                  id: "a8",
+                  type: "addObjectVariable",
+                  variableId: "ov-bool",
+                  target: "self",
+                  targetInstanceId: null,
+                  value: 1
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      rooms: [{ id: "room-main", name: "Main", instances: [{ id: "instance-calc", objectId: "object-calc", x: 0, y: 0 }] }],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+
+    expect(result.runtime.globalVariables["gv-number"]).toBe(20)
+    expect(result.runtime.globalVariables["gv-string"]).toBe("hola")
+    expect(result.runtime.objectInstanceVariables["instance-calc"]?.["ov-number"]).toBe(24)
+    expect(result.runtime.objectInstanceVariables["instance-calc"]?.["ov-bool"]).toBe(true)
   })
 })

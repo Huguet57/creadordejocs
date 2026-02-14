@@ -152,13 +152,37 @@ export function useEditorController() {
     const interval = window.setInterval(() => {
       setProject((previous) => {
         const result = runRuntimeTick(previous, activeRoom.id, pressedKeysRef.current, runtimeRef.current)
-        runtimeRef.current = result.runtime
-        setRuntimeState(result.runtime)
-        return result.project
+        let nextProject = result.project
+        let nextRuntime = result.runtime
+
+        if (result.restartRoomRequested && runSnapshot) {
+          const snapshotRoom = runSnapshot.rooms.find((roomEntry) => roomEntry.id === activeRoom.id)
+          if (snapshotRoom) {
+            nextProject = {
+              ...nextProject,
+              rooms: nextProject.rooms.map((roomEntry) =>
+                roomEntry.id === activeRoom.id
+                  ? {
+                      ...roomEntry,
+                      instances: snapshotRoom.instances.map((instanceEntry) => ({ ...instanceEntry }))
+                    }
+                  : roomEntry
+              )
+            }
+            nextRuntime = createInitialRuntimeState(nextProject)
+          }
+        }
+
+        runtimeRef.current = nextRuntime
+        setRuntimeState(nextRuntime)
+        if (result.activeRoomId !== activeRoom.id) {
+          setActiveRoomId(result.activeRoomId)
+        }
+        return nextProject
       })
     }, 80)
     return () => window.clearInterval(interval)
-  }, [activeRoom, isRunning])
+  }, [activeRoom, isRunning, runSnapshot])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
@@ -325,21 +349,32 @@ export function useEditorController() {
     updateSoundSource(soundId: string, source: string) {
       pushProjectChange(updateSoundAssetSource(project, soundId, source))
     },
-    addObjectEvent(type: ObjectEventType, key: ObjectEventKey | null = null, targetObjectId: string | null = null) {
+    addObjectEvent(
+      type: ObjectEventType,
+      key: ObjectEventKey | null = null,
+      targetObjectId: string | null = null,
+      intervalMs: number | null = null
+    ) {
       if (!selectedObject) return
       pushProjectChange(
-        addObjectEvent(project, { objectId: selectedObject.id, type, key, targetObjectId }),
+        addObjectEvent(project, { objectId: selectedObject.id, type, key, targetObjectId, intervalMs }),
         `Add ${type} event`
       )
     },
-    updateObjectEventConfig(eventId: string, key: ObjectEventKey | null, targetObjectId: string | null) {
+    updateObjectEventConfig(
+      eventId: string,
+      key: ObjectEventKey | null,
+      targetObjectId: string | null,
+      intervalMs: number | null
+    ) {
       if (!selectedObject) return
       pushProjectChange(
         updateObjectEventConfigModel(project, {
           objectId: selectedObject.id,
           eventId,
           key,
-          targetObjectId
+          targetObjectId,
+          intervalMs
         })
       )
     },

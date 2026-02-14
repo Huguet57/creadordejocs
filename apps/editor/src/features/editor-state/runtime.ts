@@ -25,6 +25,9 @@ export type RuntimeState = {
   instanceStartPositions: Record<string, { x: number; y: number }>
   globalVariables: Record<string, RuntimeVariableValue>
   objectInstanceVariables: Record<string, Record<string, RuntimeVariableValue>>
+  nextRoomId: string | null
+  restartRoomRequested: boolean
+  timerElapsedByEventId: Record<string, number>
 }
 
 function clampValue(value: number, min: number, max: number): number {
@@ -125,6 +128,56 @@ function resolveTargetInstanceId(
 
 function isSameVariableValueType(left: RuntimeVariableValue, right: RuntimeVariableValue): boolean {
   return typeof left === typeof right
+}
+
+function applyGlobalNumericOperation(
+  runtime: RuntimeState,
+  variableId: string,
+  value: number,
+  operation: "add" | "subtract" | "multiply"
+): RuntimeState {
+  const existingValue = runtime.globalVariables[variableId]
+  if (typeof existingValue !== "number") {
+    return runtime
+  }
+  const nextValue =
+    operation === "add" ? existingValue + value : operation === "subtract" ? existingValue - value : existingValue * value
+  return {
+    ...runtime,
+    globalVariables: {
+      ...runtime.globalVariables,
+      [variableId]: nextValue
+    }
+  }
+}
+
+function applyObjectNumericOperation(
+  runtime: RuntimeState,
+  targetInstanceId: string | null,
+  variableId: string,
+  value: number,
+  operation: "add" | "subtract" | "multiply"
+): RuntimeState {
+  if (!targetInstanceId) {
+    return runtime
+  }
+  const targetVariables = runtime.objectInstanceVariables[targetInstanceId]
+  const existingValue = targetVariables?.[variableId]
+  if (typeof existingValue !== "number") {
+    return runtime
+  }
+  const nextValue =
+    operation === "add" ? existingValue + value : operation === "subtract" ? existingValue - value : existingValue * value
+  return {
+    ...runtime,
+    objectInstanceVariables: {
+      ...runtime.objectInstanceVariables,
+      [targetInstanceId]: {
+        ...runtime.objectInstanceVariables[targetInstanceId],
+        [variableId]: nextValue
+      }
+    }
+  }
 }
 
 function runOnDestroyEvents(
@@ -430,6 +483,102 @@ function runEventActions(
           }
         }
       }
+      continue
+    }
+    if (actionEntry.type === "goToRoom") {
+      const targetRoom = project.rooms.find((roomEntry) => roomEntry.id === actionEntry.roomId)
+      if (!targetRoom) {
+        continue
+      }
+      result = {
+        ...result,
+        runtime: {
+          ...result.runtime,
+          nextRoomId: actionEntry.roomId
+        }
+      }
+      continue
+    }
+    if (actionEntry.type === "restartRoom") {
+      result = {
+        ...result,
+        runtime: {
+          ...result.runtime,
+          restartRoomRequested: true
+        }
+      }
+      continue
+    }
+    if (actionEntry.type === "addGlobalVariable") {
+      result = {
+        ...result,
+        runtime: applyGlobalNumericOperation(result.runtime, actionEntry.variableId, actionEntry.value, "add")
+      }
+      continue
+    }
+    if (actionEntry.type === "subtractGlobalVariable") {
+      result = {
+        ...result,
+        runtime: applyGlobalNumericOperation(result.runtime, actionEntry.variableId, actionEntry.value, "subtract")
+      }
+      continue
+    }
+    if (actionEntry.type === "multiplyGlobalVariable") {
+      result = {
+        ...result,
+        runtime: applyGlobalNumericOperation(result.runtime, actionEntry.variableId, actionEntry.value, "multiply")
+      }
+      continue
+    }
+    if (actionEntry.type === "addObjectVariable") {
+      const targetInstanceId = resolveTargetInstanceId(
+        result.instance,
+        actionEntry.target,
+        actionEntry.targetInstanceId,
+        collisionOtherInstanceId
+      )
+      result = {
+        ...result,
+        runtime: applyObjectNumericOperation(result.runtime, targetInstanceId, actionEntry.variableId, actionEntry.value, "add")
+      }
+      continue
+    }
+    if (actionEntry.type === "subtractObjectVariable") {
+      const targetInstanceId = resolveTargetInstanceId(
+        result.instance,
+        actionEntry.target,
+        actionEntry.targetInstanceId,
+        collisionOtherInstanceId
+      )
+      result = {
+        ...result,
+        runtime: applyObjectNumericOperation(
+          result.runtime,
+          targetInstanceId,
+          actionEntry.variableId,
+          actionEntry.value,
+          "subtract"
+        )
+      }
+      continue
+    }
+    if (actionEntry.type === "multiplyObjectVariable") {
+      const targetInstanceId = resolveTargetInstanceId(
+        result.instance,
+        actionEntry.target,
+        actionEntry.targetInstanceId,
+        collisionOtherInstanceId
+      )
+      result = {
+        ...result,
+        runtime: applyObjectNumericOperation(
+          result.runtime,
+          targetInstanceId,
+          actionEntry.variableId,
+          actionEntry.value,
+          "multiply"
+        )
+      }
     }
   }
 
@@ -572,7 +721,10 @@ export function createInitialRuntimeState(project?: ProjectV1): RuntimeState {
     playedSoundIds: [],
     instanceStartPositions: {},
     globalVariables: project ? buildInitialGlobalVariables(project) : {},
-    objectInstanceVariables: {}
+    objectInstanceVariables: {},
+    nextRoomId: null,
+    restartRoomRequested: false,
+    timerElapsedByEventId: {}
   }
 }
 
@@ -581,10 +733,10 @@ export function runRuntimeTick(
   roomId: string,
   pressedKeys: Set<string>,
   runtime: RuntimeState
-): { project: ProjectV1; runtime: RuntimeState } {
+): { project: ProjectV1; runtime: RuntimeState; activeRoomId: string; restartRoomRequested: boolean } {
   const room = project.rooms.find((roomEntry) => roomEntry.id === roomId)
   if (!room || runtime.gameOver) {
-    return { project, runtime }
+    return { project, runtime, activeRoomId: roomId, restartRoomRequested: false }
   }
 
   let nextRuntime: RuntimeState = {
@@ -593,7 +745,9 @@ export function runRuntimeTick(
     globalVariables: {
       ...buildInitialGlobalVariables(project),
       ...runtime.globalVariables
-    }
+    },
+    nextRoomId: null,
+    restartRoomRequested: false
   }
   let nextInstances: ProjectV1["rooms"][number]["instances"] = []
   const pendingDestroyedInstanceIds = new Set<string>()
@@ -624,6 +778,18 @@ export function runRuntimeTick(
       }
       if (eventEntry.type === "Create") {
         return shouldInitialize
+      }
+      if (eventEntry.type === "Timer") {
+        const intervalMs = eventEntry.intervalMs ?? 1000
+        const elapsed = (nextRuntime.timerElapsedByEventId[eventEntry.id] ?? 0) + 80
+        nextRuntime = {
+          ...nextRuntime,
+          timerElapsedByEventId: {
+            ...nextRuntime.timerElapsedByEventId,
+            [eventEntry.id]: elapsed >= intervalMs ? 0 : elapsed
+          }
+        }
+        return elapsed >= intervalMs
       }
       if (eventEntry.type !== "Keyboard" || !eventEntry.key) {
         return false
@@ -705,7 +871,9 @@ export function runRuntimeTick(
   const compactedRuntime: RuntimeState = {
     ...collisionResult.runtime,
     instanceStartPositions: keptStartPositions,
-    objectInstanceVariables: keptObjectVariableStates
+    objectInstanceVariables: keptObjectVariableStates,
+    nextRoomId: null,
+    restartRoomRequested: false
   }
   const nextProject: ProjectV1 = {
     ...project,
@@ -716,6 +884,8 @@ export function runRuntimeTick(
 
   return {
     project: nextProject,
-    runtime: compactedRuntime
+    runtime: compactedRuntime,
+    activeRoomId: collisionResult.runtime.nextRoomId ?? roomId,
+    restartRoomRequested: collisionResult.runtime.restartRoomRequested
   }
 }

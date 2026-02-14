@@ -70,6 +70,28 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
         objectVariableId: firstObjectVariable.id
       }
     }
+    if (type === "goToRoom") {
+      const firstRoom = controller.project.rooms[0]
+      if (!firstRoom) return null
+      return { type: "goToRoom", roomId: firstRoom.id }
+    }
+    if (type === "restartRoom") return { type: "restartRoom" }
+    if (type === "addGlobalVariable" || type === "subtractGlobalVariable" || type === "multiplyGlobalVariable") {
+      const firstNumberGlobal = controller.project.variables.global.find((definition) => definition.type === "number")
+      if (!firstNumberGlobal) return null
+      return { type, variableId: firstNumberGlobal.id, value: 1 }
+    }
+    if (type === "addObjectVariable" || type === "subtractObjectVariable" || type === "multiplyObjectVariable") {
+      const firstNumberObjectVariable = selectedObjectVariableDefinitions.find((definition) => definition.type === "number")
+      if (!firstNumberObjectVariable) return null
+      return {
+        type,
+        variableId: firstNumberObjectVariable.id,
+        target: "self",
+        targetInstanceId: null,
+        value: 1
+      }
+    }
     if (type === "destroySelf") return { type: "destroySelf" }
     if (type === "destroyOther") return { type: "destroyOther" }
     if (type === "changeScore") return { type: "changeScore", delta: 1 }
@@ -141,8 +163,8 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
             events={selectedObject.events}
             activeEventId={activeEventId}
             onSelectEvent={setActiveEventId}
-            onAddEvent={(type, key) => {
-              controller.addObjectEvent(type, key ?? null, null)
+            onAddEvent={(type, key, intervalMs) => {
+              controller.addObjectEvent(type, key ?? null, null, intervalMs ?? null)
               setSelectNewestListener(true)
             }}
             onRemoveEvent={(id) => {
@@ -160,9 +182,10 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
             objectVariablesByObjectId={controller.project.variables.objectByObjectId}
             roomInstances={controller.activeRoom?.instances ?? []}
             allObjects={controller.project.objects}
-            onUpdateEventConfig={(key, targetId) => {
+            rooms={controller.project.rooms}
+            onUpdateEventConfig={(key, targetId, intervalMs) => {
               if (activeEvent) {
-                controller.updateObjectEventConfig(activeEvent.id, key, targetId)
+                controller.updateObjectEventConfig(activeEvent.id, key, targetId, intervalMs)
               }
             }}
             onAddAction={handleAddAction}

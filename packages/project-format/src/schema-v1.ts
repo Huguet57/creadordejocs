@@ -149,14 +149,66 @@ const ObjectActionSchema = z.discriminatedUnion("type", [
     source: z.enum(["self", "other", "instanceId"]),
     sourceInstanceId: z.string().nullable().default(null),
     objectVariableId: z.string().min(1)
+  }),
+  z.object({
+    id: z.string().min(1),
+    type: z.literal("goToRoom"),
+    roomId: z.string().min(1)
+  }),
+  z.object({
+    id: z.string().min(1),
+    type: z.literal("restartRoom")
+  }),
+  z.object({
+    id: z.string().min(1),
+    type: z.literal("addGlobalVariable"),
+    variableId: z.string().min(1),
+    value: z.number()
+  }),
+  z.object({
+    id: z.string().min(1),
+    type: z.literal("subtractGlobalVariable"),
+    variableId: z.string().min(1),
+    value: z.number()
+  }),
+  z.object({
+    id: z.string().min(1),
+    type: z.literal("multiplyGlobalVariable"),
+    variableId: z.string().min(1),
+    value: z.number()
+  }),
+  z.object({
+    id: z.string().min(1),
+    type: z.literal("addObjectVariable"),
+    variableId: z.string().min(1),
+    target: z.enum(["self", "other", "instanceId"]),
+    targetInstanceId: z.string().nullable().default(null),
+    value: z.number()
+  }),
+  z.object({
+    id: z.string().min(1),
+    type: z.literal("subtractObjectVariable"),
+    variableId: z.string().min(1),
+    target: z.enum(["self", "other", "instanceId"]),
+    targetInstanceId: z.string().nullable().default(null),
+    value: z.number()
+  }),
+  z.object({
+    id: z.string().min(1),
+    type: z.literal("multiplyObjectVariable"),
+    variableId: z.string().min(1),
+    target: z.enum(["self", "other", "instanceId"]),
+    targetInstanceId: z.string().nullable().default(null),
+    value: z.number()
   })
 ])
 
 const ObjectEventSchema = z.object({
   id: z.string().min(1),
-  type: z.enum(["Create", "Step", "Draw", "Collision", "Keyboard", "OnDestroy", "OutsideRoom"]),
+  type: z.enum(["Create", "Step", "Draw", "Collision", "Keyboard", "OnDestroy", "OutsideRoom", "Timer"]),
   key: z.enum(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"]).nullable().default(null),
   targetObjectId: z.string().nullable().default(null),
+  intervalMs: z.number().positive().nullable().default(null),
   actions: z.array(ObjectActionSchema).default([])
 })
 
