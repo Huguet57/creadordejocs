@@ -1,4 +1,4 @@
-import { Coins, Crosshair, Gamepad2, Route } from "lucide-react"
+import { Coins, Crosshair, Route } from "lucide-react"
 import { Button } from "../../components/ui/button.js"
 import {
   GAME_TEMPLATES,
@@ -12,7 +12,6 @@ type TemplatesSectionProps = {
 }
 
 const templateIcons: Record<GameTemplateId, React.ElementType> = {
-  dodge: Gamepad2,
   "coin-dash": Coins,
   "space-shooter": Crosshair,
   "lane-crosser": Route

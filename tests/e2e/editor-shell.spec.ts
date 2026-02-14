@@ -54,7 +54,7 @@ test("creates sprite, sound, object and object listener", async ({ page }) => {
   await expect(page.locator(".group").filter({ hasText: "MOVE" })).toBeVisible()
 })
 
-test("loads dodge template and runs gameplay hud", async ({ page }) => {
+test("loads a template and runs gameplay hud", async ({ page }) => {
   await page.getByTestId("sidebar-templates").click()
   await page.getByRole("button", { name: "Load Template" }).click()
   await page.getByTestId("sidebar-run").click()

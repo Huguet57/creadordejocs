@@ -52,8 +52,8 @@ export function EditorTopbar({
         <Button data-testid="load-local-button" variant="outline" onClick={onLoad}>
           Load local
         </Button>
-        <Button data-testid="load-dodge-template-button" variant="outline" onClick={onLoadTemplate}>
-          Load Dodge template
+        <Button data-testid="load-coin-dash-template-button" variant="outline" onClick={onLoadTemplate}>
+          Load Coin Dash template
         </Button>
       </div>
     </header>

@@ -1,6 +1,6 @@
 import type { ProjectV1 } from "@creadordejocs/project-format"
 
-export type GameTemplateId = "dodge" | "coin-dash" | "space-shooter" | "lane-crosser"
+export type GameTemplateId = "coin-dash" | "space-shooter" | "lane-crosser"
 
 export type GameTemplateDefinition = {
   id: GameTemplateId

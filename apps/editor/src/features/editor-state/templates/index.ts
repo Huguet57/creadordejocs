@@ -1,15 +1,9 @@
 import { createCoinDashTemplateProject } from "./coin-dash-template.js"
-import { createDodgeTemplateProject } from "./dodge-template.js"
 import { createLaneCrosserTemplateProject } from "./lane-crosser-template.js"
 import { createSpaceShooterTemplateProject } from "./space-shooter-template.js"
 import type { GameTemplateId, TemplateProjectResult } from "./types.js"
 
 export const GAME_TEMPLATES = [
-  {
-    id: "dodge",
-    name: "Dodge Arena",
-    description: "Survive while enemies move across the room. Arrow keys to dodge."
-  },
   {
     id: "coin-dash",
     name: "Coin Dash",
@@ -28,9 +22,6 @@ export const GAME_TEMPLATES = [
 ] as const
 
 export function createTemplateProject(templateId: GameTemplateId): TemplateProjectResult {
-  if (templateId === "dodge") {
-    return createDodgeTemplateProject()
-  }
   if (templateId === "coin-dash") {
     return createCoinDashTemplateProject()
   }
