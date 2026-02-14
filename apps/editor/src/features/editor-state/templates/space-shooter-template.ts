@@ -35,8 +35,14 @@ export function createSpaceShooterTemplateProject(): TemplateProjectResult {
     x: 280,
     y: 20
   })
+  const spawnerObject = quickCreateObject(asteroidObject.project, {
+    name: "Spawner",
+    spriteId: null,
+    x: 280,
+    y: 20
+  })
 
-  const room = createRoom(asteroidObject.project, "Asteroid Field")
+  const room = createRoom(spawnerObject.project, "Asteroid Field")
   const withShip = addRoomInstance(room.project, {
     roomId: room.roomId,
     objectId: shipObject.objectId,
@@ -61,8 +67,14 @@ export function createSpaceShooterTemplateProject(): TemplateProjectResult {
     x: 430,
     y: 30
   }).project
+  const withSpawner = addRoomInstance(withAsteroid3, {
+    roomId: room.roomId,
+    objectId: spawnerObject.objectId,
+    x: 280,
+    y: 20
+  }).project
 
-  let project = withAsteroid3
+  let project = withSpawner
   project = addEventWithActions(project, shipObject.objectId, { type: "Keyboard", key: "ArrowLeft" }, [
     { type: "move", dx: -6, dy: 0 }
   ])
@@ -95,9 +107,13 @@ export function createSpaceShooterTemplateProject(): TemplateProjectResult {
   project = addEventWithActions(project, asteroidObject.objectId, { type: "Step" }, [
     { type: "setVelocity", speed: 1.8, direction: 90 }
   ])
+  project = addEventWithActions(project, asteroidObject.objectId, { type: "OutsideRoom" }, [{ type: "destroySelf" }])
   project = addEventWithActions(project, asteroidObject.objectId, { type: "OnDestroy" }, [
     { type: "playSound", soundId: soundExplosion.soundId },
     { type: "changeScore", delta: 10 }
+  ])
+  project = addEventWithActions(project, spawnerObject.objectId, { type: "Timer", intervalMs: 2000 }, [
+    { type: "spawnObject", objectId: asteroidObject.objectId, offsetX: 0, offsetY: 0 }
   ])
   project = addEventWithActions(
     project,

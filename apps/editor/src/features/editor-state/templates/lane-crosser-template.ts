@@ -100,21 +100,23 @@ export function createLaneCrosserTemplateProject(): TemplateProjectResult {
   project = addEventWithActions(project, carLeftObject.objectId, { type: "Step" }, [
     { type: "setVelocity", speed: 2.4, direction: 180 }
   ])
-  project = addEventWithActions(project, playerObject.objectId, { type: "OnDestroy" }, [
-    { type: "playSound", soundId: soundCrash.soundId },
-    { type: "endGame", message: "Atropellat! Torna-ho a provar." }
-  ])
   project = addEventWithActions(
     project,
     playerObject.objectId,
     { type: "Collision", targetObjectId: carRightObject.objectId },
-    [{ type: "destroySelf" }]
+    [
+      { type: "playSound", soundId: soundCrash.soundId },
+      { type: "restartRoom" }
+    ]
   )
   project = addEventWithActions(
     project,
     playerObject.objectId,
     { type: "Collision", targetObjectId: carLeftObject.objectId },
-    [{ type: "destroySelf" }]
+    [
+      { type: "playSound", soundId: soundCrash.soundId },
+      { type: "restartRoom" }
+    ]
   )
   project = addEventWithActions(project, goalObject.objectId, { type: "OnDestroy" }, [
     { type: "playSound", soundId: soundGoal.soundId },
