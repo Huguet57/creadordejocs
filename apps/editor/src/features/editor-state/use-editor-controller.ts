@@ -8,6 +8,7 @@ import {
   incrementMetric,
   moveObjectEventAction as moveObjectEventActionModel,
   moveRoomInstance,
+  removeRoomInstance,
   quickCreateObject,
   quickCreateSound,
   quickCreateSprite,
@@ -307,11 +308,13 @@ export function useEditorController() {
         })
       )
     },
-    addInstanceToActiveRoom() {
-      if (!activeRoom || !selectedObject) return
+    addInstanceToActiveRoom(objectId?: string) {
+      if (!activeRoom) return
+      const targetObjectId = objectId ?? selectedObject?.id
+      if (!targetObjectId) return
       const next = addRoomInstance(project, {
         roomId: activeRoom.id,
-        objectId: selectedObject.id,
+        objectId: targetObjectId,
         x: 80,
         y: 80
       }).project
@@ -322,6 +325,13 @@ export function useEditorController() {
       pushProjectChange(
         moveRoomInstance(project, { roomId: activeRoom.id, instanceId, x, y }),
         "Move instance"
+      )
+    },
+    removeInstance(instanceId: string) {
+      if (!activeRoom) return
+      pushProjectChange(
+        removeRoomInstance(project, { roomId: activeRoom.id, instanceId }),
+        "Remove instance"
       )
     },
     run() {

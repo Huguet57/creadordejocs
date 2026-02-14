@@ -424,3 +424,36 @@ export function moveRoomInstance(project: ProjectV1, input: MoveRoomInstanceInpu
     )
   }
 }
+
+export type RemoveRoomInstanceInput = {
+  roomId: string
+  instanceId: string
+}
+
+export function removeRoomInstance(project: ProjectV1, input: RemoveRoomInstanceInput): ProjectV1 {
+  return {
+    ...project,
+    rooms: project.rooms.map((room) =>
+      room.id === input.roomId
+        ? {
+            ...room,
+            instances: room.instances.filter((instance) => instance.id !== input.instanceId)
+          }
+        : room
+    )
+  }
+}
+
+export type AddInstanceInput = {
+  roomId: string
+  objectId: string
+  x: number
+  y: number
+}
+
+export function addInstanceForObject(
+  project: ProjectV1,
+  input: AddInstanceInput
+): { project: ProjectV1; instanceId: string } {
+  return addRoomInstance(project, input)
+}
