@@ -1,5 +1,5 @@
 import { Box, Plus, X } from "lucide-react"
-import { useCallback, useState, type ChangeEvent, type KeyboardEvent } from "react"
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from "react"
 import { Button } from "../../components/ui/button.js"
 import type { ProjectV1 } from "@creadordejocs/project-format"
 
@@ -20,6 +20,21 @@ export function ObjectListPanel({
 }: ObjectListPanelProps) {
   const [isAdding, setIsAdding] = useState(false)
   const [newObjectName, setNewObjectName] = useState("Objecte nou")
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const resetIdleTimer = () => {
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
+    idleTimerRef.current = setTimeout(() => setIsAdding(false), 5000)
+  }
+
+  useEffect(() => {
+    if (isAdding) {
+      resetIdleTimer()
+    }
+    return () => {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
+    }
+  }, [isAdding])
 
   const inputCallbackRef = useCallback((node: HTMLInputElement | null) => {
     if (node) node.select()
@@ -85,20 +100,21 @@ export function ObjectListPanel({
         </div>
       </div>
 
-      <div className="border-t border-slate-200 p-3 space-y-2">
+      <div className="border-t border-slate-200 bg-white p-3 space-y-2">
         {isAdding ? (
           <div className="flex gap-2">
             <input
               ref={inputCallbackRef}
               value={newObjectName}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setNewObjectName(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                setNewObjectName(e.target.value)
+                resetIdleTimer()
+              }}
               onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
                 blockUndoShortcuts(e)
+                resetIdleTimer()
                 if (e.key === "Enter") handleAddObject()
                 if (e.key === "Escape") setIsAdding(false)
-              }}
-              onBlur={() => {
-                if (!newObjectName.trim()) setIsAdding(false)
               }}
               className="flex h-8 w-full rounded-md border border-slate-300 bg-white px-3 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
               placeholder="Name..."

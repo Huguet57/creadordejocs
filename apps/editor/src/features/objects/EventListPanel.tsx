@@ -1,5 +1,5 @@
 import { Activity, Keyboard, MousePointerClick, Play, Zap, Plus, X } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Button } from "../../components/ui/button.js"
 import { OBJECT_EVENT_TYPES, OBJECT_EVENT_KEYS, type ObjectEventType, type ObjectEventKey, type ObjectEventEntry } from "../editor-state/types.js"
 
@@ -29,6 +29,21 @@ export function EventListPanel({
   const [isAdding, setIsAdding] = useState(false)
   const [eventType, setEventType] = useState<ObjectEventType>("Create")
   const [eventKey, setEventKey] = useState<ObjectEventKey>("ArrowLeft")
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const resetIdleTimer = () => {
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
+    idleTimerRef.current = setTimeout(() => setIsAdding(false), 5000)
+  }
+
+  useEffect(() => {
+    if (isAdding) {
+      resetIdleTimer()
+    }
+    return () => {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
+    }
+  }, [isAdding])
 
   const handleAddEvent = () => {
     onAddEvent(eventType, eventType === "Keyboard" ? eventKey : null)
@@ -96,7 +111,10 @@ export function EventListPanel({
               <select
                 className="h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-none"
                 value={eventType}
-                onChange={(e) => setEventType(e.target.value as ObjectEventType)}
+                onChange={(e) => {
+                  setEventType(e.target.value as ObjectEventType)
+                  resetIdleTimer()
+                }}
               >
                 {OBJECT_EVENT_TYPES.map((type) => (
                   <option key={type} value={type}>{type}</option>
@@ -116,7 +134,10 @@ export function EventListPanel({
               <select
                 className="h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-none"
                 value={eventKey}
-                onChange={(e) => setEventKey(e.target.value as ObjectEventKey)}
+                onChange={(e) => {
+                  setEventKey(e.target.value as ObjectEventKey)
+                  resetIdleTimer()
+                }}
               >
                 {OBJECT_EVENT_KEYS.map((key) => (
                   <option key={key} value={key}>{key}</option>
