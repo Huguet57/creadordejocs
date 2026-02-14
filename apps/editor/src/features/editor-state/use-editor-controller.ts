@@ -62,6 +62,16 @@ function createInitialEditorState(): { project: ProjectV1; roomId: string } {
   return ensureProjectHasRoom(incrementMetric(createEmptyProjectV1("Primer joc autònom"), "appStart"))
 }
 
+export function resolveResetState(
+  currentProject: ProjectV1,
+  runSnapshot: ProjectV1 | null
+): { project: ProjectV1; runSnapshot: null } {
+  return {
+    project: runSnapshot ?? currentProject,
+    runSnapshot: null
+  }
+}
+
 export function useEditorController() {
   const initial = createInitialEditorState()
   const [project, setProject] = useState<ProjectV1>(initial.project)
@@ -383,10 +393,10 @@ export function useEditorController() {
       setActiveSection("run")
     },
     reset() {
-      if (runSnapshot) {
-        setProject(runSnapshot)
-      }
+      const nextResetState = resolveResetState(project, runSnapshot)
+      setProject(nextResetState.project)
       setIsRunning(false)
+      setRunSnapshot(nextResetState.runSnapshot)
       const resetRuntime = createInitialRuntimeState()
       runtimeRef.current = resetRuntime
       setRuntimeState(resetRuntime)
