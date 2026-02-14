@@ -1,17 +1,35 @@
-import { useState, type ChangeEvent, type KeyboardEvent } from "react"
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from "react"
+import { Music, Plus, Upload } from "lucide-react"
 import type { EditorController } from "../editor-state/use-editor-controller.js"
 import { Button } from "../../components/ui/button.js"
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card.js"
-import { Input } from "../../components/ui/input.js"
-import { Label } from "../../components/ui/label.js"
 
 type SoundEditorSectionProps = {
   controller: EditorController
 }
 
 export function SoundEditorSection({ controller }: SoundEditorSectionProps) {
+  const [isAdding, setIsAdding] = useState(false)
   const [soundName, setSoundName] = useState("So nou")
-  const [validationMessage, setValidationMessage] = useState<string>("")
+  const [validationMessage, setValidationMessage] = useState("")
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const resetIdleTimer = () => {
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
+    idleTimerRef.current = setTimeout(() => setIsAdding(false), 5000)
+  }
+
+  useEffect(() => {
+    if (isAdding) {
+      resetIdleTimer()
+    }
+    return () => {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
+    }
+  }, [isAdding])
+
+  const inputCallbackRef = useCallback((node: HTMLInputElement | null) => {
+    if (node) node.select()
+  }, [])
 
   const blockUndoShortcuts = (event: KeyboardEvent<HTMLInputElement>): void => {
     if ((event.metaKey || event.ctrlKey) && (event.key.toLowerCase() === "z" || event.key.toLowerCase() === "y")) {
@@ -19,84 +37,153 @@ export function SoundEditorSection({ controller }: SoundEditorSectionProps) {
     }
   }
 
+  const handleAddSound = () => {
+    if (!soundName.trim()) return
+    controller.addSound(soundName)
+    setSoundName("So nou")
+    setIsAdding(false)
+  }
+
+  const sounds = controller.project.resources.sounds
+
   return (
-    <Card className="mvp15-sound-editor-panel">
-      <CardHeader>
-        <CardTitle>Sound editor</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="sound-name-input">Sound name</Label>
-          <div className="flex gap-2">
-            <Input
-              id="sound-name-input"
-              value={soundName}
-              onKeyDown={blockUndoShortcuts}
-              onChange={(event: ChangeEvent<HTMLInputElement>) => setSoundName(event.target.value)}
-            />
-            <Button
-              onClick={() => {
-                controller.addSound(soundName)
-                setSoundName("So nou")
-              }}
-            >
-              + Sound
-            </Button>
+    <div className="mvp15-sound-editor-container flex h-[600px] w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+      {/* Left panel: Sound list */}
+      <aside className="flex w-[220px] flex-col border-r border-slate-200 bg-slate-50">
+        <div className="flex items-center justify-between border-b border-slate-200 p-3">
+          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Sounds</span>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-2">
+          <div className="flex flex-col gap-1">
+            {sounds.length === 0 && (
+              <p className="px-2 py-4 text-center text-xs text-slate-400">No sounds yet</p>
+            )}
+            {sounds.map((sound) => (
+              <div
+                key={sound.id}
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-slate-600"
+              >
+                <Music className="h-3.5 w-3.5 text-slate-400" />
+                <div className="flex flex-col overflow-hidden">
+                  <span className="truncate font-medium text-slate-900">{sound.name}</span>
+                  <span className="truncate text-[10px] text-slate-400">
+                    {sound.assetSource || "no source"}
+                  </span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
-        <div className="rounded-md border border-slate-200 p-3">
-          <p className="text-xs font-semibold text-slate-600">Upload pipeline</p>
-          <p className="mt-1 text-xs text-slate-500">
-            Pots importar WAV/MP3/OGG. Guardem nom/URL a `assetSource`.
-          </p>
-          {validationMessage && <p className="mt-2 text-xs text-rose-600">{validationMessage}</p>}
+        <div className="border-t border-slate-200 bg-white p-3">
+          {isAdding ? (
+            <div className="flex gap-2">
+              <input
+                ref={inputCallbackRef}
+                value={soundName}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                  setSoundName(e.target.value)
+                  resetIdleTimer()
+                }}
+                onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
+                  blockUndoShortcuts(e)
+                  resetIdleTimer()
+                  if (e.key === "Enter") handleAddSound()
+                  if (e.key === "Escape") setIsAdding(false)
+                }}
+                className="flex h-8 w-full rounded-md border border-slate-300 bg-white px-3 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+                placeholder="Name..."
+              />
+              <Button
+                size="sm"
+                className="h-8 w-8 shrink-0 px-0"
+                onClick={handleAddSound}
+                title="Add sound"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full h-8 text-xs"
+              onClick={() => setIsAdding(true)}
+            >
+              <Plus className="mr-2 h-3.5 w-3.5" />
+              Add Sound
+            </Button>
+          )}
+        </div>
+      </aside>
+
+      {/* Right panel: Asset source editor */}
+      <div className="flex flex-1 flex-col">
+        <div className="flex h-12 items-center border-b border-slate-200 px-4">
+          <h3 className="text-sm font-semibold text-slate-800">Asset Sources</h3>
         </div>
 
-        <ul className="space-y-2">
-          {controller.project.resources.sounds.length === 0 && (
-            <li className="text-sm text-slate-500">No hi ha sons encara.</li>
+        <div className="flex-1 overflow-y-auto p-4 bg-slate-50/50">
+          {validationMessage && (
+            <p className="mb-3 rounded border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600">
+              {validationMessage}
+            </p>
           )}
-          {controller.project.resources.sounds.map((soundEntry) => (
-            <li
-              key={soundEntry.id}
-              className="mvp15-sound-row flex items-center justify-between gap-2 rounded border border-slate-200 p-2"
-            >
-              <div>
-                <p className="text-sm font-medium">{soundEntry.name}</p>
-                <p className="text-xs text-slate-500">uploadStatus: {soundEntry.uploadStatus}</p>
-              </div>
-              <Input
-                className="max-w-56"
-                value={soundEntry.assetSource}
-                placeholder="/assets/sound.wav"
-                onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                  controller.updateSoundSource(soundEntry.id, event.target.value)
-                }
-              />
-              <label className="mvp2-sound-upload-label cursor-pointer rounded border border-slate-300 px-2 py-1 text-xs">
-                Import file
-                <input
-                  className="hidden"
-                  type="file"
-                  accept=".wav,.mp3,.ogg"
-                  onChange={(event) => {
-                    const selectedFile = event.target.files?.[0]
-                    if (!selectedFile) return
-                    const valid = /\.(wav|mp3|ogg)$/i.test(selectedFile.name)
-                    if (!valid) {
-                      setValidationMessage("Format invàlid. Usa WAV, MP3 o OGG.")
-                      return
+
+          {sounds.length === 0 ? (
+            <div className="flex h-full items-center justify-center text-slate-400">
+              <p>Add a sound to configure its source</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {sounds.map((sound) => (
+                <div
+                  key={sound.id}
+                  className="group flex items-center gap-3 rounded-md border border-slate-200 bg-white p-3 shadow-sm"
+                >
+                  <div className="min-w-[100px]">
+                    <p className="text-sm font-medium text-slate-800">{sound.name}</p>
+                    <p className="text-[10px] text-slate-400">
+                      {sound.uploadStatus === "ready" ? "ready" : "not connected"}
+                    </p>
+                  </div>
+
+                  <input
+                    value={sound.assetSource}
+                    placeholder="/assets/sound.wav"
+                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                      controller.updateSoundSource(sound.id, e.target.value)
                     }
-                    setValidationMessage("")
-                    controller.updateSoundSource(soundEntry.id, selectedFile.name)
-                  }}
-                />
-              </label>
-            </li>
-          ))}
-        </ul>
-      </CardContent>
-    </Card>
+                    className="flex h-8 flex-1 rounded-md border border-slate-200 bg-slate-50 px-3 py-1 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+                  />
+
+                  <label className="flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 text-xs text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900">
+                    <Upload className="h-3.5 w-3.5" />
+                    Import
+                    <input
+                      className="hidden"
+                      type="file"
+                      accept=".wav,.mp3,.ogg"
+                      onChange={(event) => {
+                        const selectedFile = event.target.files?.[0]
+                        if (!selectedFile) return
+                        const valid = /\.(wav|mp3|ogg)$/i.test(selectedFile.name)
+                        if (!valid) {
+                          setValidationMessage("Invalid format. Use WAV, MP3 or OGG.")
+                          return
+                        }
+                        setValidationMessage("")
+                        controller.updateSoundSource(sound.id, selectedFile.name)
+                      }}
+                    />
+                  </label>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   )
 }

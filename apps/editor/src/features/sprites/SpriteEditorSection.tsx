@@ -1,17 +1,35 @@
-import { useState, type ChangeEvent, type KeyboardEvent } from "react"
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from "react"
+import { Image, Plus, Upload } from "lucide-react"
 import type { EditorController } from "../editor-state/use-editor-controller.js"
 import { Button } from "../../components/ui/button.js"
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card.js"
-import { Input } from "../../components/ui/input.js"
-import { Label } from "../../components/ui/label.js"
 
 type SpriteEditorSectionProps = {
   controller: EditorController
 }
 
 export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
+  const [isAdding, setIsAdding] = useState(false)
   const [spriteName, setSpriteName] = useState("Sprite nou")
-  const [validationMessage, setValidationMessage] = useState<string>("")
+  const [validationMessage, setValidationMessage] = useState("")
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const resetIdleTimer = () => {
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
+    idleTimerRef.current = setTimeout(() => setIsAdding(false), 5000)
+  }
+
+  useEffect(() => {
+    if (isAdding) {
+      resetIdleTimer()
+    }
+    return () => {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
+    }
+  }, [isAdding])
+
+  const inputCallbackRef = useCallback((node: HTMLInputElement | null) => {
+    if (node) node.select()
+  }, [])
 
   const blockUndoShortcuts = (event: KeyboardEvent<HTMLInputElement>): void => {
     if ((event.metaKey || event.ctrlKey) && (event.key.toLowerCase() === "z" || event.key.toLowerCase() === "y")) {
@@ -19,86 +37,153 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
     }
   }
 
+  const handleAddSprite = () => {
+    if (!spriteName.trim()) return
+    controller.addSprite(spriteName)
+    setSpriteName("Sprite nou")
+    setIsAdding(false)
+  }
+
+  const sprites = controller.project.resources.sprites
+
   return (
-    <Card className="mvp15-sprite-editor-panel">
-      <CardHeader>
-        <CardTitle>Sprite editor</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="sprite-name-input">Sprite name</Label>
-          <div className="flex gap-2">
-            <Input
-              id="sprite-name-input"
-              data-testid="sprite-name-input"
-              value={spriteName}
-              onKeyDown={blockUndoShortcuts}
-              onChange={(event: ChangeEvent<HTMLInputElement>) => setSpriteName(event.target.value)}
-            />
-            <Button
-              data-testid="add-sprite-button"
-              onClick={() => {
-                controller.addSprite(spriteName)
-                setSpriteName("Sprite nou")
-              }}
-            >
-              + Sprite
-            </Button>
+    <div className="mvp15-sprite-editor-container flex h-[600px] w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+      {/* Left panel: Sprite list */}
+      <aside className="flex w-[220px] flex-col border-r border-slate-200 bg-slate-50">
+        <div className="flex items-center justify-between border-b border-slate-200 p-3">
+          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Sprites</span>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-2">
+          <div className="flex flex-col gap-1">
+            {sprites.length === 0 && (
+              <p className="px-2 py-4 text-center text-xs text-slate-400">No sprites yet</p>
+            )}
+            {sprites.map((sprite) => (
+              <div
+                key={sprite.id}
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-slate-600"
+              >
+                <Image className="h-3.5 w-3.5 text-slate-400" />
+                <div className="flex flex-col overflow-hidden">
+                  <span className="truncate font-medium text-slate-900">{sprite.name}</span>
+                  <span className="truncate text-[10px] text-slate-400">
+                    {sprite.assetSource || "no source"}
+                  </span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
-        <div className="rounded-md border border-slate-200 p-3">
-          <p className="text-xs font-semibold text-slate-600">Upload pipeline</p>
-          <p className="mt-1 text-xs text-slate-500">
-            Pots provar import local de PNG/JPG/GIF/WEBP. Guardem només el nom com `assetSource`.
-          </p>
-          {validationMessage && <p className="mt-2 text-xs text-rose-600">{validationMessage}</p>}
+        <div className="border-t border-slate-200 bg-white p-3">
+          {isAdding ? (
+            <div className="flex gap-2">
+              <input
+                ref={inputCallbackRef}
+                value={spriteName}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                  setSpriteName(e.target.value)
+                  resetIdleTimer()
+                }}
+                onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
+                  blockUndoShortcuts(e)
+                  resetIdleTimer()
+                  if (e.key === "Enter") handleAddSprite()
+                  if (e.key === "Escape") setIsAdding(false)
+                }}
+                className="flex h-8 w-full rounded-md border border-slate-300 bg-white px-3 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+                placeholder="Name..."
+              />
+              <Button
+                size="sm"
+                className="h-8 w-8 shrink-0 px-0"
+                onClick={handleAddSprite}
+                title="Add sprite"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full h-8 text-xs"
+              onClick={() => setIsAdding(true)}
+            >
+              <Plus className="mr-2 h-3.5 w-3.5" />
+              Add Sprite
+            </Button>
+          )}
+        </div>
+      </aside>
+
+      {/* Right panel: Asset source editor */}
+      <div className="flex flex-1 flex-col">
+        <div className="flex h-12 items-center border-b border-slate-200 px-4">
+          <h3 className="text-sm font-semibold text-slate-800">Asset Sources</h3>
         </div>
 
-        <ul className="space-y-2">
-          {controller.project.resources.sprites.length === 0 && (
-            <li className="text-sm text-slate-500">No hi ha sprites encara.</li>
+        <div className="flex-1 overflow-y-auto p-4 bg-slate-50/50">
+          {validationMessage && (
+            <p className="mb-3 rounded border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600">
+              {validationMessage}
+            </p>
           )}
-          {controller.project.resources.sprites.map((spriteEntry) => (
-            <li
-              key={spriteEntry.id}
-              className="mvp15-sprite-row flex items-center justify-between gap-2 rounded border border-slate-200 p-2"
-            >
-              <div>
-                <p className="text-sm font-medium">{spriteEntry.name}</p>
-                <p className="text-xs text-slate-500">uploadStatus: {spriteEntry.uploadStatus}</p>
-              </div>
-              <Input
-                className="max-w-56"
-                value={spriteEntry.assetSource}
-                placeholder="/assets/player.png"
-                onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                  controller.updateSpriteSource(spriteEntry.id, event.target.value)
-                }
-              />
-              <label className="mvp2-sprite-upload-label cursor-pointer rounded border border-slate-300 px-2 py-1 text-xs">
-                Import file
-                <input
-                  className="hidden"
-                  type="file"
-                  accept=".png,.jpg,.jpeg,.gif,.webp"
-                  onChange={(event) => {
-                    const selectedFile = event.target.files?.[0]
-                    if (!selectedFile) return
-                    const valid = /\.(png|jpe?g|gif|webp)$/i.test(selectedFile.name)
-                    if (!valid) {
-                      setValidationMessage("Format invàlid. Usa PNG, JPG, GIF o WEBP.")
-                      return
+
+          {sprites.length === 0 ? (
+            <div className="flex h-full items-center justify-center text-slate-400">
+              <p>Add a sprite to configure its source</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {sprites.map((sprite) => (
+                <div
+                  key={sprite.id}
+                  className="group flex items-center gap-3 rounded-md border border-slate-200 bg-white p-3 shadow-sm"
+                >
+                  <div className="min-w-[100px]">
+                    <p className="text-sm font-medium text-slate-800">{sprite.name}</p>
+                    <p className="text-[10px] text-slate-400">
+                      {sprite.uploadStatus === "ready" ? "ready" : "not connected"}
+                    </p>
+                  </div>
+
+                  <input
+                    value={sprite.assetSource}
+                    placeholder="/assets/player.png"
+                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                      controller.updateSpriteSource(sprite.id, e.target.value)
                     }
-                    setValidationMessage("")
-                    controller.updateSpriteSource(spriteEntry.id, selectedFile.name)
-                  }}
-                />
-              </label>
-            </li>
-          ))}
-        </ul>
-      </CardContent>
-    </Card>
+                    className="flex h-8 flex-1 rounded-md border border-slate-200 bg-slate-50 px-3 py-1 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+                  />
+
+                  <label className="flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 text-xs text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900">
+                    <Upload className="h-3.5 w-3.5" />
+                    Import
+                    <input
+                      className="hidden"
+                      type="file"
+                      accept=".png,.jpg,.jpeg,.gif,.webp"
+                      onChange={(event) => {
+                        const selectedFile = event.target.files?.[0]
+                        if (!selectedFile) return
+                        const valid = /\.(png|jpe?g|gif|webp)$/i.test(selectedFile.name)
+                        if (!valid) {
+                          setValidationMessage("Invalid format. Use PNG, JPG, GIF or WEBP.")
+                          return
+                        }
+                        setValidationMessage("")
+                        controller.updateSpriteSource(sprite.id, selectedFile.name)
+                      }}
+                    />
+                  </label>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   )
 }
