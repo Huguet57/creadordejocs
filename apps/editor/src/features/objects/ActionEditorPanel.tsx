@@ -1,4 +1,6 @@
-import { CopyPlus, Flag, Maximize, Move, FastForward, Trash, Trophy, Volume2, Plus, Locate, LocateFixed } from "lucide-react"
+import { CopyPlus, Flag, Maximize, Move, FastForward, Trash, Trophy, Volume2, Plus, Locate, LocateFixed, X } from "lucide-react"
+import { useState } from "react"
+import { Button } from "../../components/ui/button.js"
 import { Label } from "../../components/ui/label.js"
 import { OBJECT_ACTION_TYPES, OBJECT_EVENT_KEYS, type ObjectActionDraft, type ObjectActionType, type ObjectEventKey, type ObjectEventEntry } from "../editor-state/types.js"
 import { ActionBlock } from "./ActionBlock.js"
@@ -41,6 +43,8 @@ export function ActionEditorPanel({
   onMoveAction,
   onRemoveAction
 }: ActionEditorPanelProps) {
+  const [isActionPickerOpen, setIsActionPickerOpen] = useState(false)
+
   if (!selectedObject) {
     return (
       <div className="flex flex-1 items-center justify-center bg-slate-50 text-slate-400">
@@ -55,6 +59,11 @@ export function ActionEditorPanel({
         <p>Select an event to add actions</p>
       </div>
     )
+  }
+
+  const handleAddAction = (type: ObjectActionType) => {
+    onAddAction(type)
+    setIsActionPickerOpen(false)
   }
 
   return (
@@ -123,24 +132,53 @@ export function ActionEditorPanel({
         </div>
       </div>
 
-      <div className="border-t border-slate-200 p-3">
-        <p className="mb-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">Add Action</p>
-        <div className="grid grid-cols-4 gap-2">
-          {OBJECT_ACTION_TYPES.map((type) => {
-            const Icon = ACTION_ICONS[type] ?? Plus
-            return (
+      <div className="mvp3-action-picker border-t border-slate-200 p-3">
+        {!isActionPickerOpen && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mvp3-action-picker-toggle h-8 w-full justify-start text-xs"
+            onClick={() => setIsActionPickerOpen(true)}
+          >
+            <Plus className="mr-2 h-3.5 w-3.5" />
+            Add Action
+          </Button>
+        )}
+
+        {isActionPickerOpen && (
+          <div className="mvp3-action-picker-panel mt-2 rounded-md border border-slate-200 bg-slate-50 p-2">
+            <div className="mvp3-action-picker-panel-header mb-2 flex items-center justify-between">
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Add Action</p>
               <button
-                key={type}
                 type="button"
-                className="flex flex-col items-center justify-center gap-1.5 rounded border border-slate-200 bg-white p-2 text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
-                onClick={() => onAddAction(type)}
+                className="mvp3-action-picker-close inline-flex h-6 w-6 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
+                onClick={() => setIsActionPickerOpen(false)}
+                title="Cancel"
+                aria-label="Cancel add action"
               >
-                <Icon className="h-4 w-4" />
-                <span className="text-[10px] font-medium uppercase">{type}</span>
+                <X className="h-3.5 w-3.5" />
               </button>
-            )
-          })}
-        </div>
+            </div>
+
+            <div className="mvp3-action-picker-grid grid grid-cols-4 gap-2">
+              {OBJECT_ACTION_TYPES.map((type) => {
+                const Icon = ACTION_ICONS[type] ?? Plus
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    className="mvp3-action-picker-item flex flex-col items-center justify-center gap-1.5 rounded border border-slate-200 bg-white p-2 text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
+                    onClick={() => handleAddAction(type)}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span className="text-[10px] font-medium uppercase">{type}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
