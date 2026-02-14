@@ -56,43 +56,41 @@ export function ActionEditorPanel({
 
   return (
     <div className="mvp3-action-editor-panel flex flex-1 flex-col bg-white">
-      <div className="border-b border-slate-200 p-4">
-        <div className="flex items-center gap-4">
-          <h3 className="text-sm font-semibold text-slate-800">
-            When <span className="text-blue-600">{activeEvent.type}</span>
-          </h3>
-          
-          {activeEvent.type === "Keyboard" && (
-            <div className="flex items-center gap-2">
-              <Label className="text-xs text-slate-500">Key:</Label>
-              <select
-                className="h-7 rounded border border-slate-300 bg-white px-2 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none"
-                value={activeEvent.key ?? "ArrowLeft"}
-                onChange={(e) => onUpdateEventConfig(e.target.value as ObjectEventKey, activeEvent.targetObjectId)}
-              >
-                {OBJECT_EVENT_KEYS.map((key) => (
-                  <option key={key} value={key}>{key}</option>
-                ))}
-              </select>
-            </div>
-          )}
+      <div className="flex h-12 items-center justify-between border-b border-slate-200 px-4">
+        <h3 className="text-sm text-slate-800">
+          When <span className="font-semibold text-slate-900">{activeEvent.type}</span>
+        </h3>
 
-          {activeEvent.type === "Collision" && (
-            <div className="flex items-center gap-2">
-              <Label className="text-xs text-slate-500">Target:</Label>
-              <select
-                className="h-7 rounded border border-slate-300 bg-white px-2 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none"
-                value={activeEvent.targetObjectId ?? "any"}
-                onChange={(e) => onUpdateEventConfig(activeEvent.key, e.target.value === "any" ? null : e.target.value)}
-              >
-                <option value="any">Any object</option>
-                {selectableTargetObjects.map((obj) => (
-                  <option key={obj.id} value={obj.id}>{obj.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
-        </div>
+        {activeEvent.type === "Keyboard" && (
+          <div className="flex items-center gap-2">
+            <Label className="text-xs text-slate-400">Key</Label>
+            <select
+              className="h-7 rounded border border-slate-200 bg-slate-50 px-2 text-xs text-slate-700 focus:border-slate-400 focus:outline-none"
+              value={activeEvent.key ?? "ArrowLeft"}
+              onChange={(e) => onUpdateEventConfig(e.target.value as ObjectEventKey, activeEvent.targetObjectId)}
+            >
+              {OBJECT_EVENT_KEYS.map((key) => (
+                <option key={key} value={key}>{key}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {activeEvent.type === "Collision" && (
+          <div className="flex items-center gap-2">
+            <Label className="text-xs text-slate-400">Target</Label>
+            <select
+              className="h-7 rounded border border-slate-200 bg-slate-50 px-2 text-xs text-slate-700 focus:border-slate-400 focus:outline-none"
+              value={activeEvent.targetObjectId ?? "any"}
+              onChange={(e) => onUpdateEventConfig(activeEvent.key, e.target.value === "any" ? null : e.target.value)}
+            >
+              <option value="any">Any object</option>
+              {selectableTargetObjects.map((obj) => (
+                <option key={obj.id} value={obj.id}>{obj.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 bg-slate-50/50">
