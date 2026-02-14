@@ -23,6 +23,10 @@ export type ObjectActionType =
   | "restartRoom"
 
 export type ObjectEventEntry = ProjectV1["objects"][number]["events"][number]
+export type ObjectEventItem = ObjectEventEntry["items"][number]
+export type ObjectIfBlockItem = Extract<ObjectEventItem, { type: "if" }>
+export type ObjectEventActionItem = Extract<ObjectEventItem, { type: "action" }>
+export type IfCondition = ObjectIfBlockItem["condition"]
 export { type ObjectActionDraft }
 
 export const OBJECT_EVENT_TYPES: ObjectEventType[] = [

@@ -176,7 +176,7 @@ describe("runtime regressions", () => {
               key: null,
               targetObjectId: null,
               intervalMs: null,
-              actions: [{ id: "action-move", type: "move", dx: 700, dy: 0 }]
+              items: [{ id: "item-action-move", type: "action", action: { id: "action-move", type: "move", dx: 700, dy: 0 } }]
             },
             {
               id: "event-outside",
@@ -184,7 +184,7 @@ describe("runtime regressions", () => {
               key: null,
               targetObjectId: null,
               intervalMs: null,
-              actions: [{ id: "action-jump-start", type: "jumpToStart" }]
+              items: [{ id: "item-action-jump-start", type: "action", action: { id: "action-jump-start", type: "jumpToStart" } }]
             }
           ]
         }
@@ -248,7 +248,13 @@ describe("runtime regressions", () => {
               key: null,
               targetObjectId: null,
               intervalMs: null,
-              actions: [{ id: "action-jump-pos", type: "jumpToPosition", x: 123, y: 77 }]
+              items: [
+                {
+                  id: "item-action-jump-pos",
+                  type: "action",
+                  action: { id: "action-jump-pos", type: "jumpToPosition", x: 123, y: 77 }
+                }
+              ]
             }
           ]
         }
@@ -317,16 +323,30 @@ describe("runtime regressions", () => {
               key: null,
               targetObjectId: null,
               intervalMs: null,
-              actions: [
-                { id: "action-global", type: "changeGlobalVariable", variableId: "gv-score", operator: "set", value: 9 },
+              items: [
                 {
-                  id: "action-object",
-                  type: "changeObjectVariable",
-                  variableId: "ov-health",
-                  operator: "set",
-                  target: "self",
-                  targetInstanceId: null,
-                  value: 7
+                  id: "item-action-global",
+                  type: "action",
+                  action: {
+                    id: "action-global",
+                    type: "changeGlobalVariable",
+                    variableId: "gv-score",
+                    operator: "set",
+                    value: 9
+                  }
+                },
+                {
+                  id: "item-action-object",
+                  type: "action",
+                  action: {
+                    id: "action-object",
+                    type: "changeObjectVariable",
+                    variableId: "ov-health",
+                    operator: "set",
+                    target: "self",
+                    targetInstanceId: null,
+                    value: 7
+                  }
                 }
               ]
             }
@@ -388,24 +408,32 @@ describe("runtime regressions", () => {
               key: null,
               targetObjectId: "object-target",
               intervalMs: null,
-              actions: [
+              items: [
                 {
-                  id: "action-copy-to-other",
-                  type: "copyVariable",
-                  direction: "globalToObject",
-                  globalVariableId: "gv-copied",
-                  objectVariableId: "ov-received",
-                  instanceTarget: "other",
-                  instanceTargetId: null
+                  id: "item-action-copy-to-other",
+                  type: "action",
+                  action: {
+                    id: "action-copy-to-other",
+                    type: "copyVariable",
+                    direction: "globalToObject",
+                    globalVariableId: "gv-copied",
+                    objectVariableId: "ov-received",
+                    instanceTarget: "other",
+                    instanceTargetId: null
+                  }
                 },
                 {
-                  id: "action-global-from-self",
-                  type: "copyVariable",
-                  direction: "objectToGlobal",
-                  globalVariableId: "gv-copied",
-                  objectVariableId: "ov-power",
-                  instanceTarget: "self",
-                  instanceTargetId: null
+                  id: "item-action-global-from-self",
+                  type: "action",
+                  action: {
+                    id: "action-global-from-self",
+                    type: "copyVariable",
+                    direction: "objectToGlobal",
+                    globalVariableId: "gv-copied",
+                    objectVariableId: "ov-power",
+                    instanceTarget: "self",
+                    instanceTargetId: null
+                  }
                 }
               ]
             }
@@ -483,7 +511,13 @@ describe("runtime regressions", () => {
               key: null,
               targetObjectId: null,
               intervalMs: null,
-              actions: [{ id: "action-go-room", type: "goToRoom", roomId: "room-b" }]
+              items: [
+                {
+                  id: "item-action-go-room",
+                  type: "action",
+                  action: { id: "action-go-room", type: "goToRoom", roomId: "room-b" }
+                }
+              ]
             }
           ]
         }
@@ -549,7 +583,13 @@ describe("runtime regressions", () => {
               key: null,
               targetObjectId: null,
               intervalMs: null,
-              actions: [{ id: "action-go-room", type: "goToRoom", roomId: "room-missing" }]
+              items: [
+                {
+                  id: "item-action-go-room",
+                  type: "action",
+                  action: { id: "action-go-room", type: "goToRoom", roomId: "room-missing" }
+                }
+              ]
             }
           ]
         }
@@ -610,7 +650,13 @@ describe("runtime regressions", () => {
               key: null,
               targetObjectId: null,
               intervalMs: null,
-              actions: [{ id: "action-restart", type: "restartRoom" }]
+              items: [
+                {
+                  id: "item-action-restart",
+                  type: "action",
+                  action: { id: "action-restart", type: "restartRoom" }
+                }
+              ]
             }
           ]
         }
@@ -666,7 +712,13 @@ describe("runtime regressions", () => {
               key: null,
               targetObjectId: null,
               intervalMs: 1000,
-              actions: [{ id: "action-score", type: "changeScore", delta: 1 }]
+              items: [
+                {
+                  id: "item-action-score",
+                  type: "action",
+                  action: { id: "action-score", type: "changeScore", delta: 1 }
+                }
+              ]
             }
           ]
         }
@@ -749,46 +801,78 @@ describe("runtime regressions", () => {
               key: null,
               targetObjectId: null,
               intervalMs: null,
-              actions: [
-                { id: "a1", type: "changeGlobalVariable", variableId: "gv-number", operator: "add", value: 3 },
-                { id: "a2", type: "changeGlobalVariable", variableId: "gv-number", operator: "subtract", value: 1 },
-                { id: "a3", type: "changeGlobalVariable", variableId: "gv-number", operator: "multiply", value: 5 },
-                { id: "a4", type: "changeGlobalVariable", variableId: "gv-string", operator: "add", value: 9 },
+              items: [
                 {
-                  id: "a5",
-                  type: "changeObjectVariable",
-                  variableId: "ov-number",
-                  operator: "add",
-                  target: "self",
-                  targetInstanceId: null,
-                  value: 5
+                  id: "item-a1",
+                  type: "action",
+                  action: { id: "a1", type: "changeGlobalVariable", variableId: "gv-number", operator: "add", value: 3 }
                 },
                 {
-                  id: "a6",
-                  type: "changeObjectVariable",
-                  variableId: "ov-number",
-                  operator: "subtract",
-                  target: "self",
-                  targetInstanceId: null,
-                  value: 3
+                  id: "item-a2",
+                  type: "action",
+                  action: { id: "a2", type: "changeGlobalVariable", variableId: "gv-number", operator: "subtract", value: 1 }
                 },
                 {
-                  id: "a7",
-                  type: "changeObjectVariable",
-                  variableId: "ov-number",
-                  operator: "multiply",
-                  target: "self",
-                  targetInstanceId: null,
-                  value: 2
+                  id: "item-a3",
+                  type: "action",
+                  action: { id: "a3", type: "changeGlobalVariable", variableId: "gv-number", operator: "multiply", value: 5 }
                 },
                 {
-                  id: "a8",
-                  type: "changeObjectVariable",
-                  variableId: "ov-bool",
-                  operator: "add",
-                  target: "self",
-                  targetInstanceId: null,
-                  value: 1
+                  id: "item-a4",
+                  type: "action",
+                  action: { id: "a4", type: "changeGlobalVariable", variableId: "gv-string", operator: "add", value: 9 }
+                },
+                {
+                  id: "item-a5",
+                  type: "action",
+                  action: {
+                    id: "a5",
+                    type: "changeObjectVariable",
+                    variableId: "ov-number",
+                    operator: "add",
+                    target: "self",
+                    targetInstanceId: null,
+                    value: 5
+                  }
+                },
+                {
+                  id: "item-a6",
+                  type: "action",
+                  action: {
+                    id: "a6",
+                    type: "changeObjectVariable",
+                    variableId: "ov-number",
+                    operator: "subtract",
+                    target: "self",
+                    targetInstanceId: null,
+                    value: 3
+                  }
+                },
+                {
+                  id: "item-a7",
+                  type: "action",
+                  action: {
+                    id: "a7",
+                    type: "changeObjectVariable",
+                    variableId: "ov-number",
+                    operator: "multiply",
+                    target: "self",
+                    targetInstanceId: null,
+                    value: 2
+                  }
+                },
+                {
+                  id: "item-a8",
+                  type: "action",
+                  action: {
+                    id: "a8",
+                    type: "changeObjectVariable",
+                    variableId: "ov-bool",
+                    operator: "add",
+                    target: "self",
+                    targetInstanceId: null,
+                    value: 1
+                  }
                 }
               ]
             }

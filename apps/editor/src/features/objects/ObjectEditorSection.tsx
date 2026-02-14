@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react"
 import type { ObjectActionDraft } from "@creadordejocs/project-format"
 import type { EditorController } from "../editor-state/use-editor-controller.js"
-import { type ObjectActionType } from "../editor-state/types.js"
+import { type IfCondition, type ObjectActionType } from "../editor-state/types.js"
 import { ObjectListPanel } from "./ObjectListPanel.js"
 import { ObjectVariablesPanel } from "./ObjectVariablesPanel.js"
 import { EventListPanel } from "./EventListPanel.js"
 import { ActionEditorPanel } from "./ActionEditorPanel.js"
+import { buildDefaultIfCondition } from "./if-condition-utils.js"
 
 type ObjectEditorSectionProps = {
   controller: EditorController
@@ -110,6 +111,24 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
     }
   }
 
+  const handleAddIfAction = (ifBlockId: string, type: ObjectActionType) => {
+    if (!activeEvent) return
+    const action = defaultActionFromType(type)
+    if (action) {
+      controller.addObjectEventIfAction(activeEvent.id, ifBlockId, action)
+    }
+  }
+
+  const defaultIfCondition = (): IfCondition => {
+    return (
+      buildDefaultIfCondition(controller.project.variables.global, selectedObjectVariableDefinitions) ?? {
+        left: { scope: "global", variableId: "" },
+        operator: "==",
+        right: 0
+      }
+    )
+  }
+
   return (
     <div className="mvp15-object-editor-container flex h-[600px] w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
       <ObjectListPanel
@@ -153,6 +172,7 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
             selectableTargetObjects={selectableTargetObjects}
             sounds={controller.project.resources.sounds}
             globalVariables={controller.project.variables.global}
+            selectedObjectVariables={selectedObjectVariableDefinitions}
             objectVariablesByObjectId={controller.project.variables.objectByObjectId}
             roomInstances={controller.activeRoom?.instances ?? []}
             allObjects={controller.project.objects}
@@ -176,6 +196,34 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
             onRemoveAction={(actionId) => {
               if (activeEvent) {
                 controller.removeObjectEventAction(activeEvent.id, actionId)
+              }
+            }}
+            onAddIfBlock={(condition) => {
+              if (activeEvent) {
+                controller.addObjectEventIfBlock(activeEvent.id, condition ?? defaultIfCondition())
+              }
+            }}
+            onUpdateIfCondition={(ifBlockId, condition) => {
+              if (activeEvent) {
+                controller.updateObjectEventIfBlockCondition(activeEvent.id, ifBlockId, condition)
+              }
+            }}
+            onRemoveIfBlock={(ifBlockId) => {
+              if (activeEvent) {
+                controller.removeObjectEventIfBlock(activeEvent.id, ifBlockId)
+              }
+            }}
+            onAddIfAction={(ifBlockId, type) => {
+              handleAddIfAction(ifBlockId, type)
+            }}
+            onUpdateIfAction={(ifBlockId, actionId, action) => {
+              if (activeEvent) {
+                controller.updateObjectEventIfAction(activeEvent.id, ifBlockId, actionId, action)
+              }
+            }}
+            onRemoveIfAction={(ifBlockId, actionId) => {
+              if (activeEvent) {
+                controller.removeObjectEventIfAction(activeEvent.id, ifBlockId, actionId)
               }
             }}
           />

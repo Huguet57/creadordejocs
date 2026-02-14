@@ -3,10 +3,14 @@ import {
   addRoomInstance,
   addObjectEvent,
   addObjectEventAction,
+  addObjectEventIfAction,
+  addObjectEventIfBlock,
   createEmptyProjectV1,
   createRoom,
   moveObjectEventAction,
   moveRoomInstance,
+  removeObjectEventIfAction,
+  removeObjectEventIfBlock,
   removeObjectEventAction,
   removeObjectEvent,
   addGlobalVariable,
@@ -18,6 +22,8 @@ import {
   quickCreateObject,
   quickCreateSound,
   quickCreateSprite,
+  updateObjectEventIfAction,
+  updateObjectEventIfBlockCondition,
   updateObjectEventAction,
   updateObjectEventConfig,
   updateSoundAssetSource,
@@ -107,8 +113,9 @@ describe("editor model helpers", () => {
       eventId,
       action: { type: "endGame", message: "Game Over" }
     })
-    const firstActionId = withSecondAction.objects[0]?.events[0]?.actions[0]?.id
-    const secondActionId = withSecondAction.objects[0]?.events[0]?.actions[1]?.id
+    const actionItems = withSecondAction.objects[0]?.events[0]?.items.filter((item) => item.type === "action") ?? []
+    const firstActionId = actionItems[0]?.action.id
+    const secondActionId = actionItems[1]?.action.id
     if (!firstActionId || !secondActionId) {
       throw new Error("Expected actions to be created")
     }
@@ -136,10 +143,91 @@ describe("editor model helpers", () => {
     })
     const withoutEvent = removeObjectEvent(withConfig, { objectId: objectResult.objectId, eventId })
 
-    expect(withMovedAction.objects[0]?.events[0]?.actions[0]?.id).toBe(secondActionId)
-    expect(withRemovedAction.objects[0]?.events[0]?.actions).toHaveLength(1)
+    const movedActionItems = withMovedAction.objects[0]?.events[0]?.items.filter((item) => item.type === "action") ?? []
+    const removedActionItems = withRemovedAction.objects[0]?.events[0]?.items.filter((item) => item.type === "action") ?? []
+    expect(movedActionItems[0]?.action.id).toBe(secondActionId)
+    expect(removedActionItems).toHaveLength(1)
     expect(withConfig.objects[0]?.events[0]?.targetObjectId).toBeNull()
     expect(withoutEvent.objects[0]?.events).toHaveLength(0)
+  })
+
+  it("manages if blocks and nested actions inside object events", () => {
+    const initial = createEmptyProjectV1("If blocks")
+    const objectResult = quickCreateObject(initial, { name: "Player" })
+    const withEvent = addObjectEvent(objectResult.project, { objectId: objectResult.objectId, type: "Step" })
+    const eventId = withEvent.objects[0]?.events[0]?.id
+    if (!eventId) {
+      throw new Error("Expected event to be created")
+    }
+
+    const withIf = addObjectEventIfBlock(withEvent, {
+      objectId: objectResult.objectId,
+      eventId,
+      condition: {
+        left: { scope: "global", variableId: "gv-score" },
+        operator: ">=",
+        right: 1
+      }
+    })
+    const ifBlock = withIf.objects[0]?.events[0]?.items.find((item) => item.type === "if")
+    if (ifBlock?.type !== "if") {
+      throw new Error("Expected if block")
+    }
+
+    const withNestedAction = addObjectEventIfAction(withIf, {
+      objectId: objectResult.objectId,
+      eventId,
+      ifBlockId: ifBlock.id,
+      action: { type: "changeScore", delta: 2 }
+    })
+    const nestedActionId = withNestedAction.objects[0]?.events[0]?.items.find((item) => item.type === "if" && item.id === ifBlock.id)
+    if (nestedActionId?.type !== "if" || !nestedActionId.actions[0]) {
+      throw new Error("Expected nested action")
+    }
+
+    const withUpdatedCondition = updateObjectEventIfBlockCondition(withNestedAction, {
+      objectId: objectResult.objectId,
+      eventId,
+      ifBlockId: ifBlock.id,
+      condition: {
+        left: { scope: "object", variableId: "ov-health" },
+        operator: "==",
+        right: 5
+      }
+    })
+    const withUpdatedNested = updateObjectEventIfAction(withUpdatedCondition, {
+      objectId: objectResult.objectId,
+      eventId,
+      ifBlockId: ifBlock.id,
+      actionId: nestedActionId.actions[0].id,
+      action: { type: "changeScore", delta: 4 }
+    })
+    const withRemovedNested = removeObjectEventIfAction(withUpdatedNested, {
+      objectId: objectResult.objectId,
+      eventId,
+      ifBlockId: ifBlock.id,
+      actionId: nestedActionId.actions[0].id
+    })
+    const withoutIf = removeObjectEventIfBlock(withRemovedNested, {
+      objectId: objectResult.objectId,
+      eventId,
+      ifBlockId: ifBlock.id
+    })
+
+    const updatedIf = withUpdatedNested.objects[0]?.events[0]?.items.find((item) => item.type === "if" && item.id === ifBlock.id)
+    expect(updatedIf?.type).toBe("if")
+    if (updatedIf?.type === "if") {
+      expect(updatedIf.condition.left.scope).toBe("object")
+      expect(updatedIf.actions[0]?.type).toBe("changeScore")
+      if (updatedIf.actions[0]?.type === "changeScore") {
+        expect(updatedIf.actions[0].delta).toBe(4)
+      }
+    }
+    const remainingIf = withRemovedNested.objects[0]?.events[0]?.items.find((item) => item.type === "if" && item.id === ifBlock.id)
+    if (remainingIf?.type === "if") {
+      expect(remainingIf.actions).toHaveLength(0)
+    }
+    expect(withoutIf.objects[0]?.events[0]?.items.some((item) => item.type === "if")).toBe(false)
   })
 
   it("manages global and object variable definitions with uniqueness", () => {

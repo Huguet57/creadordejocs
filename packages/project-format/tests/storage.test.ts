@@ -51,4 +51,96 @@ describe("project format v1", () => {
     expect(loaded.variables.global).toEqual([])
     expect(loaded.variables.objectByObjectId).toEqual({})
   })
+
+  it("parses event items containing an if block", () => {
+    const project = createEmptyProjectV1("If items")
+    const source = JSON.stringify({
+      ...project,
+      objects: [
+        {
+          id: "object-player",
+          name: "Player",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step",
+              type: "Step",
+              key: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [
+                {
+                  id: "if-1",
+                  type: "if",
+                  condition: {
+                    left: { scope: "global", variableId: "global-score" },
+                    operator: ">=",
+                    right: 10
+                  },
+                  actions: [{ id: "action-score", type: "changeScore", delta: 1 }]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    })
+    const loaded = parseProjectV1(source)
+    const firstItem = loaded.objects[0]?.events[0]?.items[0]
+
+    expect(firstItem?.type).toBe("if")
+    if (firstItem?.type !== "if") {
+      throw new Error("Expected if item")
+    }
+    expect(firstItem.condition.operator).toBe(">=")
+    expect(firstItem.actions).toHaveLength(1)
+  })
+
+  it("loads legacy payloads using actions[] and normalizes them to items[]", () => {
+    const project = createEmptyProjectV1("Legacy actions")
+    const legacySource = JSON.stringify({
+      ...project,
+      objects: [
+        {
+          id: "object-player",
+          name: "Player",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step",
+              type: "Step",
+              key: null,
+              targetObjectId: null,
+              intervalMs: null,
+              actions: [{ id: "action-move", type: "move", dx: 3, dy: 4 }]
+            }
+          ]
+        }
+      ]
+    })
+
+    const loaded = parseProjectV1(legacySource)
+    const eventEntry = loaded.objects[0]?.events[0]
+    const firstItem = eventEntry?.items[0]
+
+    expect(eventEntry).toBeDefined()
+    expect(firstItem?.type).toBe("action")
+    if (firstItem?.type !== "action") {
+      throw new Error("Expected action item")
+    }
+    expect(firstItem.action.type).toBe("move")
+    if (firstItem.action.type === "move") {
+      expect(firstItem.action.dx).toBe(3)
+    }
+    expect(serializeProjectV1(loaded)).toContain("\"items\"")
+    expect(serializeProjectV1(loaded)).not.toContain("\"actions\"")
+  })
 })

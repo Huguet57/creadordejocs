@@ -158,14 +158,55 @@ const ObjectActionSchema = z.discriminatedUnion("type", [
   })
 ])
 
+const IfConditionLeftSchema = z.discriminatedUnion("scope", [
+  z.object({
+    scope: z.literal("global"),
+    variableId: z.string().min(1)
+  }),
+  z.object({
+    scope: z.literal("object"),
+    variableId: z.string().min(1)
+  })
+])
+
+const IfConditionSchema = z.object({
+  left: IfConditionLeftSchema,
+  operator: z.enum(["==", "!=", ">", ">=", "<", "<="]),
+  right: VariableValueSchema
+})
+
+const ObjectEventItemSchema = z.discriminatedUnion("type", [
+  z.object({
+    id: z.string().min(1),
+    type: z.literal("action"),
+    action: ObjectActionSchema
+  }),
+  z.object({
+    id: z.string().min(1),
+    type: z.literal("if"),
+    condition: IfConditionSchema,
+    actions: z.array(ObjectActionSchema).default([])
+  })
+])
+
 const ObjectEventSchema = z.object({
   id: z.string().min(1),
   type: z.enum(["Create", "Step", "Draw", "Collision", "Keyboard", "OnDestroy", "OutsideRoom", "Timer"]),
   key: z.enum(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"]).nullable().default(null),
   targetObjectId: z.string().nullable().default(null),
   intervalMs: z.number().positive().nullable().default(null),
-  actions: z.array(ObjectActionSchema).default([])
-})
+  items: z.array(ObjectEventItemSchema).optional(),
+  actions: z.array(ObjectActionSchema).optional()
+}).transform(({ items, actions, ...eventEntry }) => ({
+  ...eventEntry,
+  items:
+    items ??
+    (actions ?? []).map((actionEntry) => ({
+      id: `item-${actionEntry.id}`,
+      type: "action" as const,
+      action: actionEntry
+    }))
+}))
 
 const ObjectSchema = z.object({
   id: z.string().min(1),

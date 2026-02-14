@@ -15,6 +15,8 @@ type RuntimeActionResult = {
 }
 
 type RuntimeVariableValue = ProjectV1["variables"]["global"][number]["initialValue"]
+type RuntimeEventItem = ProjectV1["objects"][number]["events"][number]["items"][number]
+type RuntimeAction = Extract<RuntimeEventItem, { type: "action" }>["action"]
 
 export type RuntimeState = {
   score: number
@@ -130,6 +132,72 @@ function isSameVariableValueType(left: RuntimeVariableValue, right: RuntimeVaria
   return typeof left === typeof right
 }
 
+function getEventItems(eventEntry: ProjectV1["objects"][number]["events"][number]): RuntimeEventItem[] {
+  if (Array.isArray(eventEntry.items)) {
+    return eventEntry.items
+  }
+  const legacyEvent = eventEntry as ProjectV1["objects"][number]["events"][number] & {
+    actions?: RuntimeAction[]
+  }
+  if (!Array.isArray(legacyEvent.actions)) {
+    return []
+  }
+  return legacyEvent.actions
+    .filter((entry): entry is RuntimeAction => !!entry && typeof entry.id === "string")
+    .map((actionEntry) => ({
+      id: `legacy-item-${actionEntry.id}`,
+      type: "action" as const,
+      action: actionEntry
+    }))
+}
+
+function resolveConditionLeftValue(
+  condition: Extract<RuntimeEventItem, { type: "if" }>["condition"],
+  instance: ProjectV1["rooms"][number]["instances"][number],
+  runtime: RuntimeState,
+  collisionOtherInstanceId: string | null
+): RuntimeVariableValue | undefined {
+  if (condition.left.scope === "global") {
+    return runtime.globalVariables[condition.left.variableId]
+  }
+  const targetInstanceId = resolveTargetInstanceId(instance, "self", null, collisionOtherInstanceId)
+  if (!targetInstanceId) {
+    return undefined
+  }
+  return runtime.objectInstanceVariables[targetInstanceId]?.[condition.left.variableId]
+}
+
+function evaluateIfCondition(
+  condition: Extract<RuntimeEventItem, { type: "if" }>["condition"],
+  instance: ProjectV1["rooms"][number]["instances"][number],
+  runtime: RuntimeState,
+  collisionOtherInstanceId: string | null
+): boolean {
+  const leftValue = resolveConditionLeftValue(condition, instance, runtime, collisionOtherInstanceId)
+  if (leftValue === undefined || !isSameVariableValueType(leftValue, condition.right)) {
+    return false
+  }
+  if (condition.operator === "==") {
+    return leftValue === condition.right
+  }
+  if (condition.operator === "!=") {
+    return leftValue !== condition.right
+  }
+  if (typeof leftValue !== "number" || typeof condition.right !== "number") {
+    return false
+  }
+  if (condition.operator === ">") {
+    return leftValue > condition.right
+  }
+  if (condition.operator === ">=") {
+    return leftValue >= condition.right
+  }
+  if (condition.operator === "<") {
+    return leftValue < condition.right
+  }
+  return leftValue <= condition.right
+}
+
 function applyGlobalNumericOperation(
   runtime: RuntimeState,
   variableId: string,
@@ -197,7 +265,7 @@ function runOnDestroyEvents(
   let aggregate = getDefaultRuntimeActionResult(instance, runtime)
   const startPosition = getInstanceStartPosition(runtime, instance)
   for (const eventEntry of onDestroyEvents) {
-    const eventResult = runEventActions(project, aggregate.instance, eventEntry.actions, aggregate.runtime, startPosition)
+    const eventResult = runEventItems(project, aggregate.instance, getEventItems(eventEntry), aggregate.runtime, startPosition)
     aggregate = {
       ...aggregate,
       instance: eventResult.instance,
@@ -248,7 +316,7 @@ function destroyInstancesAndRunOnDestroy(
 function runEventActions(
   project: ProjectV1,
   instance: ProjectV1["rooms"][number]["instances"][number],
-  actions: ProjectV1["objects"][number]["events"][number]["actions"],
+  actions: RuntimeAction[],
   runtime: RuntimeState,
   startPosition: { x: number; y: number } | null = null,
   collisionOtherInstanceId: string | null = null
@@ -521,6 +589,58 @@ function runEventActions(
   return result
 }
 
+function runEventItems(
+  project: ProjectV1,
+  instance: ProjectV1["rooms"][number]["instances"][number],
+  items: RuntimeEventItem[],
+  runtime: RuntimeState,
+  startPosition: { x: number; y: number } | null = null,
+  collisionOtherInstanceId: string | null = null
+): RuntimeActionResult {
+  let result = getDefaultRuntimeActionResult(instance, runtime)
+  for (const itemEntry of items) {
+    if (itemEntry.type === "action") {
+      const actionResult = runEventActions(
+        project,
+        result.instance,
+        [itemEntry.action],
+        result.runtime,
+        startPosition,
+        collisionOtherInstanceId
+      )
+      result = {
+        ...actionResult,
+        spawned: [...result.spawned, ...actionResult.spawned],
+        destroyedInstanceIds: [...new Set([...result.destroyedInstanceIds, ...actionResult.destroyedInstanceIds])],
+        scoreDelta: result.scoreDelta + actionResult.scoreDelta,
+        gameOverMessage: actionResult.gameOverMessage ?? result.gameOverMessage,
+        playedSoundIds: [...result.playedSoundIds, ...actionResult.playedSoundIds]
+      }
+      continue
+    }
+    if (!evaluateIfCondition(itemEntry.condition, result.instance, result.runtime, collisionOtherInstanceId)) {
+      continue
+    }
+    const branchResult = runEventActions(
+      project,
+      result.instance,
+      itemEntry.actions,
+      result.runtime,
+      startPosition,
+      collisionOtherInstanceId
+    )
+    result = {
+      ...branchResult,
+      spawned: [...result.spawned, ...branchResult.spawned],
+      destroyedInstanceIds: [...new Set([...result.destroyedInstanceIds, ...branchResult.destroyedInstanceIds])],
+      scoreDelta: result.scoreDelta + branchResult.scoreDelta,
+      gameOverMessage: branchResult.gameOverMessage ?? result.gameOverMessage,
+      playedSoundIds: [...result.playedSoundIds, ...branchResult.playedSoundIds]
+    }
+  }
+  return result
+}
+
 function intersects(
   first: ProjectV1["rooms"][number]["instances"][number],
   second: ProjectV1["rooms"][number]["instances"][number]
@@ -576,7 +696,7 @@ function applyCollisionEvents(
         if (!firstInstance) {
           break
         }
-        const eventResult = runEventActions(project, firstInstance, eventEntry.actions, nextRuntime, null, secondId)
+        const eventResult = runEventItems(project, firstInstance, getEventItems(eventEntry), nextRuntime, null, secondId)
         const firstGetsDestroyed = eventResult.destroyedInstanceIds.includes(firstId)
         if (!firstGetsDestroyed) {
           mutableInstances[firstIndex] = eventResult.instance
@@ -614,7 +734,7 @@ function applyCollisionEvents(
         if (!secondInstance) {
           break
         }
-        const eventResult = runEventActions(project, secondInstance, eventEntry.actions, nextRuntime, null, firstId)
+        const eventResult = runEventItems(project, secondInstance, getEventItems(eventEntry), nextRuntime, null, firstId)
         const secondGetsDestroyed = eventResult.destroyedInstanceIds.includes(secondId)
         if (!secondGetsDestroyed) {
           mutableInstances[secondIndex] = eventResult.instance
@@ -736,7 +856,7 @@ export function runRuntimeTick(
     let destroySelf = false
     let spawned: ProjectV1["rooms"][number]["instances"] = []
     for (const eventEntry of matchingEvents) {
-      const eventResult = runEventActions(project, nextInstance, eventEntry.actions, nextRuntime, startPosition)
+      const eventResult = runEventItems(project, nextInstance, getEventItems(eventEntry), nextRuntime, startPosition)
       nextInstance = eventResult.instance
       for (const instanceId of eventResult.destroyedInstanceIds) {
         if (instanceId === nextInstance.id) {
@@ -752,7 +872,7 @@ export function runRuntimeTick(
     if (!destroySelf && isOutsideRoom(nextInstance)) {
       const outsideEvents = objectEntry.events.filter((eventEntry) => eventEntry.type === "OutsideRoom")
       for (const eventEntry of outsideEvents) {
-        const eventResult = runEventActions(project, nextInstance, eventEntry.actions, nextRuntime, startPosition)
+        const eventResult = runEventItems(project, nextInstance, getEventItems(eventEntry), nextRuntime, startPosition)
         nextInstance = eventResult.instance
         for (const instanceId of eventResult.destroyedInstanceIds) {
           if (instanceId === nextInstance.id) {

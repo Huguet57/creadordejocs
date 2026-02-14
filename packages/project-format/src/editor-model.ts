@@ -33,9 +33,11 @@ export type UpdateObjectPropertiesInput = {
 
 export type ObjectEventType = "Create" | "Step" | "Draw" | "Collision" | "Keyboard" | "OnDestroy" | "OutsideRoom" | "Timer"
 export type ObjectEventKey = "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight" | "Space"
-export type ObjectAction = ProjectV1["objects"][number]["events"][number]["actions"][number]
+export type ObjectEventItem = ProjectV1["objects"][number]["events"][number]["items"][number]
+export type ObjectAction = Extract<ObjectEventItem, { type: "action" }>["action"]
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never
 export type ObjectActionDraft = DistributiveOmit<ObjectAction, "id">
+export type IfCondition = Extract<ObjectEventItem, { type: "if" }>["condition"]
 export type VariableDefinition = ProjectV1["variables"]["global"][number]
 export type VariableType = VariableDefinition["type"]
 export type VariableValue = VariableDefinition["initialValue"]
@@ -77,6 +79,47 @@ export type MoveObjectEventActionInput = {
   eventId: string
   actionId: string
   direction: "up" | "down"
+}
+
+export type AddObjectEventIfBlockInput = {
+  objectId: string
+  eventId: string
+  condition: IfCondition
+}
+
+export type UpdateObjectEventIfBlockConditionInput = {
+  objectId: string
+  eventId: string
+  ifBlockId: string
+  condition: IfCondition
+}
+
+export type RemoveObjectEventIfBlockInput = {
+  objectId: string
+  eventId: string
+  ifBlockId: string
+}
+
+export type AddObjectEventIfActionInput = {
+  objectId: string
+  eventId: string
+  ifBlockId: string
+  action: ObjectActionDraft
+}
+
+export type UpdateObjectEventIfActionInput = {
+  objectId: string
+  eventId: string
+  ifBlockId: string
+  actionId: string
+  action: ObjectActionDraft
+}
+
+export type RemoveObjectEventIfActionInput = {
+  objectId: string
+  eventId: string
+  ifBlockId: string
+  actionId: string
 }
 
 export type UpdateObjectEventConfigInput = {
@@ -124,6 +167,15 @@ export type RemoveObjectVariableInput = {
 
 function makeId(prefix: string): string {
   return `${prefix}-${crypto.randomUUID()}`
+}
+
+function toActionItem(action: ObjectActionDraft): Extract<ObjectEventItem, { type: "action" }> {
+  const actionId = makeId("action")
+  return {
+    id: makeId("item"),
+    type: "action",
+    action: { id: actionId, ...action } as ObjectAction
+  }
 }
 
 function normalizeVariableName(name: string): string {
@@ -339,7 +391,7 @@ export function addObjectEvent(project: ProjectV1, input: AddObjectEventInput): 
                 key: input.key ?? null,
                 targetObjectId: input.targetObjectId ?? null,
                 intervalMs: input.intervalMs ?? null,
-                actions: []
+                items: []
               }
             ]
           }
@@ -373,7 +425,7 @@ export function addObjectEventAction(project: ProjectV1, input: AddObjectEventAc
               eventEntry.id === input.eventId
                 ? {
                     ...eventEntry,
-                    actions: [...eventEntry.actions, { id: makeId("action"), ...input.action } as ObjectAction]
+                    items: [...eventEntry.items, toActionItem(input.action)]
                   }
                 : eventEntry
             )
@@ -394,10 +446,10 @@ export function updateObjectEventAction(project: ProjectV1, input: UpdateObjectE
               eventEntry.id === input.eventId
                 ? {
                     ...eventEntry,
-                    actions: eventEntry.actions.map((actionEntry) =>
-                      actionEntry.id === input.actionId
-                        ? ({ id: input.actionId, ...input.action } as ObjectAction)
-                        : actionEntry
+                    items: eventEntry.items.map((itemEntry) =>
+                      itemEntry.type === "action" && itemEntry.action.id === input.actionId
+                        ? { ...itemEntry, action: { id: input.actionId, ...input.action } as ObjectAction }
+                        : itemEntry
                     )
                   }
                 : eventEntry
@@ -419,7 +471,9 @@ export function removeObjectEventAction(project: ProjectV1, input: RemoveObjectE
               eventEntry.id === input.eventId
                 ? {
                     ...eventEntry,
-                    actions: eventEntry.actions.filter((actionEntry) => actionEntry.id !== input.actionId)
+                    items: eventEntry.items.filter(
+                      (itemEntry) => itemEntry.type !== "action" || itemEntry.action.id !== input.actionId
+                    )
                   }
                 : eventEntry
             )
@@ -443,15 +497,17 @@ export function moveObjectEventAction(project: ProjectV1, input: MoveObjectEvent
           if (eventEntry.id !== input.eventId) {
             return eventEntry
           }
-          const index = eventEntry.actions.findIndex((actionEntry) => actionEntry.id === input.actionId)
+          const index = eventEntry.items.findIndex(
+            (itemEntry) => itemEntry.type === "action" && itemEntry.action.id === input.actionId
+          )
           if (index < 0) {
             return eventEntry
           }
           const target = input.direction === "up" ? index - 1 : index + 1
-          if (target < 0 || target >= eventEntry.actions.length) {
+          if (target < 0 || target >= eventEntry.items.length) {
             return eventEntry
           }
-          const reordered = [...eventEntry.actions]
+          const reordered = [...eventEntry.items]
           const [moved] = reordered.splice(index, 1)
           if (!moved) {
             return eventEntry
@@ -459,11 +515,174 @@ export function moveObjectEventAction(project: ProjectV1, input: MoveObjectEvent
           reordered.splice(target, 0, moved)
           return {
             ...eventEntry,
-            actions: reordered
+            items: reordered
           }
         })
       }
     })
+  }
+}
+
+export function addObjectEventIfBlock(project: ProjectV1, input: AddObjectEventIfBlockInput): ProjectV1 {
+  return {
+    ...project,
+    objects: project.objects.map((objectEntry) =>
+      objectEntry.id === input.objectId
+        ? {
+            ...objectEntry,
+            events: objectEntry.events.map((eventEntry) =>
+              eventEntry.id === input.eventId
+                ? {
+                    ...eventEntry,
+                    items: [
+                      ...eventEntry.items,
+                      {
+                        id: makeId("if"),
+                        type: "if",
+                        condition: input.condition,
+                        actions: []
+                      }
+                    ]
+                  }
+                : eventEntry
+            )
+          }
+        : objectEntry
+    )
+  }
+}
+
+export function updateObjectEventIfBlockCondition(project: ProjectV1, input: UpdateObjectEventIfBlockConditionInput): ProjectV1 {
+  return {
+    ...project,
+    objects: project.objects.map((objectEntry) =>
+      objectEntry.id === input.objectId
+        ? {
+            ...objectEntry,
+            events: objectEntry.events.map((eventEntry) =>
+              eventEntry.id === input.eventId
+                ? {
+                    ...eventEntry,
+                    items: eventEntry.items.map((itemEntry) =>
+                      itemEntry.type === "if" && itemEntry.id === input.ifBlockId
+                        ? { ...itemEntry, condition: input.condition }
+                        : itemEntry
+                    )
+                  }
+                : eventEntry
+            )
+          }
+        : objectEntry
+    )
+  }
+}
+
+export function removeObjectEventIfBlock(project: ProjectV1, input: RemoveObjectEventIfBlockInput): ProjectV1 {
+  return {
+    ...project,
+    objects: project.objects.map((objectEntry) =>
+      objectEntry.id === input.objectId
+        ? {
+            ...objectEntry,
+            events: objectEntry.events.map((eventEntry) =>
+              eventEntry.id === input.eventId
+                ? {
+                    ...eventEntry,
+                    items: eventEntry.items.filter((itemEntry) => itemEntry.type !== "if" || itemEntry.id !== input.ifBlockId)
+                  }
+                : eventEntry
+            )
+          }
+        : objectEntry
+    )
+  }
+}
+
+export function addObjectEventIfAction(project: ProjectV1, input: AddObjectEventIfActionInput): ProjectV1 {
+  return {
+    ...project,
+    objects: project.objects.map((objectEntry) =>
+      objectEntry.id === input.objectId
+        ? {
+            ...objectEntry,
+            events: objectEntry.events.map((eventEntry) =>
+              eventEntry.id === input.eventId
+                ? {
+                    ...eventEntry,
+                    items: eventEntry.items.map((itemEntry) =>
+                      itemEntry.type === "if" && itemEntry.id === input.ifBlockId
+                        ? {
+                            ...itemEntry,
+                            actions: [...itemEntry.actions, { id: makeId("action"), ...input.action } as ObjectAction]
+                          }
+                        : itemEntry
+                    )
+                  }
+                : eventEntry
+            )
+          }
+        : objectEntry
+    )
+  }
+}
+
+export function updateObjectEventIfAction(project: ProjectV1, input: UpdateObjectEventIfActionInput): ProjectV1 {
+  return {
+    ...project,
+    objects: project.objects.map((objectEntry) =>
+      objectEntry.id === input.objectId
+        ? {
+            ...objectEntry,
+            events: objectEntry.events.map((eventEntry) =>
+              eventEntry.id === input.eventId
+                ? {
+                    ...eventEntry,
+                    items: eventEntry.items.map((itemEntry) =>
+                      itemEntry.type === "if" && itemEntry.id === input.ifBlockId
+                        ? {
+                            ...itemEntry,
+                            actions: itemEntry.actions.map((actionEntry) =>
+                              actionEntry.id === input.actionId
+                                ? ({ id: input.actionId, ...input.action } as ObjectAction)
+                                : actionEntry
+                            )
+                          }
+                        : itemEntry
+                    )
+                  }
+                : eventEntry
+            )
+          }
+        : objectEntry
+    )
+  }
+}
+
+export function removeObjectEventIfAction(project: ProjectV1, input: RemoveObjectEventIfActionInput): ProjectV1 {
+  return {
+    ...project,
+    objects: project.objects.map((objectEntry) =>
+      objectEntry.id === input.objectId
+        ? {
+            ...objectEntry,
+            events: objectEntry.events.map((eventEntry) =>
+              eventEntry.id === input.eventId
+                ? {
+                    ...eventEntry,
+                    items: eventEntry.items.map((itemEntry) =>
+                      itemEntry.type === "if" && itemEntry.id === input.ifBlockId
+                        ? {
+                            ...itemEntry,
+                            actions: itemEntry.actions.filter((actionEntry) => actionEntry.id !== input.actionId)
+                          }
+                        : itemEntry
+                    )
+                  }
+                : eventEntry
+            )
+          }
+        : objectEntry
+    )
   }
 }
 

@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import {
   addObjectEvent,
   addObjectEventAction as addObjectEventActionModel,
+  addObjectEventIfAction as addObjectEventIfActionModel,
+  addObjectEventIfBlock as addObjectEventIfBlockModel,
   addGlobalVariable as addGlobalVariableModel,
   addObjectVariable as addObjectVariableModel,
   addRoomInstance,
@@ -16,10 +18,14 @@ import {
   quickCreateSprite,
   removeObjectEvent,
   removeObjectEventAction as removeObjectEventActionModel,
+  removeObjectEventIfAction as removeObjectEventIfActionModel,
+  removeObjectEventIfBlock as removeObjectEventIfBlockModel,
   removeGlobalVariable as removeGlobalVariableModel,
   removeObjectVariable as removeObjectVariableModel,
   setTimeToFirstPlayableFunMs,
   updateObjectEventAction as updateObjectEventActionModel,
+  updateObjectEventIfAction as updateObjectEventIfActionModel,
+  updateObjectEventIfBlockCondition as updateObjectEventIfBlockConditionModel,
   updateObjectEventConfig as updateObjectEventConfigModel,
   updateGlobalVariable as updateGlobalVariableModel,
   updateObjectVariable as updateObjectVariableModel,
@@ -27,6 +33,7 @@ import {
   updateSoundAssetSource,
   updateSpriteAssetSource,
   type ObjectActionDraft,
+  type IfCondition,
   type VariableType,
   type VariableValue,
   type ProjectV1
@@ -411,6 +418,53 @@ export function useEditorController() {
       pushProjectChange(
         moveObjectEventActionModel(project, { objectId: selectedObject.id, eventId, actionId, direction }),
         "Reorder event action"
+      )
+    },
+    addObjectEventIfBlock(eventId: string, condition: IfCondition) {
+      if (!selectedObject) return
+      pushProjectChange(
+        addObjectEventIfBlockModel(project, { objectId: selectedObject.id, eventId, condition }),
+        "Add if block"
+      )
+    },
+    updateObjectEventIfBlockCondition(eventId: string, ifBlockId: string, condition: IfCondition) {
+      if (!selectedObject) return
+      pushProjectChange(
+        updateObjectEventIfBlockConditionModel(project, {
+          objectId: selectedObject.id,
+          eventId,
+          ifBlockId,
+          condition
+        }),
+        "Update if block condition"
+      )
+    },
+    removeObjectEventIfBlock(eventId: string, ifBlockId: string) {
+      if (!selectedObject) return
+      pushProjectChange(
+        removeObjectEventIfBlockModel(project, { objectId: selectedObject.id, eventId, ifBlockId }),
+        "Remove if block"
+      )
+    },
+    addObjectEventIfAction(eventId: string, ifBlockId: string, action: ObjectActionDraft) {
+      if (!selectedObject) return
+      pushProjectChange(
+        addObjectEventIfActionModel(project, { objectId: selectedObject.id, eventId, ifBlockId, action }),
+        "Add if block action"
+      )
+    },
+    updateObjectEventIfAction(eventId: string, ifBlockId: string, actionId: string, action: ObjectActionDraft) {
+      if (!selectedObject) return
+      pushProjectChange(
+        updateObjectEventIfActionModel(project, { objectId: selectedObject.id, eventId, ifBlockId, actionId, action }),
+        "Update if block action"
+      )
+    },
+    removeObjectEventIfAction(eventId: string, ifBlockId: string, actionId: string) {
+      if (!selectedObject) return
+      pushProjectChange(
+        removeObjectEventIfActionModel(project, { objectId: selectedObject.id, eventId, ifBlockId, actionId }),
+        "Remove if block action"
       )
     },
     updateSelectedObjectProperty(key: "x" | "y" | "speed" | "direction", value: number) {

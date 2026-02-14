@@ -20,9 +20,19 @@ import {
 import { useState } from "react"
 import { Button } from "../../components/ui/button.js"
 import { Label } from "../../components/ui/label.js"
-import { ACTION_CATEGORIES, OBJECT_EVENT_KEYS, type ObjectActionDraft, type ObjectActionType, type ObjectEventKey, type ObjectEventEntry } from "../editor-state/types.js"
+import {
+  ACTION_CATEGORIES,
+  OBJECT_ACTION_TYPES,
+  OBJECT_EVENT_KEYS,
+  type IfCondition,
+  type ObjectActionDraft,
+  type ObjectActionType,
+  type ObjectEventEntry,
+  type ObjectEventKey
+} from "../editor-state/types.js"
 import { ActionBlock } from "./ActionBlock.js"
 import type { ProjectV1 } from "@creadordejocs/project-format"
+import { buildDefaultIfCondition, coerceIfConditionRightValue } from "./if-condition-utils.js"
 
 type ActionEditorPanelProps = {
   selectedObject: ProjectV1["objects"][0] | null
@@ -30,6 +40,7 @@ type ActionEditorPanelProps = {
   selectableTargetObjects: { id: string; name: string }[]
   sounds: { id: string; name: string }[]
   globalVariables: ProjectV1["variables"]["global"]
+  selectedObjectVariables: ProjectV1["variables"]["global"]
   objectVariablesByObjectId: ProjectV1["variables"]["objectByObjectId"]
   roomInstances: ProjectV1["rooms"][number]["instances"]
   allObjects: ProjectV1["objects"]
@@ -39,6 +50,12 @@ type ActionEditorPanelProps = {
   onUpdateAction: (actionId: string, action: ObjectActionDraft) => void
   onMoveAction: (actionId: string, direction: "up" | "down") => void
   onRemoveAction: (actionId: string) => void
+  onAddIfBlock: (condition: IfCondition) => void
+  onUpdateIfCondition: (ifBlockId: string, condition: IfCondition) => void
+  onRemoveIfBlock: (ifBlockId: string) => void
+  onAddIfAction: (ifBlockId: string, type: ObjectActionType) => void
+  onUpdateIfAction: (ifBlockId: string, actionId: string, action: ObjectActionDraft) => void
+  onRemoveIfAction: (ifBlockId: string, actionId: string) => void
 }
 
 const ACTION_ICONS: Record<ObjectActionType, React.ElementType> = {
@@ -85,6 +102,7 @@ export function ActionEditorPanel({
   selectableTargetObjects,
   sounds,
   globalVariables,
+  selectedObjectVariables,
   objectVariablesByObjectId,
   roomInstances,
   allObjects,
@@ -93,9 +111,16 @@ export function ActionEditorPanel({
   onAddAction,
   onUpdateAction,
   onMoveAction,
-  onRemoveAction
+  onRemoveAction,
+  onAddIfBlock,
+  onUpdateIfCondition,
+  onRemoveIfBlock,
+  onAddIfAction,
+  onUpdateIfAction,
+  onRemoveIfAction
 }: ActionEditorPanelProps) {
   const [isActionPickerOpen, setIsActionPickerOpen] = useState(false)
+  const [ifActionTypeByBlockId, setIfActionTypeByBlockId] = useState<Record<string, ObjectActionType>>({})
 
   if (!selectedObject) {
     return (
@@ -117,6 +142,8 @@ export function ActionEditorPanel({
     onAddAction(type)
     setIsActionPickerOpen(false)
   }
+
+  const defaultIfCondition = buildDefaultIfCondition(globalVariables, selectedObjectVariables)
 
   return (
     <div className="mvp3-action-editor-panel flex flex-1 flex-col bg-white">
@@ -176,47 +203,232 @@ export function ActionEditorPanel({
         <>
           <div className="flex-1 overflow-y-auto p-4 bg-slate-50/50">
             <div className="mx-auto max-w-3xl space-y-3">
-              {activeEvent.actions.length === 0 && (
+              {activeEvent.items.length === 0 && (
                 <div className="rounded-lg border-2 border-dashed border-slate-200 p-8 text-center">
                   <p className="text-sm text-slate-400">No actions yet.</p>
                   <p className="text-xs text-slate-400 mt-1">Add an action below to define what happens.</p>
                 </div>
               )}
-              
-              {activeEvent.actions.map((action, index) => (
-                <ActionBlock
-                  key={action.id}
-                  action={action}
-                  index={index}
-                  isFirst={index === 0}
-                  isLast={index === activeEvent.actions.length - 1}
-                  onUpdate={(updatedAction) => onUpdateAction(action.id, updatedAction)}
-                  onMoveUp={() => onMoveAction(action.id, "up")}
-                  onMoveDown={() => onMoveAction(action.id, "down")}
-                  onRemove={() => onRemoveAction(action.id)}
-                  selectableObjects={selectableTargetObjects}
-                  sounds={sounds}
-                  globalVariables={globalVariables}
-                  objectVariablesByObjectId={objectVariablesByObjectId}
-                  roomInstances={roomInstances}
-                  allObjects={allObjects}
-                  rooms={rooms}
-                />
-              ))}
+
+              {activeEvent.items.map((item, index) => {
+                if (item.type === "action") {
+                  return (
+                    <ActionBlock
+                      key={item.id}
+                      action={item.action}
+                      index={index}
+                      isFirst={index === 0}
+                      isLast={index === activeEvent.items.length - 1}
+                      onUpdate={(updatedAction) => onUpdateAction(item.action.id, updatedAction)}
+                      onMoveUp={() => onMoveAction(item.action.id, "up")}
+                      onMoveDown={() => onMoveAction(item.action.id, "down")}
+                      onRemove={() => onRemoveAction(item.action.id)}
+                      selectableObjects={selectableTargetObjects}
+                      sounds={sounds}
+                      globalVariables={globalVariables}
+                      objectVariablesByObjectId={objectVariablesByObjectId}
+                      roomInstances={roomInstances}
+                      allObjects={allObjects}
+                      rooms={rooms}
+                    />
+                  )
+                }
+
+                const variableSource = item.condition.left.scope === "global" ? globalVariables : selectedObjectVariables
+                const selectedVariable = variableSource.find((variable) => variable.id === item.condition.left.variableId)
+                const selectedType = selectedVariable?.type ?? "number"
+                const selectedAddType = ifActionTypeByBlockId[item.id] ?? OBJECT_ACTION_TYPES[0] ?? "move"
+
+                return (
+                  <div key={item.id} className="mvp16-if-block-container rounded-md border border-amber-200 bg-amber-50/70 p-3">
+                    <div className="mvp16-if-block-header mb-2 flex items-center justify-between">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">If</p>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="mvp16-if-block-remove h-6 text-xs text-amber-700 hover:bg-amber-100"
+                        onClick={() => onRemoveIfBlock(item.id)}
+                      >
+                        Remove if
+                      </Button>
+                    </div>
+
+                    <div className="mvp16-if-condition-row mb-3 flex flex-wrap items-center gap-2">
+                      <select
+                        className="mvp16-if-scope-select h-7 rounded border border-amber-300 bg-white px-2 text-xs"
+                        value={item.condition.left.scope}
+                        onChange={(event) => {
+                          const nextScope = event.target.value as "global" | "object"
+                          const nextSource = nextScope === "global" ? globalVariables : selectedObjectVariables
+                          const firstVariable = nextSource[0]
+                          if (!firstVariable) {
+                            return
+                          }
+                          onUpdateIfCondition(item.id, {
+                            left: { scope: nextScope, variableId: firstVariable.id },
+                            operator: item.condition.operator,
+                            right: firstVariable.initialValue
+                          })
+                        }}
+                      >
+                        <option value="global">Global</option>
+                        <option value="object">Objecte</option>
+                      </select>
+                      <select
+                        className="mvp16-if-variable-select h-7 rounded border border-amber-300 bg-white px-2 text-xs"
+                        value={item.condition.left.variableId}
+                        onChange={(event) => {
+                          const nextVariable = variableSource.find((variable) => variable.id === event.target.value)
+                          if (!nextVariable) {
+                            return
+                          }
+                          onUpdateIfCondition(item.id, {
+                            left: { scope: item.condition.left.scope, variableId: nextVariable.id },
+                            operator: item.condition.operator,
+                            right: nextVariable.initialValue
+                          })
+                        }}
+                      >
+                        {variableSource.map((variable) => (
+                          <option key={variable.id} value={variable.id}>
+                            {variable.name}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        className="mvp16-if-operator-select h-7 rounded border border-amber-300 bg-white px-2 text-xs"
+                        value={item.condition.operator}
+                        onChange={(event) =>
+                          onUpdateIfCondition(item.id, {
+                            ...item.condition,
+                            operator: event.target.value as IfCondition["operator"]
+                          })
+                        }
+                      >
+                        <option value="==">==</option>
+                        <option value="!=">!=</option>
+                        <option value=">">&gt;</option>
+                        <option value=">=">&gt;=</option>
+                        <option value="<">&lt;</option>
+                        <option value="<=">&lt;=</option>
+                      </select>
+                      {selectedType === "boolean" ? (
+                        <select
+                          className="mvp16-if-value-bool h-7 rounded border border-amber-300 bg-white px-2 text-xs"
+                          value={String(item.condition.right)}
+                          onChange={(event) =>
+                            onUpdateIfCondition(item.id, {
+                              ...item.condition,
+                              right: event.target.value === "true"
+                            })
+                          }
+                        >
+                          <option value="true">true</option>
+                          <option value="false">false</option>
+                        </select>
+                      ) : (
+                        <input
+                          className="mvp16-if-value-input h-7 w-28 rounded border border-amber-300 bg-white px-2 text-xs"
+                          type={selectedType === "number" ? "number" : "text"}
+                          value={String(item.condition.right)}
+                          onChange={(event) =>
+                            onUpdateIfCondition(item.id, {
+                              ...item.condition,
+                              right:
+                                selectedType === "number"
+                                  ? coerceIfConditionRightValue("number", event.target.value)
+                                  : coerceIfConditionRightValue("string", event.target.value)
+                            })
+                          }
+                        />
+                      )}
+                    </div>
+
+                    <div className="mvp16-if-actions-list space-y-2">
+                      {item.actions.map((nestedAction, nestedIndex) => (
+                        <ActionBlock
+                          key={nestedAction.id}
+                          action={nestedAction}
+                          index={nestedIndex}
+                          isFirst
+                          isLast
+                          onUpdate={(updatedAction) => onUpdateIfAction(item.id, nestedAction.id, updatedAction)}
+                          onMoveUp={() => undefined}
+                          onMoveDown={() => undefined}
+                          onRemove={() => onRemoveIfAction(item.id, nestedAction.id)}
+                          selectableObjects={selectableTargetObjects}
+                          sounds={sounds}
+                          globalVariables={globalVariables}
+                          objectVariablesByObjectId={objectVariablesByObjectId}
+                          roomInstances={roomInstances}
+                          allObjects={allObjects}
+                          rooms={rooms}
+                        />
+                      ))}
+                    </div>
+
+                    <div className="mvp16-if-add-action mt-2 flex items-center gap-2">
+                      <select
+                        className="mvp16-if-add-type h-7 rounded border border-amber-300 bg-white px-2 text-xs"
+                        value={selectedAddType}
+                        onChange={(event) =>
+                          setIfActionTypeByBlockId((previous) => ({
+                            ...previous,
+                            [item.id]: event.target.value as ObjectActionType
+                          }))
+                        }
+                      >
+                        {OBJECT_ACTION_TYPES.map((type) => (
+                          <option key={`${item.id}-${type}`} value={type}>
+                            {ACTION_DISPLAY_NAMES[type]}
+                          </option>
+                        ))}
+                      </select>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="mvp16-if-add-action-button h-7 text-xs"
+                        onClick={() => onAddIfAction(item.id, selectedAddType)}
+                      >
+                        Add nested action
+                      </Button>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
 
           <div className="mvp3-action-picker border-t border-slate-200 p-3">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="mvp3-action-picker-toggle h-8 w-full justify-start text-xs"
-              onClick={() => setIsActionPickerOpen(true)}
-            >
-              <Plus className="mr-2 h-3.5 w-3.5" />
-              Add Action
-            </Button>
+            <div className="mvp16-actions-footer-grid grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mvp3-action-picker-toggle h-8 w-full justify-start text-xs"
+                onClick={() => setIsActionPickerOpen(true)}
+              >
+                <Plus className="mr-2 h-3.5 w-3.5" />
+                Add Action
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mvp16-if-add-block h-8 w-full justify-start text-xs"
+                disabled={!defaultIfCondition}
+                onClick={() => {
+                  if (defaultIfCondition) {
+                    onAddIfBlock(defaultIfCondition)
+                  }
+                }}
+              >
+                <Plus className="mr-2 h-3.5 w-3.5" />
+                Add if block
+              </Button>
+            </div>
           </div>
         </>
       ) : (
