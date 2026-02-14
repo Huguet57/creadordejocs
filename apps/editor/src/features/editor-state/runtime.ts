@@ -164,10 +164,20 @@ function applyCollisionEvents(
           eventEntry.type === "Collision" &&
           (eventEntry.targetObjectId === null || eventEntry.targetObjectId === firstObject.id)
       )
+      const firstId = first.id
+      const secondId = second.id
 
       for (const eventEntry of firstEvents) {
-        const eventResult = runEventActions(project, first, eventEntry.actions)
-        mutableInstances[i] = eventResult.instance
+        const firstIndex = mutableInstances.findIndex((instanceEntry) => instanceEntry.id === firstId)
+        if (firstIndex === -1) {
+          break
+        }
+        const firstInstance = mutableInstances[firstIndex]
+        if (!firstInstance) {
+          break
+        }
+        const eventResult = runEventActions(project, firstInstance, eventEntry.actions)
+        mutableInstances[firstIndex] = eventResult.instance
         nextRuntime = {
           ...nextRuntime,
           score: nextRuntime.score + eventResult.scoreDelta
@@ -180,15 +190,28 @@ function applyCollisionEvents(
           }
         }
         if (eventResult.destroySelf) {
-          mutableInstances.splice(i, 1)
-          i -= 1
+          mutableInstances.splice(firstIndex, 1)
+          if (firstIndex <= i) {
+            i -= 1
+          }
+          if (firstIndex <= j) {
+            j -= 1
+          }
           break
         }
       }
 
       for (const eventEntry of secondEvents) {
-        const eventResult = runEventActions(project, second, eventEntry.actions)
-        mutableInstances[j] = eventResult.instance
+        const secondIndex = mutableInstances.findIndex((instanceEntry) => instanceEntry.id === secondId)
+        if (secondIndex === -1) {
+          break
+        }
+        const secondInstance = mutableInstances[secondIndex]
+        if (!secondInstance) {
+          break
+        }
+        const eventResult = runEventActions(project, secondInstance, eventEntry.actions)
+        mutableInstances[secondIndex] = eventResult.instance
         nextRuntime = {
           ...nextRuntime,
           score: nextRuntime.score + eventResult.scoreDelta
@@ -201,8 +224,13 @@ function applyCollisionEvents(
           }
         }
         if (eventResult.destroySelf) {
-          mutableInstances.splice(j, 1)
-          j -= 1
+          mutableInstances.splice(secondIndex, 1)
+          if (secondIndex <= i) {
+            i -= 1
+          }
+          if (secondIndex <= j) {
+            j -= 1
+          }
           break
         }
       }

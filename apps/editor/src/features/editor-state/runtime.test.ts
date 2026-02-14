@@ -75,4 +75,41 @@ describe("runtime regressions", () => {
     expect(spawnedBullet?.x).toBe((shipBefore?.x ?? 0) + 0)
     expect(spawnedBullet?.y).toBe((shipBefore?.y ?? 0) - 18)
   })
+
+  it("removes the collided asteroid instance instead of a different one", () => {
+    const template = createSpaceShooterTemplateProject()
+    const bulletObjectId = template.project.objects.find((objectEntry) => objectEntry.name === "Bullet")?.id
+    const asteroidObjectId = template.project.objects.find((objectEntry) => objectEntry.name === "Asteroid")?.id
+    expect(bulletObjectId).toBeTruthy()
+    expect(asteroidObjectId).toBeTruthy()
+
+    const room = template.project.rooms.find((roomEntry) => roomEntry.id === template.roomId)
+    const asteroids =
+      room?.instances.filter((instanceEntry) => instanceEntry.objectId === asteroidObjectId).sort((a, b) => a.x - b.x) ??
+      []
+    const leftmostAsteroid = asteroids[0]
+    const untouchedAsteroid = asteroids[1]
+    expect(leftmostAsteroid).toBeTruthy()
+    expect(untouchedAsteroid).toBeTruthy()
+
+    const projectWithForcedCollision = updateRoomInstances(template.project, template.roomId, (instances) => [
+      ...instances,
+      {
+        id: "test-bullet-collision",
+        objectId: bulletObjectId ?? "",
+        x: leftmostAsteroid?.x ?? 0,
+        y: leftmostAsteroid?.y ?? 0
+      }
+    ])
+
+    const result = runRuntimeTick(projectWithForcedCollision, template.roomId, new Set(), createInitialRuntimeState())
+    const resultRoom = result.project.rooms.find((roomEntry) => roomEntry.id === template.roomId)
+    const asteroidIdsAfter =
+      resultRoom?.instances.filter((instanceEntry) => instanceEntry.objectId === asteroidObjectId).map((entry) => entry.id) ??
+      []
+
+    expect(asteroidIdsAfter).not.toContain(leftmostAsteroid?.id ?? "")
+    expect(asteroidIdsAfter).toContain(untouchedAsteroid?.id ?? "")
+    expect(asteroidIdsAfter).toHaveLength(2)
+  })
 })
