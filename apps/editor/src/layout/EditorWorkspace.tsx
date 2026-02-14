@@ -4,6 +4,7 @@ import { RoomEditorSection } from "../features/rooms/RoomEditorSection.js"
 import { RunSection } from "../features/run/RunSection.js"
 import { SoundEditorSection } from "../features/sounds/SoundEditorSection.js"
 import { SpriteEditorSection } from "../features/sprites/SpriteEditorSection.js"
+import { TemplatesSection } from "../features/templates/TemplatesSection.js"
 
 type EditorWorkspaceProps = {
   controller: EditorController
@@ -21,6 +22,9 @@ export function EditorWorkspace({ controller }: EditorWorkspaceProps) {
   }
   if (controller.activeSection === "rooms") {
     return <RoomEditorSection controller={controller} />
+  }
+  if (controller.activeSection === "templates") {
+    return <TemplatesSection controller={controller} />
   }
   return <RunSection controller={controller} />
 }

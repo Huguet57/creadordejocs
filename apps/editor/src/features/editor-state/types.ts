@@ -1,6 +1,6 @@
 import type { ProjectV1, ObjectActionDraft } from "@creadordejocs/project-format"
 
-export type EditorSection = "sprites" | "sounds" | "objects" | "rooms" | "run"
+export type EditorSection = "sprites" | "sounds" | "objects" | "rooms" | "run" | "templates"
 
 export type ObjectEventType = "Create" | "Step" | "Draw" | "Collision" | "Keyboard"
 export type ObjectEventKey = "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight" | "Space"
