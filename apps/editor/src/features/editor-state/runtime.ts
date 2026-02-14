@@ -172,17 +172,17 @@ function applyCollisionEvents(
           ...nextRuntime,
           score: nextRuntime.score + eventResult.scoreDelta
         }
-        if (eventResult.destroySelf) {
-          mutableInstances.splice(i, 1)
-          i -= 1
-          break
-        }
         if (eventResult.gameOverMessage) {
           nextRuntime = {
             ...nextRuntime,
             gameOver: true,
             message: eventResult.gameOverMessage
           }
+        }
+        if (eventResult.destroySelf) {
+          mutableInstances.splice(i, 1)
+          i -= 1
+          break
         }
       }
 
@@ -193,17 +193,17 @@ function applyCollisionEvents(
           ...nextRuntime,
           score: nextRuntime.score + eventResult.scoreDelta
         }
-        if (eventResult.destroySelf) {
-          mutableInstances.splice(j, 1)
-          j -= 1
-          break
-        }
         if (eventResult.gameOverMessage) {
           nextRuntime = {
             ...nextRuntime,
             gameOver: true,
             message: eventResult.gameOverMessage
           }
+        }
+        if (eventResult.destroySelf) {
+          mutableInstances.splice(j, 1)
+          j -= 1
+          break
         }
       }
     }

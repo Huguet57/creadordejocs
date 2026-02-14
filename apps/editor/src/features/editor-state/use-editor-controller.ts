@@ -39,6 +39,10 @@ import type { EditorSection, ObjectEventKey, ObjectEventType } from "./types.js"
 
 const AUTOSAVE_MS = 4000
 
+export function getRuntimeKeyFromKeyboardEvent(event: Pick<KeyboardEvent, "code" | "key">): string {
+  return event.code
+}
+
 function ensureProjectHasRoom(project: ProjectV1): { project: ProjectV1; roomId: string } {
   const firstRoom = project.rooms[0]
   if (firstRoom) {
@@ -139,10 +143,10 @@ export function useEditorController() {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
-      pressedKeysRef.current.add(event.key)
+      pressedKeysRef.current.add(getRuntimeKeyFromKeyboardEvent(event))
     }
     const onKeyUp = (event: KeyboardEvent): void => {
-      pressedKeysRef.current.delete(event.key)
+      pressedKeysRef.current.delete(getRuntimeKeyFromKeyboardEvent(event))
     }
     window.addEventListener("keydown", onKeyDown)
     window.addEventListener("keyup", onKeyUp)
