@@ -1,7 +1,11 @@
 import {
+  addGlobalVariable,
   addObjectEvent,
   addObjectEventAction,
+  addObjectVariable,
   type AddObjectEventInput,
+  type AddGlobalVariableInput,
+  type AddObjectVariableInput,
   type ObjectActionDraft,
   type ProjectV1
 } from "@creadordejocs/project-format"
@@ -26,4 +30,26 @@ export function addEventWithActions(
     (currentProject, action) => addObjectEventAction(currentProject, { objectId, eventId, action }),
     withEvent
   )
+}
+
+export function addGlobalVariableWithId(
+  project: ProjectV1,
+  input: AddGlobalVariableInput
+): { project: ProjectV1; variableId: string } {
+  const result = addGlobalVariable(project, input)
+  if (!result.variableId) {
+    throw new Error(`Failed to create global variable "${input.name}"`)
+  }
+  return { project: result.project, variableId: result.variableId }
+}
+
+export function addObjectVariableWithId(
+  project: ProjectV1,
+  input: AddObjectVariableInput
+): { project: ProjectV1; variableId: string } {
+  const result = addObjectVariable(project, input)
+  if (!result.variableId) {
+    throw new Error(`Failed to create object variable "${input.name}" for object "${input.objectId}"`)
+  }
+  return { project: result.project, variableId: result.variableId }
 }
