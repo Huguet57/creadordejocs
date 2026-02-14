@@ -1,5 +1,5 @@
 import { Activity, Keyboard, MousePointerClick, Play, Zap, Plus, X, Scan } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
+import { useState } from "react"
 import { Button } from "../../components/ui/button.js"
 import { OBJECT_EVENT_TYPES, OBJECT_EVENT_KEYS, type ObjectEventType, type ObjectEventKey, type ObjectEventEntry } from "../editor-state/types.js"
 
@@ -31,21 +31,6 @@ export function EventListPanel({
   const [isAdding, setIsAdding] = useState(false)
   const [eventType, setEventType] = useState<ObjectEventType>("Create")
   const [eventKey, setEventKey] = useState<ObjectEventKey>("ArrowLeft")
-  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  const resetIdleTimer = () => {
-    if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
-    idleTimerRef.current = setTimeout(() => setIsAdding(false), 5000)
-  }
-
-  useEffect(() => {
-    if (isAdding) {
-      resetIdleTimer()
-    }
-    return () => {
-      if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
-    }
-  }, [isAdding])
 
   const handleAddEvent = () => {
     onAddEvent(eventType, eventType === "Keyboard" ? eventKey : null)
@@ -108,14 +93,26 @@ export function EventListPanel({
 
       <div className="p-3 border-t border-slate-200 bg-white">
         {isAdding ? (
-          <div className="flex flex-col gap-2">
+          <div className="mvp3-event-add-panel flex flex-col gap-2 rounded-md border border-slate-200 bg-slate-50 p-2">
+            <div className="mvp3-event-add-panel-header flex items-center justify-between">
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Add Event</p>
+              <button
+                type="button"
+                className="mvp3-event-add-panel-close inline-flex h-6 w-6 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
+                onClick={() => setIsAdding(false)}
+                title="Cancel"
+                aria-label="Cancel add event"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
             <div className="flex gap-2">
               <select
                 className="h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-none"
                 value={eventType}
                 onChange={(e) => {
                   setEventType(e.target.value as ObjectEventType)
-                  resetIdleTimer()
                 }}
               >
                 {OBJECT_EVENT_TYPES.map((type) => (
@@ -138,7 +135,6 @@ export function EventListPanel({
                 value={eventKey}
                 onChange={(e) => {
                   setEventKey(e.target.value as ObjectEventKey)
-                  resetIdleTimer()
                 }}
               >
                 {OBJECT_EVENT_KEYS.map((key) => (

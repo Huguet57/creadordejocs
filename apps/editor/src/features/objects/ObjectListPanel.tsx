@@ -1,5 +1,5 @@
 import { Box, Plus, X } from "lucide-react"
-import { useCallback, useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from "react"
+import { useCallback, useState, type ChangeEvent, type KeyboardEvent } from "react"
 import { Button } from "../../components/ui/button.js"
 import type { ProjectV1 } from "@creadordejocs/project-format"
 
@@ -20,21 +20,6 @@ export function ObjectListPanel({
 }: ObjectListPanelProps) {
   const [isAdding, setIsAdding] = useState(false)
   const [newObjectName, setNewObjectName] = useState("Objecte nou")
-  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  const resetIdleTimer = () => {
-    if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
-    idleTimerRef.current = setTimeout(() => setIsAdding(false), 5000)
-  }
-
-  useEffect(() => {
-    if (isAdding) {
-      resetIdleTimer()
-    }
-    return () => {
-      if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
-    }
-  }, [isAdding])
 
   const inputCallbackRef = useCallback((node: HTMLInputElement | null) => {
     if (node) node.select()
@@ -102,31 +87,43 @@ export function ObjectListPanel({
 
       <div className="border-t border-slate-200 bg-white p-3 space-y-2">
         {isAdding ? (
-          <div className="flex gap-2">
-            <input
-              ref={inputCallbackRef}
-              value={newObjectName}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                setNewObjectName(e.target.value)
-                resetIdleTimer()
-              }}
-              onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
-                blockUndoShortcuts(e)
-                resetIdleTimer()
-                if (e.key === "Enter") handleAddObject()
-                if (e.key === "Escape") setIsAdding(false)
-              }}
-              className="flex h-8 w-full rounded-md border border-slate-300 bg-white px-3 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
-              placeholder="Name..."
-            />
-            <Button
-              size="sm"
-              className="h-8 w-8 shrink-0 px-0"
-              onClick={handleAddObject}
-              title="Add object"
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
+          <div className="mvp3-object-add-panel rounded-md border border-slate-200 bg-slate-50 p-2">
+            <div className="mvp3-object-add-panel-header mb-2 flex items-center justify-between">
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Add Object</p>
+              <button
+                type="button"
+                className="mvp3-object-add-panel-close inline-flex h-6 w-6 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
+                onClick={() => setIsAdding(false)}
+                title="Cancel"
+                aria-label="Cancel add object"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            <div className="flex gap-2">
+              <input
+                ref={inputCallbackRef}
+                value={newObjectName}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                  setNewObjectName(e.target.value)
+                }}
+                onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
+                  blockUndoShortcuts(e)
+                  if (e.key === "Enter") handleAddObject()
+                  if (e.key === "Escape") setIsAdding(false)
+                }}
+                className="flex h-8 w-full rounded-md border border-slate-300 bg-white px-3 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+                placeholder="Name..."
+              />
+              <Button
+                size="sm"
+                className="h-8 w-8 shrink-0 px-0"
+                onClick={handleAddObject}
+                title="Add object"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         ) : (
           <Button
