@@ -1,6 +1,4 @@
-import { Plus } from "lucide-react"
-import { useState } from "react"
-import { Button } from "../../components/ui/button.js"
+import { CopyPlus, Flag, Maximize, Move, FastForward, Trash, Trophy, Volume2, Plus } from "lucide-react"
 import { Label } from "../../components/ui/label.js"
 import { OBJECT_ACTION_TYPES, OBJECT_EVENT_KEYS, type ObjectActionDraft, type ObjectActionType, type ObjectEventKey, type ObjectEventEntry } from "../editor-state/types.js"
 import { ActionBlock } from "./ActionBlock.js"
@@ -18,6 +16,17 @@ type ActionEditorPanelProps = {
   onRemoveAction: (actionId: string) => void
 }
 
+const ACTION_ICONS: Record<ObjectActionType, React.ElementType> = {
+  move: Move,
+  setVelocity: FastForward,
+  spawnObject: CopyPlus,
+  playSound: Volume2,
+  changeScore: Trophy,
+  endGame: Flag,
+  clampToRoom: Maximize,
+  destroySelf: Trash,
+}
+
 export function ActionEditorPanel({
   selectedObject,
   activeEvent,
@@ -29,8 +38,6 @@ export function ActionEditorPanel({
   onMoveAction,
   onRemoveAction
 }: ActionEditorPanelProps) {
-  const [nextActionType, setNextActionType] = useState<ObjectActionType>("move")
-
   if (!selectedObject) {
     return (
       <div className="flex flex-1 items-center justify-center bg-slate-50 text-slate-400">
@@ -113,24 +120,24 @@ export function ActionEditorPanel({
             />
           ))}
 
-          <div className="mt-6 flex items-center gap-2 rounded-md border border-slate-200 bg-white p-2 shadow-sm max-w-md">
-            <select
-              className="h-8 flex-1 rounded border border-slate-300 bg-white px-2 text-xs text-slate-700 focus:border-blue-500 focus:outline-none"
-              value={nextActionType}
-              onChange={(e) => setNextActionType(e.target.value as ObjectActionType)}
-            >
-              {OBJECT_ACTION_TYPES.map((type) => (
-                <option key={type} value={type}>{type}</option>
-              ))}
-            </select>
-            <Button
-              size="sm"
-              className="h-8 px-3 text-xs"
-              onClick={() => onAddAction(nextActionType)}
-            >
-              <Plus className="mr-2 h-3.5 w-3.5" />
-              Add Action
-            </Button>
+          <div className="mt-8">
+            <p className="mb-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Add Action</p>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+              {OBJECT_ACTION_TYPES.map((type) => {
+                const Icon = ACTION_ICONS[type] ?? Plus
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    className="flex flex-col items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white p-3 text-slate-600 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 hover:shadow-md active:scale-95"
+                    onClick={() => onAddAction(type)}
+                  >
+                    <Icon className="h-5 w-5" />
+                    <span className="text-[10px] font-medium uppercase">{type}</span>
+                  </button>
+                )
+              })}
+            </div>
           </div>
         </div>
       </div>

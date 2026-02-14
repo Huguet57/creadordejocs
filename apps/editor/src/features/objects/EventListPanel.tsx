@@ -39,41 +39,6 @@ export function EventListPanel({
         <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Events</span>
       </div>
 
-      <div className="p-3 border-b border-slate-200 bg-white space-y-2">
-        <div className="flex flex-col gap-2">
-          <select
-            className="h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-none"
-            value={eventType}
-            onChange={(e) => setEventType(e.target.value as ObjectEventType)}
-          >
-            {OBJECT_EVENT_TYPES.map((type) => (
-              <option key={type} value={type}>{type}</option>
-            ))}
-          </select>
-          
-          {eventType === "Keyboard" && (
-            <select
-              className="h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-none"
-              value={eventKey}
-              onChange={(e) => setEventKey(e.target.value as ObjectEventKey)}
-            >
-              {OBJECT_EVENT_KEYS.map((key) => (
-                <option key={key} value={key}>{key}</option>
-              ))}
-            </select>
-          )}
-
-          <Button 
-            size="sm" 
-            className="w-full h-8 text-xs"
-            onClick={handleAddEvent}
-          >
-            <Plus className="mr-2 h-3.5 w-3.5" />
-            Add Event
-          </Button>
-        </div>
-      </div>
-
       <div className="flex-1 overflow-y-auto p-2">
         <div className="flex flex-col gap-1">
           {events.length === 0 && (
@@ -119,6 +84,41 @@ export function EventListPanel({
               </div>
             )
           })}
+        </div>
+      </div>
+
+      <div className="p-3 border-t border-slate-200 bg-white space-y-2">
+        <div className="flex flex-col gap-2">
+          <select
+            className="h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-none"
+            value={eventType}
+            onChange={(e) => setEventType(e.target.value as ObjectEventType)}
+          >
+            {OBJECT_EVENT_TYPES.map((type) => (
+              <option key={type} value={type}>{type}</option>
+            ))}
+          </select>
+          
+          {eventType === "Keyboard" && (
+            <select
+              className="h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-none"
+              value={eventKey}
+              onChange={(e) => setEventKey(e.target.value as ObjectEventKey)}
+            >
+              {OBJECT_EVENT_KEYS.map((key) => (
+                <option key={key} value={key}>{key}</option>
+              ))}
+            </select>
+          )}
+
+          <Button 
+            size="sm" 
+            className="w-full h-8 text-xs"
+            onClick={handleAddEvent}
+          >
+            <Plus className="mr-2 h-3.5 w-3.5" />
+            Add Event
+          </Button>
         </div>
       </div>
     </aside>

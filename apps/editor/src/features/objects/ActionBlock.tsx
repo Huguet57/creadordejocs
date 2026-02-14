@@ -28,17 +28,6 @@ const ACTION_ICONS: Record<ObjectActionType, React.ElementType> = {
   destroySelf: Trash,
 }
 
-const ACTION_COLORS: Record<ObjectActionType, string> = {
-  move: "bg-blue-50 border-blue-200 text-blue-700",
-  setVelocity: "bg-indigo-50 border-indigo-200 text-indigo-700",
-  spawnObject: "bg-green-50 border-green-200 text-green-700",
-  playSound: "bg-amber-50 border-amber-200 text-amber-700",
-  changeScore: "bg-yellow-50 border-yellow-200 text-yellow-700",
-  endGame: "bg-red-50 border-red-200 text-red-700",
-  clampToRoom: "bg-slate-50 border-slate-200 text-slate-700",
-  destroySelf: "bg-slate-50 border-slate-200 text-slate-700",
-}
-
 export function ActionBlock({
   action,
   isFirst,
@@ -51,13 +40,12 @@ export function ActionBlock({
   sounds
 }: ActionBlockProps) {
   const Icon = ACTION_ICONS[action.type] ?? Move
-  const colorClass = ACTION_COLORS[action.type] ?? "bg-slate-50 border-slate-200 text-slate-700"
 
   return (
-    <div className={`mvp3-action-block flex items-center gap-3 rounded-md border p-2 shadow-sm transition-all hover:shadow-md ${colorClass}`}>
+    <div className="group flex items-center gap-3 rounded-md border border-slate-200 bg-white p-2 shadow-sm transition-all hover:shadow-md">
       <div className="flex items-center gap-2 min-w-[120px]">
-        <Icon className="h-4 w-4 opacity-70" />
-        <span className="text-xs font-semibold uppercase tracking-wide">{action.type}</span>
+        <Icon className="h-4 w-4 text-slate-500" />
+        <span className="text-xs font-semibold uppercase tracking-wide text-slate-700">{action.type}</span>
       </div>
 
       <div className="flex-1 flex items-center gap-3 flex-wrap">
