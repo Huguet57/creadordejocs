@@ -11,6 +11,11 @@ export type HelloSceneDemoResult = {
   renderedFrames: number
 }
 
+export type HelloSceneDemoOptions = {
+  getNowMs?: () => number
+  firstDeltaMs?: number
+}
+
 export function buildHelloSceneProject(): ProjectV1 {
   const project = createEmptyProjectV1("Hello Scene")
 
@@ -33,7 +38,9 @@ export function buildHelloSceneProject(): ProjectV1 {
   }
 }
 
-export function runHelloSceneDemo(getNowMs: () => number = Date.now): HelloSceneDemoResult {
+export function runHelloSceneDemo(options: HelloSceneDemoOptions = {}): HelloSceneDemoResult {
+  const getNowMs = options.getNowMs ?? Date.now
+  const firstDeltaMs = options.firstDeltaMs ?? 16.67
   const startedAtMs = getNowMs()
   let project = buildHelloSceneProject()
   let renderedFrames = 0
@@ -53,11 +60,13 @@ export function runHelloSceneDemo(getNowMs: () => number = Date.now): HelloScene
   })
 
   try {
-    loop.step(16.67)
+    loop.step(firstDeltaMs)
   } catch (error: unknown) {
     project = incrementMetric(project, "runtimeErrors")
     const message = error instanceof Error ? error.message : "unknown runtime error"
-    throw new Error(`Hello Scene runtime failed: ${message}`)
+    throw new Error(
+      `Hello Scene runtime failed: ${message} (runtimeErrors=${project.metrics.runtimeErrors})`
+    )
   }
 
   project = setTimeToFirstPlayableFunMs(project, getNowMs() - startedAtMs)
