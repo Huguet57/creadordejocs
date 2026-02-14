@@ -1,0 +1,17 @@
+{
+  "files": [],
+  "references": [
+    {
+      "path": "./apps/editor"
+    },
+    {
+      "path": "./apps/player"
+    },
+    {
+      "path": "./packages/engine-core"
+    },
+    {
+      "path": "./packages/project-format"
+    }
+  ]
+}
