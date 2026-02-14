@@ -11,6 +11,7 @@ type SoundEditorSectionProps = {
 
 export function SoundEditorSection({ controller }: SoundEditorSectionProps) {
   const [soundName, setSoundName] = useState("So nou")
+  const [validationMessage, setValidationMessage] = useState<string>("")
 
   const blockUndoShortcuts = (event: KeyboardEvent<HTMLInputElement>): void => {
     if ((event.metaKey || event.ctrlKey) && (event.key.toLowerCase() === "z" || event.key.toLowerCase() === "y")) {
@@ -47,11 +48,9 @@ export function SoundEditorSection({ controller }: SoundEditorSectionProps) {
         <div className="rounded-md border border-slate-200 p-3">
           <p className="text-xs font-semibold text-slate-600">Upload pipeline</p>
           <p className="mt-1 text-xs text-slate-500">
-            Placeholder de pujada. A MVP 2 connectarem validació + storage.
+            Pots importar WAV/MP3/OGG. Guardem nom/URL a `assetSource`.
           </p>
-          <Button type="button" variant="outline" size="sm" className="mt-2" disabled>
-            Upload (coming soon)
-          </Button>
+          {validationMessage && <p className="mt-2 text-xs text-rose-600">{validationMessage}</p>}
         </div>
 
         <ul className="space-y-2">
@@ -75,6 +74,25 @@ export function SoundEditorSection({ controller }: SoundEditorSectionProps) {
                   controller.updateSoundSource(soundEntry.id, event.target.value)
                 }
               />
+              <label className="mvp2-sound-upload-label cursor-pointer rounded border border-slate-300 px-2 py-1 text-xs">
+                Import file
+                <input
+                  className="hidden"
+                  type="file"
+                  accept=".wav,.mp3,.ogg"
+                  onChange={(event) => {
+                    const selectedFile = event.target.files?.[0]
+                    if (!selectedFile) return
+                    const valid = /\.(wav|mp3|ogg)$/i.test(selectedFile.name)
+                    if (!valid) {
+                      setValidationMessage("Format invàlid. Usa WAV, MP3 o OGG.")
+                      return
+                    }
+                    setValidationMessage("")
+                    controller.updateSoundSource(soundEntry.id, selectedFile.name)
+                  }}
+                />
+              </label>
             </li>
           ))}
         </ul>

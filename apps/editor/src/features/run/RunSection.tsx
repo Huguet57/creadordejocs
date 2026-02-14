@@ -25,6 +25,12 @@ export function RunSection({ controller }: RunSectionProps) {
         <p className="text-xs text-slate-600">
           Previsualització activa de la sala: <strong>{controller.activeRoom?.name ?? "cap"}</strong>
         </p>
+        <div className="mvp2-run-hud flex items-center gap-4 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-xs">
+          <span data-testid="run-score">Score: {controller.runtimeState.score}</span>
+          <span data-testid="run-game-state">
+            State: {controller.runtimeState.gameOver ? `Game over - ${controller.runtimeState.message}` : "Running"}
+          </span>
+        </div>
         <div
           className="mvp15-run-canvas relative rounded-md border border-dashed border-slate-300 bg-white"
           style={{ width: ROOM_WIDTH, height: ROOM_HEIGHT }}

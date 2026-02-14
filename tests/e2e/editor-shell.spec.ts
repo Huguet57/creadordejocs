@@ -40,5 +40,14 @@ test("creates sprite, sound, object and object listener", async ({ page }) => {
 
   await page.getByTestId("object-event-type-select").selectOption("Create")
   await page.getByTestId("add-object-event-button").click()
-  await expect(page.locator(".mvp15-object-event-row")).toHaveCount(1)
+  await expect(page.locator(".mvp2-object-event-row")).toHaveCount(1)
+  await page.getByRole("button", { name: "+ Action block" }).click()
+  await expect(page.locator(".mvp2-object-action-row")).toHaveCount(1)
+})
+
+test("loads dodge template and runs gameplay hud", async ({ page }) => {
+  await page.getByTestId("load-dodge-template-button").click()
+  await page.getByTestId("sidebar-run").click()
+  await expect(page.getByTestId("run-score")).toContainText("Score:")
+  await expect(page.getByTestId("run-game-state")).toContainText("Running")
 })

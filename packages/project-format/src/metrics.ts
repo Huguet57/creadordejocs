@@ -1,6 +1,11 @@
 import type { ProjectV1 } from "./schema-v1.js"
 
-export type CounterMetricKey = "appStart" | "projectLoad" | "runtimeErrors"
+export type CounterMetricKey =
+  | "appStart"
+  | "projectLoad"
+  | "runtimeErrors"
+  | "tutorialCompletion"
+  | "stuckRate"
 
 export function incrementMetric(project: ProjectV1, metric: CounterMetricKey): ProjectV1 {
   return {

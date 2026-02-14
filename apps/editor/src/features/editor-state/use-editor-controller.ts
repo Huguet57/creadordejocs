@@ -1,19 +1,25 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import {
   addObjectEvent,
+  addObjectEventAction as addObjectEventActionModel,
   addRoomInstance,
-  appendObjectEventAction,
   createEmptyProjectV1,
   createRoom,
   incrementMetric,
+  moveObjectEventAction as moveObjectEventActionModel,
   moveRoomInstance,
   quickCreateObject,
   quickCreateSound,
   quickCreateSprite,
   removeObjectEvent,
+  removeObjectEventAction as removeObjectEventActionModel,
+  setTimeToFirstPlayableFunMs,
+  updateObjectEventAction as updateObjectEventActionModel,
+  updateObjectEventConfig as updateObjectEventConfigModel,
   updateObjectProperties,
   updateSoundAssetSource,
   updateSpriteAssetSource,
+  type ObjectActionDraft,
   type ProjectV1
 } from "@creadordejocs/project-format"
 import {
@@ -26,10 +32,10 @@ import {
   type SaveStatus
 } from "../project-storage.js"
 import { selectActiveRoom, selectObject } from "./selectors.js"
-import type { EditorSection, ObjectEventType } from "./types.js"
+import { createDodgeTemplateProject } from "./dodge-template.js"
+import { createInitialRuntimeState, runRuntimeTick, type RuntimeState } from "./runtime.js"
+import type { EditorSection, ObjectEventKey, ObjectEventType } from "./types.js"
 
-const ROOM_WIDTH = 560
-const ROOM_HEIGHT = 320
 const AUTOSAVE_MS = 4000
 
 function ensureProjectHasRoom(project: ProjectV1): { project: ProjectV1; roomId: string } {
@@ -50,32 +56,6 @@ function createInitialEditorState(): { project: ProjectV1; roomId: string } {
   return ensureProjectHasRoom(incrementMetric(createEmptyProjectV1("Primer joc autònom"), "appStart"))
 }
 
-function runPreviewTick(project: ProjectV1, roomId: string): ProjectV1 {
-  return {
-    ...project,
-    rooms: project.rooms.map((room) => {
-      if (room.id !== roomId) {
-        return room
-      }
-
-      return {
-        ...room,
-        instances: room.instances.map((instance) => {
-          const objectEntry = project.objects.find((entry) => entry.id === instance.objectId)
-          if (!objectEntry) {
-            return instance
-          }
-
-          const radians = (objectEntry.direction * Math.PI) / 180
-          const nextX = Math.max(0, Math.min(ROOM_WIDTH - 32, instance.x + Math.cos(radians) * objectEntry.speed))
-          const nextY = Math.max(0, Math.min(ROOM_HEIGHT - 32, instance.y + Math.sin(radians) * objectEntry.speed))
-          return { ...instance, x: nextX, y: nextY }
-        })
-      }
-    })
-  }
-}
-
 export function useEditorController() {
   const initial = createInitialEditorState()
   const [project, setProject] = useState<ProjectV1>(initial.project)
@@ -84,11 +64,16 @@ export function useEditorController() {
   const [activeObjectId, setActiveObjectId] = useState<string | null>(null)
   const [isRunning, setIsRunning] = useState(false)
   const [runSnapshot, setRunSnapshot] = useState<ProjectV1 | null>(null)
+  const [runtimeState, setRuntimeState] = useState<RuntimeState>(createInitialRuntimeState())
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("saved")
   const [isDirty, setIsDirty] = useState(false)
   const [past, setPast] = useState<ProjectV1[]>([])
   const [future, setFuture] = useState<ProjectV1[]>([])
   const [snapshots, setSnapshots] = useState<LocalSnapshot[]>(() => loadSnapshotsFromLocalStorage())
+  const [startedAtMs] = useState<number>(() => Date.now())
+  const [workflowStep, setWorkflowStep] = useState<number>(0)
+  const pressedKeysRef = useRef<Set<string>>(new Set())
+  const runtimeRef = useRef<RuntimeState>(createInitialRuntimeState())
 
   const activeRoom = useMemo(() => selectActiveRoom(project, activeRoomId), [project, activeRoomId])
   const selectedObject = useMemo(() => selectObject(project, activeObjectId), [project, activeObjectId])
@@ -142,10 +127,30 @@ export function useEditorController() {
       return
     }
     const interval = window.setInterval(() => {
-      setProject((previous) => runPreviewTick(previous, activeRoom.id))
+      setProject((previous) => {
+        const result = runRuntimeTick(previous, activeRoom.id, pressedKeysRef.current, runtimeRef.current)
+        runtimeRef.current = result.runtime
+        setRuntimeState(result.runtime)
+        return result.project
+      })
     }, 80)
     return () => window.clearInterval(interval)
   }, [activeRoom, isRunning])
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent): void => {
+      pressedKeysRef.current.add(event.key)
+    }
+    const onKeyUp = (event: KeyboardEvent): void => {
+      pressedKeysRef.current.delete(event.key)
+    }
+    window.addEventListener("keydown", onKeyDown)
+    window.addEventListener("keyup", onKeyUp)
+    return () => {
+      window.removeEventListener("keydown", onKeyDown)
+      window.removeEventListener("keyup", onKeyUp)
+    }
+  }, [])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
@@ -197,17 +202,21 @@ export function useEditorController() {
     isRunning,
     snapshots,
     saveStatus,
+    runtimeState,
+    workflowStep,
     undoAvailable: past.length > 0,
     redoAvailable: future.length > 0,
     addSprite(name: string) {
       if (!name.trim()) return
       const next = quickCreateSprite(project, name.trim()).project
       pushProjectChange(next, `Create sprite: ${name.trim()}`)
+      setWorkflowStep((previous) => Math.max(previous, 0))
     },
     addSound(name: string) {
       if (!name.trim()) return
       const next = quickCreateSound(project, name.trim()).project
       pushProjectChange(next, `Create sound: ${name.trim()}`)
+      setWorkflowStep((previous) => Math.max(previous, 0))
     },
     addObject(name: string) {
       if (!name.trim()) return
@@ -222,12 +231,14 @@ export function useEditorController() {
       })
       pushProjectChange(result.project, `Create object: ${name.trim()}`)
       setActiveObjectId(result.objectId)
+      setWorkflowStep((previous) => Math.max(previous, 1))
     },
     addRoom(name: string) {
       if (!name.trim()) return
       const result = createRoom(project, name.trim())
       pushProjectChange(result.project, `Create room: ${name.trim()}`)
       setActiveRoomId(result.roomId)
+      setWorkflowStep((previous) => Math.max(previous, 4))
     },
     updateSpriteSource(spriteId: string, source: string) {
       pushProjectChange(updateSpriteAssetSource(project, spriteId, source))
@@ -235,9 +246,24 @@ export function useEditorController() {
     updateSoundSource(soundId: string, source: string) {
       pushProjectChange(updateSoundAssetSource(project, soundId, source))
     },
-    addObjectEvent(type: ObjectEventType) {
+    addObjectEvent(type: ObjectEventType, key: ObjectEventKey | null = null, targetObjectId: string | null = null) {
       if (!selectedObject) return
-      pushProjectChange(addObjectEvent(project, { objectId: selectedObject.id, type }), `Add ${type} event`)
+      pushProjectChange(
+        addObjectEvent(project, { objectId: selectedObject.id, type, key, targetObjectId }),
+        `Add ${type} event`
+      )
+      setWorkflowStep((previous) => Math.max(previous, 2))
+    },
+    updateObjectEventConfig(eventId: string, key: ObjectEventKey | null, targetObjectId: string | null) {
+      if (!selectedObject) return
+      pushProjectChange(
+        updateObjectEventConfigModel(project, {
+          objectId: selectedObject.id,
+          eventId,
+          key,
+          targetObjectId
+        })
+      )
     },
     removeObjectEvent(eventId: string) {
       if (!selectedObject) return
@@ -246,11 +272,33 @@ export function useEditorController() {
         `Remove object event`
       )
     },
-    addObjectEventAction(eventId: string, actionText: string) {
+    addObjectEventAction(eventId: string, action: ObjectActionDraft) {
       if (!selectedObject) return
       pushProjectChange(
-        appendObjectEventAction(project, { objectId: selectedObject.id, eventId, actionText }),
+        addObjectEventActionModel(project, { objectId: selectedObject.id, eventId, action }),
         "Add event action"
+      )
+      setWorkflowStep((previous) => Math.max(previous, 3))
+    },
+    updateObjectEventAction(eventId: string, actionId: string, action: ObjectActionDraft) {
+      if (!selectedObject) return
+      pushProjectChange(
+        updateObjectEventActionModel(project, { objectId: selectedObject.id, eventId, actionId, action }),
+        "Update event action"
+      )
+    },
+    removeObjectEventAction(eventId: string, actionId: string) {
+      if (!selectedObject) return
+      pushProjectChange(
+        removeObjectEventActionModel(project, { objectId: selectedObject.id, eventId, actionId }),
+        "Remove event action"
+      )
+    },
+    moveObjectEventAction(eventId: string, actionId: string, direction: "up" | "down") {
+      if (!selectedObject) return
+      pushProjectChange(
+        moveObjectEventActionModel(project, { objectId: selectedObject.id, eventId, actionId, direction }),
+        "Reorder event action"
       )
     },
     updateSelectedObjectProperty(key: "x" | "y" | "speed" | "direction", value: number) {
@@ -286,15 +334,24 @@ export function useEditorController() {
     },
     run() {
       if (isRunning) return
-      setRunSnapshot(project)
+      const withTimeMetric = setTimeToFirstPlayableFunMs(project, Date.now() - startedAtMs)
+      setProject(withTimeMetric)
+      setRunSnapshot(withTimeMetric)
+      const initialRuntime = createInitialRuntimeState()
+      runtimeRef.current = initialRuntime
+      setRuntimeState(initialRuntime)
       setIsRunning(true)
       setActiveSection("run")
+      setWorkflowStep((previous) => Math.max(previous, 5))
     },
     reset() {
       if (runSnapshot) {
         setProject(runSnapshot)
       }
       setIsRunning(false)
+      const resetRuntime = createInitialRuntimeState()
+      runtimeRef.current = resetRuntime
+      setRuntimeState(resetRuntime)
     },
     deleteSelectedObject() {
       if (!selectedObject) return
@@ -313,6 +370,19 @@ export function useEditorController() {
     },
     saveNow() {
       persistProject(project, "Manual save")
+    },
+    loadDodgeTemplate() {
+      const result = createDodgeTemplateProject()
+      setPast((value) => [...value.slice(-39), project])
+      setFuture([])
+      setProject(incrementMetric(result.project, "tutorialCompletion"))
+      setActiveRoomId(result.roomId)
+      setActiveObjectId(result.playerObjectId)
+      setActiveSection("objects")
+      setIsRunning(false)
+      setRunSnapshot(null)
+      setIsDirty(true)
+      setWorkflowStep(1)
     },
     loadSavedProject() {
       try {
@@ -350,6 +420,9 @@ export function useEditorController() {
       setIsRunning(false)
       setRunSnapshot(null)
       setIsDirty(true)
+    },
+    markWorkflowStep(step: number) {
+      setWorkflowStep((previous) => Math.max(previous, step))
     },
     undo,
     redo

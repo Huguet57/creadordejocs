@@ -24,7 +24,11 @@ export function loadProjectFromLocalStorage(): ProjectV1 | null {
     return null
   }
 
-  return loadProjectV1(source)
+  try {
+    return loadProjectV1(source)
+  } catch {
+    return null
+  }
 }
 
 export function loadSnapshotsFromLocalStorage(): LocalSnapshot[] {
@@ -75,5 +79,9 @@ export function loadSnapshotProject(snapshotId: string): ProjectV1 | null {
     return null
   }
 
-  return loadProjectV1(snapshot.projectSource)
+  try {
+    return loadProjectV1(snapshot.projectSource)
+  } catch {
+    return null
+  }
 }

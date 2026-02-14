@@ -32,10 +32,16 @@ export type UpdateObjectPropertiesInput = {
 }
 
 export type ObjectEventType = "Create" | "Step" | "Draw" | "Collision" | "Keyboard"
+export type ObjectEventKey = "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight" | "Space"
+export type ObjectAction = ProjectV1["objects"][number]["events"][number]["actions"][number]
+type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never
+export type ObjectActionDraft = DistributiveOmit<ObjectAction, "id">
 
 export type AddObjectEventInput = {
   objectId: string
   type: ObjectEventType
+  key?: ObjectEventKey | null
+  targetObjectId?: string | null
 }
 
 export type RemoveObjectEventInput = {
@@ -43,10 +49,37 @@ export type RemoveObjectEventInput = {
   eventId: string
 }
 
-export type AppendObjectEventActionInput = {
+export type AddObjectEventActionInput = {
   objectId: string
   eventId: string
-  actionText: string
+  action: ObjectActionDraft
+}
+
+export type UpdateObjectEventActionInput = {
+  objectId: string
+  eventId: string
+  actionId: string
+  action: ObjectActionDraft
+}
+
+export type RemoveObjectEventActionInput = {
+  objectId: string
+  eventId: string
+  actionId: string
+}
+
+export type MoveObjectEventActionInput = {
+  objectId: string
+  eventId: string
+  actionId: string
+  direction: "up" | "down"
+}
+
+export type UpdateObjectEventConfigInput = {
+  objectId: string
+  eventId: string
+  key?: ObjectEventKey | null
+  targetObjectId?: string | null
 }
 
 function makeId(prefix: string): string {
@@ -217,7 +250,16 @@ export function addObjectEvent(project: ProjectV1, input: AddObjectEventInput): 
       objectEntry.id === input.objectId
         ? {
             ...objectEntry,
-            events: [...objectEntry.events, { id: makeId("event"), type: input.type, actions: [] }]
+            events: [
+              ...objectEntry.events,
+              {
+                id: makeId("event"),
+                type: input.type,
+                key: input.key ?? null,
+                targetObjectId: input.targetObjectId ?? null,
+                actions: []
+              }
+            ]
           }
         : objectEntry
     )
@@ -238,12 +280,7 @@ export function removeObjectEvent(project: ProjectV1, input: RemoveObjectEventIn
   }
 }
 
-export function appendObjectEventAction(project: ProjectV1, input: AppendObjectEventActionInput): ProjectV1 {
-  const actionText = input.actionText.trim()
-  if (!actionText) {
-    return project
-  }
-
+export function addObjectEventAction(project: ProjectV1, input: AddObjectEventActionInput): ProjectV1 {
   return {
     ...project,
     objects: project.objects.map((objectEntry) =>
@@ -254,7 +291,113 @@ export function appendObjectEventAction(project: ProjectV1, input: AppendObjectE
               eventEntry.id === input.eventId
                 ? {
                     ...eventEntry,
-                    actions: [...eventEntry.actions, actionText]
+                    actions: [...eventEntry.actions, { id: makeId("action"), ...input.action } as ObjectAction]
+                  }
+                : eventEntry
+            )
+          }
+        : objectEntry
+    )
+  }
+}
+
+export function updateObjectEventAction(project: ProjectV1, input: UpdateObjectEventActionInput): ProjectV1 {
+  return {
+    ...project,
+    objects: project.objects.map((objectEntry) =>
+      objectEntry.id === input.objectId
+        ? {
+            ...objectEntry,
+            events: objectEntry.events.map((eventEntry) =>
+              eventEntry.id === input.eventId
+                ? {
+                    ...eventEntry,
+                    actions: eventEntry.actions.map((actionEntry) =>
+                      actionEntry.id === input.actionId
+                        ? ({ id: input.actionId, ...input.action } as ObjectAction)
+                        : actionEntry
+                    )
+                  }
+                : eventEntry
+            )
+          }
+        : objectEntry
+    )
+  }
+}
+
+export function removeObjectEventAction(project: ProjectV1, input: RemoveObjectEventActionInput): ProjectV1 {
+  return {
+    ...project,
+    objects: project.objects.map((objectEntry) =>
+      objectEntry.id === input.objectId
+        ? {
+            ...objectEntry,
+            events: objectEntry.events.map((eventEntry) =>
+              eventEntry.id === input.eventId
+                ? {
+                    ...eventEntry,
+                    actions: eventEntry.actions.filter((actionEntry) => actionEntry.id !== input.actionId)
+                  }
+                : eventEntry
+            )
+          }
+        : objectEntry
+    )
+  }
+}
+
+export function moveObjectEventAction(project: ProjectV1, input: MoveObjectEventActionInput): ProjectV1 {
+  return {
+    ...project,
+    objects: project.objects.map((objectEntry) => {
+      if (objectEntry.id !== input.objectId) {
+        return objectEntry
+      }
+
+      return {
+        ...objectEntry,
+        events: objectEntry.events.map((eventEntry) => {
+          if (eventEntry.id !== input.eventId) {
+            return eventEntry
+          }
+          const index = eventEntry.actions.findIndex((actionEntry) => actionEntry.id === input.actionId)
+          if (index < 0) {
+            return eventEntry
+          }
+          const target = input.direction === "up" ? index - 1 : index + 1
+          if (target < 0 || target >= eventEntry.actions.length) {
+            return eventEntry
+          }
+          const reordered = [...eventEntry.actions]
+          const [moved] = reordered.splice(index, 1)
+          if (!moved) {
+            return eventEntry
+          }
+          reordered.splice(target, 0, moved)
+          return {
+            ...eventEntry,
+            actions: reordered
+          }
+        })
+      }
+    })
+  }
+}
+
+export function updateObjectEventConfig(project: ProjectV1, input: UpdateObjectEventConfigInput): ProjectV1 {
+  return {
+    ...project,
+    objects: project.objects.map((objectEntry) =>
+      objectEntry.id === input.objectId
+        ? {
+            ...objectEntry,
+            events: objectEntry.events.map((eventEntry) =>
+              eventEntry.id === input.eventId
+                ? {
+                    ...eventEntry,
+                    key: input.key === undefined ? eventEntry.key : input.key,
+                    targetObjectId: input.targetObjectId === undefined ? eventEntry.targetObjectId : input.targetObjectId
                   }
                 : eventEntry
             )

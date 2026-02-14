@@ -34,10 +34,57 @@ const ProjectResourcesSchema = z.object({
   sounds: z.array(SoundResourceSchema)
 })
 
+const ObjectActionSchema = z.discriminatedUnion("type", [
+  z.object({
+    id: z.string().min(1),
+    type: z.literal("move"),
+    dx: z.number(),
+    dy: z.number()
+  }),
+  z.object({
+    id: z.string().min(1),
+    type: z.literal("setVelocity"),
+    speed: z.number(),
+    direction: z.number()
+  }),
+  z.object({
+    id: z.string().min(1),
+    type: z.literal("clampToRoom")
+  }),
+  z.object({
+    id: z.string().min(1),
+    type: z.literal("destroySelf")
+  }),
+  z.object({
+    id: z.string().min(1),
+    type: z.literal("spawnObject"),
+    objectId: z.string().min(1),
+    offsetX: z.number(),
+    offsetY: z.number()
+  }),
+  z.object({
+    id: z.string().min(1),
+    type: z.literal("changeScore"),
+    delta: z.number()
+  }),
+  z.object({
+    id: z.string().min(1),
+    type: z.literal("endGame"),
+    message: z.string().min(1)
+  }),
+  z.object({
+    id: z.string().min(1),
+    type: z.literal("playSound"),
+    soundId: z.string().min(1)
+  })
+])
+
 const ObjectEventSchema = z.object({
   id: z.string().min(1),
   type: z.enum(["Create", "Step", "Draw", "Collision", "Keyboard"]),
-  actions: z.array(z.string().min(1)).default([])
+  key: z.enum(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"]).nullable().default(null),
+  targetObjectId: z.string().nullable().default(null),
+  actions: z.array(ObjectActionSchema).default([])
 })
 
 const ObjectSchema = z.object({
@@ -68,6 +115,8 @@ const ProjectMetricsSchema = z.object({
   appStart: z.number().int().nonnegative().default(0),
   projectLoad: z.number().int().nonnegative().default(0),
   runtimeErrors: z.number().int().nonnegative().default(0),
+  tutorialCompletion: z.number().int().nonnegative().default(0),
+  stuckRate: z.number().int().nonnegative().default(0),
   timeToFirstPlayableFunMs: z.number().int().nonnegative().nullable().default(null)
 })
 
@@ -109,6 +158,8 @@ export function createEmptyProjectV1(name: string): ProjectV1 {
       appStart: 0,
       projectLoad: 0,
       runtimeErrors: 0,
+      tutorialCompletion: 0,
+      stuckRate: 0,
       timeToFirstPlayableFunMs: null
     }
   }

@@ -10,6 +10,7 @@ type EditorTopbarProps = {
   onRedo: () => void
   onSave: () => void
   onLoad: () => void
+  onLoadTemplate: () => void
 }
 
 export function EditorTopbar({
@@ -21,7 +22,8 @@ export function EditorTopbar({
   onUndo,
   onRedo,
   onSave,
-  onLoad
+  onLoad,
+  onLoadTemplate
 }: EditorTopbarProps) {
   return (
     <header className="mvp15-topbar-panel flex items-center justify-between rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
@@ -49,6 +51,9 @@ export function EditorTopbar({
         </Button>
         <Button data-testid="load-local-button" variant="outline" onClick={onLoad}>
           Load local
+        </Button>
+        <Button data-testid="load-dodge-template-button" variant="outline" onClick={onLoadTemplate}>
+          Load Dodge template
         </Button>
       </div>
     </header>

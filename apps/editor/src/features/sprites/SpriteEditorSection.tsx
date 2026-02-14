@@ -11,6 +11,7 @@ type SpriteEditorSectionProps = {
 
 export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
   const [spriteName, setSpriteName] = useState("Sprite nou")
+  const [validationMessage, setValidationMessage] = useState<string>("")
 
   const blockUndoShortcuts = (event: KeyboardEvent<HTMLInputElement>): void => {
     if ((event.metaKey || event.ctrlKey) && (event.key.toLowerCase() === "z" || event.key.toLowerCase() === "y")) {
@@ -49,11 +50,9 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
         <div className="rounded-md border border-slate-200 p-3">
           <p className="text-xs font-semibold text-slate-600">Upload pipeline</p>
           <p className="mt-1 text-xs text-slate-500">
-            Upload real es connecta a MVP 2. Ara pots preparar `assetSource` i estat.
+            Pots provar import local de PNG/JPG/GIF/WEBP. Guardem només el nom com `assetSource`.
           </p>
-          <Button type="button" variant="outline" size="sm" className="mt-2" disabled>
-            Upload (coming soon)
-          </Button>
+          {validationMessage && <p className="mt-2 text-xs text-rose-600">{validationMessage}</p>}
         </div>
 
         <ul className="space-y-2">
@@ -77,6 +76,25 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
                   controller.updateSpriteSource(spriteEntry.id, event.target.value)
                 }
               />
+              <label className="mvp2-sprite-upload-label cursor-pointer rounded border border-slate-300 px-2 py-1 text-xs">
+                Import file
+                <input
+                  className="hidden"
+                  type="file"
+                  accept=".png,.jpg,.jpeg,.gif,.webp"
+                  onChange={(event) => {
+                    const selectedFile = event.target.files?.[0]
+                    if (!selectedFile) return
+                    const valid = /\.(png|jpe?g|gif|webp)$/i.test(selectedFile.name)
+                    if (!valid) {
+                      setValidationMessage("Format invàlid. Usa PNG, JPG, GIF o WEBP.")
+                      return
+                    }
+                    setValidationMessage("")
+                    controller.updateSpriteSource(spriteEntry.id, selectedFile.name)
+                  }}
+                />
+              </label>
             </li>
           ))}
         </ul>

@@ -2,14 +2,18 @@ import { describe, expect, it } from "vitest"
 import {
   addRoomInstance,
   addObjectEvent,
-  appendObjectEventAction,
+  addObjectEventAction,
   createEmptyProjectV1,
   createRoom,
+  moveObjectEventAction,
   moveRoomInstance,
+  removeObjectEventAction,
   removeObjectEvent,
   quickCreateObject,
   quickCreateSound,
   quickCreateSprite,
+  updateObjectEventAction,
+  updateObjectEventConfig,
   updateSoundAssetSource,
   updateSpriteAssetSource,
   updateObjectProperties
@@ -77,19 +81,58 @@ describe("editor model helpers", () => {
   it("adds and edits object events", () => {
     const initial = createEmptyProjectV1("Events")
     const objectResult = quickCreateObject(initial, { name: "Player" })
-    const withEvent = addObjectEvent(objectResult.project, { objectId: objectResult.objectId, type: "Create" })
+    const enemyResult = quickCreateObject(objectResult.project, { name: "Enemy" })
+    const withEvent = addObjectEvent(enemyResult.project, {
+      objectId: objectResult.objectId,
+      type: "Collision",
+      targetObjectId: enemyResult.objectId
+    })
     const eventId = withEvent.objects[0]?.events[0]?.id
     if (!eventId) {
       throw new Error("Expected Create event to be created")
     }
-    const withAction = appendObjectEventAction(withEvent, {
+    const withMoveAction = addObjectEventAction(withEvent, {
       objectId: objectResult.objectId,
       eventId,
-      actionText: "set speed to 4"
+      action: { type: "changeScore", delta: 10 }
     })
-    const withoutEvent = removeObjectEvent(withAction, { objectId: objectResult.objectId, eventId })
+    const withSecondAction = addObjectEventAction(withMoveAction, {
+      objectId: objectResult.objectId,
+      eventId,
+      action: { type: "endGame", message: "Game Over" }
+    })
+    const firstActionId = withSecondAction.objects[0]?.events[0]?.actions[0]?.id
+    const secondActionId = withSecondAction.objects[0]?.events[0]?.actions[1]?.id
+    if (!firstActionId || !secondActionId) {
+      throw new Error("Expected actions to be created")
+    }
+    const withUpdatedAction = updateObjectEventAction(withSecondAction, {
+      objectId: objectResult.objectId,
+      eventId,
+      actionId: secondActionId,
+      action: { type: "changeScore", delta: -3 }
+    })
+    const withMovedAction = moveObjectEventAction(withUpdatedAction, {
+      objectId: objectResult.objectId,
+      eventId,
+      actionId: secondActionId,
+      direction: "up"
+    })
+    const withRemovedAction = removeObjectEventAction(withMovedAction, {
+      objectId: objectResult.objectId,
+      eventId,
+      actionId: firstActionId
+    })
+    const withConfig = updateObjectEventConfig(withRemovedAction, {
+      objectId: objectResult.objectId,
+      eventId,
+      targetObjectId: null
+    })
+    const withoutEvent = removeObjectEvent(withConfig, { objectId: objectResult.objectId, eventId })
 
-    expect(withAction.objects[0]?.events[0]?.actions).toEqual(["set speed to 4"])
+    expect(withMovedAction.objects[0]?.events[0]?.actions[0]?.id).toBe(secondActionId)
+    expect(withRemovedAction.objects[0]?.events[0]?.actions).toHaveLength(1)
+    expect(withConfig.objects[0]?.events[0]?.targetObjectId).toBeNull()
     expect(withoutEvent.objects[0]?.events).toHaveLength(0)
   })
 })
