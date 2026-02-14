@@ -5,6 +5,7 @@ test.beforeEach(async ({ page }) => {
 })
 
 test("recovers autosaved state after reload", async ({ page }) => {
+  await page.getByTestId("sidebar-objects").click()
   await page.getByTestId("object-name-input").fill("AutoRecover")
   await page.getByTestId("add-object-button").click()
 
@@ -21,6 +22,7 @@ test("recovers autosaved state after reload", async ({ page }) => {
 test("supports undo and redo via keyboard shortcuts", async ({ page }) => {
   const modifier = process.platform === "darwin" ? "Meta" : "Control"
 
+  await page.getByTestId("sidebar-objects").click()
   await page.getByTestId("object-name-input").fill("UndoHero")
   await page.getByTestId("add-object-button").click()
   await expect(page.getByRole("button", { name: "UndoHero" })).toBeVisible()

@@ -16,18 +16,28 @@ const SceneSchema = z.object({
 const SpriteResourceSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
-  imagePath: z.string()
+  imagePath: z.string(),
+  assetSource: z.string().default(""),
+  uploadStatus: z.enum(["notConnected", "ready"]).default("notConnected")
 })
 
 const SoundResourceSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
-  audioPath: z.string()
+  audioPath: z.string(),
+  assetSource: z.string().default(""),
+  uploadStatus: z.enum(["notConnected", "ready"]).default("notConnected")
 })
 
 const ProjectResourcesSchema = z.object({
   sprites: z.array(SpriteResourceSchema),
   sounds: z.array(SoundResourceSchema)
+})
+
+const ObjectEventSchema = z.object({
+  id: z.string().min(1),
+  type: z.enum(["Create", "Step", "Draw", "Collision", "Keyboard"]),
+  actions: z.array(z.string().min(1)).default([])
 })
 
 const ObjectSchema = z.object({
@@ -37,7 +47,8 @@ const ObjectSchema = z.object({
   x: z.number(),
   y: z.number(),
   speed: z.number(),
-  direction: z.number()
+  direction: z.number(),
+  events: z.array(ObjectEventSchema).default([])
 })
 
 const RoomInstanceSchema = z.object({

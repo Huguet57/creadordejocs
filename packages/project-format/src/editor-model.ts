@@ -31,6 +31,24 @@ export type UpdateObjectPropertiesInput = {
   direction: number
 }
 
+export type ObjectEventType = "Create" | "Step" | "Draw" | "Collision" | "Keyboard"
+
+export type AddObjectEventInput = {
+  objectId: string
+  type: ObjectEventType
+}
+
+export type RemoveObjectEventInput = {
+  objectId: string
+  eventId: string
+}
+
+export type AppendObjectEventActionInput = {
+  objectId: string
+  eventId: string
+  actionText: string
+}
+
 function makeId(prefix: string): string {
   return `${prefix}-${crypto.randomUUID()}`
 }
@@ -45,7 +63,10 @@ export function quickCreateSprite(
       ...project,
       resources: {
         ...project.resources,
-        sprites: [...project.resources.sprites, { id: spriteId, name, imagePath: "" }]
+        sprites: [
+          ...project.resources.sprites,
+          { id: spriteId, name, imagePath: "", assetSource: "", uploadStatus: "notConnected" }
+        ]
       }
     },
     spriteId
@@ -62,7 +83,10 @@ export function quickCreateSound(
       ...project,
       resources: {
         ...project.resources,
-        sounds: [...project.resources.sounds, { id: soundId, name, audioPath: "" }]
+        sounds: [
+          ...project.resources.sounds,
+          { id: soundId, name, audioPath: "", assetSource: "", uploadStatus: "notConnected" }
+        ]
       }
     },
     soundId
@@ -86,7 +110,8 @@ export function quickCreateObject(
           x: input.x ?? 0,
           y: input.y ?? 0,
           speed: input.speed ?? 0,
-          direction: input.direction ?? 0
+          direction: input.direction ?? 0,
+          events: []
         }
       ]
     },
@@ -146,6 +171,96 @@ export function addRoomInstance(
       )
     },
     instanceId
+  }
+}
+
+export function updateSpriteAssetSource(project: ProjectV1, spriteId: string, assetSource: string): ProjectV1 {
+  return {
+    ...project,
+    resources: {
+      ...project.resources,
+      sprites: project.resources.sprites.map((spriteEntry) =>
+        spriteEntry.id === spriteId
+          ? {
+              ...spriteEntry,
+              assetSource,
+              uploadStatus: assetSource.trim() ? "ready" : "notConnected"
+            }
+          : spriteEntry
+      )
+    }
+  }
+}
+
+export function updateSoundAssetSource(project: ProjectV1, soundId: string, assetSource: string): ProjectV1 {
+  return {
+    ...project,
+    resources: {
+      ...project.resources,
+      sounds: project.resources.sounds.map((soundEntry) =>
+        soundEntry.id === soundId
+          ? {
+              ...soundEntry,
+              assetSource,
+              uploadStatus: assetSource.trim() ? "ready" : "notConnected"
+            }
+          : soundEntry
+      )
+    }
+  }
+}
+
+export function addObjectEvent(project: ProjectV1, input: AddObjectEventInput): ProjectV1 {
+  return {
+    ...project,
+    objects: project.objects.map((objectEntry) =>
+      objectEntry.id === input.objectId
+        ? {
+            ...objectEntry,
+            events: [...objectEntry.events, { id: makeId("event"), type: input.type, actions: [] }]
+          }
+        : objectEntry
+    )
+  }
+}
+
+export function removeObjectEvent(project: ProjectV1, input: RemoveObjectEventInput): ProjectV1 {
+  return {
+    ...project,
+    objects: project.objects.map((objectEntry) =>
+      objectEntry.id === input.objectId
+        ? {
+            ...objectEntry,
+            events: objectEntry.events.filter((eventEntry) => eventEntry.id !== input.eventId)
+          }
+        : objectEntry
+    )
+  }
+}
+
+export function appendObjectEventAction(project: ProjectV1, input: AppendObjectEventActionInput): ProjectV1 {
+  const actionText = input.actionText.trim()
+  if (!actionText) {
+    return project
+  }
+
+  return {
+    ...project,
+    objects: project.objects.map((objectEntry) =>
+      objectEntry.id === input.objectId
+        ? {
+            ...objectEntry,
+            events: objectEntry.events.map((eventEntry) =>
+              eventEntry.id === input.eventId
+                ? {
+                    ...eventEntry,
+                    actions: [...eventEntry.actions, actionText]
+                  }
+                : eventEntry
+            )
+          }
+        : objectEntry
+    )
   }
 }
 
