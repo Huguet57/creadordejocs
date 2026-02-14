@@ -40,10 +40,4 @@ export function createTemplateProject(templateId: GameTemplateId): TemplateProje
   return createLaneCrosserTemplateProject()
 }
 
-export {
-  parseDataOnlyTemplateData,
-  parseDataOnlyTemplateJson,
-  parseDataOnlyTemplatesData,
-  parseDataOnlyTemplatesJson
-} from "./data-only-template-loader.js"
 export type { GameTemplateDefinition, GameTemplateId, TemplateProjectResult } from "./types.js"
