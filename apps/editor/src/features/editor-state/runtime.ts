@@ -370,58 +370,32 @@ function runEventActions(
       }
       continue
     }
-    if (actionEntry.type === "setGlobalVariable") {
-      const existingValue = result.runtime.globalVariables[actionEntry.variableId]
-      if (existingValue === undefined || !isSameVariableValueType(existingValue, actionEntry.value)) {
-        continue
-      }
-      result = {
-        ...result,
-        runtime: {
-          ...result.runtime,
-          globalVariables: {
-            ...result.runtime.globalVariables,
-            [actionEntry.variableId]: actionEntry.value
-          }
+    if (actionEntry.type === "changeGlobalVariable") {
+      if (actionEntry.operator === "set") {
+        const existingValue = result.runtime.globalVariables[actionEntry.variableId]
+        if (existingValue === undefined || !isSameVariableValueType(existingValue, actionEntry.value)) {
+          continue
         }
-      }
-      continue
-    }
-    if (actionEntry.type === "setObjectVariable") {
-      const resolvedTargetInstanceId = resolveTargetInstanceId(
-        result.instance,
-        actionEntry.target,
-        actionEntry.targetInstanceId,
-        collisionOtherInstanceId
-      )
-      if (!resolvedTargetInstanceId) {
-        continue
-      }
-      const targetVariables = result.runtime.objectInstanceVariables[resolvedTargetInstanceId]
-      if (!targetVariables) {
-        continue
-      }
-      const existingValue = targetVariables[actionEntry.variableId]
-      if (existingValue === undefined || !isSameVariableValueType(existingValue, actionEntry.value)) {
-        continue
-      }
-      result = {
-        ...result,
-        runtime: {
-          ...result.runtime,
-          objectInstanceVariables: {
-            ...result.runtime.objectInstanceVariables,
-            [resolvedTargetInstanceId]: {
-              ...result.runtime.objectInstanceVariables[resolvedTargetInstanceId],
+        result = {
+          ...result,
+          runtime: {
+            ...result.runtime,
+            globalVariables: {
+              ...result.runtime.globalVariables,
               [actionEntry.variableId]: actionEntry.value
             }
           }
         }
+      } else {
+        const numValue = typeof actionEntry.value === "number" ? actionEntry.value : 0
+        result = {
+          ...result,
+          runtime: applyGlobalNumericOperation(result.runtime, actionEntry.variableId, numValue, actionEntry.operator)
+        }
       }
       continue
     }
-    if (actionEntry.type === "setObjectVariableFromGlobal") {
-      const globalValue = result.runtime.globalVariables[actionEntry.globalVariableId]
+    if (actionEntry.type === "changeObjectVariable") {
       const resolvedTargetInstanceId = resolveTargetInstanceId(
         result.instance,
         actionEntry.target,
@@ -431,55 +405,88 @@ function runEventActions(
       if (!resolvedTargetInstanceId) {
         continue
       }
-      const targetVariables = result.runtime.objectInstanceVariables[resolvedTargetInstanceId]
-      if (globalValue === undefined || !targetVariables) {
-        continue
-      }
-      const existingValue = targetVariables[actionEntry.variableId]
-      if (existingValue === undefined || !isSameVariableValueType(existingValue, globalValue)) {
-        continue
-      }
-      result = {
-        ...result,
-        runtime: {
-          ...result.runtime,
-          objectInstanceVariables: {
-            ...result.runtime.objectInstanceVariables,
-            [resolvedTargetInstanceId]: {
-              ...result.runtime.objectInstanceVariables[resolvedTargetInstanceId],
-              [actionEntry.variableId]: globalValue
+      if (actionEntry.operator === "set") {
+        const targetVariables = result.runtime.objectInstanceVariables[resolvedTargetInstanceId]
+        if (!targetVariables) {
+          continue
+        }
+        const existingValue = targetVariables[actionEntry.variableId]
+        if (existingValue === undefined || !isSameVariableValueType(existingValue, actionEntry.value)) {
+          continue
+        }
+        result = {
+          ...result,
+          runtime: {
+            ...result.runtime,
+            objectInstanceVariables: {
+              ...result.runtime.objectInstanceVariables,
+              [resolvedTargetInstanceId]: {
+                ...result.runtime.objectInstanceVariables[resolvedTargetInstanceId],
+                [actionEntry.variableId]: actionEntry.value
+              }
             }
           }
+        }
+      } else {
+        const numValue = typeof actionEntry.value === "number" ? actionEntry.value : 0
+        result = {
+          ...result,
+          runtime: applyObjectNumericOperation(result.runtime, resolvedTargetInstanceId, actionEntry.variableId, numValue, actionEntry.operator)
         }
       }
       continue
     }
-    if (actionEntry.type === "setGlobalVariableFromObject") {
-      const sourceInstanceId = resolveTargetInstanceId(
+    if (actionEntry.type === "copyVariable") {
+      const resolvedInstanceId = resolveTargetInstanceId(
         result.instance,
-        actionEntry.source,
-        actionEntry.sourceInstanceId,
+        actionEntry.instanceTarget,
+        actionEntry.instanceTargetId,
         collisionOtherInstanceId
       )
-      if (!sourceInstanceId) {
+      if (!resolvedInstanceId) {
         continue
       }
-      const sourceVariables = result.runtime.objectInstanceVariables[sourceInstanceId]
-      if (!sourceVariables || !(actionEntry.objectVariableId in sourceVariables)) {
-        continue
-      }
-      const sourceValue = sourceVariables[actionEntry.objectVariableId]
-      const existingGlobalValue = result.runtime.globalVariables[actionEntry.globalVariableId]
-      if (sourceValue === undefined || existingGlobalValue === undefined || !isSameVariableValueType(existingGlobalValue, sourceValue)) {
-        continue
-      }
-      result = {
-        ...result,
-        runtime: {
-          ...result.runtime,
-          globalVariables: {
-            ...result.runtime.globalVariables,
-            [actionEntry.globalVariableId]: sourceValue
+      if (actionEntry.direction === "globalToObject") {
+        const globalValue = result.runtime.globalVariables[actionEntry.globalVariableId]
+        const targetVariables = result.runtime.objectInstanceVariables[resolvedInstanceId]
+        if (globalValue === undefined || !targetVariables) {
+          continue
+        }
+        const existingValue = targetVariables[actionEntry.objectVariableId]
+        if (existingValue === undefined || !isSameVariableValueType(existingValue, globalValue)) {
+          continue
+        }
+        result = {
+          ...result,
+          runtime: {
+            ...result.runtime,
+            objectInstanceVariables: {
+              ...result.runtime.objectInstanceVariables,
+              [resolvedInstanceId]: {
+                ...result.runtime.objectInstanceVariables[resolvedInstanceId],
+                [actionEntry.objectVariableId]: globalValue
+              }
+            }
+          }
+        }
+      } else {
+        const sourceVariables = result.runtime.objectInstanceVariables[resolvedInstanceId]
+        if (!sourceVariables || !(actionEntry.objectVariableId in sourceVariables)) {
+          continue
+        }
+        const sourceValue = sourceVariables[actionEntry.objectVariableId]
+        const existingGlobalValue = result.runtime.globalVariables[actionEntry.globalVariableId]
+        if (sourceValue === undefined || existingGlobalValue === undefined || !isSameVariableValueType(existingGlobalValue, sourceValue)) {
+          continue
+        }
+        result = {
+          ...result,
+          runtime: {
+            ...result.runtime,
+            globalVariables: {
+              ...result.runtime.globalVariables,
+              [actionEntry.globalVariableId]: sourceValue
+            }
           }
         }
       }
@@ -508,77 +515,6 @@ function runEventActions(
         }
       }
       continue
-    }
-    if (actionEntry.type === "addGlobalVariable") {
-      result = {
-        ...result,
-        runtime: applyGlobalNumericOperation(result.runtime, actionEntry.variableId, actionEntry.value, "add")
-      }
-      continue
-    }
-    if (actionEntry.type === "subtractGlobalVariable") {
-      result = {
-        ...result,
-        runtime: applyGlobalNumericOperation(result.runtime, actionEntry.variableId, actionEntry.value, "subtract")
-      }
-      continue
-    }
-    if (actionEntry.type === "multiplyGlobalVariable") {
-      result = {
-        ...result,
-        runtime: applyGlobalNumericOperation(result.runtime, actionEntry.variableId, actionEntry.value, "multiply")
-      }
-      continue
-    }
-    if (actionEntry.type === "addObjectVariable") {
-      const targetInstanceId = resolveTargetInstanceId(
-        result.instance,
-        actionEntry.target,
-        actionEntry.targetInstanceId,
-        collisionOtherInstanceId
-      )
-      result = {
-        ...result,
-        runtime: applyObjectNumericOperation(result.runtime, targetInstanceId, actionEntry.variableId, actionEntry.value, "add")
-      }
-      continue
-    }
-    if (actionEntry.type === "subtractObjectVariable") {
-      const targetInstanceId = resolveTargetInstanceId(
-        result.instance,
-        actionEntry.target,
-        actionEntry.targetInstanceId,
-        collisionOtherInstanceId
-      )
-      result = {
-        ...result,
-        runtime: applyObjectNumericOperation(
-          result.runtime,
-          targetInstanceId,
-          actionEntry.variableId,
-          actionEntry.value,
-          "subtract"
-        )
-      }
-      continue
-    }
-    if (actionEntry.type === "multiplyObjectVariable") {
-      const targetInstanceId = resolveTargetInstanceId(
-        result.instance,
-        actionEntry.target,
-        actionEntry.targetInstanceId,
-        collisionOtherInstanceId
-      )
-      result = {
-        ...result,
-        runtime: applyObjectNumericOperation(
-          result.runtime,
-          targetInstanceId,
-          actionEntry.variableId,
-          actionEntry.value,
-          "multiply"
-        )
-      }
     }
   }
 

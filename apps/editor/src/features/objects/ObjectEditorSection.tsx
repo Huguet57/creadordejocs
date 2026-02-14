@@ -30,44 +30,34 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
     if (type === "clampToRoom") return { type: "clampToRoom" }
     if (type === "jumpToPosition") return { type: "jumpToPosition", x: 0, y: 0 }
     if (type === "jumpToStart") return { type: "jumpToStart" }
-    if (type === "setGlobalVariable") {
+    if (type === "changeGlobalVariable") {
       const firstGlobal = controller.project.variables.global[0]
       if (!firstGlobal) return null
-      return { type: "setGlobalVariable", variableId: firstGlobal.id, value: firstGlobal.initialValue }
+      return { type: "changeGlobalVariable", variableId: firstGlobal.id, operator: "set", value: firstGlobal.initialValue }
     }
-    if (type === "setObjectVariable") {
+    if (type === "changeObjectVariable") {
       const firstObjectVariable = selectedObjectVariableDefinitions[0]
       if (!firstObjectVariable) return null
       return {
-        type: "setObjectVariable",
+        type: "changeObjectVariable",
         variableId: firstObjectVariable.id,
+        operator: "set",
         target: "self",
         targetInstanceId: null,
         value: firstObjectVariable.initialValue
       }
     }
-    if (type === "setObjectVariableFromGlobal") {
+    if (type === "copyVariable") {
       const firstObjectVariable = selectedObjectVariableDefinitions[0]
       const firstGlobal = controller.project.variables.global[0]
       if (!firstObjectVariable || !firstGlobal) return null
       return {
-        type: "setObjectVariableFromGlobal",
-        variableId: firstObjectVariable.id,
-        target: "self",
-        targetInstanceId: null,
-        globalVariableId: firstGlobal.id
-      }
-    }
-    if (type === "setGlobalVariableFromObject") {
-      const firstObjectVariable = selectedObjectVariableDefinitions[0]
-      const firstGlobal = controller.project.variables.global[0]
-      if (!firstObjectVariable || !firstGlobal) return null
-      return {
-        type: "setGlobalVariableFromObject",
+        type: "copyVariable",
+        direction: "globalToObject",
         globalVariableId: firstGlobal.id,
-        source: "self",
-        sourceInstanceId: null,
-        objectVariableId: firstObjectVariable.id
+        objectVariableId: firstObjectVariable.id,
+        instanceTarget: "self",
+        instanceTargetId: null
       }
     }
     if (type === "goToRoom") {
@@ -76,22 +66,6 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
       return { type: "goToRoom", roomId: firstRoom.id }
     }
     if (type === "restartRoom") return { type: "restartRoom" }
-    if (type === "addGlobalVariable" || type === "subtractGlobalVariable" || type === "multiplyGlobalVariable") {
-      const firstNumberGlobal = controller.project.variables.global.find((definition) => definition.type === "number")
-      if (!firstNumberGlobal) return null
-      return { type, variableId: firstNumberGlobal.id, value: 1 }
-    }
-    if (type === "addObjectVariable" || type === "subtractObjectVariable" || type === "multiplyObjectVariable") {
-      const firstNumberObjectVariable = selectedObjectVariableDefinitions.find((definition) => definition.type === "number")
-      if (!firstNumberObjectVariable) return null
-      return {
-        type,
-        variableId: firstNumberObjectVariable.id,
-        target: "self",
-        targetInstanceId: null,
-        value: 1
-      }
-    }
     if (type === "destroySelf") return { type: "destroySelf" }
     if (type === "destroyOther") return { type: "destroyOther" }
     if (type === "changeScore") return { type: "changeScore", delta: 1 }

@@ -12,12 +12,15 @@ import {
   LocateFixed,
   X,
   Globe2,
-  Variable
+  Variable,
+  ArrowLeftRight,
+  DoorOpen,
+  RotateCcw
 } from "lucide-react"
 import { useState } from "react"
 import { Button } from "../../components/ui/button.js"
 import { Label } from "../../components/ui/label.js"
-import { OBJECT_ACTION_TYPES, OBJECT_EVENT_KEYS, type ObjectActionDraft, type ObjectActionType, type ObjectEventKey, type ObjectEventEntry } from "../editor-state/types.js"
+import { ACTION_CATEGORIES, OBJECT_EVENT_KEYS, type ObjectActionDraft, type ObjectActionType, type ObjectEventKey, type ObjectEventEntry } from "../editor-state/types.js"
 import { ActionBlock } from "./ActionBlock.js"
 import type { ProjectV1 } from "@creadordejocs/project-format"
 
@@ -41,27 +44,39 @@ type ActionEditorPanelProps = {
 const ACTION_ICONS: Record<ObjectActionType, React.ElementType> = {
   move: Move,
   setVelocity: FastForward,
-  spawnObject: CopyPlus,
-  playSound: Volume2,
-  changeScore: Trophy,
-  endGame: Flag,
   clampToRoom: Maximize,
   jumpToPosition: Locate,
   jumpToStart: LocateFixed,
-  setGlobalVariable: Globe2,
-  setObjectVariable: Variable,
-  setObjectVariableFromGlobal: Variable,
-  setGlobalVariableFromObject: Globe2,
-  goToRoom: Locate,
-  restartRoom: LocateFixed,
-  addGlobalVariable: Globe2,
-  subtractGlobalVariable: Globe2,
-  multiplyGlobalVariable: Globe2,
-  addObjectVariable: Variable,
-  subtractObjectVariable: Variable,
-  multiplyObjectVariable: Variable,
   destroySelf: Trash,
-  destroyOther: Trash,
+  destroyOther: X,
+  spawnObject: CopyPlus,
+  changeScore: Trophy,
+  endGame: Flag,
+  playSound: Volume2,
+  changeGlobalVariable: Globe2,
+  changeObjectVariable: Variable,
+  copyVariable: ArrowLeftRight,
+  goToRoom: DoorOpen,
+  restartRoom: RotateCcw,
+}
+
+const ACTION_DISPLAY_NAMES: Record<ObjectActionType, string> = {
+  move: "Moure",
+  setVelocity: "Velocitat",
+  clampToRoom: "Limitar a sala",
+  jumpToPosition: "Saltar a posició",
+  jumpToStart: "Saltar a inici",
+  destroySelf: "Destruir-se",
+  destroyOther: "Destruir altre",
+  spawnObject: "Crear objecte",
+  changeScore: "Canviar punts",
+  endGame: "Fi del joc",
+  playSound: "Reproduir so",
+  changeGlobalVariable: "Var. global",
+  changeObjectVariable: "Var. objecte",
+  copyVariable: "Copiar variable",
+  goToRoom: "Anar a sala",
+  restartRoom: "Reiniciar sala",
 }
 
 export function ActionEditorPanel({
@@ -157,86 +172,95 @@ export function ActionEditorPanel({
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 bg-slate-50/50">
-        <div className="mx-auto max-w-3xl space-y-3">
-          {activeEvent.actions.length === 0 && (
-            <div className="rounded-lg border-2 border-dashed border-slate-200 p-8 text-center">
-              <p className="text-sm text-slate-400">No actions yet.</p>
-              <p className="text-xs text-slate-400 mt-1">Add an action below to define what happens.</p>
-            </div>
-          )}
-          
-          {activeEvent.actions.map((action, index) => (
-            <ActionBlock
-              key={action.id}
-              action={action}
-              index={index}
-              isFirst={index === 0}
-              isLast={index === activeEvent.actions.length - 1}
-              onUpdate={(updatedAction) => onUpdateAction(action.id, updatedAction)}
-              onMoveUp={() => onMoveAction(action.id, "up")}
-              onMoveDown={() => onMoveAction(action.id, "down")}
-              onRemove={() => onRemoveAction(action.id)}
-              selectableObjects={selectableTargetObjects}
-              sounds={sounds}
-              globalVariables={globalVariables}
-              objectVariablesByObjectId={objectVariablesByObjectId}
-              roomInstances={roomInstances}
-              allObjects={allObjects}
-              rooms={rooms}
-            />
-          ))}
-        </div>
-      </div>
-
-      <div className="mvp3-action-picker border-t border-slate-200 p-3">
-        {!isActionPickerOpen && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="mvp3-action-picker-toggle h-8 w-full justify-start text-xs"
-            onClick={() => setIsActionPickerOpen(true)}
-          >
-            <Plus className="mr-2 h-3.5 w-3.5" />
-            Add Action
-          </Button>
-        )}
-
-        {isActionPickerOpen && (
-          <div className="mvp3-action-picker-panel mt-2 rounded-md border border-slate-200 bg-slate-50 p-2">
-            <div className="mvp3-action-picker-panel-header mb-2 flex items-center justify-between">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Add Action</p>
-              <button
-                type="button"
-                className="mvp3-action-picker-close inline-flex h-6 w-6 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
-                onClick={() => setIsActionPickerOpen(false)}
-                title="Cancel"
-                aria-label="Cancel add action"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
-
-            <div className="mvp3-action-picker-grid grid grid-cols-4 gap-2">
-              {OBJECT_ACTION_TYPES.map((type) => {
-                const Icon = ACTION_ICONS[type] ?? Plus
-                return (
-                  <button
-                    key={type}
-                    type="button"
-                    className="mvp3-action-picker-item flex flex-col items-center justify-center gap-1.5 rounded border border-slate-200 bg-white p-2 text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
-                    onClick={() => handleAddAction(type)}
-                  >
-                    <Icon className="h-4 w-4" />
-                    <span className="text-[10px] font-medium uppercase">{type}</span>
-                  </button>
-                )
-              })}
+      {!isActionPickerOpen ? (
+        <>
+          <div className="flex-1 overflow-y-auto p-4 bg-slate-50/50">
+            <div className="mx-auto max-w-3xl space-y-3">
+              {activeEvent.actions.length === 0 && (
+                <div className="rounded-lg border-2 border-dashed border-slate-200 p-8 text-center">
+                  <p className="text-sm text-slate-400">No actions yet.</p>
+                  <p className="text-xs text-slate-400 mt-1">Add an action below to define what happens.</p>
+                </div>
+              )}
+              
+              {activeEvent.actions.map((action, index) => (
+                <ActionBlock
+                  key={action.id}
+                  action={action}
+                  index={index}
+                  isFirst={index === 0}
+                  isLast={index === activeEvent.actions.length - 1}
+                  onUpdate={(updatedAction) => onUpdateAction(action.id, updatedAction)}
+                  onMoveUp={() => onMoveAction(action.id, "up")}
+                  onMoveDown={() => onMoveAction(action.id, "down")}
+                  onRemove={() => onRemoveAction(action.id)}
+                  selectableObjects={selectableTargetObjects}
+                  sounds={sounds}
+                  globalVariables={globalVariables}
+                  objectVariablesByObjectId={objectVariablesByObjectId}
+                  roomInstances={roomInstances}
+                  allObjects={allObjects}
+                  rooms={rooms}
+                />
+              ))}
             </div>
           </div>
-        )}
-      </div>
+
+          <div className="mvp3-action-picker border-t border-slate-200 p-3">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mvp3-action-picker-toggle h-8 w-full justify-start text-xs"
+              onClick={() => setIsActionPickerOpen(true)}
+            >
+              <Plus className="mr-2 h-3.5 w-3.5" />
+              Add Action
+            </Button>
+          </div>
+        </>
+      ) : (
+        <div className="mvp3-action-picker-panel flex flex-1 flex-col overflow-hidden bg-slate-50/50">
+          <div className="mvp3-action-picker-panel-header flex items-center justify-between border-b border-slate-200 px-4 py-2">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Afegir acció</p>
+            <button
+              type="button"
+              className="mvp3-action-picker-close inline-flex h-6 w-6 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
+              onClick={() => setIsActionPickerOpen(false)}
+              title="Cancel"
+              aria-label="Cancel add action"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+
+          <div className="mvp3-action-picker-grid flex-1 overflow-y-auto p-4 space-y-4">
+            {ACTION_CATEGORIES.map((category) => (
+              <div key={category.id} className="mvp3-action-category">
+                <p className="mvp3-action-category-label mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                  {category.label}
+                </p>
+                <div className="grid grid-cols-4 gap-2">
+                  {category.types.map((type) => {
+                    const Icon = ACTION_ICONS[type] ?? Plus
+                    return (
+                      <button
+                        key={type}
+                        type="button"
+                        className="mvp3-action-picker-item flex flex-col items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-3 text-slate-600 transition-colors hover:border-slate-400 hover:bg-slate-100 hover:text-slate-900"
+                        onClick={() => handleAddAction(type)}
+                      >
+                        <Icon className="h-5 w-5" />
+                        <span className="text-[10px] font-medium leading-tight text-center">{ACTION_DISPLAY_NAMES[type]}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

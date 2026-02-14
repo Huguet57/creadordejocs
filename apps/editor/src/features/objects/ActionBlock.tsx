@@ -13,7 +13,10 @@ import {
   Locate,
   LocateFixed,
   Globe2,
-  Variable
+  Variable,
+  ArrowLeftRight,
+  DoorOpen,
+  RotateCcw
 } from "lucide-react"
 import { Button } from "../../components/ui/button.js"
 import { Input } from "../../components/ui/input.js"
@@ -41,35 +44,42 @@ type ActionBlockProps = {
 const ACTION_ICONS: Record<ObjectActionType, React.ElementType> = {
   move: Move,
   setVelocity: FastForward,
-  spawnObject: CopyPlus,
-  playSound: Volume2,
-  changeScore: Trophy,
-  endGame: Flag,
   clampToRoom: Maximize,
   jumpToPosition: Locate,
   jumpToStart: LocateFixed,
-  setGlobalVariable: Globe2,
-  setObjectVariable: Variable,
-  setObjectVariableFromGlobal: Variable,
-  setGlobalVariableFromObject: Globe2,
-  goToRoom: Locate,
-  restartRoom: LocateFixed,
-  addGlobalVariable: Globe2,
-  subtractGlobalVariable: Globe2,
-  multiplyGlobalVariable: Globe2,
-  addObjectVariable: Variable,
-  subtractObjectVariable: Variable,
-  multiplyObjectVariable: Variable,
   destroySelf: Trash,
   destroyOther: X,
+  spawnObject: CopyPlus,
+  changeScore: Trophy,
+  endGame: Flag,
+  playSound: Volume2,
+  changeGlobalVariable: Globe2,
+  changeObjectVariable: Variable,
+  copyVariable: ArrowLeftRight,
+  goToRoom: DoorOpen,
+  restartRoom: RotateCcw,
 }
 
-const ACTION_LABELS: Partial<Record<ObjectActionType, string>> = {
-  setGlobalVariable: "Set Global",
-  setObjectVariable: "Set Var",
-  setObjectVariableFromGlobal: "Var ← Global",
-  setGlobalVariableFromObject: "Global ← Var"
+const ACTION_LABELS: Record<ObjectActionType, string> = {
+  move: "Moure",
+  setVelocity: "Velocitat",
+  clampToRoom: "Limitar",
+  jumpToPosition: "Saltar pos.",
+  jumpToStart: "Saltar inici",
+  destroySelf: "Destruir-se",
+  destroyOther: "Destruir altre",
+  spawnObject: "Crear obj.",
+  changeScore: "Punts",
+  endGame: "Fi joc",
+  playSound: "So",
+  changeGlobalVariable: "Var. global",
+  changeObjectVariable: "Var. objecte",
+  copyVariable: "Copiar var.",
+  goToRoom: "Anar a sala",
+  restartRoom: "Reiniciar",
 }
+
+// Operator labels used in the UI are inlined in the select options
 
 function parseValueForType(type: VariableType, rawValue: string): VariableValue {
   if (type === "number") {
@@ -114,33 +124,25 @@ export function ActionBlock({
       type: definition.type
     }))
   )
-  const selectedGlobalForObjectTarget =
-    action.type === "setObjectVariableFromGlobal"
+
+  const selectedGlobalForCopy =
+    action.type === "copyVariable"
       ? globalVariables.find((definition) => definition.id === action.globalVariableId)
       : null
-  const compatibleObjectOptionsForObjectTarget = selectedGlobalForObjectTarget
-    ? objectVariableOptions.filter((option) => option.type === selectedGlobalForObjectTarget.type)
+  const compatibleObjectOptionsForCopy = selectedGlobalForCopy
+    ? objectVariableOptions.filter((option) => option.type === selectedGlobalForCopy.type)
     : objectVariableOptions
-  const selectedGlobalForGlobalTarget =
-    action.type === "setGlobalVariableFromObject"
-      ? globalVariables.find((definition) => definition.id === action.globalVariableId)
-      : null
-  const compatibleObjectOptionsForGlobalTarget = selectedGlobalForGlobalTarget
-    ? objectVariableOptions.filter((option) => option.type === selectedGlobalForGlobalTarget.type)
-    : objectVariableOptions
-  const numberGlobalVariables = globalVariables.filter((definition) => definition.type === "number")
-  const numberObjectVariableOptions = objectVariableOptions.filter((option) => option.type === "number")
 
   return (
-    <div className="group flex items-center gap-3 rounded-md border border-slate-200 bg-white p-2 shadow-sm transition-all hover:shadow-md">
-      <div className="flex items-center gap-1.5 min-w-[90px] shrink-0">
+    <div className="action-block-container group flex items-center gap-3 rounded-md border border-slate-200 bg-white p-2 shadow-sm">
+      <div className="action-block-label flex items-center gap-1.5 min-w-[90px] shrink-0">
         <Icon className="h-4 w-4 text-slate-500 shrink-0" />
         <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-700 leading-tight">
-          {ACTION_LABELS[action.type] ?? action.type}
+          {ACTION_LABELS[action.type]}
         </span>
       </div>
 
-      <div className="flex-1 flex items-center gap-3 flex-wrap">
+      <div className="action-block-fields flex-1 flex items-center gap-3 flex-wrap">
         {action.type === "move" && (
           <>
             <div className="flex items-center gap-1">
@@ -190,7 +192,7 @@ export function ActionBlock({
         {action.type === "spawnObject" && (
           <>
             <select
-              className="h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs focus:outline-none"
+              className="action-block-spawn-select h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs focus:outline-none"
               value={action.objectId}
               onChange={(e) => onUpdate({ ...action, objectId: e.target.value })}
             >
@@ -221,7 +223,7 @@ export function ActionBlock({
 
         {action.type === "playSound" && (
           <select
-            className="h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs focus:outline-none min-w-[120px]"
+            className="action-block-sound-select h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs focus:outline-none min-w-[120px]"
             value={action.soundId}
             onChange={(e) => onUpdate({ ...action, soundId: e.target.value })}
           >
@@ -279,7 +281,7 @@ export function ActionBlock({
 
         {action.type === "goToRoom" && (
           <select
-            className="h-6 min-w-[140px] rounded border border-slate-300 bg-white/50 px-1 text-xs focus:outline-none"
+            className="action-block-room-select h-6 min-w-[140px] rounded border border-slate-300 bg-white/50 px-1 text-xs focus:outline-none"
             value={action.roomId}
             onChange={(event) => onUpdate({ ...action, roomId: event.target.value })}
           >
@@ -291,102 +293,43 @@ export function ActionBlock({
           </select>
         )}
 
-        {action.type === "restartRoom" && <span className="text-[10px] font-medium text-slate-500">Current room</span>}
+        {action.type === "restartRoom" && <span className="text-[10px] font-medium text-slate-500">Sala actual</span>}
 
-        {(action.type === "addGlobalVariable" ||
-          action.type === "subtractGlobalVariable" ||
-          action.type === "multiplyGlobalVariable") && (
+        {action.type === "changeGlobalVariable" && (
           <>
             <select
-              className="h-6 min-w-[140px] rounded border border-slate-300 bg-white/50 px-1 text-xs focus:outline-none"
-              value={action.variableId}
-              onChange={(event) => onUpdate({ ...action, variableId: event.target.value })}
+              className="action-block-operator-select h-6 w-12 rounded border border-slate-300 bg-white/50 px-1 text-xs font-bold text-center"
+              value={action.operator}
+              onChange={(event) => {
+                const newOp = event.target.value as "set" | "add" | "subtract" | "multiply"
+                if (newOp !== "set" && typeof action.value !== "number") {
+                  onUpdate({ ...action, operator: newOp, value: 0 })
+                } else {
+                  onUpdate({ ...action, operator: newOp })
+                }
+              }}
             >
-              {numberGlobalVariables.map((definition) => (
-                <option key={definition.id} value={definition.id}>
-                  {definition.name}
-                </option>
-              ))}
+              <option value="set">=</option>
+              <option value="add">+</option>
+              <option value="subtract">−</option>
+              <option value="multiply">×</option>
             </select>
-            <Input
-              type="number"
-              className="h-6 w-24 px-1 text-xs bg-white/50 border-slate-300"
-              value={action.value}
-              onChange={(event) => onUpdate({ ...action, value: Number(event.target.value) })}
-            />
-          </>
-        )}
-
-        {(action.type === "addObjectVariable" ||
-          action.type === "subtractObjectVariable" ||
-          action.type === "multiplyObjectVariable") && (
-          <>
             <select
-              className="h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
-              value={action.target}
-              onChange={(event) =>
-                onUpdate({
-                  ...action,
-                  target: event.target.value as "self" | "other" | "instanceId",
-                  targetInstanceId: event.target.value === "instanceId" ? action.targetInstanceId : null
-                })
-              }
-            >
-              <option value="self">self</option>
-              <option value="other">other</option>
-              <option value="instanceId">instance</option>
-            </select>
-            {action.target === "instanceId" && (
-              <select
-                className="h-6 min-w-[120px] rounded border border-slate-300 bg-white/50 px-1 text-xs"
-                value={action.targetInstanceId ?? roomInstances[0]?.id ?? ""}
-                onChange={(event) => onUpdate({ ...action, targetInstanceId: event.target.value })}
-              >
-                {roomInstances.map((instanceEntry) => (
-                  <option key={instanceEntry.id} value={instanceEntry.id}>
-                    {instanceEntry.id}
-                  </option>
-                ))}
-              </select>
-            )}
-            <select
-              className="h-6 min-w-[160px] rounded border border-slate-300 bg-white/50 px-1 text-xs"
-              value={action.variableId}
-              onChange={(event) => onUpdate({ ...action, variableId: event.target.value })}
-            >
-              {numberObjectVariableOptions.map((option) => (
-                <option key={`${option.objectName}-${option.id}`} value={option.id}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <Input
-              type="number"
-              className="h-6 w-24 px-1 text-xs bg-white/50 border-slate-300"
-              value={action.value}
-              onChange={(event) => onUpdate({ ...action, value: Number(event.target.value) })}
-            />
-          </>
-        )}
-
-        {action.type === "setGlobalVariable" && (
-          <>
-            <select
-              className="h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs focus:outline-none"
+              className="action-block-globalvar-select h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs focus:outline-none"
               value={action.variableId}
               onChange={(event) => {
                 const selected = globalVariables.find((definition) => definition.id === event.target.value)
                 if (!selected) return
-                onUpdate({ ...action, variableId: selected.id, value: selected.initialValue })
+                onUpdate({ ...action, variableId: selected.id, value: action.operator === "set" ? selected.initialValue : 0 })
               }}
             >
-              {globalVariables.map((definition) => (
+              {(action.operator === "set" ? globalVariables : globalVariables.filter((d) => d.type === "number")).map((definition) => (
                 <option key={definition.id} value={definition.id}>{definition.name}</option>
               ))}
             </select>
             {typeof action.value === "boolean" ? (
               <select
-                className="h-6 w-16 rounded border border-slate-300 bg-white/50 px-1 text-xs"
+                className="action-block-bool-select h-6 w-16 rounded border border-slate-300 bg-white/50 px-1 text-xs"
                 value={String(action.value)}
                 onChange={(event) => onUpdate({ ...action, value: event.target.value === "true" })}
               >
@@ -408,10 +351,27 @@ export function ActionBlock({
           </>
         )}
 
-        {action.type === "setObjectVariable" && (
+        {action.type === "changeObjectVariable" && (
           <>
             <select
-              className="h-6 w-14 rounded border border-slate-300 bg-white/50 px-1 text-xs"
+              className="action-block-operator-select h-6 w-12 rounded border border-slate-300 bg-white/50 px-1 text-xs font-bold text-center"
+              value={action.operator}
+              onChange={(event) => {
+                const newOp = event.target.value as "set" | "add" | "subtract" | "multiply"
+                if (newOp !== "set" && typeof action.value !== "number") {
+                  onUpdate({ ...action, operator: newOp, value: 0 })
+                } else {
+                  onUpdate({ ...action, operator: newOp })
+                }
+              }}
+            >
+              <option value="set">=</option>
+              <option value="add">+</option>
+              <option value="subtract">−</option>
+              <option value="multiply">×</option>
+            </select>
+            <select
+              className="action-block-target-select h-6 w-14 rounded border border-slate-300 bg-white/50 px-1 text-xs"
               value={action.target}
               onChange={(event) =>
                 onUpdate({
@@ -427,7 +387,7 @@ export function ActionBlock({
             </select>
             {action.target === "instanceId" && (
               <select
-                className="h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
+                className="action-block-instance-select h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
                 value={action.targetInstanceId ?? roomInstances[0]?.id ?? ""}
                 onChange={(event) => onUpdate({ ...action, targetInstanceId: event.target.value })}
               >
@@ -437,7 +397,7 @@ export function ActionBlock({
               </select>
             )}
             <select
-              className="h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
+              className="action-block-objvar-select h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
               value={action.variableId}
               onChange={(event) => {
                 const selected = objectVariableOptions.find((option) => option.id === event.target.value)
@@ -445,13 +405,13 @@ export function ActionBlock({
                 onUpdate({ ...action, variableId: selected.id })
               }}
             >
-              {objectVariableOptions.map((option) => (
+              {(action.operator === "set" ? objectVariableOptions : objectVariableOptions.filter((o) => o.type === "number")).map((option) => (
                 <option key={`${option.objectName}-${option.id}`} value={option.id}>{option.label}</option>
               ))}
             </select>
             {typeof action.value === "boolean" ? (
               <select
-                className="h-6 w-16 rounded border border-slate-300 bg-white/50 px-1 text-xs"
+                className="action-block-bool-select h-6 w-16 rounded border border-slate-300 bg-white/50 px-1 text-xs"
                 value={String(action.value)}
                 onChange={(event) => onUpdate({ ...action, value: event.target.value === "true" })}
               >
@@ -473,16 +433,24 @@ export function ActionBlock({
           </>
         )}
 
-        {action.type === "setObjectVariableFromGlobal" && (
+        {action.type === "copyVariable" && (
           <>
             <select
-              className="h-6 w-14 rounded border border-slate-300 bg-white/50 px-1 text-xs"
-              value={action.target}
+              className="action-block-direction-select h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
+              value={action.direction}
+              onChange={(event) => onUpdate({ ...action, direction: event.target.value as "globalToObject" | "objectToGlobal" })}
+            >
+              <option value="globalToObject">Global → Objecte</option>
+              <option value="objectToGlobal">Objecte → Global</option>
+            </select>
+            <select
+              className="action-block-instance-target-select h-6 w-14 rounded border border-slate-300 bg-white/50 px-1 text-xs"
+              value={action.instanceTarget}
               onChange={(event) =>
                 onUpdate({
                   ...action,
-                  target: event.target.value as "self" | "other" | "instanceId",
-                  targetInstanceId: event.target.value === "instanceId" ? action.targetInstanceId : null
+                  instanceTarget: event.target.value as "self" | "other" | "instanceId",
+                  instanceTargetId: event.target.value === "instanceId" ? action.instanceTargetId : null
                 })
               }
             >
@@ -490,11 +458,11 @@ export function ActionBlock({
               <option value="other">other</option>
               <option value="instanceId">id</option>
             </select>
-            {action.target === "instanceId" && (
+            {action.instanceTarget === "instanceId" && (
               <select
-                className="h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
-                value={action.targetInstanceId ?? roomInstances[0]?.id ?? ""}
-                onChange={(event) => onUpdate({ ...action, targetInstanceId: event.target.value })}
+                className="action-block-copy-instance-select h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
+                value={action.instanceTargetId ?? roomInstances[0]?.id ?? ""}
+                onChange={(event) => onUpdate({ ...action, instanceTargetId: event.target.value })}
               >
                 {roomInstances.map((instanceEntry) => (
                   <option key={instanceEntry.id} value={instanceEntry.id}>{instanceEntry.id}</option>
@@ -502,17 +470,7 @@ export function ActionBlock({
               </select>
             )}
             <select
-              className="h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
-              value={action.variableId}
-              onChange={(event) => onUpdate({ ...action, variableId: event.target.value })}
-            >
-              {compatibleObjectOptionsForObjectTarget.map((option) => (
-                <option key={`${option.objectName}-${option.id}`} value={option.id}>{option.label}</option>
-              ))}
-            </select>
-            <label className="text-[10px] font-medium opacity-60">←</label>
-            <select
-              className="h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
+              className="action-block-copy-global-select h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
               value={action.globalVariableId}
               onChange={(event) => onUpdate({ ...action, globalVariableId: event.target.value })}
             >
@@ -520,53 +478,13 @@ export function ActionBlock({
                 <option key={definition.id} value={definition.id}>{definition.name}</option>
               ))}
             </select>
-          </>
-        )}
-
-        {action.type === "setGlobalVariableFromObject" && (
-          <>
+            <span className="text-[10px] font-medium opacity-60">↔</span>
             <select
-              className="h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
-              value={action.globalVariableId}
-              onChange={(event) => onUpdate({ ...action, globalVariableId: event.target.value })}
-            >
-              {globalVariables.map((definition) => (
-                <option key={definition.id} value={definition.id}>{definition.name}</option>
-              ))}
-            </select>
-            <label className="text-[10px] font-medium opacity-60">←</label>
-            <select
-              className="h-6 w-14 rounded border border-slate-300 bg-white/50 px-1 text-xs"
-              value={action.source}
-              onChange={(event) =>
-                onUpdate({
-                  ...action,
-                  source: event.target.value as "self" | "other" | "instanceId",
-                  sourceInstanceId: event.target.value === "instanceId" ? action.sourceInstanceId : null
-                })
-              }
-            >
-              <option value="self">self</option>
-              <option value="other">other</option>
-              <option value="instanceId">id</option>
-            </select>
-            {action.source === "instanceId" && (
-              <select
-                className="h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
-                value={action.sourceInstanceId ?? roomInstances[0]?.id ?? ""}
-                onChange={(event) => onUpdate({ ...action, sourceInstanceId: event.target.value })}
-              >
-                {roomInstances.map((instanceEntry) => (
-                  <option key={instanceEntry.id} value={instanceEntry.id}>{instanceEntry.id}</option>
-                ))}
-              </select>
-            )}
-            <select
-              className="h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
+              className="action-block-copy-objvar-select h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
               value={action.objectVariableId}
               onChange={(event) => onUpdate({ ...action, objectVariableId: event.target.value })}
             >
-              {compatibleObjectOptionsForGlobalTarget.map((option) => (
+              {compatibleObjectOptionsForCopy.map((option) => (
                 <option key={`${option.objectName}-${option.id}`} value={option.id}>{option.label}</option>
               ))}
             </select>
@@ -574,7 +492,7 @@ export function ActionBlock({
         )}
       </div>
 
-      <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+      <div className="action-block-controls flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
         <Button
           variant="ghost"
           size="icon"

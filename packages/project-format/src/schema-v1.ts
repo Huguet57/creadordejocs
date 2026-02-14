@@ -63,6 +63,8 @@ const VariableDefinitionSchema = z.discriminatedUnion("type", [
 
 const VariableValueSchema = z.union([z.number(), z.string(), z.boolean()])
 
+const VariableOperatorSchema = z.enum(["set", "add", "subtract", "multiply"])
+
 const ObjectActionSchema = z.discriminatedUnion("type", [
   z.object({
     id: z.string().min(1),
@@ -122,33 +124,28 @@ const ObjectActionSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     id: z.string().min(1),
-    type: z.literal("setGlobalVariable"),
+    type: z.literal("changeGlobalVariable"),
     variableId: z.string().min(1),
+    operator: VariableOperatorSchema,
     value: VariableValueSchema
   }),
   z.object({
     id: z.string().min(1),
-    type: z.literal("setObjectVariable"),
+    type: z.literal("changeObjectVariable"),
     variableId: z.string().min(1),
+    operator: VariableOperatorSchema,
     target: z.enum(["self", "other", "instanceId"]),
     targetInstanceId: z.string().nullable().default(null),
     value: VariableValueSchema
   }),
   z.object({
     id: z.string().min(1),
-    type: z.literal("setObjectVariableFromGlobal"),
-    variableId: z.string().min(1),
-    target: z.enum(["self", "other", "instanceId"]),
-    targetInstanceId: z.string().nullable().default(null),
-    globalVariableId: z.string().min(1)
-  }),
-  z.object({
-    id: z.string().min(1),
-    type: z.literal("setGlobalVariableFromObject"),
+    type: z.literal("copyVariable"),
+    direction: z.enum(["globalToObject", "objectToGlobal"]),
     globalVariableId: z.string().min(1),
-    source: z.enum(["self", "other", "instanceId"]),
-    sourceInstanceId: z.string().nullable().default(null),
-    objectVariableId: z.string().min(1)
+    objectVariableId: z.string().min(1),
+    instanceTarget: z.enum(["self", "other", "instanceId"]),
+    instanceTargetId: z.string().nullable().default(null)
   }),
   z.object({
     id: z.string().min(1),
@@ -158,48 +155,6 @@ const ObjectActionSchema = z.discriminatedUnion("type", [
   z.object({
     id: z.string().min(1),
     type: z.literal("restartRoom")
-  }),
-  z.object({
-    id: z.string().min(1),
-    type: z.literal("addGlobalVariable"),
-    variableId: z.string().min(1),
-    value: z.number()
-  }),
-  z.object({
-    id: z.string().min(1),
-    type: z.literal("subtractGlobalVariable"),
-    variableId: z.string().min(1),
-    value: z.number()
-  }),
-  z.object({
-    id: z.string().min(1),
-    type: z.literal("multiplyGlobalVariable"),
-    variableId: z.string().min(1),
-    value: z.number()
-  }),
-  z.object({
-    id: z.string().min(1),
-    type: z.literal("addObjectVariable"),
-    variableId: z.string().min(1),
-    target: z.enum(["self", "other", "instanceId"]),
-    targetInstanceId: z.string().nullable().default(null),
-    value: z.number()
-  }),
-  z.object({
-    id: z.string().min(1),
-    type: z.literal("subtractObjectVariable"),
-    variableId: z.string().min(1),
-    target: z.enum(["self", "other", "instanceId"]),
-    targetInstanceId: z.string().nullable().default(null),
-    value: z.number()
-  }),
-  z.object({
-    id: z.string().min(1),
-    type: z.literal("multiplyObjectVariable"),
-    variableId: z.string().min(1),
-    target: z.enum(["self", "other", "instanceId"]),
-    targetInstanceId: z.string().nullable().default(null),
-    value: z.number()
   })
 ])
 

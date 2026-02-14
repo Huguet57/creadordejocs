@@ -16,18 +16,11 @@ export type ObjectActionType =
   | "changeScore"
   | "endGame"
   | "playSound"
-  | "setGlobalVariable"
-  | "setObjectVariable"
-  | "setObjectVariableFromGlobal"
-  | "setGlobalVariableFromObject"
+  | "changeGlobalVariable"
+  | "changeObjectVariable"
+  | "copyVariable"
   | "goToRoom"
   | "restartRoom"
-  | "addGlobalVariable"
-  | "subtractGlobalVariable"
-  | "multiplyGlobalVariable"
-  | "addObjectVariable"
-  | "subtractObjectVariable"
-  | "multiplyObjectVariable"
 
 export type ObjectEventEntry = ProjectV1["objects"][number]["events"][number]
 export { type ObjectActionDraft }
@@ -55,16 +48,39 @@ export const OBJECT_ACTION_TYPES: ObjectActionType[] = [
   "changeScore",
   "endGame",
   "playSound",
-  "setGlobalVariable",
-  "setObjectVariable",
-  "setObjectVariableFromGlobal",
-  "setGlobalVariableFromObject",
+  "changeGlobalVariable",
+  "changeObjectVariable",
+  "copyVariable",
   "goToRoom",
-  "restartRoom",
-  "addGlobalVariable",
-  "subtractGlobalVariable",
-  "multiplyGlobalVariable",
-  "addObjectVariable",
-  "subtractObjectVariable",
-  "multiplyObjectVariable"
+  "restartRoom"
+]
+
+export type ActionCategory = "movement" | "objects" | "game" | "variables" | "rooms"
+
+export const ACTION_CATEGORIES: { id: ActionCategory; label: string; types: ObjectActionType[] }[] = [
+  {
+    id: "movement",
+    label: "Moviment",
+    types: ["move", "setVelocity", "clampToRoom", "jumpToPosition", "jumpToStart"]
+  },
+  {
+    id: "objects",
+    label: "Objectes",
+    types: ["destroySelf", "destroyOther", "spawnObject"]
+  },
+  {
+    id: "game",
+    label: "Joc",
+    types: ["changeScore", "endGame", "playSound"]
+  },
+  {
+    id: "variables",
+    label: "Variables",
+    types: ["changeGlobalVariable", "changeObjectVariable", "copyVariable"]
+  },
+  {
+    id: "rooms",
+    label: "Sales",
+    types: ["goToRoom", "restartRoom"]
+  }
 ]

@@ -318,11 +318,12 @@ describe("runtime regressions", () => {
               targetObjectId: null,
               intervalMs: null,
               actions: [
-                { id: "action-global", type: "setGlobalVariable", variableId: "gv-score", value: 9 },
+                { id: "action-global", type: "changeGlobalVariable", variableId: "gv-score", operator: "set", value: 9 },
                 {
                   id: "action-object",
-                  type: "setObjectVariable",
+                  type: "changeObjectVariable",
                   variableId: "ov-health",
+                  operator: "set",
                   target: "self",
                   targetInstanceId: null,
                   value: 7
@@ -390,19 +391,21 @@ describe("runtime regressions", () => {
               actions: [
                 {
                   id: "action-copy-to-other",
-                  type: "setObjectVariableFromGlobal",
-                  variableId: "ov-received",
-                  target: "other",
-                  targetInstanceId: null,
-                  globalVariableId: "gv-copied"
+                  type: "copyVariable",
+                  direction: "globalToObject",
+                  globalVariableId: "gv-copied",
+                  objectVariableId: "ov-received",
+                  instanceTarget: "other",
+                  instanceTargetId: null
                 },
                 {
                   id: "action-global-from-self",
-                  type: "setGlobalVariableFromObject",
+                  type: "copyVariable",
+                  direction: "objectToGlobal",
                   globalVariableId: "gv-copied",
-                  source: "self",
-                  sourceInstanceId: null,
-                  objectVariableId: "ov-power"
+                  objectVariableId: "ov-power",
+                  instanceTarget: "self",
+                  instanceTargetId: null
                 }
               ]
             }
@@ -747,38 +750,42 @@ describe("runtime regressions", () => {
               targetObjectId: null,
               intervalMs: null,
               actions: [
-                { id: "a1", type: "addGlobalVariable", variableId: "gv-number", value: 3 },
-                { id: "a2", type: "subtractGlobalVariable", variableId: "gv-number", value: 1 },
-                { id: "a3", type: "multiplyGlobalVariable", variableId: "gv-number", value: 5 },
-                { id: "a4", type: "addGlobalVariable", variableId: "gv-string", value: 9 },
+                { id: "a1", type: "changeGlobalVariable", variableId: "gv-number", operator: "add", value: 3 },
+                { id: "a2", type: "changeGlobalVariable", variableId: "gv-number", operator: "subtract", value: 1 },
+                { id: "a3", type: "changeGlobalVariable", variableId: "gv-number", operator: "multiply", value: 5 },
+                { id: "a4", type: "changeGlobalVariable", variableId: "gv-string", operator: "add", value: 9 },
                 {
                   id: "a5",
-                  type: "addObjectVariable",
+                  type: "changeObjectVariable",
                   variableId: "ov-number",
+                  operator: "add",
                   target: "self",
                   targetInstanceId: null,
                   value: 5
                 },
                 {
                   id: "a6",
-                  type: "subtractObjectVariable",
+                  type: "changeObjectVariable",
                   variableId: "ov-number",
+                  operator: "subtract",
                   target: "self",
                   targetInstanceId: null,
                   value: 3
                 },
                 {
                   id: "a7",
-                  type: "multiplyObjectVariable",
+                  type: "changeObjectVariable",
                   variableId: "ov-number",
+                  operator: "multiply",
                   target: "self",
                   targetInstanceId: null,
                   value: 2
                 },
                 {
                   id: "a8",
-                  type: "addObjectVariable",
+                  type: "changeObjectVariable",
                   variableId: "ov-bool",
+                  operator: "add",
                   target: "self",
                   targetInstanceId: null,
                   value: 1
