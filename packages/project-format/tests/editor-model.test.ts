@@ -9,6 +9,12 @@ import {
   moveRoomInstance,
   removeObjectEventAction,
   removeObjectEvent,
+  addGlobalVariable,
+  updateGlobalVariable,
+  removeGlobalVariable,
+  addObjectVariable,
+  updateObjectVariable,
+  removeObjectVariable,
   quickCreateObject,
   quickCreateSound,
   quickCreateSprite,
@@ -134,5 +140,71 @@ describe("editor model helpers", () => {
     expect(withRemovedAction.objects[0]?.events[0]?.actions).toHaveLength(1)
     expect(withConfig.objects[0]?.events[0]?.targetObjectId).toBeNull()
     expect(withoutEvent.objects[0]?.events).toHaveLength(0)
+  })
+
+  it("manages global and object variable definitions with uniqueness", () => {
+    const initial = createEmptyProjectV1("Variables")
+    const withObject = quickCreateObject(initial, { name: "Player" })
+    const objectId = withObject.objectId
+
+    const withGlobal = addGlobalVariable(withObject.project, {
+      name: "score",
+      type: "number",
+      initialValue: 0
+    })
+    const globalVariableId = withGlobal.variableId
+    if (!globalVariableId) {
+      throw new Error("Expected global variable to be created")
+    }
+    const withDuplicateGlobal = addGlobalVariable(withGlobal.project, {
+      name: "Score",
+      type: "number",
+      initialValue: 1
+    })
+    expect(withDuplicateGlobal.variableId).toBeNull()
+
+    const withUpdatedGlobal = updateGlobalVariable(withGlobal.project, {
+      variableId: globalVariableId,
+      name: "totalScore",
+      initialValue: 5
+    })
+    expect(withUpdatedGlobal.variables.global[0]?.name).toBe("totalScore")
+    expect(withUpdatedGlobal.variables.global[0]?.initialValue).toBe(5)
+
+    const withObjectVariable = addObjectVariable(withUpdatedGlobal, {
+      objectId,
+      name: "health",
+      type: "number",
+      initialValue: 3
+    })
+    const objectVariableId = withObjectVariable.variableId
+    if (!objectVariableId) {
+      throw new Error("Expected object variable to be created")
+    }
+    const withDuplicateObjectVariable = addObjectVariable(withObjectVariable.project, {
+      objectId,
+      name: "HEALTH",
+      type: "number",
+      initialValue: 8
+    })
+    expect(withDuplicateObjectVariable.variableId).toBeNull()
+
+    const withUpdatedObjectVariable = updateObjectVariable(withObjectVariable.project, {
+      objectId,
+      variableId: objectVariableId,
+      name: "hp",
+      initialValue: 7
+    })
+    expect(withUpdatedObjectVariable.variables.objectByObjectId[objectId]?.[0]?.name).toBe("hp")
+    expect(withUpdatedObjectVariable.variables.objectByObjectId[objectId]?.[0]?.initialValue).toBe(7)
+
+    const withoutObjectVariable = removeObjectVariable(withUpdatedObjectVariable, {
+      objectId,
+      variableId: objectVariableId
+    })
+    const withoutGlobal = removeGlobalVariable(withoutObjectVariable, { variableId: globalVariableId })
+
+    expect(withoutObjectVariable.variables.objectByObjectId[objectId]).toHaveLength(0)
+    expect(withoutGlobal.variables.global).toHaveLength(0)
   })
 })

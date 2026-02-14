@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import {
   addObjectEvent,
   addObjectEventAction as addObjectEventActionModel,
+  addGlobalVariable as addGlobalVariableModel,
+  addObjectVariable as addObjectVariableModel,
   addRoomInstance,
   createEmptyProjectV1,
   createRoom,
@@ -14,13 +16,19 @@ import {
   quickCreateSprite,
   removeObjectEvent,
   removeObjectEventAction as removeObjectEventActionModel,
+  removeGlobalVariable as removeGlobalVariableModel,
+  removeObjectVariable as removeObjectVariableModel,
   setTimeToFirstPlayableFunMs,
   updateObjectEventAction as updateObjectEventActionModel,
   updateObjectEventConfig as updateObjectEventConfigModel,
+  updateGlobalVariable as updateGlobalVariableModel,
+  updateObjectVariable as updateObjectVariableModel,
   updateObjectProperties,
   updateSoundAssetSource,
   updateSpriteAssetSource,
   type ObjectActionDraft,
+  type VariableType,
+  type VariableValue,
   type ProjectV1
 } from "@creadordejocs/project-format"
 import {
@@ -80,7 +88,7 @@ export function useEditorController() {
   const [activeObjectId, setActiveObjectId] = useState<string | null>(null)
   const [isRunning, setIsRunning] = useState(false)
   const [runSnapshot, setRunSnapshot] = useState<ProjectV1 | null>(null)
-  const [runtimeState, setRuntimeState] = useState<RuntimeState>(createInitialRuntimeState())
+  const [runtimeState, setRuntimeState] = useState<RuntimeState>(() => createInitialRuntimeState(initial.project))
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("saved")
   const [isDirty, setIsDirty] = useState(false)
   const [past, setPast] = useState<ProjectV1[]>([])
@@ -88,7 +96,7 @@ export function useEditorController() {
   const [snapshots, setSnapshots] = useState<LocalSnapshot[]>(() => loadSnapshotsFromLocalStorage())
   const [startedAtMs] = useState<number>(() => Date.now())
   const pressedKeysRef = useRef<Set<string>>(new Set())
-  const runtimeRef = useRef<RuntimeState>(createInitialRuntimeState())
+  const runtimeRef = useRef<RuntimeState>(createInitialRuntimeState(initial.project))
 
   const activeRoom = useMemo(() => selectActiveRoom(project, activeRoomId), [project, activeRoomId])
   const selectedObject = useMemo(() => selectObject(project, activeObjectId), [project, activeObjectId])
@@ -276,6 +284,35 @@ export function useEditorController() {
       pushProjectChange(result.project, `Create object: ${name.trim()}`)
       setActiveObjectId(result.objectId)
     },
+    addGlobalVariable(name: string, type: VariableType, initialValue: VariableValue) {
+      const result = addGlobalVariableModel(project, { name, type, initialValue })
+      if (!result.variableId) {
+        return
+      }
+      pushProjectChange(result.project, `Create global variable: ${name.trim()}`)
+    },
+    updateGlobalVariable(variableId: string, name: string, initialValue: VariableValue) {
+      pushProjectChange(updateGlobalVariableModel(project, { variableId, name, initialValue }), "Update global variable")
+    },
+    removeGlobalVariable(variableId: string) {
+      pushProjectChange(removeGlobalVariableModel(project, { variableId }), "Remove global variable")
+    },
+    addObjectVariable(objectId: string, name: string, type: VariableType, initialValue: VariableValue) {
+      const result = addObjectVariableModel(project, { objectId, name, type, initialValue })
+      if (!result.variableId) {
+        return
+      }
+      pushProjectChange(result.project, `Create object variable: ${name.trim()}`)
+    },
+    updateObjectVariable(objectId: string, variableId: string, name: string, initialValue: VariableValue) {
+      pushProjectChange(
+        updateObjectVariableModel(project, { objectId, variableId, name, initialValue }),
+        "Update object variable"
+      )
+    },
+    removeObjectVariable(objectId: string, variableId: string) {
+      pushProjectChange(removeObjectVariableModel(project, { objectId, variableId }), "Remove object variable")
+    },
     addRoom(name: string) {
       if (!name.trim()) return
       const result = createRoom(project, name.trim())
@@ -386,7 +423,7 @@ export function useEditorController() {
       const withTimeMetric = setTimeToFirstPlayableFunMs(project, Date.now() - startedAtMs)
       setProject(withTimeMetric)
       setRunSnapshot(withTimeMetric)
-      const initialRuntime = createInitialRuntimeState()
+      const initialRuntime = createInitialRuntimeState(withTimeMetric)
       runtimeRef.current = initialRuntime
       setRuntimeState(initialRuntime)
       setIsRunning(true)
@@ -397,7 +434,7 @@ export function useEditorController() {
       setProject(nextResetState.project)
       setIsRunning(false)
       setRunSnapshot(nextResetState.runSnapshot)
-      const resetRuntime = createInitialRuntimeState()
+      const resetRuntime = createInitialRuntimeState(nextResetState.project)
       runtimeRef.current = resetRuntime
       setRuntimeState(resetRuntime)
     },

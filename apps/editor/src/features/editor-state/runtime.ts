@@ -11,7 +11,10 @@ type RuntimeActionResult = {
   scoreDelta: number
   gameOverMessage: string | null
   playedSoundIds: string[]
+  runtime: RuntimeState
 }
+
+type RuntimeVariableValue = ProjectV1["variables"]["global"][number]["initialValue"]
 
 export type RuntimeState = {
   score: number
@@ -20,6 +23,8 @@ export type RuntimeState = {
   initializedInstanceIds: string[]
   playedSoundIds: string[]
   instanceStartPositions: Record<string, { x: number; y: number }>
+  globalVariables: Record<string, RuntimeVariableValue>
+  objectInstanceVariables: Record<string, Record<string, RuntimeVariableValue>>
 }
 
 function clampValue(value: number, min: number, max: number): number {
@@ -27,7 +32,8 @@ function clampValue(value: number, min: number, max: number): number {
 }
 
 function getDefaultRuntimeActionResult(
-  instance: ProjectV1["rooms"][number]["instances"][number]
+  instance: ProjectV1["rooms"][number]["instances"][number],
+  runtime: RuntimeState
 ): RuntimeActionResult {
   return {
     instance,
@@ -35,7 +41,8 @@ function getDefaultRuntimeActionResult(
     spawned: [],
     scoreDelta: 0,
     gameOverMessage: null,
-    playedSoundIds: []
+    playedSoundIds: [],
+    runtime
   }
 }
 
@@ -43,11 +50,11 @@ function mergeDestroyedIds(existing: string[], nextId: string): string[] {
   return existing.includes(nextId) ? existing : [...existing, nextId]
 }
 
-function applyActionResultToRuntime(runtime: RuntimeState, actionResult: RuntimeActionResult): RuntimeState {
+function applyActionResultToRuntime(_runtime: RuntimeState, actionResult: RuntimeActionResult): RuntimeState {
   let nextRuntime = {
-    ...runtime,
-    score: runtime.score + actionResult.scoreDelta,
-    playedSoundIds: [...runtime.playedSoundIds, ...actionResult.playedSoundIds]
+    ...actionResult.runtime,
+    score: actionResult.runtime.score + actionResult.scoreDelta,
+    playedSoundIds: [...actionResult.runtime.playedSoundIds, ...actionResult.playedSoundIds]
   }
   if (actionResult.gameOverMessage) {
     nextRuntime = {
@@ -75,6 +82,51 @@ function getInstanceStartPosition(
   return runtime.instanceStartPositions[instance.id] ?? { x: instance.x, y: instance.y }
 }
 
+function buildInitialGlobalVariables(project: ProjectV1): Record<string, RuntimeVariableValue> {
+  return Object.fromEntries(project.variables.global.map((definition) => [definition.id, definition.initialValue]))
+}
+
+function buildInitialObjectVariablesForObject(project: ProjectV1, objectId: string): Record<string, RuntimeVariableValue> {
+  const definitions = project.variables.objectByObjectId[objectId] ?? []
+  return Object.fromEntries(definitions.map((definition) => [definition.id, definition.initialValue]))
+}
+
+function ensureInstanceVariables(
+  runtime: RuntimeState,
+  project: ProjectV1,
+  instance: ProjectV1["rooms"][number]["instances"][number]
+): RuntimeState {
+  if (runtime.objectInstanceVariables[instance.id]) {
+    return runtime
+  }
+  return {
+    ...runtime,
+    objectInstanceVariables: {
+      ...runtime.objectInstanceVariables,
+      [instance.id]: buildInitialObjectVariablesForObject(project, instance.objectId)
+    }
+  }
+}
+
+function resolveTargetInstanceId(
+  instance: ProjectV1["rooms"][number]["instances"][number],
+  target: "self" | "other" | "instanceId",
+  targetInstanceId: string | null,
+  collisionOtherInstanceId: string | null
+): string | null {
+  if (target === "self") {
+    return instance.id
+  }
+  if (target === "other") {
+    return collisionOtherInstanceId
+  }
+  return targetInstanceId
+}
+
+function isSameVariableValueType(left: RuntimeVariableValue, right: RuntimeVariableValue): boolean {
+  return typeof left === typeof right
+}
+
 function runOnDestroyEvents(
   project: ProjectV1,
   instance: ProjectV1["rooms"][number]["instances"][number],
@@ -82,24 +134,25 @@ function runOnDestroyEvents(
 ): RuntimeActionResult {
   const objectEntry = project.objects.find((candidate) => candidate.id === instance.objectId)
   if (!objectEntry) {
-    return getDefaultRuntimeActionResult(instance)
+    return getDefaultRuntimeActionResult(instance, runtime)
   }
   const onDestroyEvents = objectEntry.events.filter((eventEntry) => eventEntry.type === "OnDestroy")
   if (onDestroyEvents.length === 0) {
-    return getDefaultRuntimeActionResult(instance)
+    return getDefaultRuntimeActionResult(instance, runtime)
   }
 
-  let aggregate = getDefaultRuntimeActionResult(instance)
+  let aggregate = getDefaultRuntimeActionResult(instance, runtime)
   const startPosition = getInstanceStartPosition(runtime, instance)
   for (const eventEntry of onDestroyEvents) {
-    const eventResult = runEventActions(project, aggregate.instance, eventEntry.actions, startPosition)
+    const eventResult = runEventActions(project, aggregate.instance, eventEntry.actions, aggregate.runtime, startPosition)
     aggregate = {
       ...aggregate,
       instance: eventResult.instance,
       spawned: [...aggregate.spawned, ...eventResult.spawned],
       scoreDelta: aggregate.scoreDelta + eventResult.scoreDelta,
       gameOverMessage: eventResult.gameOverMessage ?? aggregate.gameOverMessage,
-      playedSoundIds: [...aggregate.playedSoundIds, ...eventResult.playedSoundIds]
+      playedSoundIds: [...aggregate.playedSoundIds, ...eventResult.playedSoundIds],
+      runtime: eventResult.runtime
     }
   }
   return aggregate
@@ -143,10 +196,11 @@ function runEventActions(
   project: ProjectV1,
   instance: ProjectV1["rooms"][number]["instances"][number],
   actions: ProjectV1["objects"][number]["events"][number]["actions"],
+  runtime: RuntimeState,
   startPosition: { x: number; y: number } | null = null,
   collisionOtherInstanceId: string | null = null
 ): RuntimeActionResult {
-  let result = getDefaultRuntimeActionResult(instance)
+  let result = getDefaultRuntimeActionResult(instance, runtime)
   for (const actionEntry of actions) {
     if (actionEntry.type === "move") {
       result = {
@@ -261,6 +315,121 @@ function runEventActions(
         ...result,
         playedSoundIds: [...result.playedSoundIds, actionEntry.soundId]
       }
+      continue
+    }
+    if (actionEntry.type === "setGlobalVariable") {
+      const existingValue = result.runtime.globalVariables[actionEntry.variableId]
+      if (existingValue === undefined || !isSameVariableValueType(existingValue, actionEntry.value)) {
+        continue
+      }
+      result = {
+        ...result,
+        runtime: {
+          ...result.runtime,
+          globalVariables: {
+            ...result.runtime.globalVariables,
+            [actionEntry.variableId]: actionEntry.value
+          }
+        }
+      }
+      continue
+    }
+    if (actionEntry.type === "setObjectVariable") {
+      const resolvedTargetInstanceId = resolveTargetInstanceId(
+        result.instance,
+        actionEntry.target,
+        actionEntry.targetInstanceId,
+        collisionOtherInstanceId
+      )
+      if (!resolvedTargetInstanceId) {
+        continue
+      }
+      const targetVariables = result.runtime.objectInstanceVariables[resolvedTargetInstanceId]
+      if (!targetVariables) {
+        continue
+      }
+      const existingValue = targetVariables[actionEntry.variableId]
+      if (existingValue === undefined || !isSameVariableValueType(existingValue, actionEntry.value)) {
+        continue
+      }
+      result = {
+        ...result,
+        runtime: {
+          ...result.runtime,
+          objectInstanceVariables: {
+            ...result.runtime.objectInstanceVariables,
+            [resolvedTargetInstanceId]: {
+              ...result.runtime.objectInstanceVariables[resolvedTargetInstanceId],
+              [actionEntry.variableId]: actionEntry.value
+            }
+          }
+        }
+      }
+      continue
+    }
+    if (actionEntry.type === "setObjectVariableFromGlobal") {
+      const globalValue = result.runtime.globalVariables[actionEntry.globalVariableId]
+      const resolvedTargetInstanceId = resolveTargetInstanceId(
+        result.instance,
+        actionEntry.target,
+        actionEntry.targetInstanceId,
+        collisionOtherInstanceId
+      )
+      if (!resolvedTargetInstanceId) {
+        continue
+      }
+      const targetVariables = result.runtime.objectInstanceVariables[resolvedTargetInstanceId]
+      if (globalValue === undefined || !targetVariables) {
+        continue
+      }
+      const existingValue = targetVariables[actionEntry.variableId]
+      if (existingValue === undefined || !isSameVariableValueType(existingValue, globalValue)) {
+        continue
+      }
+      result = {
+        ...result,
+        runtime: {
+          ...result.runtime,
+          objectInstanceVariables: {
+            ...result.runtime.objectInstanceVariables,
+            [resolvedTargetInstanceId]: {
+              ...result.runtime.objectInstanceVariables[resolvedTargetInstanceId],
+              [actionEntry.variableId]: globalValue
+            }
+          }
+        }
+      }
+      continue
+    }
+    if (actionEntry.type === "setGlobalVariableFromObject") {
+      const sourceInstanceId = resolveTargetInstanceId(
+        result.instance,
+        actionEntry.source,
+        actionEntry.sourceInstanceId,
+        collisionOtherInstanceId
+      )
+      if (!sourceInstanceId) {
+        continue
+      }
+      const sourceVariables = result.runtime.objectInstanceVariables[sourceInstanceId]
+      if (!sourceVariables || !(actionEntry.objectVariableId in sourceVariables)) {
+        continue
+      }
+      const sourceValue = sourceVariables[actionEntry.objectVariableId]
+      const existingGlobalValue = result.runtime.globalVariables[actionEntry.globalVariableId]
+      if (sourceValue === undefined || existingGlobalValue === undefined || !isSameVariableValueType(existingGlobalValue, sourceValue)) {
+        continue
+      }
+      result = {
+        ...result,
+        runtime: {
+          ...result.runtime,
+          globalVariables: {
+            ...result.runtime.globalVariables,
+            [actionEntry.globalVariableId]: sourceValue
+          }
+        }
+      }
     }
   }
 
@@ -322,7 +491,7 @@ function applyCollisionEvents(
         if (!firstInstance) {
           break
         }
-      const eventResult = runEventActions(project, firstInstance, eventEntry.actions, null, secondId)
+        const eventResult = runEventActions(project, firstInstance, eventEntry.actions, nextRuntime, null, secondId)
         const firstGetsDestroyed = eventResult.destroyedInstanceIds.includes(firstId)
         if (!firstGetsDestroyed) {
           mutableInstances[firstIndex] = eventResult.instance
@@ -360,7 +529,7 @@ function applyCollisionEvents(
         if (!secondInstance) {
           break
         }
-        const eventResult = runEventActions(project, secondInstance, eventEntry.actions, null, firstId)
+        const eventResult = runEventActions(project, secondInstance, eventEntry.actions, nextRuntime, null, firstId)
         const secondGetsDestroyed = eventResult.destroyedInstanceIds.includes(secondId)
         if (!secondGetsDestroyed) {
           mutableInstances[secondIndex] = eventResult.instance
@@ -394,14 +563,16 @@ function applyCollisionEvents(
   return { instances: mutableInstances, runtime: nextRuntime }
 }
 
-export function createInitialRuntimeState(): RuntimeState {
+export function createInitialRuntimeState(project?: ProjectV1): RuntimeState {
   return {
     score: 0,
     gameOver: false,
     message: "",
     initializedInstanceIds: [],
     playedSoundIds: [],
-    instanceStartPositions: {}
+    instanceStartPositions: {},
+    globalVariables: project ? buildInitialGlobalVariables(project) : {},
+    objectInstanceVariables: {}
   }
 }
 
@@ -416,7 +587,14 @@ export function runRuntimeTick(
     return { project, runtime }
   }
 
-  let nextRuntime: RuntimeState = { ...runtime, playedSoundIds: [] }
+  let nextRuntime: RuntimeState = {
+    ...runtime,
+    playedSoundIds: [],
+    globalVariables: {
+      ...buildInitialGlobalVariables(project),
+      ...runtime.globalVariables
+    }
+  }
   let nextInstances: ProjectV1["rooms"][number]["instances"] = []
   const pendingDestroyedInstanceIds = new Set<string>()
   for (const instanceEntry of room.instances) {
@@ -426,6 +604,7 @@ export function runRuntimeTick(
       continue
     }
 
+    nextRuntime = ensureInstanceVariables(nextRuntime, project, instanceEntry)
     const startPosition = getInstanceStartPosition(nextRuntime, instanceEntry)
     if (!nextRuntime.instanceStartPositions[instanceEntry.id]) {
       nextRuntime = {
@@ -455,7 +634,7 @@ export function runRuntimeTick(
     let destroySelf = false
     let spawned: ProjectV1["rooms"][number]["instances"] = []
     for (const eventEntry of matchingEvents) {
-      const eventResult = runEventActions(project, nextInstance, eventEntry.actions, startPosition)
+      const eventResult = runEventActions(project, nextInstance, eventEntry.actions, nextRuntime, startPosition)
       nextInstance = eventResult.instance
       for (const instanceId of eventResult.destroyedInstanceIds) {
         if (instanceId === nextInstance.id) {
@@ -471,7 +650,7 @@ export function runRuntimeTick(
     if (!destroySelf && isOutsideRoom(nextInstance)) {
       const outsideEvents = objectEntry.events.filter((eventEntry) => eventEntry.type === "OutsideRoom")
       for (const eventEntry of outsideEvents) {
-        const eventResult = runEventActions(project, nextInstance, eventEntry.actions, startPosition)
+        const eventResult = runEventActions(project, nextInstance, eventEntry.actions, nextRuntime, startPosition)
         nextInstance = eventResult.instance
         for (const instanceId of eventResult.destroyedInstanceIds) {
           if (instanceId === nextInstance.id) {
@@ -518,12 +697,15 @@ export function runRuntimeTick(
 
   const collisionResult = applyCollisionEvents(project, nextInstances, nextRuntime)
   const keptStartPositions: RuntimeState["instanceStartPositions"] = {}
+  const keptObjectVariableStates: RuntimeState["objectInstanceVariables"] = {}
   for (const instanceEntry of collisionResult.instances) {
     keptStartPositions[instanceEntry.id] = getInstanceStartPosition(collisionResult.runtime, instanceEntry)
+    keptObjectVariableStates[instanceEntry.id] = collisionResult.runtime.objectInstanceVariables[instanceEntry.id] ?? {}
   }
   const compactedRuntime: RuntimeState = {
     ...collisionResult.runtime,
-    instanceStartPositions: keptStartPositions
+    instanceStartPositions: keptStartPositions,
+    objectInstanceVariables: keptObjectVariableStates
   }
   const nextProject: ProjectV1 = {
     ...project,

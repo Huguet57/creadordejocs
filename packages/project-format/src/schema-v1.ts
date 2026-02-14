@@ -34,6 +34,35 @@ const ProjectResourcesSchema = z.object({
   sounds: z.array(SoundResourceSchema)
 })
 
+const NumberVariableDefinitionSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  type: z.literal("number"),
+  initialValue: z.number()
+})
+
+const StringVariableDefinitionSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  type: z.literal("string"),
+  initialValue: z.string()
+})
+
+const BooleanVariableDefinitionSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  type: z.literal("boolean"),
+  initialValue: z.boolean()
+})
+
+const VariableDefinitionSchema = z.discriminatedUnion("type", [
+  NumberVariableDefinitionSchema,
+  StringVariableDefinitionSchema,
+  BooleanVariableDefinitionSchema
+])
+
+const VariableValueSchema = z.union([z.number(), z.string(), z.boolean()])
+
 const ObjectActionSchema = z.discriminatedUnion("type", [
   z.object({
     id: z.string().min(1),
@@ -90,6 +119,36 @@ const ObjectActionSchema = z.discriminatedUnion("type", [
   z.object({
     id: z.string().min(1),
     type: z.literal("jumpToStart")
+  }),
+  z.object({
+    id: z.string().min(1),
+    type: z.literal("setGlobalVariable"),
+    variableId: z.string().min(1),
+    value: VariableValueSchema
+  }),
+  z.object({
+    id: z.string().min(1),
+    type: z.literal("setObjectVariable"),
+    variableId: z.string().min(1),
+    target: z.enum(["self", "other", "instanceId"]),
+    targetInstanceId: z.string().nullable().default(null),
+    value: VariableValueSchema
+  }),
+  z.object({
+    id: z.string().min(1),
+    type: z.literal("setObjectVariableFromGlobal"),
+    variableId: z.string().min(1),
+    target: z.enum(["self", "other", "instanceId"]),
+    targetInstanceId: z.string().nullable().default(null),
+    globalVariableId: z.string().min(1)
+  }),
+  z.object({
+    id: z.string().min(1),
+    type: z.literal("setGlobalVariableFromObject"),
+    globalVariableId: z.string().min(1),
+    source: z.enum(["self", "other", "instanceId"]),
+    sourceInstanceId: z.string().nullable().default(null),
+    objectVariableId: z.string().min(1)
   })
 ])
 
@@ -125,6 +184,11 @@ const RoomSchema = z.object({
   instances: z.array(RoomInstanceSchema)
 })
 
+const ProjectVariablesSchema = z.object({
+  global: z.array(VariableDefinitionSchema).default([]),
+  objectByObjectId: z.record(z.string(), z.array(VariableDefinitionSchema)).default({})
+})
+
 const ProjectMetricsSchema = z.object({
   appStart: z.number().int().nonnegative().default(0),
   projectLoad: z.number().int().nonnegative().default(0),
@@ -143,6 +207,10 @@ export const ProjectSchemaV1 = z.object({
     createdAtIso: z.string().datetime()
   }),
   resources: ProjectResourcesSchema,
+  variables: ProjectVariablesSchema.default({
+    global: [],
+    objectByObjectId: {}
+  }),
   objects: z.array(ObjectSchema),
   rooms: z.array(RoomSchema),
   // Kept for backwards compatibility with the MVP 0 player demo.
@@ -164,6 +232,10 @@ export function createEmptyProjectV1(name: string): ProjectV1 {
     resources: {
       sprites: [],
       sounds: []
+    },
+    variables: {
+      global: [],
+      objectByObjectId: {}
     },
     objects: [],
     rooms: [],

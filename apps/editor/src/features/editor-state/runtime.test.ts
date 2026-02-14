@@ -156,6 +156,10 @@ describe("runtime regressions", () => {
         sprites: [],
         sounds: []
       },
+      variables: {
+        global: [],
+        objectByObjectId: {}
+      },
       objects: [
         {
           id: "object-player",
@@ -222,6 +226,10 @@ describe("runtime regressions", () => {
         sprites: [],
         sounds: []
       },
+      variables: {
+        global: [],
+        objectByObjectId: {}
+      },
       objects: [
         {
           id: "object-teleporter",
@@ -266,5 +274,171 @@ describe("runtime regressions", () => {
 
     expect(teleporter?.x).toBe(123)
     expect(teleporter?.y).toBe(77)
+  })
+
+  it("initializes and mutates global plus object instance variables", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-runtime-vars",
+        name: "Runtime vars",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: {
+        sprites: [],
+        sounds: []
+      },
+      variables: {
+        global: [
+          { id: "gv-score", name: "score", type: "number", initialValue: 1 },
+          { id: "gv-flag", name: "flag", type: "boolean", initialValue: false }
+        ],
+        objectByObjectId: {
+          "object-player": [{ id: "ov-health", name: "health", type: "number", initialValue: 3 }]
+        }
+      },
+      objects: [
+        {
+          id: "object-player",
+          name: "Player",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step",
+              type: "Step",
+              key: null,
+              targetObjectId: null,
+              actions: [
+                { id: "action-global", type: "setGlobalVariable", variableId: "gv-score", value: 9 },
+                {
+                  id: "action-object",
+                  type: "setObjectVariable",
+                  variableId: "ov-health",
+                  target: "self",
+                  targetInstanceId: null,
+                  value: 7
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      rooms: [{ id: "room-main", name: "Main", instances: [{ id: "instance-player", objectId: "object-player", x: 0, y: 0 }] }],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+
+    expect(result.runtime.globalVariables["gv-score"]).toBe(9)
+    expect(result.runtime.globalVariables["gv-flag"]).toBe(false)
+    expect(result.runtime.objectInstanceVariables["instance-player"]?.["ov-health"]).toBe(7)
+  })
+
+  it("supports cross-instance variable transfer with collision self/other", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-runtime-cross",
+        name: "Runtime cross vars",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: {
+        sprites: [],
+        sounds: []
+      },
+      variables: {
+        global: [{ id: "gv-copied", name: "copied", type: "number", initialValue: 0 }],
+        objectByObjectId: {
+          "object-source": [{ id: "ov-power", name: "power", type: "number", initialValue: 5 }],
+          "object-target": [{ id: "ov-received", name: "received", type: "number", initialValue: 0 }]
+        }
+      },
+      objects: [
+        {
+          id: "object-source",
+          name: "Source",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-collision",
+              type: "Collision",
+              key: null,
+              targetObjectId: "object-target",
+              actions: [
+                {
+                  id: "action-copy-to-other",
+                  type: "setObjectVariableFromGlobal",
+                  variableId: "ov-received",
+                  target: "other",
+                  targetInstanceId: null,
+                  globalVariableId: "gv-copied"
+                },
+                {
+                  id: "action-global-from-self",
+                  type: "setGlobalVariableFromObject",
+                  globalVariableId: "gv-copied",
+                  source: "self",
+                  sourceInstanceId: null,
+                  objectVariableId: "ov-power"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          id: "object-target",
+          name: "Target",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: []
+        }
+      ],
+      rooms: [
+        {
+          id: "room-main",
+          name: "Main",
+          instances: [
+            { id: "instance-source", objectId: "object-source", x: 10, y: 10 },
+            { id: "instance-target", objectId: "object-target", x: 10, y: 10 }
+          ]
+        }
+      ],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const firstTick = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    const secondTick = runRuntimeTick(firstTick.project, "room-main", new Set(), firstTick.runtime)
+
+    expect(firstTick.runtime.globalVariables["gv-copied"]).toBe(5)
+    expect(secondTick.runtime.objectInstanceVariables["instance-target"]?.["ov-received"]).toBe(5)
   })
 })

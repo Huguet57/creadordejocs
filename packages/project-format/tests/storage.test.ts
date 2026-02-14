@@ -39,4 +39,16 @@ describe("project format v1", () => {
     expect(first.metrics.timeToFirstPlayableFunMs).toBe(1200)
     expect(second.metrics.timeToFirstPlayableFunMs).toBe(1200)
   })
+
+  it("loads legacy payloads without variables using schema defaults", () => {
+    const project = createEmptyProjectV1("Legacy")
+    const legacySource = JSON.stringify({
+      ...project,
+      variables: undefined
+    })
+    const loaded = parseProjectV1(legacySource)
+
+    expect(loaded.variables.global).toEqual([])
+    expect(loaded.variables.objectByObjectId).toEqual({})
+  })
 })

@@ -1,4 +1,19 @@
-import { CopyPlus, Flag, Maximize, Move, FastForward, Trash, Trophy, Volume2, Plus, Locate, LocateFixed, X } from "lucide-react"
+import {
+  CopyPlus,
+  Flag,
+  Maximize,
+  Move,
+  FastForward,
+  Trash,
+  Trophy,
+  Volume2,
+  Plus,
+  Locate,
+  LocateFixed,
+  X,
+  Globe2,
+  Variable
+} from "lucide-react"
 import { useState } from "react"
 import { Button } from "../../components/ui/button.js"
 import { Label } from "../../components/ui/label.js"
@@ -11,6 +26,10 @@ type ActionEditorPanelProps = {
   activeEvent: ObjectEventEntry | null
   selectableTargetObjects: { id: string; name: string }[]
   sounds: { id: string; name: string }[]
+  globalVariables: ProjectV1["variables"]["global"]
+  objectVariablesByObjectId: ProjectV1["variables"]["objectByObjectId"]
+  roomInstances: ProjectV1["rooms"][number]["instances"]
+  allObjects: ProjectV1["objects"]
   onUpdateEventConfig: (key: ObjectEventKey | null, targetId: string | null) => void
   onAddAction: (type: ObjectActionType) => void
   onUpdateAction: (actionId: string, action: ObjectActionDraft) => void
@@ -28,6 +47,10 @@ const ACTION_ICONS: Record<ObjectActionType, React.ElementType> = {
   clampToRoom: Maximize,
   jumpToPosition: Locate,
   jumpToStart: LocateFixed,
+  setGlobalVariable: Globe2,
+  setObjectVariable: Variable,
+  setObjectVariableFromGlobal: Variable,
+  setGlobalVariableFromObject: Globe2,
   destroySelf: Trash,
   destroyOther: Trash,
 }
@@ -37,6 +60,10 @@ export function ActionEditorPanel({
   activeEvent,
   selectableTargetObjects,
   sounds,
+  globalVariables,
+  objectVariablesByObjectId,
+  roomInstances,
+  allObjects,
   onUpdateEventConfig,
   onAddAction,
   onUpdateAction,
@@ -127,6 +154,10 @@ export function ActionEditorPanel({
               onRemove={() => onRemoveAction(action.id)}
               selectableObjects={selectableTargetObjects}
               sounds={sounds}
+              globalVariables={globalVariables}
+              objectVariablesByObjectId={objectVariablesByObjectId}
+              roomInstances={roomInstances}
+              allObjects={allObjects}
             />
           ))}
         </div>

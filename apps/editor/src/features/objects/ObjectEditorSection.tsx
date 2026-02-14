@@ -3,6 +3,7 @@ import type { ObjectActionDraft } from "@creadordejocs/project-format"
 import type { EditorController } from "../editor-state/use-editor-controller.js"
 import { type ObjectActionType } from "../editor-state/types.js"
 import { ObjectListPanel } from "./ObjectListPanel.js"
+import { ObjectVariablesPanel } from "./ObjectVariablesPanel.js"
 import { EventListPanel } from "./EventListPanel.js"
 import { ActionEditorPanel } from "./ActionEditorPanel.js"
 
@@ -19,6 +20,9 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
     () => controller.project.objects.filter((objectEntry) => objectEntry.id !== selectedObject?.id),
     [controller.project.objects, selectedObject?.id]
   )
+  const selectedObjectVariableDefinitions = selectedObject
+    ? controller.project.variables.objectByObjectId[selectedObject.id] ?? []
+    : []
 
   const defaultActionFromType = (type: ObjectActionType): ObjectActionDraft | null => {
     if (type === "move") return { type: "move", dx: 0, dy: 0 }
@@ -26,6 +30,46 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
     if (type === "clampToRoom") return { type: "clampToRoom" }
     if (type === "jumpToPosition") return { type: "jumpToPosition", x: 0, y: 0 }
     if (type === "jumpToStart") return { type: "jumpToStart" }
+    if (type === "setGlobalVariable") {
+      const firstGlobal = controller.project.variables.global[0]
+      if (!firstGlobal) return null
+      return { type: "setGlobalVariable", variableId: firstGlobal.id, value: firstGlobal.initialValue }
+    }
+    if (type === "setObjectVariable") {
+      const firstObjectVariable = selectedObjectVariableDefinitions[0]
+      if (!firstObjectVariable) return null
+      return {
+        type: "setObjectVariable",
+        variableId: firstObjectVariable.id,
+        target: "self",
+        targetInstanceId: null,
+        value: firstObjectVariable.initialValue
+      }
+    }
+    if (type === "setObjectVariableFromGlobal") {
+      const firstObjectVariable = selectedObjectVariableDefinitions[0]
+      const firstGlobal = controller.project.variables.global[0]
+      if (!firstObjectVariable || !firstGlobal) return null
+      return {
+        type: "setObjectVariableFromGlobal",
+        variableId: firstObjectVariable.id,
+        target: "self",
+        targetInstanceId: null,
+        globalVariableId: firstGlobal.id
+      }
+    }
+    if (type === "setGlobalVariableFromObject") {
+      const firstObjectVariable = selectedObjectVariableDefinitions[0]
+      const firstGlobal = controller.project.variables.global[0]
+      if (!firstObjectVariable || !firstGlobal) return null
+      return {
+        type: "setGlobalVariableFromObject",
+        globalVariableId: firstGlobal.id,
+        source: "self",
+        sourceInstanceId: null,
+        objectVariableId: firstObjectVariable.id
+      }
+    }
     if (type === "destroySelf") return { type: "destroySelf" }
     if (type === "destroyOther") return { type: "destroyOther" }
     if (type === "changeScore") return { type: "changeScore", delta: 1 }
@@ -82,6 +126,17 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
 
       {selectedObject ? (
         <>
+          <ObjectVariablesPanel
+            objectId={selectedObject.id}
+            variables={selectedObjectVariableDefinitions}
+            onAddVariable={(objectId, name, type, initialValue) =>
+              controller.addObjectVariable(objectId, name, type, initialValue)
+            }
+            onUpdateVariable={(objectId, variableId, name, initialValue) =>
+              controller.updateObjectVariable(objectId, variableId, name, initialValue)
+            }
+            onRemoveVariable={(objectId, variableId) => controller.removeObjectVariable(objectId, variableId)}
+          />
           <EventListPanel
             events={selectedObject.events}
             activeEventId={activeEventId}
@@ -101,6 +156,10 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
             activeEvent={activeEvent}
             selectableTargetObjects={selectableTargetObjects}
             sounds={controller.project.resources.sounds}
+            globalVariables={controller.project.variables.global}
+            objectVariablesByObjectId={controller.project.variables.objectByObjectId}
+            roomInstances={controller.activeRoom?.instances ?? []}
+            allObjects={controller.project.objects}
             onUpdateEventConfig={(key, targetId) => {
               if (activeEvent) {
                 controller.updateObjectEventConfig(activeEvent.id, key, targetId)

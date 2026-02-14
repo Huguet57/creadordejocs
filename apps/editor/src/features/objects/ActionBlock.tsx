@@ -11,11 +11,13 @@ import {
   Volume2,
   X,
   Locate,
-  LocateFixed
+  LocateFixed,
+  Globe2,
+  Variable
 } from "lucide-react"
 import { Button } from "../../components/ui/button.js"
 import { Input } from "../../components/ui/input.js"
-import type { ObjectActionDraft } from "@creadordejocs/project-format"
+import type { ObjectActionDraft, ProjectV1, VariableType, VariableValue } from "@creadordejocs/project-format"
 import { type ObjectActionType } from "../editor-state/types.js"
 
 type ActionBlockProps = {
@@ -29,6 +31,10 @@ type ActionBlockProps = {
   onRemove: () => void
   selectableObjects: { id: string; name: string }[]
   sounds: { id: string; name: string }[]
+  globalVariables: ProjectV1["variables"]["global"]
+  objectVariablesByObjectId: ProjectV1["variables"]["objectByObjectId"]
+  roomInstances: ProjectV1["rooms"][number]["instances"]
+  allObjects: ProjectV1["objects"]
 }
 
 const ACTION_ICONS: Record<ObjectActionType, React.ElementType> = {
@@ -41,8 +47,30 @@ const ACTION_ICONS: Record<ObjectActionType, React.ElementType> = {
   clampToRoom: Maximize,
   jumpToPosition: Locate,
   jumpToStart: LocateFixed,
+  setGlobalVariable: Globe2,
+  setObjectVariable: Variable,
+  setObjectVariableFromGlobal: Variable,
+  setGlobalVariableFromObject: Globe2,
   destroySelf: Trash,
   destroyOther: X,
+}
+
+function parseValueForType(type: VariableType, rawValue: string): VariableValue {
+  if (type === "number") {
+    const parsed = Number(rawValue)
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+  if (type === "boolean") {
+    return rawValue === "true"
+  }
+  return rawValue
+}
+
+function formatValue(value: VariableValue): string {
+  if (typeof value === "boolean") {
+    return value ? "true" : "false"
+  }
+  return String(value)
 }
 
 export function ActionBlock({
@@ -54,9 +82,35 @@ export function ActionBlock({
   onMoveDown,
   onRemove,
   selectableObjects,
-  sounds
+  sounds,
+  globalVariables,
+  objectVariablesByObjectId,
+  roomInstances,
+  allObjects
 }: ActionBlockProps) {
   const Icon = ACTION_ICONS[action.type] ?? Move
+  const objectVariableOptions = allObjects.flatMap((objectEntry) =>
+    (objectVariablesByObjectId[objectEntry.id] ?? []).map((definition) => ({
+      id: definition.id,
+      objectName: objectEntry.name,
+      label: `${objectEntry.name}.${definition.name}`,
+      type: definition.type
+    }))
+  )
+  const selectedGlobalForObjectTarget =
+    action.type === "setObjectVariableFromGlobal"
+      ? globalVariables.find((definition) => definition.id === action.globalVariableId)
+      : null
+  const compatibleObjectOptionsForObjectTarget = selectedGlobalForObjectTarget
+    ? objectVariableOptions.filter((option) => option.type === selectedGlobalForObjectTarget.type)
+    : objectVariableOptions
+  const selectedGlobalForGlobalTarget =
+    action.type === "setGlobalVariableFromObject"
+      ? globalVariables.find((definition) => definition.id === action.globalVariableId)
+      : null
+  const compatibleObjectOptionsForGlobalTarget = selectedGlobalForGlobalTarget
+    ? objectVariableOptions.filter((option) => option.type === selectedGlobalForGlobalTarget.type)
+    : objectVariableOptions
 
   return (
     <div className="group flex items-center gap-3 rounded-md border border-slate-200 bg-white p-2 shadow-sm transition-all hover:shadow-md">
@@ -200,6 +254,236 @@ export function ActionBlock({
               onChange={(e) => onUpdate({ ...action, message: e.target.value })}
             />
           </div>
+        )}
+
+        {action.type === "setGlobalVariable" && (
+          <>
+            <select
+              className="h-6 min-w-[140px] rounded border border-slate-300 bg-white/50 px-1 text-xs focus:outline-none"
+              value={action.variableId}
+              onChange={(event) => {
+                const selected = globalVariables.find((definition) => definition.id === event.target.value)
+                if (!selected) return
+                onUpdate({
+                  ...action,
+                  variableId: selected.id,
+                  value: selected.initialValue
+                })
+              }}
+            >
+              {globalVariables.map((definition) => (
+                <option key={definition.id} value={definition.id}>
+                  {definition.name}
+                </option>
+              ))}
+            </select>
+            {typeof action.value === "boolean" ? (
+              <select
+                className="h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
+                value={String(action.value)}
+                onChange={(event) => onUpdate({ ...action, value: event.target.value === "true" })}
+              >
+                <option value="true">true</option>
+                <option value="false">false</option>
+              </select>
+            ) : (
+              <Input
+                type={typeof action.value === "number" ? "number" : "text"}
+                className="h-6 w-24 px-1 text-xs bg-white/50 border-slate-300"
+                value={formatValue(action.value)}
+                onChange={(event) => {
+                  const selected = globalVariables.find((definition) => definition.id === action.variableId)
+                  if (!selected) return
+                  onUpdate({
+                    ...action,
+                    value: parseValueForType(selected.type, event.target.value)
+                  })
+                }}
+              />
+            )}
+          </>
+        )}
+
+        {action.type === "setObjectVariable" && (
+          <>
+            <select
+              className="h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
+              value={action.target}
+              onChange={(event) =>
+                onUpdate({
+                  ...action,
+                  target: event.target.value as "self" | "other" | "instanceId",
+                  targetInstanceId: event.target.value === "instanceId" ? action.targetInstanceId : null
+                })
+              }
+            >
+              <option value="self">self</option>
+              <option value="other">other</option>
+              <option value="instanceId">instance</option>
+            </select>
+            {action.target === "instanceId" && (
+              <select
+                className="h-6 min-w-[120px] rounded border border-slate-300 bg-white/50 px-1 text-xs"
+                value={action.targetInstanceId ?? roomInstances[0]?.id ?? ""}
+                onChange={(event) => onUpdate({ ...action, targetInstanceId: event.target.value })}
+              >
+                {roomInstances.map((instanceEntry) => (
+                  <option key={instanceEntry.id} value={instanceEntry.id}>
+                    {instanceEntry.id}
+                  </option>
+                ))}
+              </select>
+            )}
+            <select
+              className="h-6 min-w-[160px] rounded border border-slate-300 bg-white/50 px-1 text-xs"
+              value={action.variableId}
+              onChange={(event) => {
+                const selected = objectVariableOptions.find((option) => option.id === event.target.value)
+                if (!selected) return
+                onUpdate({ ...action, variableId: selected.id })
+              }}
+            >
+              {objectVariableOptions.map((option) => (
+                <option key={`${option.objectName}-${option.id}`} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            {typeof action.value === "boolean" ? (
+              <select
+                className="h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
+                value={String(action.value)}
+                onChange={(event) => onUpdate({ ...action, value: event.target.value === "true" })}
+              >
+                <option value="true">true</option>
+                <option value="false">false</option>
+              </select>
+            ) : (
+              <Input
+                type={typeof action.value === "number" ? "number" : "text"}
+                className="h-6 w-24 px-1 text-xs bg-white/50 border-slate-300"
+                value={formatValue(action.value)}
+                onChange={(event) => {
+                  const selected = objectVariableOptions.find((option) => option.id === action.variableId)
+                  if (!selected) return
+                  onUpdate({
+                    ...action,
+                    value: parseValueForType(selected.type, event.target.value)
+                  })
+                }}
+              />
+            )}
+          </>
+        )}
+
+        {action.type === "setObjectVariableFromGlobal" && (
+          <>
+            <select
+              className="h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
+              value={action.target}
+              onChange={(event) =>
+                onUpdate({
+                  ...action,
+                  target: event.target.value as "self" | "other" | "instanceId",
+                  targetInstanceId: event.target.value === "instanceId" ? action.targetInstanceId : null
+                })
+              }
+            >
+              <option value="self">self</option>
+              <option value="other">other</option>
+              <option value="instanceId">instance</option>
+            </select>
+            {action.target === "instanceId" && (
+              <select
+                className="h-6 min-w-[120px] rounded border border-slate-300 bg-white/50 px-1 text-xs"
+                value={action.targetInstanceId ?? roomInstances[0]?.id ?? ""}
+                onChange={(event) => onUpdate({ ...action, targetInstanceId: event.target.value })}
+              >
+                {roomInstances.map((instanceEntry) => (
+                  <option key={instanceEntry.id} value={instanceEntry.id}>
+                    {instanceEntry.id}
+                  </option>
+                ))}
+              </select>
+            )}
+            <select
+              className="h-6 min-w-[160px] rounded border border-slate-300 bg-white/50 px-1 text-xs"
+              value={action.variableId}
+              onChange={(event) => onUpdate({ ...action, variableId: event.target.value })}
+            >
+              {compatibleObjectOptionsForObjectTarget.map((option) => (
+                <option key={`${option.objectName}-${option.id}`} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <select
+              className="h-6 min-w-[140px] rounded border border-slate-300 bg-white/50 px-1 text-xs"
+              value={action.globalVariableId}
+              onChange={(event) => onUpdate({ ...action, globalVariableId: event.target.value })}
+            >
+              {globalVariables.map((definition) => (
+                <option key={definition.id} value={definition.id}>
+                  {definition.name}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
+
+        {action.type === "setGlobalVariableFromObject" && (
+          <>
+            <select
+              className="h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
+              value={action.source}
+              onChange={(event) =>
+                onUpdate({
+                  ...action,
+                  source: event.target.value as "self" | "other" | "instanceId",
+                  sourceInstanceId: event.target.value === "instanceId" ? action.sourceInstanceId : null
+                })
+              }
+            >
+              <option value="self">self</option>
+              <option value="other">other</option>
+              <option value="instanceId">instance</option>
+            </select>
+            {action.source === "instanceId" && (
+              <select
+                className="h-6 min-w-[120px] rounded border border-slate-300 bg-white/50 px-1 text-xs"
+                value={action.sourceInstanceId ?? roomInstances[0]?.id ?? ""}
+                onChange={(event) => onUpdate({ ...action, sourceInstanceId: event.target.value })}
+              >
+                {roomInstances.map((instanceEntry) => (
+                  <option key={instanceEntry.id} value={instanceEntry.id}>
+                    {instanceEntry.id}
+                  </option>
+                ))}
+              </select>
+            )}
+            <select
+              className="h-6 min-w-[160px] rounded border border-slate-300 bg-white/50 px-1 text-xs"
+              value={action.objectVariableId}
+              onChange={(event) => onUpdate({ ...action, objectVariableId: event.target.value })}
+            >
+              {compatibleObjectOptionsForGlobalTarget.map((option) => (
+                <option key={`${option.objectName}-${option.id}`} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <select
+              className="h-6 min-w-[140px] rounded border border-slate-300 bg-white/50 px-1 text-xs"
+              value={action.globalVariableId}
+              onChange={(event) => onUpdate({ ...action, globalVariableId: event.target.value })}
+            >
+              {globalVariables.map((definition) => (
+                <option key={definition.id} value={definition.id}>
+                  {definition.name}
+                </option>
+              ))}
+            </select>
+          </>
         )}
       </div>
 

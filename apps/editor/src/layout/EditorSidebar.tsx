@@ -11,6 +11,7 @@ const sectionItems: { id: EditorSection; label: string }[] = [
   { id: "sounds", label: "Sounds" },
   { id: "objects", label: "Objects" },
   { id: "rooms", label: "Rooms" },
+  { id: "globalVariables", label: "Globals" },
   { id: "run", label: "Run" }
 ]
 

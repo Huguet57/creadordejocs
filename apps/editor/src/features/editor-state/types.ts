@@ -1,6 +1,6 @@
 import type { ProjectV1, ObjectActionDraft } from "@creadordejocs/project-format"
 
-export type EditorSection = "sprites" | "sounds" | "objects" | "rooms" | "run" | "templates"
+export type EditorSection = "sprites" | "sounds" | "objects" | "rooms" | "run" | "templates" | "globalVariables"
 
 export type ObjectEventType = "Create" | "Step" | "Draw" | "Collision" | "Keyboard" | "OnDestroy" | "OutsideRoom"
 export type ObjectEventKey = "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight" | "Space"
@@ -16,6 +16,10 @@ export type ObjectActionType =
   | "changeScore"
   | "endGame"
   | "playSound"
+  | "setGlobalVariable"
+  | "setObjectVariable"
+  | "setObjectVariableFromGlobal"
+  | "setGlobalVariableFromObject"
 
 export type ObjectEventEntry = ProjectV1["objects"][number]["events"][number]
 export { type ObjectActionDraft }
@@ -41,5 +45,9 @@ export const OBJECT_ACTION_TYPES: ObjectActionType[] = [
   "spawnObject",
   "changeScore",
   "endGame",
-  "playSound"
+  "playSound",
+  "setGlobalVariable",
+  "setObjectVariable",
+  "setObjectVariableFromGlobal",
+  "setGlobalVariableFromObject"
 ]
