@@ -71,7 +71,6 @@ export function useEditorController() {
   const [future, setFuture] = useState<ProjectV1[]>([])
   const [snapshots, setSnapshots] = useState<LocalSnapshot[]>(() => loadSnapshotsFromLocalStorage())
   const [startedAtMs] = useState<number>(() => Date.now())
-  const [workflowStep, setWorkflowStep] = useState<number>(0)
   const pressedKeysRef = useRef<Set<string>>(new Set())
   const runtimeRef = useRef<RuntimeState>(createInitialRuntimeState())
 
@@ -203,20 +202,17 @@ export function useEditorController() {
     snapshots,
     saveStatus,
     runtimeState,
-    workflowStep,
     undoAvailable: past.length > 0,
     redoAvailable: future.length > 0,
     addSprite(name: string) {
       if (!name.trim()) return
       const next = quickCreateSprite(project, name.trim()).project
       pushProjectChange(next, `Create sprite: ${name.trim()}`)
-      setWorkflowStep((previous) => Math.max(previous, 0))
     },
     addSound(name: string) {
       if (!name.trim()) return
       const next = quickCreateSound(project, name.trim()).project
       pushProjectChange(next, `Create sound: ${name.trim()}`)
-      setWorkflowStep((previous) => Math.max(previous, 0))
     },
     addObject(name: string) {
       if (!name.trim()) return
@@ -231,14 +227,12 @@ export function useEditorController() {
       })
       pushProjectChange(result.project, `Create object: ${name.trim()}`)
       setActiveObjectId(result.objectId)
-      setWorkflowStep((previous) => Math.max(previous, 1))
     },
     addRoom(name: string) {
       if (!name.trim()) return
       const result = createRoom(project, name.trim())
       pushProjectChange(result.project, `Create room: ${name.trim()}`)
       setActiveRoomId(result.roomId)
-      setWorkflowStep((previous) => Math.max(previous, 4))
     },
     updateSpriteSource(spriteId: string, source: string) {
       pushProjectChange(updateSpriteAssetSource(project, spriteId, source))
@@ -252,7 +246,6 @@ export function useEditorController() {
         addObjectEvent(project, { objectId: selectedObject.id, type, key, targetObjectId }),
         `Add ${type} event`
       )
-      setWorkflowStep((previous) => Math.max(previous, 2))
     },
     updateObjectEventConfig(eventId: string, key: ObjectEventKey | null, targetObjectId: string | null) {
       if (!selectedObject) return
@@ -278,7 +271,6 @@ export function useEditorController() {
         addObjectEventActionModel(project, { objectId: selectedObject.id, eventId, action }),
         "Add event action"
       )
-      setWorkflowStep((previous) => Math.max(previous, 3))
     },
     updateObjectEventAction(eventId: string, actionId: string, action: ObjectActionDraft) {
       if (!selectedObject) return
@@ -342,7 +334,6 @@ export function useEditorController() {
       setRuntimeState(initialRuntime)
       setIsRunning(true)
       setActiveSection("run")
-      setWorkflowStep((previous) => Math.max(previous, 5))
     },
     reset() {
       if (runSnapshot) {
@@ -382,7 +373,6 @@ export function useEditorController() {
       setIsRunning(false)
       setRunSnapshot(null)
       setIsDirty(true)
-      setWorkflowStep(1)
     },
     loadSavedProject() {
       try {
@@ -420,9 +410,6 @@ export function useEditorController() {
       setIsRunning(false)
       setRunSnapshot(null)
       setIsDirty(true)
-    },
-    markWorkflowStep(step: number) {
-      setWorkflowStep((previous) => Math.max(previous, step))
     },
     undo,
     redo

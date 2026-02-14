@@ -1,4 +1,3 @@
-import { EditorInspectorPanel } from "./layout/EditorInspectorPanel.js"
 import { EditorSidebar } from "./layout/EditorSidebar.js"
 import { EditorTopbar } from "./layout/EditorTopbar.js"
 import { EditorWorkspace } from "./layout/EditorWorkspace.js"
@@ -10,8 +9,6 @@ function formatStatus(status: "idle" | "saved" | "saving" | "error"): string {
   if (status === "error") return "Error"
   return "Saved"
 }
-
-const WORKFLOW_STEPS = ["Resource", "Object", "Event", "Action", "Room", "Run"] as const
 
 export function App() {
   const controller = useEditorController()
@@ -31,39 +28,13 @@ export function App() {
           onLoad={() => controller.loadSavedProject()}
           onLoadTemplate={() => controller.loadDodgeTemplate()}
         />
-        <section className="mvp2-workflow-rail rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
-          <p className="text-xs font-semibold text-slate-600">Workflow</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {WORKFLOW_STEPS.map((stepLabel, index) => (
-              <span
-                key={stepLabel}
-                className={`mvp2-workflow-step rounded px-2 py-1 text-xs ${
-                  index <= controller.workflowStep ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600"
-                }`}
-              >
-                {index + 1}. {stepLabel}
-              </span>
-            ))}
-          </div>
-          <p className="mt-2 text-xs text-slate-500">
-            Següent pas recomanat:{" "}
-            <strong>{WORKFLOW_STEPS[Math.min(controller.workflowStep + 1, WORKFLOW_STEPS.length - 1)]}</strong>
-          </p>
-        </section>
 
-        <div className="mvp15-editor-layout grid gap-4 lg:grid-cols-[220px_1fr_320px]">
+        <div className="mvp15-editor-layout grid gap-4 lg:grid-cols-[220px_1fr]">
           <EditorSidebar
             activeSection={controller.activeSection}
-            onSectionChange={(section) => {
-              controller.setActiveSection(section)
-              if (section === "sprites" || section === "sounds") controller.markWorkflowStep(0)
-              if (section === "objects") controller.markWorkflowStep(2)
-              if (section === "rooms") controller.markWorkflowStep(4)
-              if (section === "run") controller.markWorkflowStep(5)
-            }}
+            onSectionChange={(section) => controller.setActiveSection(section)}
           />
           <EditorWorkspace controller={controller} />
-          <EditorInspectorPanel controller={controller} />
         </div>
       </div>
     </main>
