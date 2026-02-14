@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import type { ProjectV1 } from "@creadordejocs/project-format"
 import { createCoinDashTemplateProject } from "./templates/coin-dash-template.js"
+import { createLaneCrosserTemplateProject } from "./templates/lane-crosser-template.js"
 import { createSpaceShooterTemplateProject } from "./templates/space-shooter-template.js"
 import { createInitialRuntimeState, runRuntimeTick } from "./runtime.js"
 
@@ -18,37 +19,42 @@ function updateRoomInstances(
 }
 
 describe("runtime regressions", () => {
-  it("ends the game when a collision event has destroySelf and endGame", () => {
+  it("does not end Coin Dash after collecting only one coin", () => {
     const template = createCoinDashTemplateProject()
     const playerObjectId = template.project.objects.find((objectEntry) => objectEntry.name === "Explorer")?.id
     const coinObjectId = template.project.objects.find((objectEntry) => objectEntry.name === "Coin")?.id
+    const coinsRemainingId = template.project.variables.global.find((variableEntry) => variableEntry.name === "coinsRemaining")?.id
     expect(playerObjectId).toBeTruthy()
     expect(coinObjectId).toBeTruthy()
+    expect(coinsRemainingId).toBeTruthy()
 
     const room = template.project.rooms.find((roomEntry) => roomEntry.id === template.roomId)
     const player = room?.instances.find((instanceEntry) => instanceEntry.objectId === playerObjectId)
     expect(player).toBeTruthy()
 
-    const projectWithForcedCollision = updateRoomInstances(template.project, template.roomId, (instances) =>
-      instances.map((instanceEntry) =>
-        instanceEntry.objectId === coinObjectId
-          ? {
-              ...instanceEntry,
-              x: player?.x ?? instanceEntry.x,
-              y: player?.y ?? instanceEntry.y
-            }
-          : instanceEntry
-      )
-    )
+    let movedCoin = false
+    const projectWithForcedCollision = updateRoomInstances(template.project, template.roomId, (instances) => {
+      return instances.map((instanceEntry) => {
+        if (!movedCoin && instanceEntry.objectId === coinObjectId) {
+          movedCoin = true
+          return {
+            ...instanceEntry,
+            x: player?.x ?? instanceEntry.x,
+            y: player?.y ?? instanceEntry.y
+          }
+        }
+        return instanceEntry
+      })
+    })
 
     const result = runRuntimeTick(projectWithForcedCollision, template.roomId, new Set(), createInitialRuntimeState())
     const resultRoom = result.project.rooms.find((roomEntry) => roomEntry.id === template.roomId)
     const coinInstances = resultRoom?.instances.filter((instanceEntry) => instanceEntry.objectId === coinObjectId) ?? []
 
-    expect(result.runtime.gameOver).toBe(true)
-    expect(result.runtime.message).toBe("Has recollit la moneda. Has guanyat!")
+    expect(result.runtime.gameOver).toBe(false)
     expect(result.runtime.score).toBe(100)
-    expect(coinInstances).toHaveLength(0)
+    expect(result.runtime.globalVariables[coinsRemainingId ?? ""]).toBe(2)
+    expect(coinInstances).toHaveLength(2)
   })
 
   it("spawns a bullet when Space is pressed in the shooter template", () => {
@@ -74,6 +80,56 @@ describe("runtime regressions", () => {
     expect(spawnedBullet).toBeTruthy()
     expect(spawnedBullet?.x).toBe((shipBefore?.x ?? 0) + 0)
     expect(spawnedBullet?.y).toBe((shipBefore?.y ?? 0) - 18)
+  })
+
+  it("wins Coin Dash only after collecting all coins", () => {
+    const template = createCoinDashTemplateProject()
+    const playerObjectId = template.project.objects.find((objectEntry) => objectEntry.name === "Explorer")?.id
+    const coinObjectId = template.project.objects.find((objectEntry) => objectEntry.name === "Coin")?.id
+    const coinsRemainingId = template.project.variables.global.find((variableEntry) => variableEntry.name === "coinsRemaining")?.id
+    expect(playerObjectId).toBeTruthy()
+    expect(coinObjectId).toBeTruthy()
+    expect(coinsRemainingId).toBeTruthy()
+
+    const room = template.project.rooms.find((roomEntry) => roomEntry.id === template.roomId)
+    const player = room?.instances.find((instanceEntry) => instanceEntry.objectId === playerObjectId)
+    expect(player).toBeTruthy()
+
+    const allCoinsOnPlayer = updateRoomInstances(template.project, template.roomId, (instances) =>
+      instances.map((instanceEntry) =>
+        instanceEntry.objectId === coinObjectId
+          ? { ...instanceEntry, x: player?.x ?? instanceEntry.x, y: player?.y ?? instanceEntry.y }
+          : instanceEntry
+      )
+    )
+    const result = runRuntimeTick(allCoinsOnPlayer, template.roomId, new Set(), createInitialRuntimeState(allCoinsOnPlayer))
+
+    expect(result.runtime.score).toBe(300)
+    expect(result.runtime.globalVariables[coinsRemainingId ?? ""]).toBe(0)
+    expect(result.runtime.gameOver).toBe(true)
+    expect(result.runtime.message).toBe("Has recollit totes les monedes. Has guanyat!")
+  })
+
+  it("limits Space Shooter firing when weapon heat reaches the cap", () => {
+    const template = createSpaceShooterTemplateProject()
+    const bulletObjectId = template.project.objects.find((objectEntry) => objectEntry.name === "Bullet")?.id
+    const weaponHeatId = template.project.variables.global.find((variableEntry) => variableEntry.name === "weaponHeat")?.id
+    expect(bulletObjectId).toBeTruthy()
+    expect(weaponHeatId).toBeTruthy()
+
+    let project = template.project
+    let runtime = createInitialRuntimeState(project)
+    for (let i = 0; i < 6; i += 1) {
+      const result = runRuntimeTick(project, template.roomId, new Set(["Space"]), runtime)
+      project = result.project
+      runtime = result.runtime
+    }
+
+    const roomAfterShots = project.rooms.find((roomEntry) => roomEntry.id === template.roomId)
+    const bulletInstances = roomAfterShots?.instances.filter((instanceEntry) => instanceEntry.objectId === bulletObjectId) ?? []
+
+    expect(bulletInstances).toHaveLength(5)
+    expect(runtime.globalVariables[weaponHeatId ?? ""]).toBe(5)
   })
 
   it("removes the collided asteroid instance instead of a different one", () => {
@@ -113,7 +169,7 @@ describe("runtime regressions", () => {
     expect(asteroidIdsAfter).toHaveLength(2)
   })
 
-  it("runs OnDestroy actions when destroyOther removes an instance", () => {
+  it("runs OnDestroy actions when destroyOther removes a Coin instance", () => {
     const template = createCoinDashTemplateProject()
     const playerObjectId = template.project.objects.find((objectEntry) => objectEntry.name === "Explorer")?.id
     const coinObjectId = template.project.objects.find((objectEntry) => objectEntry.name === "Coin")?.id
@@ -124,23 +180,25 @@ describe("runtime regressions", () => {
     const player = room?.instances.find((instanceEntry) => instanceEntry.objectId === playerObjectId)
     expect(player).toBeTruthy()
 
+    let movedCoin = false
     const projectWithForcedCollision = updateRoomInstances(template.project, template.roomId, (instances) =>
-      instances.map((instanceEntry) =>
-        instanceEntry.objectId === coinObjectId
-          ? {
-              ...instanceEntry,
-              x: player?.x ?? instanceEntry.x,
-              y: player?.y ?? instanceEntry.y
-            }
-          : instanceEntry
-      )
+      instances.map((instanceEntry) => {
+        if (!movedCoin && instanceEntry.objectId === coinObjectId) {
+          movedCoin = true
+          return {
+            ...instanceEntry,
+            x: player?.x ?? instanceEntry.x,
+            y: player?.y ?? instanceEntry.y
+          }
+        }
+        return instanceEntry
+      })
     )
 
     const result = runRuntimeTick(projectWithForcedCollision, template.roomId, new Set(), createInitialRuntimeState())
 
     expect(result.runtime.score).toBe(100)
-    expect(result.runtime.gameOver).toBe(true)
-    expect(result.runtime.message).toBe("Has recollit la moneda. Has guanyat!")
+    expect(result.runtime.gameOver).toBe(false)
   })
 
   it("triggers OutsideRoom and jumps back to instance start", () => {
@@ -897,5 +955,58 @@ describe("runtime regressions", () => {
     expect(result.runtime.globalVariables["gv-string"]).toBe("hola")
     expect(result.runtime.objectInstanceVariables["instance-calc"]?.["ov-number"]).toBe(24)
     expect(result.runtime.objectInstanceVariables["instance-calc"]?.["ov-bool"]).toBe(true)
+  })
+
+  it("uses Lane Crosser lives and only ends game after repeated collisions", () => {
+    const template = createLaneCrosserTemplateProject()
+    const runnerObjectId = template.project.objects.find((objectEntry) => objectEntry.name === "Runner")?.id
+    const carObjectIds = template.project.objects
+      .filter((objectEntry) => objectEntry.name === "CarRight" || objectEntry.name === "CarLeft")
+      .map((objectEntry) => objectEntry.id)
+    const livesVariableId = template.project.variables.global.find((variableEntry) => variableEntry.name === "lives")?.id
+    expect(runnerObjectId).toBeTruthy()
+    expect(carObjectIds).toHaveLength(2)
+    expect(livesVariableId).toBeTruthy()
+
+    let project = template.project
+    let runtime = createInitialRuntimeState(project)
+
+    const forceRunnerCarCollision = (sourceProject: ProjectV1): ProjectV1 => {
+      const room = sourceProject.rooms.find((roomEntry) => roomEntry.id === template.roomId)
+      const runnerInstance = room?.instances.find((instanceEntry) => instanceEntry.objectId === runnerObjectId)
+      if (!runnerInstance) {
+        return sourceProject
+      }
+      let shifted = false
+      return updateRoomInstances(sourceProject, template.roomId, (instances) =>
+        instances.map((instanceEntry) => {
+          if (!shifted && carObjectIds.includes(instanceEntry.objectId)) {
+            shifted = true
+            return {
+              ...instanceEntry,
+              x: runnerInstance.x,
+              y: runnerInstance.y
+            }
+          }
+          return instanceEntry
+        })
+      )
+    }
+
+    const firstCollision = runRuntimeTick(forceRunnerCarCollision(project), template.roomId, new Set(), runtime)
+    project = firstCollision.project
+    runtime = firstCollision.runtime
+    expect(runtime.gameOver).toBe(false)
+    expect(runtime.globalVariables[livesVariableId ?? ""]).toBe(2)
+
+    const secondCollision = runRuntimeTick(forceRunnerCarCollision(project), template.roomId, new Set(), runtime)
+    project = secondCollision.project
+    runtime = secondCollision.runtime
+    expect(runtime.gameOver).toBe(false)
+    expect(runtime.globalVariables[livesVariableId ?? ""]).toBe(1)
+
+    const thirdCollision = runRuntimeTick(forceRunnerCarCollision(project), template.roomId, new Set(), runtime)
+    expect(thirdCollision.runtime.gameOver).toBe(true)
+    expect(thirdCollision.runtime.globalVariables[livesVariableId ?? ""]).toBe(0)
   })
 })

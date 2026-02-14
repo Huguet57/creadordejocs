@@ -6,10 +6,11 @@ import {
   quickCreateSound,
   quickCreateSprite
 } from "@creadordejocs/project-format"
-import { addEventWithActions } from "./helpers.js"
+import { addEventWithActions, addGlobalVariableWithId, addIfBlockToLatestEvent } from "./helpers.js"
 import type { TemplateProjectResult } from "./types.js"
 
 export function createCoinDashTemplateProject(): TemplateProjectResult {
+  const coinsToWin = 3
   const empty = createEmptyProjectV1("Coin Dash")
   const spritePlayer = quickCreateSprite(empty, "Explorer")
   const spriteCoin = quickCreateSprite(spritePlayer.project, "Coin")
@@ -61,8 +62,26 @@ export function createCoinDashTemplateProject(): TemplateProjectResult {
     x: 430,
     y: 110
   }).project
+  const withCoin2 = addRoomInstance(withEnemy2, {
+    roomId: room.roomId,
+    objectId: coinObject.objectId,
+    x: 120,
+    y: 80
+  }).project
+  const withCoin3 = addRoomInstance(withCoin2, {
+    roomId: room.roomId,
+    objectId: coinObject.objectId,
+    x: 430,
+    y: 60
+  }).project
 
-  let project = withEnemy2
+  const withCoinsRemaining = addGlobalVariableWithId(withCoin3, {
+    name: "coinsRemaining",
+    type: "number",
+    initialValue: coinsToWin
+  })
+  const coinsRemainingId = withCoinsRemaining.variableId
+  let project = withCoinsRemaining.project
   project = addEventWithActions(project, playerObject.objectId, { type: "Keyboard", key: "ArrowUp" }, [
     { type: "move", dx: 0, dy: -6 }
   ])
@@ -82,8 +101,23 @@ export function createCoinDashTemplateProject(): TemplateProjectResult {
   project = addEventWithActions(project, coinObject.objectId, { type: "OnDestroy" }, [
     { type: "playSound", soundId: soundCoin.soundId },
     { type: "changeScore", delta: 100 },
-    { type: "endGame", message: "Has recollit la moneda. Has guanyat!" }
+    {
+      type: "changeGlobalVariable",
+      variableId: coinsRemainingId,
+      operator: "subtract",
+      value: 1
+    }
   ])
+  project = addIfBlockToLatestEvent(
+    project,
+    coinObject.objectId,
+    {
+      left: { scope: "global", variableId: coinsRemainingId },
+      operator: "<=",
+      right: 0
+    },
+    [{ type: "endGame", message: "Has recollit totes les monedes. Has guanyat!" }]
+  )
   project = addEventWithActions(
     project,
     playerObject.objectId,

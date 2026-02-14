@@ -2,10 +2,13 @@ import {
   addGlobalVariable,
   addObjectEvent,
   addObjectEventAction,
+  addObjectEventIfAction,
+  addObjectEventIfBlock,
   addObjectVariable,
   type AddObjectEventInput,
   type AddGlobalVariableInput,
   type AddObjectVariableInput,
+  type IfCondition,
   type ObjectActionDraft,
   type ProjectV1
 } from "@creadordejocs/project-format"
@@ -29,6 +32,25 @@ export function addEventWithActions(
   return actions.reduce(
     (currentProject, action) => addObjectEventAction(currentProject, { objectId, eventId, action }),
     withEvent
+  )
+}
+
+export function addIfBlockToLatestEvent(
+  project: ProjectV1,
+  objectId: string,
+  condition: IfCondition,
+  actions: ObjectActionDraft[]
+): ProjectV1 {
+  const eventId = getLatestEventId(project, objectId)
+  const withIfBlock = addObjectEventIfBlock(project, { objectId, eventId, condition })
+  const latestEvent = withIfBlock.objects.find((entry) => entry.id === objectId)?.events.find((entry) => entry.id === eventId)
+  const ifItem = latestEvent?.items.at(-1)
+  if (ifItem?.type !== "if") {
+    throw new Error(`Missing if block for object "${objectId}" and event "${eventId}"`)
+  }
+  return actions.reduce(
+    (currentProject, action) => addObjectEventIfAction(currentProject, { objectId, eventId, ifBlockId: ifItem.id, action }),
+    withIfBlock
   )
 }
 

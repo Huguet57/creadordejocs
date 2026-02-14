@@ -6,7 +6,7 @@ import {
   quickCreateSound,
   quickCreateSprite
 } from "@creadordejocs/project-format"
-import { addEventWithActions } from "./helpers.js"
+import { addEventWithActions, addGlobalVariableWithId, addIfBlockToLatestEvent } from "./helpers.js"
 import type { TemplateProjectResult } from "./types.js"
 
 export function createLaneCrosserTemplateProject(): TemplateProjectResult {
@@ -80,7 +80,13 @@ export function createLaneCrosserTemplateProject(): TemplateProjectResult {
     y: 16
   }).project
 
-  let project = withGoal
+  const withLives = addGlobalVariableWithId(withGoal, {
+    name: "lives",
+    type: "number",
+    initialValue: 3
+  })
+  const livesVariableId = withLives.variableId
+  let project = withLives.project
   project = addEventWithActions(project, playerObject.objectId, { type: "Keyboard", key: "ArrowUp" }, [
     { type: "move", dx: 0, dy: -24 }
   ])
@@ -106,8 +112,33 @@ export function createLaneCrosserTemplateProject(): TemplateProjectResult {
     { type: "Collision", targetObjectId: carRightObject.objectId },
     [
       { type: "playSound", soundId: soundCrash.soundId },
-      { type: "restartRoom" }
+      {
+        type: "changeGlobalVariable",
+        variableId: livesVariableId,
+        operator: "subtract",
+        value: 1
+      }
     ]
+  )
+  project = addIfBlockToLatestEvent(
+    project,
+    playerObject.objectId,
+    {
+      left: { scope: "global", variableId: livesVariableId },
+      operator: ">",
+      right: 0
+    },
+    [{ type: "jumpToStart" }]
+  )
+  project = addIfBlockToLatestEvent(
+    project,
+    playerObject.objectId,
+    {
+      left: { scope: "global", variableId: livesVariableId },
+      operator: "<=",
+      right: 0
+    },
+    [{ type: "endGame", message: "Has perdut totes les vides" }]
   )
   project = addEventWithActions(
     project,
@@ -115,8 +146,33 @@ export function createLaneCrosserTemplateProject(): TemplateProjectResult {
     { type: "Collision", targetObjectId: carLeftObject.objectId },
     [
       { type: "playSound", soundId: soundCrash.soundId },
-      { type: "restartRoom" }
+      {
+        type: "changeGlobalVariable",
+        variableId: livesVariableId,
+        operator: "subtract",
+        value: 1
+      }
     ]
+  )
+  project = addIfBlockToLatestEvent(
+    project,
+    playerObject.objectId,
+    {
+      left: { scope: "global", variableId: livesVariableId },
+      operator: ">",
+      right: 0
+    },
+    [{ type: "jumpToStart" }]
+  )
+  project = addIfBlockToLatestEvent(
+    project,
+    playerObject.objectId,
+    {
+      left: { scope: "global", variableId: livesVariableId },
+      operator: "<=",
+      right: 0
+    },
+    [{ type: "endGame", message: "Has perdut totes les vides" }]
   )
   project = addEventWithActions(project, goalObject.objectId, { type: "OnDestroy" }, [
     { type: "playSound", soundId: soundGoal.soundId },

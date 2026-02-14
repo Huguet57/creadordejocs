@@ -6,7 +6,7 @@ import {
   quickCreateSound,
   quickCreateSprite
 } from "@creadordejocs/project-format"
-import { addEventWithActions } from "./helpers.js"
+import { addEventWithActions, addGlobalVariableWithId, addIfBlockToLatestEvent } from "./helpers.js"
 import type { TemplateProjectResult } from "./types.js"
 
 export function createSpaceShooterTemplateProject(): TemplateProjectResult {
@@ -74,7 +74,13 @@ export function createSpaceShooterTemplateProject(): TemplateProjectResult {
     y: 20
   }).project
 
-  let project = withSpawner
+  const withWeaponHeat = addGlobalVariableWithId(withSpawner, {
+    name: "weaponHeat",
+    type: "number",
+    initialValue: 0
+  })
+  const weaponHeatId = withWeaponHeat.variableId
+  let project = withWeaponHeat.project
   project = addEventWithActions(project, shipObject.objectId, { type: "Keyboard", key: "ArrowLeft" }, [
     { type: "move", dx: -6, dy: 0 }
   ])
@@ -87,10 +93,44 @@ export function createSpaceShooterTemplateProject(): TemplateProjectResult {
   project = addEventWithActions(project, shipObject.objectId, { type: "Keyboard", key: "ArrowDown" }, [
     { type: "move", dx: 0, dy: 4 }
   ])
-  project = addEventWithActions(project, shipObject.objectId, { type: "Keyboard", key: "Space" }, [
-    { type: "playSound", soundId: soundShoot.soundId },
-    { type: "spawnObject", objectId: bulletObject.objectId, offsetX: 0, offsetY: -18 }
-  ])
+  project = addEventWithActions(project, shipObject.objectId, { type: "Keyboard", key: "Space" }, [])
+  project = addIfBlockToLatestEvent(
+    project,
+    shipObject.objectId,
+    {
+      left: { scope: "global", variableId: weaponHeatId },
+      operator: "<",
+      right: 5
+    },
+    [
+      { type: "playSound", soundId: soundShoot.soundId },
+      { type: "spawnObject", objectId: bulletObject.objectId, offsetX: 0, offsetY: -18 },
+      {
+        type: "changeGlobalVariable",
+        variableId: weaponHeatId,
+        operator: "add",
+        value: 1
+      }
+    ]
+  )
+  project = addEventWithActions(project, shipObject.objectId, { type: "Timer", intervalMs: 1000 }, [])
+  project = addIfBlockToLatestEvent(
+    project,
+    shipObject.objectId,
+    {
+      left: { scope: "global", variableId: weaponHeatId },
+      operator: ">",
+      right: 0
+    },
+    [
+      {
+        type: "changeGlobalVariable",
+        variableId: weaponHeatId,
+        operator: "subtract",
+        value: 1
+      }
+    ]
+  )
   project = addEventWithActions(project, shipObject.objectId, { type: "Step" }, [{ type: "clampToRoom" }])
   project = addEventWithActions(project, bulletObject.objectId, { type: "Create" }, [
     { type: "setVelocity", speed: 8, direction: 270 }
