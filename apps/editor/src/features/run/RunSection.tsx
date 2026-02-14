@@ -1,6 +1,6 @@
+import { Play, RotateCcw } from "lucide-react"
 import type { EditorController } from "../editor-state/use-editor-controller.js"
 import { Button } from "../../components/ui/button.js"
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card.js"
 
 const ROOM_WIDTH = 560
 const ROOM_HEIGHT = 320
@@ -10,45 +10,104 @@ type RunSectionProps = {
 }
 
 export function RunSection({ controller }: RunSectionProps) {
+  const { runtimeState } = controller
+
   return (
-    <Card className="mvp15-run-panel">
-      <CardHeader className="flex-row items-center justify-between space-y-0">
-        <CardTitle>Run preview</CardTitle>
-        <div className="flex gap-2">
-          <Button onClick={() => controller.run()}>Run</Button>
-          <Button variant="secondary" onClick={() => controller.reset()}>
-            Reset
-          </Button>
+    <div className="mvp15-run-container flex h-[600px] w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+      {/* Left panel: Controls & HUD */}
+      <aside className="flex w-[200px] flex-col border-r border-slate-200 bg-slate-50">
+        <div className="flex items-center justify-between border-b border-slate-200 p-3">
+          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Run</span>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <p className="text-xs text-slate-600">
-          Previsualització activa de la sala: <strong>{controller.activeRoom?.name ?? "cap"}</strong>
-        </p>
-        <div className="mvp2-run-hud flex items-center gap-4 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-xs">
-          <span data-testid="run-score">Score: {controller.runtimeState.score}</span>
-          <span data-testid="run-game-state">
-            State: {controller.runtimeState.gameOver ? `Game over - ${controller.runtimeState.message}` : "Running"}
-          </span>
-        </div>
-        <div
-          className="mvp15-run-canvas relative rounded-md border border-dashed border-slate-300 bg-white"
-          style={{ width: ROOM_WIDTH, height: ROOM_HEIGHT }}
-        >
-          {controller.activeRoom?.instances.map((instanceEntry) => {
-            const objectEntry = controller.project.objects.find((entry) => entry.id === instanceEntry.objectId)
-            return (
-              <div
-                key={instanceEntry.id}
-                className="mvp15-run-instance absolute flex h-8 w-8 items-center justify-center rounded bg-indigo-500 text-[10px] text-white"
-                style={{ left: instanceEntry.x, top: instanceEntry.y }}
-              >
-                {objectEntry?.name.slice(0, 2).toUpperCase() ?? "??"}
+
+        <div className="flex-1 overflow-y-auto p-3 space-y-4">
+          <div className="space-y-2">
+            <Button
+              className="w-full h-9 text-xs"
+              onClick={() => controller.run()}
+            >
+              <Play className="mr-2 h-3.5 w-3.5" />
+              Run
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full h-9 text-xs"
+              onClick={() => controller.reset()}
+            >
+              <RotateCcw className="mr-2 h-3.5 w-3.5" />
+              Reset
+            </Button>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</p>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-500">Room</span>
+                <span className="text-xs font-medium text-slate-800">{controller.activeRoom?.name ?? "none"}</span>
               </div>
-            )
-          })}
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-500">Score</span>
+                <span data-testid="run-score" className="text-xs font-medium text-slate-800">{runtimeState.score}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-500">State</span>
+                <span
+                  data-testid="run-game-state"
+                  className={`text-xs font-medium ${runtimeState.gameOver ? "text-red-600" : "text-green-600"}`}
+                >
+                  {runtimeState.gameOver ? "Game Over" : "Running"}
+                </span>
+              </div>
+              {runtimeState.gameOver && runtimeState.message && (
+                <p className="mt-1 rounded bg-red-50 px-2 py-1.5 text-[10px] text-red-600">
+                  {runtimeState.message}
+                </p>
+              )}
+            </div>
+          </div>
         </div>
-      </CardContent>
-    </Card>
+      </aside>
+
+      {/* Right panel: Game canvas */}
+      <div className="flex flex-1 flex-col">
+        <div className="flex h-12 items-center justify-between border-b border-slate-200 px-4">
+          <h3 className="text-sm text-slate-800">
+            Preview: <span className="font-semibold text-slate-900">{controller.activeRoom?.name ?? "none"}</span>
+          </h3>
+          {controller.activeRoom && (
+            <span className="text-xs text-slate-400">
+              {controller.isRunning ? "Playing" : "Stopped"}
+            </span>
+          )}
+        </div>
+
+        <div className="flex-1 overflow-auto p-4 bg-slate-50/50">
+          {!controller.activeRoom ? (
+            <div className="flex h-full items-center justify-center text-slate-400">
+              <p>Create a room first to run the game</p>
+            </div>
+          ) : (
+            <div
+              className="mvp15-run-canvas relative rounded-md border border-dashed border-slate-300 bg-white"
+              style={{ width: ROOM_WIDTH, height: ROOM_HEIGHT }}
+            >
+              {controller.activeRoom.instances.map((instanceEntry) => {
+                const objectEntry = controller.project.objects.find((entry) => entry.id === instanceEntry.objectId)
+                return (
+                  <div
+                    key={instanceEntry.id}
+                    className="absolute flex h-8 w-8 items-center justify-center rounded bg-indigo-500 text-[10px] text-white"
+                    style={{ left: instanceEntry.x, top: instanceEntry.y }}
+                  >
+                    {objectEntry?.name.slice(0, 2).toUpperCase() ?? "??"}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   )
 }
