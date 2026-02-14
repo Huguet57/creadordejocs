@@ -1,12 +1,23 @@
 {
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "noEmit": true
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["apps/editor/src/*"],
+      "@creadordejocs/engine-core": ["packages/engine-core/src/index.ts"],
+      "@creadordejocs/project-format": ["packages/project-format/src/index.ts"]
+    }
   },
   "include": [
     "apps/**/*.ts",
+    "apps/**/*.tsx",
     "packages/**/*.ts",
+    "packages/**/*.tsx",
     "tests/**/*.ts",
+    "tests/**/*.tsx",
     "*.ts"
   ]
 }

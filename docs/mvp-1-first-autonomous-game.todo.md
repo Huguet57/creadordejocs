@@ -5,15 +5,15 @@ Objective: build the core UX for create/edit/run/save with minimal friction.
 ## Cycle 1.1 - Minimal Create/Edit/Run
 
 ### Must
-- [ ] Implement basic resources: sprites, sounds, and objects with quick creation.
-- [ ] Implement room editor with drag-and-drop instances.
-- [ ] Add base object properties (`x`, `y`, `speed`, `direction`).
-- [ ] Create visible `Run` and `Reset` buttons.
-- [ ] Save and load project locally without losing state.
+- [x] Implement basic resources: sprites, sounds, and objects with quick creation.
+- [x] Implement room editor with drag-and-drop instances.
+- [x] Add base object properties (`x`, `y`, `speed`, `direction`).
+- [x] Create visible `Run` and `Reset` buttons.
+- [x] Save and load project locally without losing state.
 
 ### Should
-- [ ] Add UI inspector with clear tooltips for each property.
-- [ ] Add mini inspector with smart defaults.
+- [x] Add UI inspector with clear tooltips for each property.
+- [x] Add mini inspector with smart defaults.
 
 ### Could
 - [ ] Add simple asset import with friendly validations.

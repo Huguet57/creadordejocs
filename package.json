@@ -7,6 +7,8 @@
     "packages/*"
   ],
   "scripts": {
+    "editor:dev": "npm run dev -w @creadordejocs/editor",
+    "editor:build": "npm run build -w @creadordejocs/editor",
     "typecheck": "tsc -p tsconfig.eslint.json --pretty false --noEmit",
     "lint": "eslint .",
     "format": "prettier --write .",
