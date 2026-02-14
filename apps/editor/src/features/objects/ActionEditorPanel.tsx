@@ -149,7 +149,7 @@ export function ActionEditorPanel({
         {isActionPickerOpen && (
           <div className="mvp3-action-picker-panel mt-2 rounded-md border border-slate-200 bg-slate-50 p-2">
             <div className="mvp3-action-picker-panel-header mb-2 flex items-center justify-between">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Add Action</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Add Action</p>
               <button
                 type="button"
                 className="mvp3-action-picker-close inline-flex h-6 w-6 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
