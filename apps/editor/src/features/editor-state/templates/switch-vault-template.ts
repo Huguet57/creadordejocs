@@ -6,7 +6,7 @@ import {
   quickCreateSound,
   quickCreateSprite
 } from "@creadordejocs/project-format"
-import { addEventWithActions, addGlobalVariableWithId, addIfBlockToLatestEvent } from "./helpers.js"
+import { addEventWithActions, addGlobalVariableWithId, addIfElseBlockToLatestEvent } from "./helpers.js"
 import type { TemplateProjectResult } from "./types.js"
 
 export function createSwitchVaultTemplateProject(): TemplateProjectResult {
@@ -143,7 +143,7 @@ export function createSwitchVaultTemplateProject(): TemplateProjectResult {
     ]
   )
   project = addEventWithActions(project, agentObject.objectId, { type: "Collision", targetObjectId: liftObject.objectId }, [])
-  project = addIfBlockToLatestEvent(
+  project = addIfElseBlockToLatestEvent(
     project,
     agentObject.objectId,
     {
@@ -155,16 +155,7 @@ export function createSwitchVaultTemplateProject(): TemplateProjectResult {
       { type: "playSound", soundId: soundLift.soundId },
       { type: "teleport", mode: "start", x: null, y: null },
       { type: "goToRoom", roomId: vaultRoom.roomId }
-    ]
-  )
-  project = addIfBlockToLatestEvent(
-    project,
-    agentObject.objectId,
-    {
-      left: { scope: "global", variableId: vaultOpenId },
-      operator: "==",
-      right: false
-    },
+    ],
     [{ type: "teleport", mode: "start", x: null, y: null }]
   )
   project = addEventWithActions(project, guardObject.objectId, { type: "Step" }, [
@@ -185,7 +176,7 @@ export function createSwitchVaultTemplateProject(): TemplateProjectResult {
     { type: "Collision", targetObjectId: agentObject.objectId },
     []
   )
-  project = addIfBlockToLatestEvent(
+  project = addIfElseBlockToLatestEvent(
     project,
     vaultGateObject.objectId,
     {
@@ -196,16 +187,7 @@ export function createSwitchVaultTemplateProject(): TemplateProjectResult {
     [
       { type: "playSound", soundId: soundWin.soundId },
       { type: "endGame", message: "Has obert la cambra i recuperat el tresor!" }
-    ]
-  )
-  project = addIfBlockToLatestEvent(
-    project,
-    vaultGateObject.objectId,
-    {
-      left: { scope: "global", variableId: vaultOpenId },
-      operator: "==",
-      right: false
-    },
+    ],
     [{ type: "goToRoom", roomId: controlRoom.roomId }]
   )
 
