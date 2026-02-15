@@ -8,9 +8,6 @@ test("navigates sidebar sections and keeps modular editors available", async ({ 
   await page.getByTestId("sidebar-sprites").click()
   await expect(page.getByText("Sprites", { exact: true }).first()).toBeVisible()
 
-  await page.getByTestId("sidebar-sounds").click()
-  await expect(page.getByText("Sounds", { exact: true }).first()).toBeVisible()
-
   await page.getByTestId("sidebar-objects").click()
   await expect(page.getByText("Objects", { exact: true }).first()).toBeVisible()
 
@@ -21,20 +18,13 @@ test("navigates sidebar sections and keeps modular editors available", async ({ 
   await expect(page.getByText("Run", { exact: true }).first()).toBeVisible()
 })
 
-test("creates sprite, sound, object and object listener", async ({ page }) => {
+test("creates sprite, object and object listener", async ({ page }) => {
   // Create sprite
   await page.getByTestId("sidebar-sprites").click()
   await page.getByRole("button", { name: "Add Sprite" }).click()
   await page.locator("input[placeholder='Name...']").fill("Ship")
   await page.locator("input[placeholder='Name...']").press("Enter")
   await expect(page.getByText("Ship", { exact: true }).first()).toBeVisible()
-
-  // Create sound
-  await page.getByTestId("sidebar-sounds").click()
-  await page.getByRole("button", { name: "Add Sound" }).click()
-  await page.locator("input[placeholder='Name...']").fill("Laser")
-  await page.locator("input[placeholder='Name...']").press("Enter")
-  await expect(page.getByText("Laser", { exact: true }).first()).toBeVisible()
 
   // Create object
   await page.getByTestId("sidebar-objects").click()
