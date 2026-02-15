@@ -237,7 +237,7 @@ export function RunSection({ controller }: RunSectionProps) {
                   return (
                     <div
                       key={instanceEntry.id}
-                      className="mvp15-run-instance absolute flex h-8 w-8 items-center justify-center overflow-hidden rounded bg-indigo-500 text-[10px] text-white"
+                      className={`mvp15-run-instance absolute flex h-8 w-8 items-center justify-center overflow-hidden rounded text-[10px] ${spriteSource ? "" : "bg-indigo-500 text-white"}`}
                       style={{
                         left: instanceEntry.x,
                         top: instanceEntry.y,
@@ -246,7 +246,7 @@ export function RunSection({ controller }: RunSectionProps) {
                     >
                       {spriteSource ? (
                         <img
-                          className="mvp15-run-instance-sprite h-full w-full object-cover"
+                          className="mvp15-run-instance-sprite h-full w-full object-contain"
                           src={spriteSource}
                           alt={spriteEntry?.name ?? objectEntry?.name ?? "Sprite"}
                         />

@@ -217,7 +217,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                   return (
                     <div
                       key={instanceEntry.id}
-                      className="mvp15-room-instance group absolute flex h-8 w-8 cursor-move items-center justify-center overflow-hidden rounded bg-blue-500 text-[10px] text-white"
+                      className={`mvp15-room-instance group absolute flex h-8 w-8 cursor-move items-center justify-center overflow-hidden rounded text-[10px] ${spriteSource ? "" : "bg-blue-500 text-white"}`}
                       style={{ left: instanceEntry.x, top: instanceEntry.y }}
                       draggable
                       onDragStart={(event) => event.dataTransfer.setData("text/plain", instanceEntry.id)}
@@ -229,7 +229,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                     >
                       {spriteSource ? (
                         <img
-                          className="mvp15-room-instance-sprite h-full w-full object-cover"
+                          className="mvp15-room-instance-sprite h-full w-full object-contain"
                           src={spriteSource}
                           alt={spriteEntry?.name ?? objectEntry?.name ?? "Sprite"}
                         />
