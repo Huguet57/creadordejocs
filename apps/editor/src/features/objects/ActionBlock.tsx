@@ -20,6 +20,7 @@ import { Button } from "../../components/ui/button.js"
 import { Input } from "../../components/ui/input.js"
 import type { ObjectActionDraft, ProjectV1, VariableType, VariableValue } from "@creadordejocs/project-format"
 import { type ObjectActionType } from "../editor-state/types.js"
+import { VariablePicker } from "./VariablePicker.js"
 
 type ActionBlockProps = {
   action: ObjectActionDraft & { id: string }
@@ -310,38 +311,48 @@ export function ActionBlock({
 
         {action.type === "changeVariable" && (
           <>
-            <select
-              className="action-block-scope-select h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
-              value={action.scope}
-              onChange={(event) => {
-                const nextScope = event.target.value as "global" | "object"
+            <VariablePicker
+              scope={action.scope}
+              variableId={action.variableId}
+              globalVariables={globalVariables}
+              objectVariables={objectVariableOptions}
+              showTarget
+              target={action.scope === "object" ? (action.target ?? "self") : null}
+              targetInstanceId={action.scope === "object" ? (action.targetInstanceId ?? null) : null}
+              roomInstances={roomInstances}
+              onTargetChange={(nextTarget, nextInstanceId) => {
+                onUpdate({
+                  ...action,
+                  target: nextTarget,
+                  targetInstanceId: nextInstanceId
+                })
+              }}
+              {...(action.operator !== "set" ? { filter: (v: { type: string }) => v.type === "number" } : {})}
+              onChange={(nextScope, nextVariableId) => {
                 if (nextScope === "global") {
-                  const firstGlobal = globalVariables[0]
-                  if (!firstGlobal) return
+                  const selected = globalVariables.find((d) => d.id === nextVariableId)
+                  if (!selected) return
                   onUpdate({
                     scope: "global",
                     type: "changeVariable",
-                    variableId: firstGlobal.id,
+                    variableId: nextVariableId,
                     operator: action.operator,
-                    value: action.operator === "set" ? firstGlobal.initialValue : 0
+                    value: action.operator === "set" ? selected.initialValue : 0
                   })
-                  return
+                } else {
+                  const selected = objectVariableOptions.find((o) => o.id === nextVariableId)
+                  if (!selected) return
+                  onUpdate({
+                    ...action,
+                    scope: "object",
+                    variableId: nextVariableId,
+                    target: action.scope === "object" ? (action.target ?? "self") : "self",
+                    targetInstanceId: action.scope === "object" ? (action.targetInstanceId ?? null) : null,
+                    value: action.operator === "set" ? parseValueForType(selected.type, formatValue(action.value)) : 0
+                  })
                 }
-                const firstObject = objectVariableOptions[0]
-                if (!firstObject) return
-                onUpdate({
-                  ...action,
-                  scope: "object",
-                  variableId: firstObject.id,
-                  target: "self",
-                  targetInstanceId: null,
-                  value: action.operator === "set" ? parseValueForType(firstObject.type, formatValue(action.value)) : 0
-                })
               }}
-            >
-              <option value="global">Global</option>
-              <option value="object">Objecte</option>
-            </select>
+            />
             <select
               className="action-block-operator-select h-6 w-12 rounded border border-slate-300 bg-white/50 px-1 text-xs font-bold text-center"
               value={action.operator}
@@ -359,72 +370,6 @@ export function ActionBlock({
               <option value="subtract">−</option>
               <option value="multiply">×</option>
             </select>
-            <select
-              className="action-block-var-select h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
-              value={action.variableId}
-              onChange={(event) => {
-                const selected =
-                  action.scope === "global"
-                    ? globalVariables.find((definition) => definition.id === event.target.value)
-                    : objectVariableOptions.find((option) => option.id === event.target.value)
-                if (!selected) return
-                const selectedType = "type" in selected ? selected.type : "string"
-                onUpdate({
-                  ...action,
-                  variableId: selected.id,
-                  value: action.operator === "set" ? parseValueForType(selectedType, formatValue(action.value)) : 0
-                })
-              }}
-            >
-              {(action.scope === "global"
-                ? action.operator === "set"
-                  ? globalVariables
-                  : globalVariables.filter((definition) => definition.type === "number")
-                : action.operator === "set"
-                  ? objectVariableOptions
-                  : objectVariableOptions.filter((option) => option.type === "number")
-              ).map((entry) =>
-                "objectName" in entry ? (
-                  <option key={`${entry.objectName}-${entry.id}`} value={entry.id}>
-                    {entry.label}
-                  </option>
-                ) : (
-                  <option key={entry.id} value={entry.id}>
-                    {entry.name}
-                  </option>
-                )
-              )}
-            </select>
-            {action.scope === "object" && (
-              <>
-                <select
-                  className="action-block-target-select h-6 w-14 rounded border border-slate-300 bg-white/50 px-1 text-xs"
-                  value={action.target ?? "self"}
-                  onChange={(event) =>
-                    onUpdate({
-                      ...action,
-                      target: event.target.value as "self" | "other" | "instanceId",
-                      targetInstanceId: event.target.value === "instanceId" ? action.targetInstanceId : null
-                    })
-                  }
-                >
-                  <option value="self">self</option>
-                  <option value="other">other</option>
-                  <option value="instanceId">id</option>
-                </select>
-                {(action.target ?? "self") === "instanceId" && (
-                  <select
-                    className="action-block-instance-select h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
-                    value={action.targetInstanceId ?? roomInstances[0]?.id ?? ""}
-                    onChange={(event) => onUpdate({ ...action, targetInstanceId: event.target.value })}
-                  >
-                    {roomInstances.map((instanceEntry) => (
-                      <option key={instanceEntry.id} value={instanceEntry.id}>{instanceEntry.id}</option>
-                    ))}
-                  </select>
-                )}
-              </>
-            )}
             {typeof action.value === "boolean" ? (
               <select
                 className="action-block-bool-select h-6 w-16 rounded border border-slate-300 bg-white/50 px-1 text-xs"
@@ -453,63 +398,64 @@ export function ActionBlock({
           </>
         )}
 
-        {action.type === "copyVariable" && (
-          <>
-            <select
-              className="action-block-direction-select h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
-              value={action.direction}
-              onChange={(event) => onUpdate({ ...action, direction: event.target.value as "globalToObject" | "objectToGlobal" })}
-            >
-              <option value="globalToObject">Global → Objecte</option>
-              <option value="objectToGlobal">Objecte → Global</option>
-            </select>
-            <select
-              className="action-block-instance-target-select h-6 w-14 rounded border border-slate-300 bg-white/50 px-1 text-xs"
-              value={action.instanceTarget}
-              onChange={(event) =>
-                onUpdate({
-                  ...action,
-                  instanceTarget: event.target.value as "self" | "other" | "instanceId",
-                  instanceTargetId: event.target.value === "instanceId" ? action.instanceTargetId : null
-                })
-              }
-            >
-              <option value="self">self</option>
-              <option value="other">other</option>
-              <option value="instanceId">id</option>
-            </select>
-            {action.instanceTarget === "instanceId" && (
-              <select
-                className="action-block-copy-instance-select h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
-                value={action.instanceTargetId ?? roomInstances[0]?.id ?? ""}
-                onChange={(event) => onUpdate({ ...action, instanceTargetId: event.target.value })}
-              >
-                {roomInstances.map((instanceEntry) => (
-                  <option key={instanceEntry.id} value={instanceEntry.id}>{instanceEntry.id}</option>
-                ))}
-              </select>
-            )}
-            <select
-              className="action-block-copy-global-select h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
-              value={action.globalVariableId}
-              onChange={(event) => onUpdate({ ...action, globalVariableId: event.target.value })}
-            >
-              {globalVariables.map((definition) => (
-                <option key={definition.id} value={definition.id}>{definition.name}</option>
-              ))}
-            </select>
-            <span className="text-[10px] font-medium opacity-60">↔</span>
-            <select
-              className="action-block-copy-objvar-select h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
-              value={action.objectVariableId}
-              onChange={(event) => onUpdate({ ...action, objectVariableId: event.target.value })}
-            >
-              {compatibleObjectOptionsForCopy.map((option) => (
-                <option key={`${option.objectName}-${option.id}`} value={option.id}>{option.label}</option>
-              ))}
-            </select>
-          </>
-        )}
+        {action.type === "copyVariable" && (() => {
+          const isGlobalToObject = action.direction === "globalToObject"
+          const leftScope = isGlobalToObject ? "global" as const : "object" as const
+          const rightScope = isGlobalToObject ? "object" as const : "global" as const
+          const leftVarId = isGlobalToObject ? action.globalVariableId : action.objectVariableId
+          const rightVarId = isGlobalToObject ? action.objectVariableId : action.globalVariableId
+
+          return (
+            <>
+              {/* Source (A) */}
+              <VariablePicker
+                scope={leftScope}
+                variableId={leftVarId}
+                globalVariables={globalVariables}
+                objectVariables={compatibleObjectOptionsForCopy}
+                showTarget={leftScope === "object"}
+                target={leftScope === "object" ? action.instanceTarget : null}
+                targetInstanceId={leftScope === "object" ? (action.instanceTargetId ?? null) : null}
+                roomInstances={roomInstances}
+                onTargetChange={(nextTarget, nextInstanceId) => {
+                  onUpdate({ ...action, instanceTarget: nextTarget, instanceTargetId: nextInstanceId })
+                }}
+                onChange={(nextScope, nextVarId) => {
+                  if (nextScope === "global") {
+                    // Left picked global → direction = globalToObject
+                    onUpdate({ ...action, direction: "globalToObject", globalVariableId: nextVarId })
+                  } else {
+                    // Left picked object → direction = objectToGlobal
+                    onUpdate({ ...action, direction: "objectToGlobal", objectVariableId: nextVarId })
+                  }
+                }}
+              />
+              <span className="text-[10px] font-bold text-slate-400 shrink-0">→</span>
+              {/* Destination (B) */}
+              <VariablePicker
+                scope={rightScope}
+                variableId={rightVarId}
+                globalVariables={globalVariables}
+                objectVariables={compatibleObjectOptionsForCopy}
+                allowedScopes={[rightScope]}
+                showTarget={rightScope === "object"}
+                target={rightScope === "object" ? action.instanceTarget : null}
+                targetInstanceId={rightScope === "object" ? (action.instanceTargetId ?? null) : null}
+                roomInstances={roomInstances}
+                onTargetChange={(nextTarget, nextInstanceId) => {
+                  onUpdate({ ...action, instanceTarget: nextTarget, instanceTargetId: nextInstanceId })
+                }}
+                onChange={(_nextScope, nextVarId) => {
+                  if (rightScope === "global") {
+                    onUpdate({ ...action, globalVariableId: nextVarId })
+                  } else {
+                    onUpdate({ ...action, objectVariableId: nextVarId })
+                  }
+                }}
+              />
+            </>
+          )
+        })()}
       </div>
 
       <div className="action-block-controls flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">

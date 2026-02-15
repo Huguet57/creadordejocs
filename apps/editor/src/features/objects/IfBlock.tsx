@@ -13,6 +13,7 @@ import {
 import { ActionBlock } from "./ActionBlock.js"
 import type { ProjectV1 } from "@creadordejocs/project-format"
 import { buildDefaultIfCondition, coerceIfConditionRightValue } from "./if-condition-utils.js"
+import { VariablePicker, type ObjectVariableOption } from "./VariablePicker.js"
 
 type IfBlockProps = {
   item: ObjectIfBlockItem
@@ -114,6 +115,13 @@ export function IfBlock({
   const selectedType = selectedVariable?.type ?? "number"
   const defaultIfCondition = buildDefaultIfCondition(globalVariables, selectedObjectVariables)
 
+  const objectVarOptionsForPicker: ObjectVariableOption[] = selectedObjectVariables.map((v) => ({
+    id: v.id,
+    label: v.name,
+    type: v.type,
+    objectName: ""
+  }))
+
   const renderBranchItems = (branch: "then" | "else", items: ObjectEventItem[]) => {
     return items.map((branchItem, branchIndex) => {
       if (branchItem.type === "action") {
@@ -168,44 +176,23 @@ export function IfBlock({
         <div className="flex items-center gap-2">
           <span className="text-xs font-bold text-amber-700 uppercase tracking-wider">If</span>
 
-          <select
-            className="if-block-scope-select h-6 rounded border border-amber-200 bg-white px-2 text-xs focus:border-amber-400 focus:outline-none"
-            value={item.condition.left.scope}
-            onChange={(event) => {
-              const nextScope = event.target.value as "global" | "object"
+          <VariablePicker
+            scope={item.condition.left.scope}
+            variableId={item.condition.left.variableId}
+            globalVariables={globalVariables}
+            objectVariables={objectVarOptionsForPicker}
+            variant="amber"
+            onChange={(nextScope, nextVariableId) => {
               const nextSource = nextScope === "global" ? globalVariables : selectedObjectVariables
-              const firstVariable = nextSource[0]
-              if (!firstVariable) return
-              onUpdateIfCondition(item.id, {
-                left: { scope: nextScope, variableId: firstVariable.id },
-                operator: item.condition.operator,
-                right: firstVariable.initialValue
-              })
-            }}
-          >
-            <option value="global">Global</option>
-            <option value="object">Objecte</option>
-          </select>
-
-          <select
-            className="if-block-variable-select h-6 rounded border border-amber-200 bg-white px-2 text-xs focus:border-amber-400 focus:outline-none"
-            value={item.condition.left.variableId}
-            onChange={(event) => {
-              const nextVariable = variableSource.find((variable) => variable.id === event.target.value)
+              const nextVariable = nextSource.find((v) => v.id === nextVariableId)
               if (!nextVariable) return
               onUpdateIfCondition(item.id, {
-                left: { scope: item.condition.left.scope, variableId: nextVariable.id },
+                left: { scope: nextScope, variableId: nextVariableId },
                 operator: item.condition.operator,
                 right: nextVariable.initialValue
               })
             }}
-          >
-            {variableSource.map((variable) => (
-              <option key={variable.id} value={variable.id}>
-                {variable.name}
-              </option>
-            ))}
-          </select>
+          />
 
           <select
             className="if-block-operator-select h-6 w-12 text-center font-mono rounded border border-amber-200 bg-white px-1 text-xs focus:border-amber-400 focus:outline-none"
