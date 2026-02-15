@@ -27,7 +27,7 @@ type VariablePickerProps = {
   onTargetChange?: ((target: "self" | "other" | "instanceId", instanceId: string | null) => void) | undefined
   filter?: ((v: { type: string }) => boolean) | undefined
   allowedScopes?: ("global" | "object")[] | undefined
-  variant?: "default" | "amber" | undefined
+  variant?: "default" | "amber" | "blue" | undefined
 }
 
 const TARGET_LABELS: Record<string, string> = {
@@ -98,9 +98,9 @@ export function VariablePicker({
       ? `(${TARGET_LABELS[target] ?? target})`
       : null
 
-  const borderColor = variant === "amber" ? "border-amber-200" : "border-slate-300"
-  const hoverBg = variant === "amber" ? "hover:bg-amber-50" : "hover:bg-slate-50"
-  const focusBorder = variant === "amber" ? "focus:border-amber-400" : "focus:border-slate-400"
+  const borderColor = variant === "amber" ? "border-amber-200" : variant === "blue" ? "border-blue-200" : "border-slate-300"
+  const hoverBg = variant === "amber" ? "hover:bg-amber-50" : variant === "blue" ? "hover:bg-blue-50" : "hover:bg-slate-50"
+  const focusBorder = variant === "amber" ? "focus:border-amber-400" : variant === "blue" ? "focus:border-blue-400" : "focus:border-slate-400"
 
   return (
     <div className="variable-picker-container relative" ref={containerRef}>

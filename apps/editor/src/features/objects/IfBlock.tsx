@@ -47,7 +47,7 @@ function BranchAddButton({
     return (
       <button
         type="button"
-        className="if-block-branch-add-toggle flex items-center gap-1 px-2 py-1 text-[10px] text-slate-400 rounded hover:text-amber-600 hover:bg-amber-50 transition-colors"
+        className="if-block-branch-add-toggle flex items-center gap-1 px-2 py-1 text-[10px] text-slate-400 rounded hover:text-blue-600 hover:bg-blue-50 transition-colors"
         onClick={() => setIsOpen(true)}
       >
         <Plus className="h-3 w-3" />
@@ -59,7 +59,7 @@ function BranchAddButton({
   return (
     <div className="if-block-branch-add-picker flex items-center gap-2">
       <select
-        className="if-block-branch-add-select h-6 flex-1 rounded border border-slate-200 bg-white px-2 text-xs text-slate-600 focus:border-amber-400 focus:outline-none"
+        className="if-block-branch-add-select h-6 flex-1 rounded border border-slate-200 bg-white px-2 text-xs text-slate-600 focus:border-blue-400 focus:outline-none"
         value={selectedType}
         onChange={(event) => setSelectedType(event.target.value as ObjectActionType)}
         autoFocus
@@ -172,15 +172,15 @@ export function IfBlock({
   return (
     <div className="if-block-container bg-white">
       {/* IF condition row */}
-      <div className="if-block-header group flex items-center gap-2 py-2 px-3 bg-amber-50/60 border-b border-amber-200/60">
-        <span className="text-[11px] font-bold text-amber-600 uppercase tracking-wider shrink-0">IF</span>
+      <div className="if-block-header group flex items-center gap-2 py-2 px-3 bg-blue-100 border-b border-blue-200">
+        <span className="text-[11px] font-bold text-blue-700 uppercase tracking-wider shrink-0">IF</span>
 
         <VariablePicker
           scope={item.condition.left.scope}
           variableId={item.condition.left.variableId}
           globalVariables={globalVariables}
           objectVariables={objectVarOptionsForPicker}
-          variant="amber"
+          variant="blue"
           onChange={(nextScope, nextVariableId) => {
             const nextSource = nextScope === "global" ? globalVariables : selectedObjectVariables
             const nextVariable = nextSource.find((v) => v.id === nextVariableId)
@@ -194,7 +194,7 @@ export function IfBlock({
         />
 
         <select
-          className="if-block-operator-select h-6 w-12 text-center font-mono rounded border border-amber-200 bg-white px-1 text-xs focus:border-amber-400 focus:outline-none"
+          className="if-block-operator-select h-6 w-12 text-center font-mono rounded border border-blue-200 bg-white px-1 text-xs focus:border-blue-400 focus:outline-none"
           value={item.condition.operator}
           onChange={(event) =>
             onUpdateIfCondition(item.id, {
@@ -213,7 +213,7 @@ export function IfBlock({
 
         {selectedType === "boolean" ? (
           <select
-            className="if-block-value-bool h-6 rounded border border-amber-200 bg-white px-2 text-xs focus:border-amber-400 focus:outline-none"
+            className="if-block-value-bool h-6 rounded border border-blue-200 bg-white px-2 text-xs focus:border-blue-400 focus:outline-none"
             value={String(item.condition.right)}
             onChange={(event) =>
               onUpdateIfCondition(item.id, {
@@ -227,7 +227,7 @@ export function IfBlock({
           </select>
         ) : (
           <input
-            className="if-block-value-input h-6 w-20 rounded border border-amber-200 bg-white px-2 text-xs focus:border-amber-400 focus:outline-none"
+            className="if-block-value-input h-6 w-20 rounded border border-blue-200 bg-white px-2 text-xs focus:border-blue-400 focus:outline-none"
             type={selectedType === "number" ? "number" : "text"}
             value={String(item.condition.right)}
             onChange={(event) =>
@@ -255,7 +255,7 @@ export function IfBlock({
       </div>
 
       {/* THEN content — indented with left border */}
-      <div className="if-block-then-branch border-l-2 border-amber-300 ml-3 pl-3">
+      <div className="if-block-then-branch border-l-2 border-blue-200 ml-3 pl-3">
         <div className="flex flex-col gap-px">
           {renderBranchItems("then", item.thenActions)}
         </div>
@@ -266,7 +266,7 @@ export function IfBlock({
           />
           <button
             type="button"
-            className="if-block-branch-add-if-toggle flex items-center gap-1 px-2 py-1 text-[10px] text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
+            className="if-block-branch-add-if-toggle flex items-center gap-1 px-2 py-1 text-[10px] text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
             disabled={!defaultIfCondition}
             onClick={() => {
               if (defaultIfCondition) {
@@ -281,12 +281,12 @@ export function IfBlock({
       </div>
 
       {/* ELSE label */}
-      <div className="if-block-else-label py-2 px-3 bg-amber-50/60 border-t border-b border-amber-200/60">
-        <span className="text-[11px] font-bold text-amber-600 uppercase tracking-wider">ELSE</span>
+      <div className="if-block-else-label py-2 px-3 bg-blue-50 border-t border-b border-blue-200">
+        <span className="text-[11px] font-bold text-blue-500 uppercase tracking-wider">ELSE</span>
       </div>
 
       {/* ELSE content — indented with left border */}
-      <div className="if-block-else-branch border-l-2 border-amber-300 ml-3 pl-3">
+      <div className="if-block-else-branch border-l-2 border-blue-200 ml-3 pl-3">
         <div className="flex flex-col gap-px">
           {renderBranchItems("else", item.elseActions)}
         </div>
@@ -297,7 +297,7 @@ export function IfBlock({
           />
           <button
             type="button"
-            className="if-block-branch-add-if-toggle flex items-center gap-1 px-2 py-1 text-[10px] text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
+            className="if-block-branch-add-if-toggle flex items-center gap-1 px-2 py-1 text-[10px] text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
             disabled={!defaultIfCondition}
             onClick={() => {
               if (defaultIfCondition) {
