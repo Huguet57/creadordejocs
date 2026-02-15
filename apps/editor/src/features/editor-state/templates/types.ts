@@ -7,8 +7,11 @@ export type GameTemplateId =
   | "battery-courier"
   | "mine-reset"
   | "switch-vault"
+  | "turret-gauntlet"
+  | "cursor-courier"
+  | "vault-calibrator"
 
-export type TemplateDifficulty = "starter" | "intermediate"
+export type TemplateDifficulty = "starter" | "intermediate" | "advanced"
 
 export type GameTemplateDefinition = {
   id: GameTemplateId

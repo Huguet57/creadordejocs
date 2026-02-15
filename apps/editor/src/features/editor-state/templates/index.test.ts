@@ -7,13 +7,20 @@ const INTERMEDIATE_TEMPLATE_IDS: GameTemplateId[] = [
   "mine-reset",
   "switch-vault"
 ]
+const ADVANCED_TEMPLATE_IDS: GameTemplateId[] = [
+  "turret-gauntlet",
+  "cursor-courier",
+  "vault-calibrator"
+]
 const ELSE_ENABLED_TEMPLATE_IDS: GameTemplateId[] = [
   "battery-courier",
   "mine-reset",
   "lane-crosser",
-  "switch-vault"
+  "switch-vault",
+  "cursor-courier",
+  "vault-calibrator"
 ]
-const NESTED_IF_TEMPLATE_IDS: GameTemplateId[] = ["battery-courier", "mine-reset"]
+const NESTED_IF_TEMPLATE_IDS: GameTemplateId[] = ["battery-courier", "mine-reset", "turret-gauntlet", "vault-calibrator"]
 
 function projectHasIfBlocks(templateId: GameTemplateId): boolean {
   const created = createTemplateProject(templateId)
@@ -58,6 +65,43 @@ describe("template catalog", () => {
     expect(created.project.rooms.length).toBeGreaterThan(0)
     expect(created.project.objects.some((entry) => entry.id === created.focusObjectId)).toBe(true)
     expect(projectHasIfBlocks(templateId)).toBe(true)
+  })
+
+  it("exposes exactly three advanced templates", () => {
+    const advanced = GAME_TEMPLATES.filter((entry) => entry.difficulty === "advanced")
+
+    expect(advanced).toHaveLength(3)
+    expect(advanced.map((entry) => entry.id)).toEqual(ADVANCED_TEMPLATE_IDS)
+  })
+
+  it.each(ADVANCED_TEMPLATE_IDS)("builds %s with conditionals and mouse event usage", (templateId) => {
+    const created = createTemplateProject(templateId)
+    const mouseEventTypes = new Set(["MouseMove", "MouseDown", "MouseClick"])
+    const hasMouseEvent = created.project.objects.some((objectEntry) =>
+      objectEntry.events.some((eventEntry) => mouseEventTypes.has(eventEntry.type))
+    )
+
+    expect(created.project.rooms.length).toBeGreaterThan(0)
+    expect(created.project.objects.some((entry) => entry.id === created.focusObjectId)).toBe(true)
+    expect(projectHasIfBlocks(templateId)).toBe(true)
+    expect(hasMouseEvent).toBe(true)
+  })
+
+  it.each(ADVANCED_TEMPLATE_IDS)("builds %s with mouse_x or mouse_y runtime builtins in conditions", (templateId) => {
+    const created = createTemplateProject(templateId)
+    const hasMouseBuiltinCondition = created.project.objects.some((objectEntry) =>
+      objectEntry.events.some((eventEntry) =>
+        eventEntry.items.some(
+          (itemEntry) =>
+            itemEntry.type === "if" &&
+            "left" in itemEntry.condition &&
+            itemEntry.condition.left.scope === "global" &&
+            (itemEntry.condition.left.variableId === "__mouse_x" || itemEntry.condition.left.variableId === "__mouse_y")
+        )
+      )
+    )
+
+    expect(hasMouseBuiltinCondition).toBe(true)
   })
 
   it.each([

@@ -1,4 +1,4 @@
-import { Coins, Crosshair, Route, Waypoints } from "lucide-react"
+import { Coins, Crosshair, MousePointer2, Route, ShieldAlert, Waypoints } from "lucide-react"
 import { Button } from "../../components/ui/button.js"
 import {
   GAME_TEMPLATES,
@@ -17,7 +17,10 @@ const templateIcons: Record<GameTemplateId, React.ElementType> = {
   "lane-crosser": Route,
   "battery-courier": Coins,
   "mine-reset": Route,
-  "switch-vault": Waypoints
+  "switch-vault": Waypoints,
+  "turret-gauntlet": ShieldAlert,
+  "cursor-courier": MousePointer2,
+  "vault-calibrator": Waypoints
 }
 
 type TemplateCard = GameTemplateDefinition & {
@@ -31,6 +34,7 @@ const templates: TemplateCard[] = GAME_TEMPLATES.map((templateEntry) => ({
 
 const starterTemplates = templates.filter((templateEntry) => templateEntry.difficulty === "starter")
 const intermediateTemplates = templates.filter((templateEntry) => templateEntry.difficulty === "intermediate")
+const advancedTemplates = templates.filter((templateEntry) => templateEntry.difficulty === "advanced")
 
 function renderTemplateCards(controller: EditorController, entries: TemplateCard[]) {
   return (
@@ -82,6 +86,13 @@ export function TemplatesSection({ controller }: TemplatesSectionProps) {
           Templates de dificultat intermitja
         </h3>
         {renderTemplateCards(controller, intermediateTemplates)}
+      </div>
+
+      <div className="mvp18-template-section mvp18-template-section-advanced flex flex-col gap-3">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          Templates avançats (mouse)
+        </h3>
+        {renderTemplateCards(controller, advancedTemplates)}
       </div>
 
       <div className="mt-2 border-t border-slate-200 pt-4">
