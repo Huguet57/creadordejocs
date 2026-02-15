@@ -8,7 +8,6 @@ import {
   FastForward,
   Trash,
   Trophy,
-  Volume2,
   X,
   Locate,
   Variable,
@@ -23,7 +22,6 @@ import { useEffect, useRef, useState } from "react"
 import { Button } from "../../components/ui/button.js"
 import { Input } from "../../components/ui/input.js"
 import type { ObjectActionDraft, ProjectV1, VariableType, VariableValue } from "@creadordejocs/project-format"
-import { type ObjectActionType } from "../editor-state/types.js"
 import { VariablePicker } from "./VariablePicker.js"
 
 function numInputWidth(raw: string, minCh: number): string {
@@ -89,7 +87,6 @@ type ActionBlockProps = {
   onMoveDown: () => void
   onRemove: () => void
   selectableObjects: { id: string; name: string }[]
-  sounds: { id: string; name: string }[]
   globalVariables: ProjectV1["variables"]["global"]
   objectVariablesByObjectId: ProjectV1["variables"]["objectByObjectId"]
   roomInstances: ProjectV1["rooms"][number]["instances"]
@@ -97,7 +94,7 @@ type ActionBlockProps = {
   rooms: ProjectV1["rooms"]
 }
 
-const ACTION_ICONS: Record<ObjectActionType, React.ElementType> = {
+const ACTION_ICONS: Partial<Record<ObjectActionDraft["type"], React.ElementType>> = {
   move: Move,
   setVelocity: FastForward,
   rotate: RotateCcw,
@@ -110,7 +107,6 @@ const ACTION_ICONS: Record<ObjectActionType, React.ElementType> = {
   changeScore: Trophy,
   endGame: Flag,
   message: MessageSquare,
-  playSound: Volume2,
   changeVariable: Variable,
   randomizeVariable: Dices,
   copyVariable: ArrowLeftRight,
@@ -119,7 +115,7 @@ const ACTION_ICONS: Record<ObjectActionType, React.ElementType> = {
   wait: Hourglass
 }
 
-const ACTION_LABELS: Record<ObjectActionType, string> = {
+const ACTION_LABELS: Partial<Record<ObjectActionDraft["type"], string>> = {
   move: "Moure",
   setVelocity: "Velocitat",
   rotate: "Rotar",
@@ -132,7 +128,6 @@ const ACTION_LABELS: Record<ObjectActionType, string> = {
   changeScore: "Punts",
   endGame: "Fi joc",
   message: "Missatge",
-  playSound: "So",
   changeVariable: "Variable",
   randomizeVariable: "Aleatori",
   copyVariable: "Copiar var.",
@@ -170,7 +165,6 @@ export function ActionBlock({
   onMoveDown,
   onRemove,
   selectableObjects,
-  sounds,
   globalVariables,
   objectVariablesByObjectId,
   roomInstances,
@@ -308,18 +302,6 @@ export function ActionBlock({
               <NumInput value={action.offsetY} onChange={(v) => onUpdate({ ...action, offsetY: v })} />
             </div>
           </>
-        )}
-
-        {action.type === "playSound" && (
-          <select
-            className="action-block-sound-select h-7 rounded border border-slate-300 bg-white/50 px-2 text-xs focus:outline-none min-w-[120px]"
-            value={action.soundId}
-            onChange={(e) => onUpdate({ ...action, soundId: e.target.value })}
-          >
-            {sounds.map((sound) => (
-              <option key={sound.id} value={sound.id}>{sound.name}</option>
-            ))}
-          </select>
         )}
 
         {action.type === "changeScore" && (

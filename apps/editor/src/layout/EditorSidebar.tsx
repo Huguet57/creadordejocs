@@ -8,7 +8,6 @@ type EditorSidebarProps = {
 
 const sectionItems: { id: EditorSection; label: string }[] = [
   { id: "sprites", label: "Sprites" },
-  { id: "sounds", label: "Sounds" },
   { id: "objects", label: "Objects" },
   { id: "rooms", label: "Rooms" },
   { id: "globalVariables", label: "Globals" },

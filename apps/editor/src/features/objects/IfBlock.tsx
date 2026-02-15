@@ -19,7 +19,6 @@ import { RightValuePicker } from "./RightValuePicker.js"
 type IfBlockProps = {
   item: ObjectIfBlockItem
   selectableTargetObjects: { id: string; name: string }[]
-  sounds: { id: string; name: string }[]
   globalVariables: ProjectV1["variables"]["global"]
   selectedObjectVariables: ProjectV1["variables"]["global"]
   objectVariablesByObjectId: ProjectV1["variables"]["objectByObjectId"]
@@ -129,7 +128,6 @@ function BranchAddButton({
 export function IfBlock({
   item,
   selectableTargetObjects,
-  sounds,
   globalVariables,
   selectedObjectVariables,
   objectVariablesByObjectId,
@@ -174,7 +172,6 @@ export function IfBlock({
             onMoveDown={() => onMoveAction(branchItem.action.id, "down")}
             onRemove={() => onRemoveIfAction(item.id, branchItem.action.id, branch)}
             selectableObjects={selectableTargetObjects}
-            sounds={sounds}
             globalVariables={globalVariables}
             objectVariablesByObjectId={objectVariablesByObjectId}
             roomInstances={roomInstances}
@@ -188,7 +185,6 @@ export function IfBlock({
           key={`${branch}-${branchItem.id}`}
           item={branchItem}
           selectableTargetObjects={selectableTargetObjects}
-          sounds={sounds}
           globalVariables={globalVariables}
           selectedObjectVariables={selectedObjectVariables}
           objectVariablesByObjectId={objectVariablesByObjectId}

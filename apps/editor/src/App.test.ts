@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest"
+import { createElement } from "react"
+import { renderToStaticMarkup } from "react-dom/server"
 import { handleSidebarSectionChange } from "./App.js"
+import { EditorSidebarCompact } from "./layout/EditorSidebarCompact.js"
+import { ACTION_CATEGORIES } from "./features/editor-state/types.js"
 
 describe("handleSidebarSectionChange", () => {
   it("resets runtime before changing section when leaving run", () => {
@@ -26,5 +30,24 @@ describe("handleSidebarSectionChange", () => {
 
     expect(reset).not.toHaveBeenCalled()
     expect(setActiveSection).toHaveBeenCalledWith("objects")
+  })
+})
+
+describe("sound-free editor UI", () => {
+  it("does not show a sounds entry in the compact sidebar", () => {
+    const markup = renderToStaticMarkup(
+      createElement(EditorSidebarCompact, {
+        activeSection: "sprites",
+        onSectionChange: vi.fn()
+      })
+    )
+
+    expect(markup).not.toContain("Sounds")
+    expect(markup).not.toContain("sidebar-sounds")
+  })
+
+  it("does not expose playSound in action categories", () => {
+    const actionTypes = ACTION_CATEGORIES.flatMap((category) => category.types)
+    expect(actionTypes).not.toContain("playSound")
   })
 })

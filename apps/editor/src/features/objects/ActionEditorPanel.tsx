@@ -6,7 +6,6 @@ import {
   FastForward,
   Trash,
   Trophy,
-  Volume2,
   Plus,
   Locate,
   X,
@@ -41,7 +40,6 @@ type ActionEditorPanelProps = {
   selectedObject: ProjectV1["objects"][0] | null
   activeEvent: ObjectEventEntry | null
   selectableTargetObjects: { id: string; name: string }[]
-  sounds: { id: string; name: string }[]
   globalVariables: ProjectV1["variables"]["global"]
   selectedObjectVariables: ProjectV1["variables"]["global"]
   objectVariablesByObjectId: ProjectV1["variables"]["objectByObjectId"]
@@ -79,7 +77,6 @@ const ACTION_ICONS: Record<ObjectActionType, React.ElementType> = {
   changeScore: Trophy,
   endGame: Flag,
   message: MessageSquare,
-  playSound: Volume2,
   changeVariable: Variable,
   randomizeVariable: Dices,
   copyVariable: ArrowLeftRight,
@@ -92,7 +89,6 @@ export function ActionEditorPanel({
   selectedObject,
   activeEvent,
   selectableTargetObjects,
-  sounds,
   globalVariables,
   selectedObjectVariables,
   objectVariablesByObjectId,
@@ -250,7 +246,6 @@ export function ActionEditorPanel({
                       onMoveDown={() => onMoveAction(item.action.id, "down")}
                       onRemove={() => onRemoveAction(item.action.id)}
                       selectableObjects={selectableTargetObjects}
-                      sounds={sounds}
                       globalVariables={globalVariables}
                       objectVariablesByObjectId={objectVariablesByObjectId}
                       roomInstances={roomInstances}
@@ -265,7 +260,6 @@ export function ActionEditorPanel({
                     key={item.id}
                     item={item}
                     selectableTargetObjects={selectableTargetObjects}
-                    sounds={sounds}
                     globalVariables={globalVariables}
                     selectedObjectVariables={selectedObjectVariables}
                     objectVariablesByObjectId={objectVariablesByObjectId}

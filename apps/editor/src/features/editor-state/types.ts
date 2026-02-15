@@ -1,6 +1,6 @@
 import type { ProjectV1, ObjectActionDraft } from "@creadordejocs/project-format"
 
-export type EditorSection = "sprites" | "sounds" | "objects" | "rooms" | "run" | "templates" | "globalVariables"
+export type EditorSection = "sprites" | "objects" | "rooms" | "run" | "templates" | "globalVariables"
 
 export type ObjectEventType =
   | "Create"
@@ -29,7 +29,6 @@ export type ObjectActionType =
   | "changeScore"
   | "endGame"
   | "message"
-  | "playSound"
   | "changeVariable"
   | "randomizeVariable"
   | "copyVariable"
@@ -76,7 +75,6 @@ export const OBJECT_ACTION_TYPES: ObjectActionType[] = [
   "changeScore",
   "endGame",
   "message",
-  "playSound",
   "changeVariable",
   "randomizeVariable",
   "copyVariable",
@@ -98,7 +96,6 @@ export const ACTION_DISPLAY_NAMES: Record<ObjectActionType, string> = {
   changeScore: "Canviar punts",
   endGame: "Fi del joc",
   message: "Missatge",
-  playSound: "Reproduir so",
   changeVariable: "Variable",
   randomizeVariable: "Aleatori",
   copyVariable: "Copiar variable",
@@ -123,7 +120,7 @@ export const ACTION_CATEGORIES: { id: ActionCategory; label: string; types: Obje
   {
     id: "game",
     label: "Joc",
-    types: ["changeScore", "endGame", "message", "playSound"]
+    types: ["changeScore", "endGame", "message"]
   },
   {
     id: "variables",

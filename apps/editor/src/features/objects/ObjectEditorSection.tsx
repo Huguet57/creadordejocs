@@ -116,11 +116,6 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
       if (!target) return null
       return { type: "spawnObject", objectId: target.id, offsetX: 0, offsetY: 0 }
     }
-    if (type === "playSound") {
-      const sound = controller.project.resources.sounds[0]
-      if (!sound) return null
-      return { type: "playSound", soundId: sound.id }
-    }
     return null
   }
 
@@ -202,7 +197,6 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
             selectedObject={selectedObject}
             activeEvent={activeEvent}
             selectableTargetObjects={selectableTargetObjects}
-            sounds={controller.project.resources.sounds}
             globalVariables={globalVariablesWithSystem}
             selectedObjectVariables={selectedObjectVariableDefinitions}
             objectVariablesByObjectId={controller.project.variables.objectByObjectId}
