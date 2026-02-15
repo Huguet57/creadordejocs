@@ -129,7 +129,7 @@ export function ActionBlock({
     : objectVariableOptions
 
   return (
-    <div className="action-block-container group flex items-center gap-3 py-2 px-3 rounded-md bg-slate-50 hover:bg-slate-100/80 transition-colors">
+    <div className="action-block-container group flex items-center gap-3 py-2 px-3 bg-slate-50 hover:bg-slate-100/60 transition-colors">
       <div className="action-block-label flex items-center gap-1.5 min-w-[90px] shrink-0">
         <Icon className="h-3.5 w-3.5 text-slate-400 shrink-0" />
         <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 leading-tight">

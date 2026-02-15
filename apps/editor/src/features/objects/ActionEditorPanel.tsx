@@ -220,7 +220,7 @@ export function ActionEditorPanel({
       {!isActionPickerOpen ? (
         <>
           <div className="flex-1 overflow-y-auto p-4">
-            <div className="mx-auto max-w-3xl space-y-1.5">
+            <div className={`mx-auto max-w-3xl flex flex-col ${activeEvent.items.length > 0 ? "gap-px bg-slate-200" : ""}`}>
               {activeEvent.items.length === 0 && (
                 <div className="py-6 text-center">
                   <p className="text-sm text-slate-400">No actions yet.</p>
