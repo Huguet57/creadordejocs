@@ -1,4 +1,4 @@
-import { Box, Globe2, Grid3X3, Image, LayoutTemplate, Play, Share2 } from "lucide-react"
+import { Box, Grid3X3, Image, LayoutTemplate, Play, Share2, Variable } from "lucide-react"
 import { Button } from "../components/ui/button.js"
 import type { EditorSection } from "../features/editor-state/types.js"
 
@@ -11,7 +11,7 @@ const sectionItems: { id: EditorSection; label: string; icon: React.ElementType 
   { id: "sprites", label: "Sprites", icon: Image },
   { id: "objects", label: "Objects", icon: Box },
   { id: "rooms", label: "Rooms", icon: Grid3X3 },
-  { id: "globalVariables", label: "Globals", icon: Globe2 },
+  { id: "globalVariables", label: "Globals", icon: Variable },
   { id: "run", label: "Run", icon: Play },
   { id: "templates", label: "Templates", icon: LayoutTemplate },
   { id: "share", label: "Share", icon: Share2 }
