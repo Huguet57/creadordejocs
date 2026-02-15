@@ -49,14 +49,15 @@ test("creates sprite, sound, object and object listener", async ({ page }) => {
   await page.locator(".mvp3-event-list-panel button[title='Add event']").click()
   await expect(page.getByText("When")).toBeVisible()
 
-  // Add action via the action grid button
-  await page.getByRole("button", { name: "move", exact: true }).click()
-  await expect(page.locator(".group").filter({ hasText: "MOVE" })).toBeVisible()
+  // Open the action picker and add a "move" action
+  await page.locator(".mvp3-action-picker-toggle").click()
+  await page.locator(".mvp3-action-picker-item").filter({ hasText: "Moure" }).click()
+  await expect(page.locator(".action-block-container")).toBeVisible()
 })
 
 test("loads a template and runs gameplay hud", async ({ page }) => {
   await page.getByTestId("sidebar-templates").click()
-  await page.getByRole("button", { name: "Load Template" }).click()
+  await page.getByRole("button", { name: "Load Template" }).first().click()
   await page.getByTestId("sidebar-run").click()
   await expect(page.getByTestId("run-score")).toBeVisible()
   await expect(page.getByTestId("run-game-state")).toContainText("Running")
