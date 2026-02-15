@@ -30,6 +30,7 @@ type IfBlockProps = {
   onRemoveIfBlock: (ifBlockId: string) => void
   onAddIfBlock: (condition: IfCondition, parentIfBlockId?: string, parentBranch?: "then" | "else") => void
   onAddIfAction: (ifBlockId: string, type: ObjectActionType, branch: "then" | "else") => void
+  onMoveAction: (actionId: string, direction: "up" | "down") => void
   onUpdateIfAction: (ifBlockId: string, actionId: string, action: ObjectActionDraft, branch: "then" | "else") => void
   onRemoveIfAction: (ifBlockId: string, actionId: string, branch: "then" | "else") => void
 }
@@ -139,6 +140,7 @@ export function IfBlock({
   onRemoveIfBlock,
   onAddIfBlock,
   onAddIfAction,
+  onMoveAction,
   onUpdateIfAction,
   onRemoveIfAction
 }: IfBlockProps) {
@@ -168,8 +170,8 @@ export function IfBlock({
             isFirst={branchIndex === 0}
             isLast={branchIndex === items.length - 1}
             onUpdate={(updatedAction) => onUpdateIfAction(item.id, branchItem.action.id, updatedAction, branch)}
-            onMoveUp={() => undefined}
-            onMoveDown={() => undefined}
+            onMoveUp={() => onMoveAction(branchItem.action.id, "up")}
+            onMoveDown={() => onMoveAction(branchItem.action.id, "down")}
             onRemove={() => onRemoveIfAction(item.id, branchItem.action.id, branch)}
             selectableObjects={selectableTargetObjects}
             sounds={sounds}
@@ -197,6 +199,7 @@ export function IfBlock({
           onRemoveIfBlock={onRemoveIfBlock}
           onAddIfBlock={onAddIfBlock}
           onAddIfAction={onAddIfAction}
+          onMoveAction={onMoveAction}
           onUpdateIfAction={onUpdateIfAction}
           onRemoveIfAction={onRemoveIfAction}
         />

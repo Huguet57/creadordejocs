@@ -255,6 +255,52 @@ function removeIfBlockFromItems(
   return { items: nextItems, updated }
 }
 
+function moveActionInItems(
+  items: ObjectEventItem[],
+  actionId: string,
+  direction: "up" | "down"
+): { items: ObjectEventItem[]; updated: boolean } {
+  const actionIndex = items.findIndex((itemEntry) => itemEntry.type === "action" && itemEntry.action.id === actionId)
+  if (actionIndex >= 0) {
+    const targetIndex = direction === "up" ? actionIndex - 1 : actionIndex + 1
+    if (targetIndex < 0 || targetIndex >= items.length) {
+      return { items, updated: false }
+    }
+    const reordered = [...items]
+    const [moved] = reordered.splice(actionIndex, 1)
+    if (!moved) {
+      return { items, updated: false }
+    }
+    reordered.splice(targetIndex, 0, moved)
+    return { items: reordered, updated: true }
+  }
+
+  let updated = false
+  const nextItems = items.map((itemEntry) => {
+    if (itemEntry.type !== "if" || updated) {
+      return itemEntry
+    }
+    const thenResult = moveActionInItems(itemEntry.thenActions, actionId, direction)
+    if (thenResult.updated) {
+      updated = true
+      return {
+        ...itemEntry,
+        thenActions: thenResult.items
+      }
+    }
+    const elseResult = moveActionInItems(itemEntry.elseActions, actionId, direction)
+    if (!elseResult.updated) {
+      return itemEntry
+    }
+    updated = true
+    return {
+      ...itemEntry,
+      elseActions: elseResult.items
+    }
+  })
+  return { items: nextItems, updated }
+}
+
 function normalizeVariableName(name: string): string {
   return name.trim().toLocaleLowerCase()
 }
@@ -575,25 +621,13 @@ export function moveObjectEventAction(project: ProjectV1, input: MoveObjectEvent
           if (eventEntry.id !== input.eventId) {
             return eventEntry
           }
-          const index = eventEntry.items.findIndex(
-            (itemEntry) => itemEntry.type === "action" && itemEntry.action.id === input.actionId
-          )
-          if (index < 0) {
+          const moveResult = moveActionInItems(eventEntry.items, input.actionId, input.direction)
+          if (!moveResult.updated) {
             return eventEntry
           }
-          const target = input.direction === "up" ? index - 1 : index + 1
-          if (target < 0 || target >= eventEntry.items.length) {
-            return eventEntry
-          }
-          const reordered = [...eventEntry.items]
-          const [moved] = reordered.splice(index, 1)
-          if (!moved) {
-            return eventEntry
-          }
-          reordered.splice(target, 0, moved)
           return {
             ...eventEntry,
-            items: reordered
+            items: moveResult.items
           }
         })
       }

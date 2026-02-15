@@ -272,6 +272,7 @@ export function ActionEditorPanel({
                     onRemoveIfBlock={onRemoveIfBlock}
                     onAddIfBlock={onAddIfBlock}
                     onAddIfAction={onAddIfAction}
+                    onMoveAction={onMoveAction}
                     onUpdateIfAction={onUpdateIfAction}
                     onRemoveIfAction={onRemoveIfAction}
                   />
