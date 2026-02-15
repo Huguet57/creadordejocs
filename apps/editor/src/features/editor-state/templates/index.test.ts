@@ -7,6 +7,12 @@ const INTERMEDIATE_TEMPLATE_IDS: GameTemplateId[] = [
   "mine-reset",
   "switch-vault"
 ]
+const ELSE_ENABLED_TEMPLATE_IDS: GameTemplateId[] = [
+  "battery-courier",
+  "mine-reset",
+  "lane-crosser",
+  "switch-vault"
+]
 
 function projectHasIfBlocks(templateId: GameTemplateId): boolean {
   const created = createTemplateProject(templateId)
@@ -61,5 +67,16 @@ describe("template catalog", () => {
     )
 
     expect(nonFocusObjectsWithEvents.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it.each(ELSE_ENABLED_TEMPLATE_IDS)("builds %s with at least one populated else branch", (templateId) => {
+    const created = createTemplateProject(templateId)
+    const hasElseActions = created.project.objects.some((objectEntry) =>
+      objectEntry.events.some((eventEntry) =>
+        eventEntry.items.some((itemEntry) => itemEntry.type === "if" && itemEntry.elseActions.length > 0)
+      )
+    )
+
+    expect(hasElseActions).toBe(true)
   })
 })

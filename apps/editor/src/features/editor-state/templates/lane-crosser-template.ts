@@ -6,7 +6,7 @@ import {
   quickCreateSound,
   quickCreateSprite
 } from "@creadordejocs/project-format"
-import { addEventWithActions, addGlobalVariableWithId, addIfBlockToLatestEvent } from "./helpers.js"
+import { addEventWithActions, addGlobalVariableWithId, addIfElseBlockToLatestEvent } from "./helpers.js"
 import type { TemplateProjectResult } from "./types.js"
 
 export function createLaneCrosserTemplateProject(): TemplateProjectResult {
@@ -121,7 +121,7 @@ export function createLaneCrosserTemplateProject(): TemplateProjectResult {
       }
     ]
   )
-  project = addIfBlockToLatestEvent(
+  project = addIfElseBlockToLatestEvent(
     project,
     playerObject.objectId,
     {
@@ -129,16 +129,7 @@ export function createLaneCrosserTemplateProject(): TemplateProjectResult {
       operator: ">",
       right: 0
     },
-    [{ type: "teleport", mode: "start", x: null, y: null }]
-  )
-  project = addIfBlockToLatestEvent(
-    project,
-    playerObject.objectId,
-    {
-      left: { scope: "global", variableId: livesVariableId },
-      operator: "<=",
-      right: 0
-    },
+    [{ type: "teleport", mode: "start", x: null, y: null }],
     [{ type: "endGame", message: "Has perdut totes les vides" }]
   )
   project = addEventWithActions(
@@ -156,7 +147,7 @@ export function createLaneCrosserTemplateProject(): TemplateProjectResult {
       }
     ]
   )
-  project = addIfBlockToLatestEvent(
+  project = addIfElseBlockToLatestEvent(
     project,
     playerObject.objectId,
     {
@@ -164,16 +155,7 @@ export function createLaneCrosserTemplateProject(): TemplateProjectResult {
       operator: ">",
       right: 0
     },
-    [{ type: "teleport", mode: "start", x: null, y: null }]
-  )
-  project = addIfBlockToLatestEvent(
-    project,
-    playerObject.objectId,
-    {
-      left: { scope: "global", variableId: livesVariableId },
-      operator: "<=",
-      right: 0
-    },
+    [{ type: "teleport", mode: "start", x: null, y: null }],
     [{ type: "endGame", message: "Has perdut totes les vides" }]
   )
   project = addEventWithActions(project, goalObject.objectId, { type: "OnDestroy" }, [
