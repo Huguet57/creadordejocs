@@ -20,7 +20,7 @@ import { Button } from "../../components/ui/button.js"
 import { Label } from "../../components/ui/label.js"
 import {
   ACTION_CATEGORIES,
-  OBJECT_ACTION_TYPES,
+  ACTION_DISPLAY_NAMES,
   OBJECT_EVENT_KEYS,
   type IfCondition,
   type ObjectActionDraft,
@@ -30,8 +30,9 @@ import {
   type ObjectKeyboardMode
 } from "../editor-state/types.js"
 import { ActionBlock } from "./ActionBlock.js"
+import { IfBlock } from "./IfBlock.js"
 import type { ProjectV1 } from "@creadordejocs/project-format"
-import { buildDefaultIfCondition, coerceIfConditionRightValue } from "./if-condition-utils.js"
+import { buildDefaultIfCondition } from "./if-condition-utils.js"
 
 type ActionEditorPanelProps = {
   selectedObject: ProjectV1["objects"][0] | null
@@ -79,23 +80,6 @@ const ACTION_ICONS: Record<ObjectActionType, React.ElementType> = {
   restartRoom: RotateCcw,
 }
 
-const ACTION_DISPLAY_NAMES: Record<ObjectActionType, string> = {
-  move: "Moure",
-  setVelocity: "Velocitat",
-  clampToRoom: "Limitar a sala",
-  teleport: "Teleport",
-  destroySelf: "Destruir-se",
-  destroyOther: "Destruir altre",
-  spawnObject: "Crear objecte",
-  changeScore: "Canviar punts",
-  endGame: "Fi del joc",
-  playSound: "Reproduir so",
-  changeVariable: "Variable",
-  copyVariable: "Copiar variable",
-  goToRoom: "Anar a sala",
-  restartRoom: "Reiniciar sala",
-}
-
 export function ActionEditorPanel({
   selectedObject,
   activeEvent,
@@ -120,7 +104,6 @@ export function ActionEditorPanel({
   onRemoveIfAction
 }: ActionEditorPanelProps) {
   const [isActionPickerOpen, setIsActionPickerOpen] = useState(false)
-  const [ifActionTypeByBlockId, setIfActionTypeByBlockId] = useState<Record<string, ObjectActionType>>({})
 
   if (!selectedObject) {
     return (
@@ -269,176 +252,24 @@ export function ActionEditorPanel({
                   )
                 }
 
-                const variableSource = item.condition.left.scope === "global" ? globalVariables : selectedObjectVariables
-                const selectedVariable = variableSource.find((variable) => variable.id === item.condition.left.variableId)
-                const selectedType = selectedVariable?.type ?? "number"
-                const selectedAddType = ifActionTypeByBlockId[item.id] ?? OBJECT_ACTION_TYPES[0] ?? "move"
-
                 return (
-                  <div key={item.id} className="mvp16-if-block-container rounded-md border border-amber-200 bg-amber-50/70 p-3">
-                    <div className="mvp16-if-block-header mb-2 flex items-center justify-between">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">If</p>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="mvp16-if-block-remove h-6 text-xs text-amber-700 hover:bg-amber-100"
-                        onClick={() => onRemoveIfBlock(item.id)}
-                      >
-                        Remove if
-                      </Button>
-                    </div>
-
-                    <div className="mvp16-if-condition-row mb-3 flex flex-wrap items-center gap-2">
-                      <select
-                        className="mvp16-if-scope-select h-7 rounded border border-amber-300 bg-white px-2 text-xs"
-                        value={item.condition.left.scope}
-                        onChange={(event) => {
-                          const nextScope = event.target.value as "global" | "object"
-                          const nextSource = nextScope === "global" ? globalVariables : selectedObjectVariables
-                          const firstVariable = nextSource[0]
-                          if (!firstVariable) {
-                            return
-                          }
-                          onUpdateIfCondition(item.id, {
-                            left: { scope: nextScope, variableId: firstVariable.id },
-                            operator: item.condition.operator,
-                            right: firstVariable.initialValue
-                          })
-                        }}
-                      >
-                        <option value="global">Global</option>
-                        <option value="object">Objecte</option>
-                      </select>
-                      <select
-                        className="mvp16-if-variable-select h-7 rounded border border-amber-300 bg-white px-2 text-xs"
-                        value={item.condition.left.variableId}
-                        onChange={(event) => {
-                          const nextVariable = variableSource.find((variable) => variable.id === event.target.value)
-                          if (!nextVariable) {
-                            return
-                          }
-                          onUpdateIfCondition(item.id, {
-                            left: { scope: item.condition.left.scope, variableId: nextVariable.id },
-                            operator: item.condition.operator,
-                            right: nextVariable.initialValue
-                          })
-                        }}
-                      >
-                        {variableSource.map((variable) => (
-                          <option key={variable.id} value={variable.id}>
-                            {variable.name}
-                          </option>
-                        ))}
-                      </select>
-                      <select
-                        className="mvp16-if-operator-select h-7 rounded border border-amber-300 bg-white px-2 text-xs"
-                        value={item.condition.operator}
-                        onChange={(event) =>
-                          onUpdateIfCondition(item.id, {
-                            ...item.condition,
-                            operator: event.target.value as IfCondition["operator"]
-                          })
-                        }
-                      >
-                        <option value="==">==</option>
-                        <option value="!=">!=</option>
-                        <option value=">">&gt;</option>
-                        <option value=">=">&gt;=</option>
-                        <option value="<">&lt;</option>
-                        <option value="<=">&lt;=</option>
-                      </select>
-                      {selectedType === "boolean" ? (
-                        <select
-                          className="mvp16-if-value-bool h-7 rounded border border-amber-300 bg-white px-2 text-xs"
-                          value={String(item.condition.right)}
-                          onChange={(event) =>
-                            onUpdateIfCondition(item.id, {
-                              ...item.condition,
-                              right: event.target.value === "true"
-                            })
-                          }
-                        >
-                          <option value="true">true</option>
-                          <option value="false">false</option>
-                        </select>
-                      ) : (
-                        <input
-                          className="mvp16-if-value-input h-7 w-28 rounded border border-amber-300 bg-white px-2 text-xs"
-                          type={selectedType === "number" ? "number" : "text"}
-                          value={String(item.condition.right)}
-                          onChange={(event) =>
-                            onUpdateIfCondition(item.id, {
-                              ...item.condition,
-                              right:
-                                selectedType === "number"
-                                  ? coerceIfConditionRightValue("number", event.target.value)
-                                  : coerceIfConditionRightValue("string", event.target.value)
-                            })
-                          }
-                        />
-                      )}
-                    </div>
-
-                    <div className="mvp16-if-actions-list space-y-3">
-                      {(["then", "else"] as const).map((branch) => (
-                        <div key={`${item.id}-${branch}`} className="mvp16-if-branch rounded border border-amber-200 bg-amber-50/40 p-2">
-                          <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-700 mb-2">
-                            {branch === "then" ? "Then" : "Else"}
-                          </p>
-                          <div className="space-y-2">
-                            {(branch === "then" ? item.thenActions : item.elseActions).map((nestedAction, nestedIndex) => (
-                              <ActionBlock
-                                key={`${branch}-${nestedAction.id}`}
-                                action={nestedAction}
-                                index={nestedIndex}
-                                isFirst
-                                isLast
-                                onUpdate={(updatedAction) => onUpdateIfAction(item.id, nestedAction.id, updatedAction, branch)}
-                                onMoveUp={() => undefined}
-                                onMoveDown={() => undefined}
-                                onRemove={() => onRemoveIfAction(item.id, nestedAction.id, branch)}
-                                selectableObjects={selectableTargetObjects}
-                                sounds={sounds}
-                                globalVariables={globalVariables}
-                                objectVariablesByObjectId={objectVariablesByObjectId}
-                                roomInstances={roomInstances}
-                                allObjects={allObjects}
-                                rooms={rooms}
-                              />
-                            ))}
-                          </div>
-                          <div className="mvp16-if-add-action mt-2 flex items-center gap-2">
-                            <select
-                              className="mvp16-if-add-type h-7 rounded border border-amber-300 bg-white px-2 text-xs"
-                              value={selectedAddType}
-                              onChange={(event) =>
-                                setIfActionTypeByBlockId((previous) => ({
-                                  ...previous,
-                                  [item.id]: event.target.value as ObjectActionType
-                                }))
-                              }
-                            >
-                              {OBJECT_ACTION_TYPES.map((type) => (
-                                <option key={`${item.id}-${branch}-${type}`} value={type}>
-                                  {ACTION_DISPLAY_NAMES[type]}
-                                </option>
-                              ))}
-                            </select>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="mvp16-if-add-action-button h-7 text-xs"
-                              onClick={() => onAddIfAction(item.id, selectedAddType, branch)}
-                            >
-                              Add {branch} action
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                  <IfBlock
+                    key={item.id}
+                    item={item}
+                    selectableTargetObjects={selectableTargetObjects}
+                    sounds={sounds}
+                    globalVariables={globalVariables}
+                    selectedObjectVariables={selectedObjectVariables}
+                    objectVariablesByObjectId={objectVariablesByObjectId}
+                    roomInstances={roomInstances}
+                    allObjects={allObjects}
+                    rooms={rooms}
+                    onUpdateIfCondition={onUpdateIfCondition}
+                    onRemoveIfBlock={onRemoveIfBlock}
+                    onAddIfAction={onAddIfAction}
+                    onUpdateIfAction={onUpdateIfAction}
+                    onRemoveIfAction={onRemoveIfAction}
+                  />
                 )
               })}
             </div>

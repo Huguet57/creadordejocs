@@ -56,6 +56,23 @@ export const OBJECT_ACTION_TYPES: ObjectActionType[] = [
   "restartRoom"
 ]
 
+export const ACTION_DISPLAY_NAMES: Record<ObjectActionType, string> = {
+  move: "Moure",
+  setVelocity: "Velocitat",
+  clampToRoom: "Limitar a sala",
+  teleport: "Teleport",
+  destroySelf: "Destruir-se",
+  destroyOther: "Destruir altre",
+  spawnObject: "Crear objecte",
+  changeScore: "Canviar punts",
+  endGame: "Fi del joc",
+  playSound: "Reproduir so",
+  changeVariable: "Variable",
+  copyVariable: "Copiar variable",
+  goToRoom: "Anar a sala",
+  restartRoom: "Reiniciar sala",
+}
+
 export type ActionCategory = "movement" | "objects" | "game" | "variables" | "rooms"
 
 export const ACTION_CATEGORIES: { id: ActionCategory; label: string; types: ObjectActionType[] }[] = [
