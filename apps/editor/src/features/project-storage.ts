@@ -1,4 +1,4 @@
-import { loadProjectV1, serializeProjectV1, type ProjectV1 } from "@creadordejocs/project-format"
+import { generateUUID, loadProjectV1, serializeProjectV1, type ProjectV1 } from "@creadordejocs/project-format"
 
 export const LOCAL_PROJECT_KEY = "creadordejocs.editor.project.v1"
 export const LOCAL_SNAPSHOTS_KEY = "creadordejocs.editor.snapshots.v1"
@@ -63,7 +63,7 @@ export function loadSnapshotsFromLocalStorage(): LocalSnapshot[] {
 export function saveCheckpointSnapshot(project: ProjectV1, label: string): LocalSnapshot[] {
   const snapshots = loadSnapshotsFromLocalStorage()
   const next: LocalSnapshot = {
-    id: crypto.randomUUID(),
+    id: generateUUID(),
     label,
     savedAtIso: new Date().toISOString(),
     projectSource: serializeProjectV1(project)

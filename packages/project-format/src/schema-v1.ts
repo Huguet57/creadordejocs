@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { generateUUID } from "./generate-id.js"
 
 const SceneObjectSchema = z.object({
   id: z.string().min(1),
@@ -362,7 +363,7 @@ export function createEmptyProjectV1(name: string): ProjectV1 {
   return {
     version: 1,
     metadata: {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       name,
       locale: "ca",
       createdAtIso: new Date().toISOString()

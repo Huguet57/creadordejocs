@@ -1,4 +1,5 @@
 import type { ProjectV1 } from "./schema-v1.js"
+import { generateUUID } from "./generate-id.js"
 
 export type CreateObjectInput = {
   name: string
@@ -186,7 +187,7 @@ export type RemoveObjectVariableInput = {
 }
 
 function makeId(prefix: string): string {
-  return `${prefix}-${crypto.randomUUID()}`
+  return `${prefix}-${generateUUID()}`
 }
 
 function toActionItem(action: ObjectActionDraft): Extract<ObjectEventItem, { type: "action" }> {

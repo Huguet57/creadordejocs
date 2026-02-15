@@ -1,3 +1,4 @@
+import { generateUUID } from "@creadordejocs/project-format"
 import type { AssetStorageProvider, UploadAssetInput, UploadAssetResult } from "../asset-storage-provider.js"
 import { createSupabaseClientFromEnv, getSupabaseBucketName } from "../../../lib/supabase.js"
 
@@ -37,7 +38,7 @@ function buildStoragePath({
 }): string {
   const extension = getFileExtension(fileName) ?? "bin"
   const safeName = sanitizeName(fileName.replace(/\.[^/.]+$/, ""))
-  const randomPart = crypto.randomUUID()
+  const randomPart = generateUUID()
   return `${kind}/${resourceId}/${Date.now()}-${randomPart}-${safeName}.${extension}`
 }
 

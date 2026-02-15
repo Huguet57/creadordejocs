@@ -1,4 +1,4 @@
-import type { ProjectV1 } from "@creadordejocs/project-format"
+import { generateUUID, type ProjectV1 } from "@creadordejocs/project-format"
 import { buildWaitActionKey, removeWaitProgress } from "./event-lock-utils.js"
 import { enqueueRuntimeToast, type RuntimeToastState } from "./message-toast-utils.js"
 import {
@@ -208,7 +208,7 @@ export function executeAction(
         spawned: [
           ...result.spawned,
           {
-            id: `instance-${crypto.randomUUID()}`,
+            id: `instance-${generateUUID()}`,
             objectId: action.objectId,
             x: result.instance.x + action.offsetX,
             y: result.instance.y + action.offsetY,
