@@ -4,8 +4,8 @@ import type { EditorController } from "../editor-state/use-editor-controller.js"
 import { Button } from "../../components/ui/button.js"
 import { resolveAssetSource } from "../assets/asset-source-resolver.js"
 
-const ROOM_WIDTH = 560
-const ROOM_HEIGHT = 320
+const ROOM_WIDTH = 840
+const ROOM_HEIGHT = 480
 
 type RoomEditorSectionProps = {
   controller: EditorController
@@ -76,7 +76,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
   }
 
   return (
-    <div className="mvp15-room-editor-container flex h-[600px] w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+    <div className="mvp15-room-editor-container flex h-[700px] w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
       {/* Left panel: Rooms list */}
       <aside className="mvp3-room-list-panel flex w-[200px] flex-col border-r border-slate-200 bg-slate-50">
         <div className="flex items-center justify-between border-b border-slate-200 p-3">

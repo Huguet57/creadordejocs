@@ -688,7 +688,7 @@ describe("runtime regressions", () => {
               key: null,
               targetObjectId: null,
               intervalMs: null,
-              items: [{ id: "item-action-move", type: "action", action: { id: "action-move", type: "move", dx: 700, dy: 0 } }]
+              items: [{ id: "item-action-move", type: "action", action: { id: "action-move", type: "move", dx: 900, dy: 0 } }]
             },
             {
               id: "event-outside",

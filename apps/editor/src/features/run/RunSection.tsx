@@ -4,8 +4,8 @@ import type { EditorController } from "../editor-state/use-editor-controller.js"
 import { Button } from "../../components/ui/button.js"
 import { resolveAssetSource } from "../assets/asset-source-resolver.js"
 
-const ROOM_WIDTH = 560
-const ROOM_HEIGHT = 320
+const ROOM_WIDTH = 840
+const ROOM_HEIGHT = 480
 const INSTANCE_SIZE = 32
 
 type RunSectionProps = {
@@ -122,7 +122,7 @@ export function RunSection({ controller }: RunSectionProps) {
   }, [controller])
 
   return (
-    <div className="mvp15-run-container flex h-[600px] w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+    <div className="mvp15-run-container flex h-[700px] w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
       {/* Left panel: Controls & HUD */}
       <aside className="flex w-[200px] flex-col border-r border-slate-200 bg-slate-50">
         <div className="flex items-center justify-between border-b border-slate-200 p-3">
