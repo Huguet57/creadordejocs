@@ -10,6 +10,7 @@ import {
   addEventWithActions,
   addGlobalVariableWithId,
   addIfElseBlockToLatestEvent,
+  addNestedIfElseToLatestIfBlock,
   addObjectVariableWithId
 } from "./helpers.js"
 import type { TemplateProjectResult } from "./types.js"
@@ -164,6 +165,18 @@ export function createBatteryCourierTemplateProject(): TemplateProjectResult {
       right: 3
     },
     [{ type: "endGame", message: "Has recarregat el reactor. Missio completada!" }],
+    []
+  )
+  project = addNestedIfElseToLatestIfBlock(
+    project,
+    reactorObject.objectId,
+    "else",
+    {
+      left: { scope: "object", variableId: carriedId },
+      operator: ">",
+      right: 0
+    },
+    [{ type: "changeScore", delta: 10 }, { type: "teleport", mode: "start", x: null, y: null }],
     [{ type: "teleport", mode: "start", x: null, y: null }]
   )
   project = addEventWithActions(

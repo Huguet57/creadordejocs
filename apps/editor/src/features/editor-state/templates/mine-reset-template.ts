@@ -6,7 +6,12 @@ import {
   quickCreateSound,
   quickCreateSprite
 } from "@creadordejocs/project-format"
-import { addEventWithActions, addGlobalVariableWithId, addIfElseBlockToLatestEvent } from "./helpers.js"
+import {
+  addEventWithActions,
+  addGlobalVariableWithId,
+  addIfElseBlockToLatestEvent,
+  addNestedIfElseToLatestIfBlock
+} from "./helpers.js"
 import type { TemplateProjectResult } from "./types.js"
 
 export function createMineResetTemplateProject(): TemplateProjectResult {
@@ -146,6 +151,18 @@ export function createMineResetTemplateProject(): TemplateProjectResult {
       right: 2
     },
     [{ type: "endGame", message: "Has sortit de la sala de mines!" }],
+    []
+  )
+  project = addNestedIfElseToLatestIfBlock(
+    project,
+    exitObject.objectId,
+    "else",
+    {
+      left: { scope: "global", variableId: collectedChipsId },
+      operator: ">=",
+      right: 1
+    },
+    [{ type: "changeScore", delta: 25 }, { type: "teleport", mode: "start", x: null, y: null }],
     [{ type: "teleport", mode: "start", x: null, y: null }]
   )
 

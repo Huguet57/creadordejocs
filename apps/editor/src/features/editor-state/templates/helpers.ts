@@ -77,6 +77,51 @@ export function addIfElseBlockToLatestEvent(
   )
 }
 
+export function addNestedIfElseToLatestIfBlock(
+  project: ProjectV1,
+  objectId: string,
+  parentBranch: "then" | "else",
+  condition: IfCondition,
+  thenActions: ObjectActionDraft[],
+  elseActions: ObjectActionDraft[]
+): ProjectV1 {
+  const eventId = getLatestEventId(project, objectId)
+  const latestEvent = project.objects
+    .find((entry) => entry.id === objectId)
+    ?.events.find((entry) => entry.id === eventId)
+  const parentIfItem = latestEvent?.items.at(-1)
+  if (parentIfItem?.type !== "if") {
+    throw new Error(`Missing parent if block for object "${objectId}" and event "${eventId}"`)
+  }
+  const withNestedIf = addObjectEventIfBlock(project, {
+    objectId,
+    eventId,
+    condition,
+    parentIfBlockId: parentIfItem.id,
+    parentBranch
+  })
+  const updatedEvent = withNestedIf.objects
+    .find((entry) => entry.id === objectId)
+    ?.events.find((entry) => entry.id === eventId)
+  const updatedParent = updatedEvent?.items.at(-1)
+  if (updatedParent?.type !== "if") {
+    throw new Error(`Missing updated parent if block`)
+  }
+  const branchItems = parentBranch === "then" ? updatedParent.thenActions : updatedParent.elseActions
+  const nestedIfItem = branchItems.at(-1)
+  if (nestedIfItem?.type !== "if") {
+    throw new Error(`Missing nested if block`)
+  }
+  let result = withNestedIf
+  for (const action of thenActions) {
+    result = addObjectEventIfAction(result, { objectId, eventId, ifBlockId: nestedIfItem.id, branch: "then", action })
+  }
+  for (const action of elseActions) {
+    result = addObjectEventIfAction(result, { objectId, eventId, ifBlockId: nestedIfItem.id, branch: "else", action })
+  }
+  return result
+}
+
 export function addGlobalVariableWithId(
   project: ProjectV1,
   input: AddGlobalVariableInput

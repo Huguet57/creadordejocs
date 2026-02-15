@@ -13,6 +13,7 @@ const ELSE_ENABLED_TEMPLATE_IDS: GameTemplateId[] = [
   "lane-crosser",
   "switch-vault"
 ]
+const NESTED_IF_TEMPLATE_IDS: GameTemplateId[] = ["battery-courier", "mine-reset"]
 
 function projectHasIfBlocks(templateId: GameTemplateId): boolean {
   const created = createTemplateProject(templateId)
@@ -21,10 +22,9 @@ function projectHasIfBlocks(templateId: GameTemplateId): boolean {
   )
 }
 
-function itemsContainActionType(
-  items: ReturnType<typeof createTemplateProject>["project"]["objects"][number]["events"][number]["items"],
-  actionType: string
-): boolean {
+type EventItems = ReturnType<typeof createTemplateProject>["project"]["objects"][number]["events"][number]["items"]
+
+function itemsContainActionType(items: EventItems, actionType: string): boolean {
   return items.some((itemEntry) => {
     if (itemEntry.type === "action") {
       return itemEntry.action.type === actionType
@@ -33,6 +33,15 @@ function itemsContainActionType(
       itemsContainActionType(itemEntry.thenActions, actionType) || itemsContainActionType(itemEntry.elseActions, actionType)
     )
   })
+}
+
+function itemsContainNestedIf(items: EventItems): boolean {
+  return items.some(
+    (itemEntry) =>
+      itemEntry.type === "if" &&
+      (itemEntry.thenActions.some((child) => child.type === "if") ||
+        itemEntry.elseActions.some((child) => child.type === "if"))
+  )
 }
 
 describe("template catalog", () => {
@@ -82,5 +91,14 @@ describe("template catalog", () => {
     )
 
     expect(hasElseActions).toBe(true)
+  })
+
+  it.each(NESTED_IF_TEMPLATE_IDS)("builds %s with at least one nested if block", (templateId) => {
+    const created = createTemplateProject(templateId)
+    const hasNestedIf = created.project.objects.some((objectEntry) =>
+      objectEntry.events.some((eventEntry) => itemsContainNestedIf(eventEntry.items))
+    )
+
+    expect(hasNestedIf).toBe(true)
   })
 })
