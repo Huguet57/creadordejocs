@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest"
 import {
   getRuntimeKeyFromKeyboardEvent,
+  resolveInitialSection,
   resolveResetState,
   shouldResetWhenSwitchingSection
 } from "./use-editor-controller.js"
-import { createEmptyProjectV1, createRoom } from "@creadordejocs/project-format"
+import { createEmptyProjectV1, createRoom, quickCreateSprite, quickCreateObject } from "@creadordejocs/project-format"
 
 describe("getRuntimeKeyFromKeyboardEvent", () => {
   it("uses KeyboardEvent.code for Space instead of KeyboardEvent.key", () => {
@@ -63,6 +64,38 @@ describe("resolveResetState", () => {
     const result = resolveResetState(base, null, currentRoomId)
 
     expect(result.roomId).toBe(currentRoomId)
+  })
+})
+
+describe("resolveInitialSection", () => {
+  it("returns 'templates' for a fresh empty project", () => {
+    const empty = createEmptyProjectV1("Empty")
+    expect(resolveInitialSection(empty)).toBe("templates")
+  })
+
+  it("returns 'templates' when project has rooms but no objects or sprites", () => {
+    const withRoom = createRoom(createEmptyProjectV1("Empty"), "Sala").project
+    expect(resolveInitialSection(withRoom)).toBe("templates")
+  })
+
+  it("returns 'objects' when project has at least one object", () => {
+    const base = createEmptyProjectV1("Has object")
+    const spriteResult = quickCreateSprite(base, "spr")
+    const objectResult = quickCreateObject(spriteResult.project, {
+      name: "obj",
+      spriteId: spriteResult.spriteId,
+      x: 0,
+      y: 0,
+      speed: 1,
+      direction: 0
+    })
+    expect(resolveInitialSection(objectResult.project)).toBe("objects")
+  })
+
+  it("returns 'objects' when project has at least one sprite", () => {
+    const base = createEmptyProjectV1("Has sprite")
+    const spriteResult = quickCreateSprite(base, "spr")
+    expect(resolveInitialSection(spriteResult.project)).toBe("objects")
   })
 })
 

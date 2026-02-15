@@ -74,6 +74,11 @@ function ensureProjectHasRoom(project: ProjectV1): { project: ProjectV1; roomId:
   return createRoom(project, "Sala principal")
 }
 
+export function resolveInitialSection(project: ProjectV1): EditorSection {
+  const hasContent = project.objects.length > 0 || project.resources.sprites.length > 0
+  return hasContent ? "objects" : "templates"
+}
+
 function createInitialEditorState(): { project: ProjectV1; roomId: string } {
   const loaded = loadProjectFromLocalStorage()
   if (loaded) {
@@ -108,7 +113,7 @@ export function shouldResetWhenSwitchingSection(
 export function useEditorController() {
   const initial = createInitialEditorState()
   const [project, setProject] = useState<ProjectV1>(initial.project)
-  const [activeSection, setActiveSection] = useState<EditorSection>("objects")
+  const [activeSection, setActiveSection] = useState<EditorSection>(() => resolveInitialSection(initial.project))
   const [activeRoomId, setActiveRoomId] = useState<string>(initial.roomId)
   const [activeObjectId, setActiveObjectId] = useState<string | null>(null)
   const [isRunning, setIsRunning] = useState(false)
