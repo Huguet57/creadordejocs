@@ -127,8 +127,8 @@ export function createSwitchVaultTemplateProject(): TemplateProjectResult {
   project = addEventWithActions(project, agentObject.objectId, { type: "Step" }, [{ type: "clampToRoom" }])
   project = addEventWithActions(
     project,
-    agentObject.objectId,
-    { type: "Collision", targetObjectId: switchObject.objectId },
+    switchObject.objectId,
+    { type: "Collision", targetObjectId: agentObject.objectId },
     [
       { type: "playSound", soundId: soundSwitch.soundId },
       {
@@ -142,8 +142,8 @@ export function createSwitchVaultTemplateProject(): TemplateProjectResult {
   )
   project = addEventWithActions(
     project,
-    agentObject.objectId,
-    { type: "Collision", targetObjectId: liftObject.objectId },
+    liftObject.objectId,
+    { type: "Collision", targetObjectId: agentObject.objectId },
     [
       { type: "playSound", soundId: soundLift.soundId },
       { type: "goToRoom", roomId: vaultRoom.roomId }
@@ -154,8 +154,8 @@ export function createSwitchVaultTemplateProject(): TemplateProjectResult {
   ])
   project = addEventWithActions(
     project,
-    agentObject.objectId,
-    { type: "Collision", targetObjectId: guardObject.objectId },
+    guardObject.objectId,
+    { type: "Collision", targetObjectId: agentObject.objectId },
     [
       { type: "playSound", soundId: soundGuard.soundId },
       { type: "jumpToStart" }
@@ -163,13 +163,13 @@ export function createSwitchVaultTemplateProject(): TemplateProjectResult {
   )
   project = addEventWithActions(
     project,
-    agentObject.objectId,
-    { type: "Collision", targetObjectId: vaultGateObject.objectId },
+    vaultGateObject.objectId,
+    { type: "Collision", targetObjectId: agentObject.objectId },
     []
   )
   project = addIfBlockToLatestEvent(
     project,
-    agentObject.objectId,
+    vaultGateObject.objectId,
     {
       left: { scope: "global", variableId: vaultOpenId },
       operator: "==",
@@ -182,7 +182,7 @@ export function createSwitchVaultTemplateProject(): TemplateProjectResult {
   )
   project = addIfBlockToLatestEvent(
     project,
-    agentObject.objectId,
+    vaultGateObject.objectId,
     {
       left: { scope: "global", variableId: vaultOpenId },
       operator: "==",

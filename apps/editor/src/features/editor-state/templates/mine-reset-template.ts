@@ -111,8 +111,8 @@ export function createMineResetTemplateProject(): TemplateProjectResult {
   project = addEventWithActions(project, runnerObject.objectId, { type: "Step" }, [{ type: "clampToRoom" }])
   project = addEventWithActions(
     project,
-    runnerObject.objectId,
-    { type: "Collision", targetObjectId: chipObject.objectId },
+    chipObject.objectId,
+    { type: "Collision", targetObjectId: runnerObject.objectId },
     [
       { type: "playSound", soundId: soundPickup.soundId },
       {
@@ -121,24 +121,24 @@ export function createMineResetTemplateProject(): TemplateProjectResult {
         operator: "add",
         value: 1
       },
-      { type: "destroyOther" }
+      { type: "destroySelf" }
     ]
   )
   project = addEventWithActions(
     project,
-    runnerObject.objectId,
-    { type: "Collision", targetObjectId: mineObject.objectId },
+    mineObject.objectId,
+    { type: "Collision", targetObjectId: runnerObject.objectId },
     [
       { type: "playSound", soundId: soundReset.soundId },
       { type: "restartRoom" }
     ]
   )
-  project = addEventWithActions(project, runnerObject.objectId, { type: "Collision", targetObjectId: exitObject.objectId }, [
+  project = addEventWithActions(project, exitObject.objectId, { type: "Collision", targetObjectId: runnerObject.objectId }, [
     { type: "playSound", soundId: soundWin.soundId }
   ])
   project = addIfBlockToLatestEvent(
     project,
-    runnerObject.objectId,
+    exitObject.objectId,
     {
       left: { scope: "global", variableId: collectedChipsId },
       operator: ">=",
@@ -148,7 +148,7 @@ export function createMineResetTemplateProject(): TemplateProjectResult {
   )
   project = addIfBlockToLatestEvent(
     project,
-    runnerObject.objectId,
+    exitObject.objectId,
     {
       left: { scope: "global", variableId: collectedChipsId },
       operator: "<",

@@ -50,4 +50,13 @@ describe("template catalog", () => {
 
     expect(hasAction).toBe(true)
   })
+
+  it.each(INTERMEDIATE_TEMPLATE_IDS)("distributes runtime logic beyond the focus object for %s", (templateId) => {
+    const created = createTemplateProject(templateId)
+    const nonFocusObjectsWithEvents = created.project.objects.filter(
+      (objectEntry) => objectEntry.id !== created.focusObjectId && objectEntry.events.length > 0
+    )
+
+    expect(nonFocusObjectsWithEvents.length).toBeGreaterThanOrEqual(2)
+  })
 })

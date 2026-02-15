@@ -123,25 +123,25 @@ export function createBatteryCourierTemplateProject(): TemplateProjectResult {
   project = addEventWithActions(project, courierObject.objectId, { type: "Step" }, [{ type: "clampToRoom" }])
   project = addEventWithActions(
     project,
-    courierObject.objectId,
-    { type: "Collision", targetObjectId: batteryObject.objectId },
+    batteryObject.objectId,
+    { type: "Collision", targetObjectId: courierObject.objectId },
     [
       { type: "playSound", soundId: soundPickup.soundId },
       {
         type: "changeObjectVariable",
         variableId: carriedId,
         operator: "add",
-        target: "self",
+        target: "other",
         targetInstanceId: null,
         value: 1
       },
-      { type: "destroyOther" }
+      { type: "destroySelf" }
     ]
   )
   project = addEventWithActions(
     project,
-    courierObject.objectId,
-    { type: "Collision", targetObjectId: reactorObject.objectId },
+    reactorObject.objectId,
+    { type: "Collision", targetObjectId: courierObject.objectId },
     [
       { type: "playSound", soundId: soundTransfer.soundId },
       {
@@ -149,14 +149,14 @@ export function createBatteryCourierTemplateProject(): TemplateProjectResult {
         direction: "objectToGlobal",
         globalVariableId: deliveredId,
         objectVariableId: carriedId,
-        instanceTarget: "self",
+        instanceTarget: "other",
         instanceTargetId: null
       }
     ]
   )
   project = addIfBlockToLatestEvent(
     project,
-    courierObject.objectId,
+    reactorObject.objectId,
     {
       left: { scope: "global", variableId: deliveredId },
       operator: ">=",
@@ -166,7 +166,7 @@ export function createBatteryCourierTemplateProject(): TemplateProjectResult {
   )
   project = addIfBlockToLatestEvent(
     project,
-    courierObject.objectId,
+    reactorObject.objectId,
     {
       left: { scope: "global", variableId: deliveredId },
       operator: "<",
@@ -176,8 +176,8 @@ export function createBatteryCourierTemplateProject(): TemplateProjectResult {
   )
   project = addEventWithActions(
     project,
-    courierObject.objectId,
-    { type: "Collision", targetObjectId: hazardObject.objectId },
+    hazardObject.objectId,
+    { type: "Collision", targetObjectId: courierObject.objectId },
     [
       { type: "playSound", soundId: soundHit.soundId },
       { type: "endGame", message: "Has tocat una zona electrificada." }
