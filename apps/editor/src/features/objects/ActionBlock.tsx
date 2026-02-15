@@ -22,6 +22,13 @@ import type { ObjectActionDraft, ProjectV1, VariableType, VariableValue } from "
 import { type ObjectActionType } from "../editor-state/types.js"
 import { VariablePicker } from "./VariablePicker.js"
 
+/** Returns a width style for number inputs: min 3 digits + 1 extra for padding */
+function numInputWidth(value: number | string): React.CSSProperties {
+  const len = String(value).length
+  const ch = Math.max(4, len + 1)
+  return { width: `${ch}ch` }
+}
+
 type ActionBlockProps = {
   action: ObjectActionDraft & { id: string }
   index: number
@@ -143,8 +150,10 @@ export function ActionBlock({
             <div className="flex items-center gap-1">
               <label className="text-[10px] font-medium opacity-60">DX</label>
               <Input
-                type="number"
-                className="h-6 w-16 px-1 text-xs bg-white/50 border-slate-300"
+                type="text"
+                inputMode="numeric"
+                className="h-6 px-1 text-xs bg-white/50 border-slate-300"
+                style={numInputWidth(action.dx)}
                 value={action.dx}
                 onChange={(e) => onUpdate({ ...action, dx: Number(e.target.value) })}
               />
@@ -152,8 +161,10 @@ export function ActionBlock({
             <div className="flex items-center gap-1">
               <label className="text-[10px] font-medium opacity-60">DY</label>
               <Input
-                type="number"
-                className="h-6 w-16 px-1 text-xs bg-white/50 border-slate-300"
+                type="text"
+                inputMode="numeric"
+                className="h-6 px-1 text-xs bg-white/50 border-slate-300"
+                style={numInputWidth(action.dy)}
                 value={action.dy}
                 onChange={(e) => onUpdate({ ...action, dy: Number(e.target.value) })}
               />
@@ -166,8 +177,10 @@ export function ActionBlock({
             <div className="flex items-center gap-1">
               <label className="text-[10px] font-medium opacity-60">Speed</label>
               <Input
-                type="number"
-                className="h-6 w-16 px-1 text-xs bg-white/50 border-slate-300"
+                type="text"
+                inputMode="numeric"
+                className="h-6 px-1 text-xs bg-white/50 border-slate-300"
+                style={numInputWidth(action.speed)}
                 value={action.speed}
                 onChange={(e) => onUpdate({ ...action, speed: Number(e.target.value) })}
               />
@@ -175,8 +188,10 @@ export function ActionBlock({
             <div className="flex items-center gap-1">
               <label className="text-[10px] font-medium opacity-60">Dir</label>
               <Input
-                type="number"
-                className="h-6 w-16 px-1 text-xs bg-white/50 border-slate-300"
+                type="text"
+                inputMode="numeric"
+                className="h-6 px-1 text-xs bg-white/50 border-slate-300"
+                style={numInputWidth(action.direction)}
                 value={action.direction}
                 onChange={(e) => onUpdate({ ...action, direction: Number(e.target.value) })}
               />
@@ -198,8 +213,10 @@ export function ActionBlock({
             <div className="flex items-center gap-1">
               <label className="text-[10px] font-medium opacity-60">X</label>
               <Input
-                type="number"
-                className="h-6 w-14 px-1 text-xs bg-white/50 border-slate-300"
+                type="text"
+                inputMode="numeric"
+                className="h-6 px-1 text-xs bg-white/50 border-slate-300"
+                style={numInputWidth(action.offsetX)}
                 value={action.offsetX}
                 onChange={(e) => onUpdate({ ...action, offsetX: Number(e.target.value) })}
               />
@@ -207,8 +224,10 @@ export function ActionBlock({
             <div className="flex items-center gap-1">
               <label className="text-[10px] font-medium opacity-60">Y</label>
               <Input
-                type="number"
-                className="h-6 w-14 px-1 text-xs bg-white/50 border-slate-300"
+                type="text"
+                inputMode="numeric"
+                className="h-6 px-1 text-xs bg-white/50 border-slate-300"
+                style={numInputWidth(action.offsetY)}
                 value={action.offsetY}
                 onChange={(e) => onUpdate({ ...action, offsetY: Number(e.target.value) })}
               />
@@ -232,8 +251,10 @@ export function ActionBlock({
           <div className="flex items-center gap-1">
             <label className="text-[10px] font-medium opacity-60">Delta</label>
             <Input
-              type="number"
-              className="h-6 w-16 px-1 text-xs bg-white/50 border-slate-300"
+              type="text"
+              inputMode="numeric"
+              className="h-6 px-1 text-xs bg-white/50 border-slate-300"
+              style={numInputWidth(action.delta)}
               value={action.delta}
               onChange={(e) => onUpdate({ ...action, delta: Number(e.target.value) })}
             />
@@ -262,8 +283,10 @@ export function ActionBlock({
                 <div className="flex items-center gap-1">
                   <label className="text-[10px] font-medium opacity-60">X</label>
                   <Input
-                    type="number"
-                    className="h-6 w-16 px-1 text-xs bg-white/50 border-slate-300"
+                    type="text"
+                    inputMode="numeric"
+                    className="h-6 px-1 text-xs bg-white/50 border-slate-300"
+                    style={numInputWidth(action.x ?? 0)}
                     value={action.x ?? 0}
                     onChange={(e) => onUpdate({ ...action, x: Number(e.target.value) })}
                   />
@@ -271,8 +294,10 @@ export function ActionBlock({
                 <div className="flex items-center gap-1">
                   <label className="text-[10px] font-medium opacity-60">Y</label>
                   <Input
-                    type="number"
-                    className="h-6 w-16 px-1 text-xs bg-white/50 border-slate-300"
+                    type="text"
+                    inputMode="numeric"
+                    className="h-6 px-1 text-xs bg-white/50 border-slate-300"
+                    style={numInputWidth(action.y ?? 0)}
                     value={action.y ?? 0}
                     onChange={(e) => onUpdate({ ...action, y: Number(e.target.value) })}
                   />
@@ -381,8 +406,10 @@ export function ActionBlock({
               </select>
             ) : (
               <Input
-                type={typeof action.value === "number" ? "number" : "text"}
-                className="h-6 w-16 px-1 text-xs bg-white/50 border-slate-300"
+                type="text"
+                inputMode={typeof action.value === "number" ? "numeric" : "text"}
+                className="h-6 px-1 text-xs bg-white/50 border-slate-300"
+                style={numInputWidth(formatValue(action.value))}
                 value={formatValue(action.value)}
                 onChange={(event) => {
                   const selected =

@@ -200,8 +200,8 @@ export function ActionEditorPanel({
           <div className="flex items-center gap-2">
             <Label className="text-xs text-slate-400">Interval (ms)</Label>
             <input
-              type="number"
-              min={1}
+              type="text"
+              inputMode="numeric"
               className="h-7 w-24 rounded border border-slate-200 bg-slate-50 px-2 text-xs text-slate-700 focus:border-slate-400 focus:outline-none"
               value={activeEvent.intervalMs ?? 1000}
               onChange={(e) =>

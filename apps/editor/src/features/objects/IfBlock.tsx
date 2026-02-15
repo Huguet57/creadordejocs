@@ -227,8 +227,10 @@ export function IfBlock({
           </select>
         ) : (
           <input
-            className="if-block-value-input h-6 w-20 rounded border border-blue-200 bg-white px-2 text-xs focus:border-blue-400 focus:outline-none"
-            type={selectedType === "number" ? "number" : "text"}
+            className="if-block-value-input h-6 rounded border border-blue-200 bg-white px-2 text-xs focus:border-blue-400 focus:outline-none"
+            style={{ width: `${Math.max(4, String(item.condition.right).length + 1)}ch` }}
+            type="text"
+            inputMode={selectedType === "number" ? "numeric" : "text"}
             value={String(item.condition.right)}
             onChange={(event) =>
               onUpdateIfCondition(item.id, {
