@@ -47,11 +47,11 @@ function BranchAddButton({
     return (
       <button
         type="button"
-        className="if-block-branch-add-toggle flex items-center gap-1 px-2 py-1.5 text-[10px] text-slate-500 rounded border border-dashed border-slate-300 hover:text-amber-600 hover:border-amber-300 hover:bg-amber-50 transition-colors"
+        className="if-block-branch-add-toggle flex items-center gap-1 px-2 py-1 text-[10px] text-slate-400 rounded hover:text-amber-600 hover:bg-amber-50 transition-colors"
         onClick={() => setIsOpen(true)}
       >
         <Plus className="h-3 w-3" />
-        Add {branch} action
+        Add action
       </button>
     )
   }
@@ -59,7 +59,7 @@ function BranchAddButton({
   return (
     <div className="if-block-branch-add-picker flex items-center gap-2">
       <select
-        className="if-block-branch-add-select h-7 flex-1 rounded border border-amber-200 bg-white px-2 text-xs text-slate-600 focus:border-amber-400 focus:outline-none"
+        className="if-block-branch-add-select h-6 flex-1 rounded border border-slate-200 bg-white px-2 text-xs text-slate-600 focus:border-amber-400 focus:outline-none"
         value={selectedType}
         onChange={(event) => setSelectedType(event.target.value as ObjectActionType)}
         autoFocus
@@ -74,7 +74,7 @@ function BranchAddButton({
         type="button"
         variant="outline"
         size="sm"
-        className="if-block-branch-add-confirm h-7 px-3 text-xs border-amber-200 text-amber-700 hover:bg-amber-50"
+        className="if-block-branch-add-confirm h-6 px-3 text-xs border-slate-200 text-slate-600 hover:bg-slate-50"
         onClick={() => {
           onAdd(selectedType)
           setIsOpen(false)
@@ -170,85 +170,83 @@ export function IfBlock({
   }
 
   return (
-    <div className="if-block-container flex flex-col rounded-lg border border-amber-200 bg-white shadow-sm overflow-hidden">
-      {/* IF header with condition */}
-      <div className="if-block-header flex items-center justify-between bg-amber-50 px-3 py-2 border-b border-amber-100">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-amber-700 uppercase tracking-wider">If</span>
+    <div className="if-block-container">
+      {/* IF condition row */}
+      <div className="if-block-header group flex items-center gap-2 py-1.5">
+        <span className="text-[11px] font-bold text-amber-700 uppercase tracking-wider shrink-0">IF</span>
 
-          <VariablePicker
-            scope={item.condition.left.scope}
-            variableId={item.condition.left.variableId}
-            globalVariables={globalVariables}
-            objectVariables={objectVarOptionsForPicker}
-            variant="amber"
-            onChange={(nextScope, nextVariableId) => {
-              const nextSource = nextScope === "global" ? globalVariables : selectedObjectVariables
-              const nextVariable = nextSource.find((v) => v.id === nextVariableId)
-              if (!nextVariable) return
-              onUpdateIfCondition(item.id, {
-                left: { scope: nextScope, variableId: nextVariableId },
-                operator: item.condition.operator,
-                right: nextVariable.initialValue
-              })
-            }}
-          />
+        <VariablePicker
+          scope={item.condition.left.scope}
+          variableId={item.condition.left.variableId}
+          globalVariables={globalVariables}
+          objectVariables={objectVarOptionsForPicker}
+          variant="amber"
+          onChange={(nextScope, nextVariableId) => {
+            const nextSource = nextScope === "global" ? globalVariables : selectedObjectVariables
+            const nextVariable = nextSource.find((v) => v.id === nextVariableId)
+            if (!nextVariable) return
+            onUpdateIfCondition(item.id, {
+              left: { scope: nextScope, variableId: nextVariableId },
+              operator: item.condition.operator,
+              right: nextVariable.initialValue
+            })
+          }}
+        />
 
+        <select
+          className="if-block-operator-select h-6 w-12 text-center font-mono rounded border border-amber-200 bg-white px-1 text-xs focus:border-amber-400 focus:outline-none"
+          value={item.condition.operator}
+          onChange={(event) =>
+            onUpdateIfCondition(item.id, {
+              ...item.condition,
+              operator: event.target.value as IfCondition["operator"]
+            })
+          }
+        >
+          <option value="==">==</option>
+          <option value="!=">!=</option>
+          <option value=">">&gt;</option>
+          <option value=">=">&gt;=</option>
+          <option value="<">&lt;</option>
+          <option value="<=">&lt;=</option>
+        </select>
+
+        {selectedType === "boolean" ? (
           <select
-            className="if-block-operator-select h-6 w-12 text-center font-mono rounded border border-amber-200 bg-white px-1 text-xs focus:border-amber-400 focus:outline-none"
-            value={item.condition.operator}
+            className="if-block-value-bool h-6 rounded border border-amber-200 bg-white px-2 text-xs focus:border-amber-400 focus:outline-none"
+            value={String(item.condition.right)}
             onChange={(event) =>
               onUpdateIfCondition(item.id, {
                 ...item.condition,
-                operator: event.target.value as IfCondition["operator"]
+                right: event.target.value === "true"
               })
             }
           >
-            <option value="==">==</option>
-            <option value="!=">!=</option>
-            <option value=">">&gt;</option>
-            <option value=">=">&gt;=</option>
-            <option value="<">&lt;</option>
-            <option value="<=">&lt;=</option>
+            <option value="true">true</option>
+            <option value="false">false</option>
           </select>
-
-          {selectedType === "boolean" ? (
-            <select
-              className="if-block-value-bool h-6 rounded border border-amber-200 bg-white px-2 text-xs focus:border-amber-400 focus:outline-none"
-              value={String(item.condition.right)}
-              onChange={(event) =>
-                onUpdateIfCondition(item.id, {
-                  ...item.condition,
-                  right: event.target.value === "true"
-                })
-              }
-            >
-              <option value="true">true</option>
-              <option value="false">false</option>
-            </select>
-          ) : (
-            <input
-              className="if-block-value-input h-6 w-20 rounded border border-amber-200 bg-white px-2 text-xs focus:border-amber-400 focus:outline-none"
-              type={selectedType === "number" ? "number" : "text"}
-              value={String(item.condition.right)}
-              onChange={(event) =>
-                onUpdateIfCondition(item.id, {
-                  ...item.condition,
-                  right:
-                    selectedType === "number"
-                      ? coerceIfConditionRightValue("number", event.target.value)
-                      : coerceIfConditionRightValue("string", event.target.value)
-                })
-              }
-            />
-          )}
-        </div>
+        ) : (
+          <input
+            className="if-block-value-input h-6 w-20 rounded border border-amber-200 bg-white px-2 text-xs focus:border-amber-400 focus:outline-none"
+            type={selectedType === "number" ? "number" : "text"}
+            value={String(item.condition.right)}
+            onChange={(event) =>
+              onUpdateIfCondition(item.id, {
+                ...item.condition,
+                right:
+                  selectedType === "number"
+                    ? coerceIfConditionRightValue("number", event.target.value)
+                    : coerceIfConditionRightValue("string", event.target.value)
+              })
+            }
+          />
+        )}
 
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          className="if-block-remove h-6 w-6 text-amber-400 hover:text-red-500 hover:bg-red-50"
+          className="if-block-remove h-6 w-6 text-slate-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity ml-auto shrink-0"
           onClick={() => onRemoveIfBlock(item.id)}
           title="Remove if block"
         >
@@ -256,19 +254,18 @@ export function IfBlock({
         </Button>
       </div>
 
-      {/* THEN branch */}
-      <div className="if-block-then-branch px-3 pt-2 pb-1">
-        <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Then</span>
-        <div className="flex flex-col gap-2 mt-1.5">
+      {/* THEN content — indented with left border */}
+      <div className="if-block-then-branch border-l-2 border-amber-200 ml-2 pl-4 py-1">
+        <div className="flex flex-col gap-1.5">
           {renderBranchItems("then", item.thenActions)}
-          <div className="if-block-then-add-row flex items-start gap-2 mt-2">
+          <div className="if-block-then-add-row flex items-center gap-2 py-1">
             <BranchAddButton
               branch="then"
               onAdd={(type) => onAddIfAction(item.id, type, "then")}
             />
             <button
               type="button"
-              className="if-block-branch-add-if-toggle flex items-center gap-1 px-2 py-1.5 text-[10px] text-slate-500 rounded border border-dashed border-slate-300 hover:text-amber-600 hover:border-amber-300 hover:bg-amber-50 transition-colors"
+              className="if-block-branch-add-if-toggle flex items-center gap-1 px-2 py-1 text-[10px] text-slate-400 rounded hover:text-amber-600 hover:bg-amber-50 transition-colors"
               disabled={!defaultIfCondition}
               onClick={() => {
                 if (defaultIfCondition) {
@@ -277,25 +274,29 @@ export function IfBlock({
               }}
             >
               <Plus className="h-3 w-3" />
-              Add then if block
+              Add if block
             </button>
           </div>
         </div>
       </div>
 
-      {/* ELSE branch */}
-      <div className="if-block-else-branch px-3 pt-2 pb-2">
-        <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Else</span>
-        <div className="flex flex-col gap-2 mt-1.5">
+      {/* ELSE label */}
+      <div className="if-block-else-label py-1.5">
+        <span className="text-[11px] font-bold text-amber-700 uppercase tracking-wider">ELSE</span>
+      </div>
+
+      {/* ELSE content — indented with left border */}
+      <div className="if-block-else-branch border-l-2 border-amber-200 ml-2 pl-4 py-1">
+        <div className="flex flex-col gap-1.5">
           {renderBranchItems("else", item.elseActions)}
-          <div className="if-block-else-add-row flex items-start gap-2 mt-2">
+          <div className="if-block-else-add-row flex items-center gap-2 py-1">
             <BranchAddButton
               branch="else"
               onAdd={(type) => onAddIfAction(item.id, type, "else")}
             />
             <button
               type="button"
-              className="if-block-branch-add-if-toggle flex items-center gap-1 px-2 py-1.5 text-[10px] text-slate-500 rounded border border-dashed border-slate-300 hover:text-amber-600 hover:border-amber-300 hover:bg-amber-50 transition-colors"
+              className="if-block-branch-add-if-toggle flex items-center gap-1 px-2 py-1 text-[10px] text-slate-400 rounded hover:text-amber-600 hover:bg-amber-50 transition-colors"
               disabled={!defaultIfCondition}
               onClick={() => {
                 if (defaultIfCondition) {
@@ -304,7 +305,7 @@ export function IfBlock({
               }}
             >
               <Plus className="h-3 w-3" />
-              Add else if block
+              Add if block
             </button>
           </div>
         </div>

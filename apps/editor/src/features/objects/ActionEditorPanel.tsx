@@ -219,10 +219,10 @@ export function ActionEditorPanel({
 
       {!isActionPickerOpen ? (
         <>
-          <div className="flex-1 overflow-y-auto p-4 bg-slate-50/50">
-            <div className="mx-auto max-w-3xl space-y-3">
+          <div className="flex-1 overflow-y-auto p-4">
+            <div className="mx-auto max-w-3xl space-y-1.5">
               {activeEvent.items.length === 0 && (
-                <div className="rounded-lg border-2 border-dashed border-slate-200 p-8 text-center">
+                <div className="py-6 text-center">
                   <p className="text-sm text-slate-400">No actions yet.</p>
                   <p className="text-xs text-slate-400 mt-1">Add an action below to define what happens.</p>
                 </div>
