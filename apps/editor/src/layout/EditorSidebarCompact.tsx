@@ -1,4 +1,4 @@
-import { Box, Grid3X3, Image, LayoutTemplate, Play, Globe2 } from "lucide-react"
+import { Box, Globe2, Grid3X3, Image, LayoutTemplate, Play, Share2 } from "lucide-react"
 import { Button } from "../components/ui/button.js"
 import type { EditorSection } from "../features/editor-state/types.js"
 
@@ -13,7 +13,8 @@ const sectionItems: { id: EditorSection; label: string; icon: React.ElementType 
   { id: "rooms", label: "Rooms", icon: Grid3X3 },
   { id: "globalVariables", label: "Globals", icon: Globe2 },
   { id: "run", label: "Run", icon: Play },
-  { id: "templates", label: "Templates", icon: LayoutTemplate }
+  { id: "templates", label: "Templates", icon: LayoutTemplate },
+  { id: "share", label: "Share", icon: Share2 }
 ]
 
 export function EditorSidebarCompact({ activeSection, onSectionChange }: EditorSidebarCompactProps) {

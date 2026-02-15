@@ -50,4 +50,16 @@ describe("sound-free editor UI", () => {
     const actionTypes = ACTION_CATEGORIES.flatMap((category) => category.types)
     expect(actionTypes).not.toContain("playSound")
   })
+
+  it("shows a share entry in the compact sidebar", () => {
+    const markup = renderToStaticMarkup(
+      createElement(EditorSidebarCompact, {
+        activeSection: "share",
+        onSectionChange: vi.fn()
+      })
+    )
+
+    expect(markup).toContain("Share")
+    expect(markup).toContain("sidebar-share")
+  })
 })

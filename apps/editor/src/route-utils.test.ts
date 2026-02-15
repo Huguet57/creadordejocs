@@ -70,6 +70,10 @@ describe("resolveEditorSection", () => {
     expect(resolveEditorSection("/editor/globalVariables")).toBe("globalVariables")
   })
 
+  it("returns share for /editor/share", () => {
+    expect(resolveEditorSection("/editor/share")).toBe("share")
+  })
+
   it("returns null for unknown section", () => {
     expect(resolveEditorSection("/editor/unknown")).toBeNull()
   })
@@ -90,5 +94,9 @@ describe("buildEditorSectionPath", () => {
 
   it("builds path for run", () => {
     expect(buildEditorSectionPath("run")).toBe("/editor/run")
+  })
+
+  it("builds path for share", () => {
+    expect(buildEditorSectionPath("share")).toBe("/editor/share")
   })
 })
