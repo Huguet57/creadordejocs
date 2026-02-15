@@ -46,7 +46,7 @@ function BranchAddButton({
     return (
       <button
         type="button"
-        className="if-block-branch-add-toggle flex items-center gap-1 mt-1 px-2 py-1.5 text-[10px] text-slate-500 rounded border border-dashed border-slate-300 hover:text-amber-600 hover:border-amber-300 hover:bg-amber-50 transition-colors"
+        className="if-block-branch-add-toggle flex items-center gap-1 px-2 py-1.5 text-[10px] text-slate-500 rounded border border-dashed border-slate-300 hover:text-amber-600 hover:border-amber-300 hover:bg-amber-50 transition-colors"
         onClick={() => setIsOpen(true)}
       >
         <Plus className="h-3 w-3" />
@@ -56,7 +56,7 @@ function BranchAddButton({
   }
 
   return (
-    <div className="if-block-branch-add-picker flex items-center gap-2 mt-1">
+    <div className="if-block-branch-add-picker flex items-center gap-2">
       <select
         className="if-block-branch-add-select h-7 flex-1 rounded border border-amber-200 bg-white px-2 text-xs text-slate-600 focus:border-amber-400 focus:outline-none"
         value={selectedType}
@@ -274,23 +274,25 @@ export function IfBlock({
         <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Then</span>
         <div className="flex flex-col gap-2 mt-1.5">
           {renderBranchItems("then", item.thenActions)}
-          <BranchAddButton
-            branch="then"
-            onAdd={(type) => onAddIfAction(item.id, type, "then")}
-          />
-          <button
-            type="button"
-            className="if-block-branch-add-if-toggle flex items-center gap-1 mt-1 px-2 py-1.5 text-[10px] text-slate-500 rounded border border-dashed border-slate-300 hover:text-amber-600 hover:border-amber-300 hover:bg-amber-50 transition-colors"
-            disabled={!defaultIfCondition}
-            onClick={() => {
-              if (defaultIfCondition) {
-                onAddIfBlock(defaultIfCondition, item.id, "then")
-              }
-            }}
-          >
-            <Plus className="h-3 w-3" />
-            Add then if
-          </button>
+          <div className="if-block-then-add-row flex items-start gap-2 mt-2">
+            <BranchAddButton
+              branch="then"
+              onAdd={(type) => onAddIfAction(item.id, type, "then")}
+            />
+            <button
+              type="button"
+              className="if-block-branch-add-if-toggle flex items-center gap-1 px-2 py-1.5 text-[10px] text-slate-500 rounded border border-dashed border-slate-300 hover:text-amber-600 hover:border-amber-300 hover:bg-amber-50 transition-colors"
+              disabled={!defaultIfCondition}
+              onClick={() => {
+                if (defaultIfCondition) {
+                  onAddIfBlock(defaultIfCondition, item.id, "then")
+                }
+              }}
+            >
+              <Plus className="h-3 w-3" />
+              Add then if block
+            </button>
+          </div>
         </div>
       </div>
 
@@ -299,23 +301,25 @@ export function IfBlock({
         <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Else</span>
         <div className="flex flex-col gap-2 mt-1.5">
           {renderBranchItems("else", item.elseActions)}
-          <BranchAddButton
-            branch="else"
-            onAdd={(type) => onAddIfAction(item.id, type, "else")}
-          />
-          <button
-            type="button"
-            className="if-block-branch-add-if-toggle flex items-center gap-1 mt-1 px-2 py-1.5 text-[10px] text-slate-500 rounded border border-dashed border-slate-300 hover:text-amber-600 hover:border-amber-300 hover:bg-amber-50 transition-colors"
-            disabled={!defaultIfCondition}
-            onClick={() => {
-              if (defaultIfCondition) {
-                onAddIfBlock(defaultIfCondition, item.id, "else")
-              }
-            }}
-          >
-            <Plus className="h-3 w-3" />
-            Add else if
-          </button>
+          <div className="if-block-else-add-row flex items-start gap-2 mt-2">
+            <BranchAddButton
+              branch="else"
+              onAdd={(type) => onAddIfAction(item.id, type, "else")}
+            />
+            <button
+              type="button"
+              className="if-block-branch-add-if-toggle flex items-center gap-1 px-2 py-1.5 text-[10px] text-slate-500 rounded border border-dashed border-slate-300 hover:text-amber-600 hover:border-amber-300 hover:bg-amber-50 transition-colors"
+              disabled={!defaultIfCondition}
+              onClick={() => {
+                if (defaultIfCondition) {
+                  onAddIfBlock(defaultIfCondition, item.id, "else")
+                }
+              }}
+            >
+              <Plus className="h-3 w-3" />
+              Add else if block
+            </button>
+          </div>
         </div>
       </div>
     </div>
