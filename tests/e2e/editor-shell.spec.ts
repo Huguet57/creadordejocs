@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test"
 
 test.beforeEach(async ({ page }) => {
-  await page.goto("/")
+  await page.goto("/editor")
 })
 
 test("navigates sidebar sections and keeps modular editors available", async ({ page }) => {

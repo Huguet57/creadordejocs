@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test"
 
 test.beforeEach(async ({ page }) => {
-  await page.goto("/")
+  await page.goto("/editor")
 })
 
 test("recovers autosaved state after reload", async ({ page }) => {

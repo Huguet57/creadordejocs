@@ -1,15 +1,41 @@
+import { useEffect, useState } from "react"
 import { Redo2, Save, Undo2 } from "lucide-react"
+import { Button } from "./components/ui/button.js"
+import { shouldResetWhenSwitchingSection, useEditorController } from "./features/editor-state/use-editor-controller.js"
+import { LandingPage } from "./features/landing/LandingPage.js"
+import type { EditorSection } from "./features/editor-state/types.js"
 import { EditorSidebarCompact } from "./layout/EditorSidebarCompact.js"
 import { EditorWorkspace } from "./layout/EditorWorkspace.js"
-import { shouldResetWhenSwitchingSection, useEditorController } from "./features/editor-state/use-editor-controller.js"
-import type { EditorSection } from "./features/editor-state/types.js"
-import { Button } from "./components/ui/button.js"
+import { resolveAppRoute, type AppRoute } from "./route-utils.js"
+
+const landingTitle = "Creador de jocs online | Com crear un joc gratis | CreadorDeJocs"
+const editorTitle = "Editor de jocs online | CreadorDeJocs"
+const landingRobots = "index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1"
+const editorRobots = "noindex, nofollow"
 
 function formatStatus(status: "idle" | "saved" | "saving" | "error"): string {
   if (status === "saving") return "Saving..."
   if (status === "saved") return "Saved"
   if (status === "error") return "Error"
   return "Saved"
+}
+
+function setMetaContent(selector: string, content: string): void {
+  const metaTag = document.querySelector(selector)
+  if (!metaTag) {
+    return
+  }
+
+  metaTag.setAttribute("content", content)
+}
+
+function setCanonicalHref(href: string): void {
+  const canonicalTag = document.querySelector('link[rel="canonical"]')
+  if (!canonicalTag) {
+    return
+  }
+
+  canonicalTag.setAttribute("href", href)
 }
 
 export function handleSidebarSectionChange(
@@ -25,7 +51,7 @@ export function handleSidebarSectionChange(
   setActiveSection(nextSection)
 }
 
-export function App() {
+function EditorAppShell() {
   const controller = useEditorController()
 
   return (
@@ -89,4 +115,46 @@ export function App() {
       </div>
     </main>
   )
+}
+
+export function App() {
+  const [route, setRoute] = useState<AppRoute>(() => resolveAppRoute(window.location.pathname))
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setRoute(resolveAppRoute(window.location.pathname))
+    }
+
+    window.addEventListener("popstate", handlePopState)
+    return () => {
+      window.removeEventListener("popstate", handlePopState)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (route === "editor") {
+      document.title = editorTitle
+      setMetaContent('meta[name="robots"]', editorRobots)
+      setCanonicalHref("https://creadordejocs.com/editor")
+      return
+    }
+
+    document.title = landingTitle
+    setMetaContent('meta[name="robots"]', landingRobots)
+    setCanonicalHref("https://creadordejocs.com/")
+  }, [route])
+
+  const openEditor = () => {
+    if (resolveAppRoute(window.location.pathname) !== "editor") {
+      window.history.pushState({}, "", "/editor")
+    }
+    setRoute("editor")
+    window.scrollTo(0, 0)
+  }
+
+  if (route === "landing") {
+    return <LandingPage onStartEditor={openEditor} />
+  }
+
+  return <EditorAppShell />
 }
