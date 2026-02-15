@@ -237,4 +237,53 @@ describe("project format v1", () => {
     expect(loaded.objects[0]?.events[0]?.type).toBe("Keyboard")
     expect(loaded.objects[0]?.events[0]?.keyboardMode).toBe("down")
   })
+
+  it("parses mouse event types", () => {
+    const project = createEmptyProjectV1("Mouse events")
+    const source = JSON.stringify({
+      ...project,
+      objects: [
+        {
+          id: "object-player",
+          name: "Player",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-mouse-move",
+              type: "MouseMove",
+              key: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [{ id: "item-score", type: "action", action: { id: "action-score", type: "changeScore", delta: 1 } }]
+            },
+            {
+              id: "event-mouse-down",
+              type: "MouseDown",
+              key: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [{ id: "item-score-2", type: "action", action: { id: "action-score-2", type: "changeScore", delta: 1 } }]
+            },
+            {
+              id: "event-mouse-click",
+              type: "MouseClick",
+              key: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [{ id: "item-score-3", type: "action", action: { id: "action-score-3", type: "changeScore", delta: 1 } }]
+            }
+          ]
+        }
+      ]
+    })
+
+    const loaded = parseProjectV1(source)
+    expect(loaded.objects[0]?.events[0]?.type).toBe("MouseMove")
+    expect(loaded.objects[0]?.events[1]?.type).toBe("MouseDown")
+    expect(loaded.objects[0]?.events[2]?.type).toBe("MouseClick")
+  })
 })

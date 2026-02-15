@@ -2,7 +2,18 @@ import type { ProjectV1, ObjectActionDraft } from "@creadordejocs/project-format
 
 export type EditorSection = "sprites" | "sounds" | "objects" | "rooms" | "run" | "templates" | "globalVariables"
 
-export type ObjectEventType = "Create" | "Step" | "Draw" | "Collision" | "Keyboard" | "OnDestroy" | "OutsideRoom" | "Timer"
+export type ObjectEventType =
+  | "Create"
+  | "Step"
+  | "Draw"
+  | "Collision"
+  | "Keyboard"
+  | "OnDestroy"
+  | "OutsideRoom"
+  | "Timer"
+  | "MouseMove"
+  | "MouseDown"
+  | "MouseClick"
 export type ObjectEventKey = "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight" | "Space"
 export type ObjectKeyboardMode = "down" | "press"
 export type ObjectActionType =
@@ -38,7 +49,15 @@ export const OBJECT_EVENT_TYPES: ObjectEventType[] = [
   "Keyboard",
   "OnDestroy",
   "OutsideRoom",
-  "Timer"
+  "Timer",
+  "MouseMove",
+  "MouseDown",
+  "MouseClick"
+]
+
+export const SYSTEM_MOUSE_GLOBALS = [
+  { id: "__mouse_x", name: "mouse_x", type: "number" as const, initialValue: 0 },
+  { id: "__mouse_y", name: "mouse_y", type: "number" as const, initialValue: 0 }
 ]
 export const OBJECT_EVENT_KEYS: ObjectEventKey[] = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"]
 export const OBJECT_ACTION_TYPES: ObjectActionType[] = [

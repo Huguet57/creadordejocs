@@ -22,6 +22,26 @@ export const ROOM_WIDTH = 560
 export const ROOM_HEIGHT = 320
 const INSTANCE_SIZE = 32
 const RUNTIME_TICK_MS = 80
+const BUILTIN_MOUSE_X_VARIABLE_ID = "__mouse_x"
+const BUILTIN_MOUSE_Y_VARIABLE_ID = "__mouse_y"
+const EMPTY_MOUSE_BUTTONS = new Set<RuntimeMouseButton>()
+
+export type RuntimeMouseButton = "left" | "middle" | "right"
+export type RuntimeMouseInput = {
+  x: number
+  y: number
+  moved: boolean
+  pressedButtons: Set<RuntimeMouseButton>
+  justPressedButtons: Set<RuntimeMouseButton>
+}
+
+const DEFAULT_RUNTIME_MOUSE_INPUT: RuntimeMouseInput = {
+  x: 0,
+  y: 0,
+  moved: false,
+  pressedButtons: EMPTY_MOUSE_BUTTONS,
+  justPressedButtons: EMPTY_MOUSE_BUTTONS
+}
 
 type RuntimeActionResult = {
   instance: ProjectV1["rooms"][number]["instances"][number]
@@ -124,7 +144,11 @@ function getInstanceStartPosition(
 }
 
 function buildInitialGlobalVariables(project: ProjectV1): Record<string, RuntimeVariableValue> {
-  return Object.fromEntries(project.variables.global.map((definition) => [definition.id, definition.initialValue]))
+  return {
+    ...Object.fromEntries(project.variables.global.map((definition) => [definition.id, definition.initialValue])),
+    [BUILTIN_MOUSE_X_VARIABLE_ID]: 0,
+    [BUILTIN_MOUSE_Y_VARIABLE_ID]: 0
+  }
 }
 
 function buildInitialObjectVariablesForObject(project: ProjectV1, objectId: string): Record<string, RuntimeVariableValue> {
@@ -286,6 +310,9 @@ function applyGlobalNumericOperation(
   value: number,
   operation: "add" | "subtract" | "multiply"
 ): RuntimeState {
+  if (isReadonlyGlobalVariableId(variableId)) {
+    return runtime
+  }
   const existingValue = runtime.globalVariables[variableId]
   if (typeof existingValue !== "number") {
     return runtime
@@ -297,6 +324,21 @@ function applyGlobalNumericOperation(
     globalVariables: {
       ...runtime.globalVariables,
       [variableId]: nextValue
+    }
+  }
+}
+
+function isReadonlyGlobalVariableId(variableId: string): boolean {
+  return variableId === BUILTIN_MOUSE_X_VARIABLE_ID || variableId === BUILTIN_MOUSE_Y_VARIABLE_ID
+}
+
+function applyMouseBuiltinsToRuntime(runtime: RuntimeState, mouseInput: RuntimeMouseInput): RuntimeState {
+  return {
+    ...runtime,
+    globalVariables: {
+      ...runtime.globalVariables,
+      [BUILTIN_MOUSE_X_VARIABLE_ID]: mouseInput.x,
+      [BUILTIN_MOUSE_Y_VARIABLE_ID]: mouseInput.y
     }
   }
 }
@@ -532,6 +574,9 @@ function runEventActions(
     }
     if (actionEntry.type === "changeVariable") {
       if (actionEntry.scope === "global") {
+        if (isReadonlyGlobalVariableId(actionEntry.variableId)) {
+          continue
+        }
         if (actionEntry.operator === "set") {
           const existingValue = result.runtime.globalVariables[actionEntry.variableId]
           if (existingValue === undefined || !isSameVariableValueType(existingValue, actionEntry.value)) {
@@ -642,6 +687,9 @@ function runEventActions(
           continue
         }
         const sourceValue = sourceVariables[actionEntry.objectVariableId]
+        if (isReadonlyGlobalVariableId(actionEntry.globalVariableId)) {
+          continue
+        }
         const existingGlobalValue = result.runtime.globalVariables[actionEntry.globalVariableId]
         if (sourceValue === undefined || existingGlobalValue === undefined || !isSameVariableValueType(existingGlobalValue, sourceValue)) {
           continue
@@ -1004,7 +1052,8 @@ export function runRuntimeTick(
   roomId: string,
   pressedKeys: Set<string>,
   runtime: RuntimeState,
-  justPressedKeys = new Set<string>()
+  justPressedKeys = new Set<string>(),
+  mouseInput: RuntimeMouseInput = DEFAULT_RUNTIME_MOUSE_INPUT
 ): { project: ProjectV1; runtime: RuntimeState; activeRoomId: string; restartRoomRequested: boolean } {
   const room = project.rooms.find((roomEntry) => roomEntry.id === roomId)
   if (!room || runtime.gameOver) {
@@ -1021,6 +1070,7 @@ export function runRuntimeTick(
     nextRoomId: null,
     restartRoomRequested: false
   }
+  nextRuntime = applyMouseBuiltinsToRuntime(nextRuntime, mouseInput)
   nextRuntime = advanceRuntimeToastQueue(nextRuntime as RuntimeToastState, RUNTIME_TICK_MS) as RuntimeState
   let nextInstances: ProjectV1["rooms"][number]["instances"] = []
   const pendingDestroyedInstanceIds = new Set<string>()
@@ -1085,6 +1135,24 @@ export function runRuntimeTick(
           ? pressedKeys.has(eventEntry.key)
           : justPressedKeys.has(eventEntry.key)
         if (shouldRun) {
+          matchingEvents.push(eventEntry)
+        }
+        continue
+      }
+      if (eventEntry.type === "MouseMove") {
+        if (mouseInput.moved) {
+          matchingEvents.push(eventEntry)
+        }
+        continue
+      }
+      if (eventEntry.type === "MouseDown") {
+        if (mouseInput.pressedButtons.size > 0) {
+          matchingEvents.push(eventEntry)
+        }
+        continue
+      }
+      if (eventEntry.type === "MouseClick") {
+        if (mouseInput.justPressedButtons.size > 0) {
           matchingEvents.push(eventEntry)
         }
       }

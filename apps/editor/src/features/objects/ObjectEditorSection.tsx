@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import type { ObjectActionDraft } from "@creadordejocs/project-format"
 import type { EditorController } from "../editor-state/use-editor-controller.js"
-import { type IfCondition, type ObjectActionType } from "../editor-state/types.js"
+import { SYSTEM_MOUSE_GLOBALS, type IfCondition, type ObjectActionType } from "../editor-state/types.js"
 import { ObjectListPanel } from "./ObjectListPanel.js"
 import { ObjectVariablesPanel } from "./ObjectVariablesPanel.js"
 import { EventListPanel } from "./EventListPanel.js"
@@ -24,6 +24,7 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
   const selectedObjectVariableDefinitions = selectedObject
     ? controller.project.variables.objectByObjectId[selectedObject.id] ?? []
     : []
+  const globalVariablesWithSystem = [...controller.project.variables.global, ...SYSTEM_MOUSE_GLOBALS]
 
   const defaultActionFromType = (type: ObjectActionType): ObjectActionDraft | null => {
     if (type === "move") return { type: "move", dx: 0, dy: 0 }
@@ -170,7 +171,7 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
             activeEvent={activeEvent}
             selectableTargetObjects={selectableTargetObjects}
             sounds={controller.project.resources.sounds}
-            globalVariables={controller.project.variables.global}
+            globalVariables={globalVariablesWithSystem}
             selectedObjectVariables={selectedObjectVariableDefinitions}
             objectVariablesByObjectId={controller.project.variables.objectByObjectId}
             roomInstances={controller.activeRoom?.instances ?? []}

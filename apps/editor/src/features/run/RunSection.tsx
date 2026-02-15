@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Play, Square } from "lucide-react"
 import type { EditorController } from "../editor-state/use-editor-controller.js"
 import { Button } from "../../components/ui/button.js"
@@ -15,6 +15,7 @@ type RunSectionProps = {
 export function RunSection({ controller }: RunSectionProps) {
   const { runtimeState } = controller
   const [resolvedSpriteSources, setResolvedSpriteSources] = useState<Record<string, string>>({})
+  const canvasRef = useRef<HTMLDivElement>(null)
   const globalVariableEntries = controller.project.variables.global.map((variableEntry) => ({
     id: variableEntry.id,
     name: variableEntry.name,
@@ -48,6 +49,68 @@ export function RunSection({ controller }: RunSectionProps) {
       cancelled = true
     }
   }, [sprites])
+
+  useEffect(() => {
+    const canvasElement = canvasRef.current
+    if (!canvasElement) {
+      return
+    }
+    const toRoomCoordinates = (event: MouseEvent): { x: number; y: number } => {
+      const rect = canvasElement.getBoundingClientRect()
+      const relativeX = event.clientX - rect.left
+      const relativeY = event.clientY - rect.top
+      return {
+        x: Math.max(0, Math.min(ROOM_WIDTH, relativeX)),
+        y: Math.max(0, Math.min(ROOM_HEIGHT, relativeY))
+      }
+    }
+    const toMouseButton = (event: MouseEvent): "left" | "middle" | "right" | null => {
+      if (event.button === 0) return "left"
+      if (event.button === 1) return "middle"
+      if (event.button === 2) return "right"
+      return null
+    }
+    const onMouseMove = (event: MouseEvent): void => {
+      if (!controller.isRunning) {
+        return
+      }
+      const point = toRoomCoordinates(event)
+      controller.updateRuntimeMousePosition(point.x, point.y)
+    }
+    const onMouseDown = (event: MouseEvent): void => {
+      if (!controller.isRunning) {
+        return
+      }
+      const point = toRoomCoordinates(event)
+      controller.updateRuntimeMousePosition(point.x, point.y)
+      const button = toMouseButton(event)
+      if (button) {
+        controller.setRuntimeMouseButton(button, true)
+      }
+    }
+    const onMouseUp = (event: MouseEvent): void => {
+      if (!controller.isRunning) {
+        return
+      }
+      const point = toRoomCoordinates(event)
+      controller.updateRuntimeMousePosition(point.x, point.y)
+      const button = toMouseButton(event)
+      if (button) {
+        controller.setRuntimeMouseButton(button, false)
+      }
+    }
+
+    canvasElement.addEventListener("mousemove", onMouseMove)
+    canvasElement.addEventListener("mousedown", onMouseDown)
+    canvasElement.addEventListener("mouseup", onMouseUp)
+    canvasElement.addEventListener("mouseleave", onMouseUp)
+    return () => {
+      canvasElement.removeEventListener("mousemove", onMouseMove)
+      canvasElement.removeEventListener("mousedown", onMouseDown)
+      canvasElement.removeEventListener("mouseup", onMouseUp)
+      canvasElement.removeEventListener("mouseleave", onMouseUp)
+    }
+  }, [controller])
 
   return (
     <div className="mvp15-run-container flex h-[600px] w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
@@ -146,6 +209,7 @@ export function RunSection({ controller }: RunSectionProps) {
           ) : (
             <div className="mvp17-run-canvas-wrapper relative" style={{ width: ROOM_WIDTH }}>
               <div
+                ref={canvasRef}
                 className="mvp15-run-canvas relative overflow-hidden rounded-md border border-dashed border-slate-300 bg-white"
                 style={{ width: ROOM_WIDTH, height: ROOM_HEIGHT }}
               >

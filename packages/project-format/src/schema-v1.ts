@@ -243,7 +243,19 @@ const ObjectEventItemSchema: z.ZodType<ObjectEventItemType, z.ZodTypeDef, unknow
 const ObjectEventSchema = z
   .object({
     id: z.string().min(1),
-    type: z.enum(["Create", "Step", "Draw", "Collision", "Keyboard", "OnDestroy", "OutsideRoom", "Timer"]),
+    type: z.enum([
+      "Create",
+      "Step",
+      "Draw",
+      "Collision",
+      "Keyboard",
+      "OnDestroy",
+      "OutsideRoom",
+      "Timer",
+      "MouseMove",
+      "MouseDown",
+      "MouseClick"
+    ]),
     key: z.enum(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"]).nullable().default(null),
     keyboardMode: z.enum(["down", "press"]).nullable().optional(),
     targetObjectId: z.string().nullable().default(null),

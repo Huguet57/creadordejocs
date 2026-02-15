@@ -49,7 +49,13 @@ import {
 } from "../project-storage.js"
 import { selectActiveRoom, selectObject } from "./selectors.js"
 import { createTemplateProject, type GameTemplateId } from "./game-templates.js"
-import { createInitialRuntimeState, runRuntimeTick, type RuntimeState } from "./runtime.js"
+import {
+  createInitialRuntimeState,
+  runRuntimeTick,
+  type RuntimeMouseButton,
+  type RuntimeMouseInput,
+  type RuntimeState
+} from "./runtime.js"
 import type { EditorSection, ObjectEventKey, ObjectEventType, ObjectKeyboardMode } from "./types.js"
 import { resolveAssetSource } from "../assets/asset-source-resolver.js"
 
@@ -108,6 +114,13 @@ export function useEditorController() {
   const [startedAtMs] = useState<number>(() => Date.now())
   const pressedKeysRef = useRef<Set<string>>(new Set())
   const justPressedKeysRef = useRef<Set<string>>(new Set())
+  const runtimeMouseRef = useRef<RuntimeMouseInput>({
+    x: 0,
+    y: 0,
+    moved: false,
+    pressedButtons: new Set<RuntimeMouseButton>(),
+    justPressedButtons: new Set<RuntimeMouseButton>()
+  })
   const runtimeRef = useRef<RuntimeState>(createInitialRuntimeState(initial.project))
 
   const activeRoom = useMemo(() => selectActiveRoom(project, activeRoomId), [project, activeRoomId])
@@ -167,7 +180,8 @@ export function useEditorController() {
         activeRoom.id,
         pressedKeysRef.current,
         runtimeRef.current,
-        justPressedKeysRef.current
+        justPressedKeysRef.current,
+        runtimeMouseRef.current
       )
       let nextProject = result.project
       let nextRuntime = result.runtime
@@ -197,6 +211,8 @@ export function useEditorController() {
         setActiveRoomId(result.activeRoomId)
       }
       justPressedKeysRef.current.clear()
+      runtimeMouseRef.current.moved = false
+      runtimeMouseRef.current.justPressedButtons.clear()
     }, 80)
     return () => window.clearInterval(interval)
   }, [activeRoom, isRunning, project, runSnapshot])
@@ -227,6 +243,13 @@ export function useEditorController() {
     }
     pressedKeysRef.current.clear()
     justPressedKeysRef.current.clear()
+    runtimeMouseRef.current = {
+      x: 0,
+      y: 0,
+      moved: false,
+      pressedButtons: new Set<RuntimeMouseButton>(),
+      justPressedButtons: new Set<RuntimeMouseButton>()
+    }
   }, [isRunning])
 
   useEffect(() => {
@@ -551,11 +574,43 @@ export function useEditorController() {
         "Remove instance"
       )
     },
+    updateRuntimeMousePosition(x: number, y: number) {
+      runtimeMouseRef.current = {
+        ...runtimeMouseRef.current,
+        x,
+        y,
+        moved: runtimeMouseRef.current.x !== x || runtimeMouseRef.current.y !== y
+      }
+    },
+    setRuntimeMouseButton(button: RuntimeMouseButton, isDown: boolean) {
+      const pressedButtons = new Set(runtimeMouseRef.current.pressedButtons)
+      const justPressedButtons = new Set(runtimeMouseRef.current.justPressedButtons)
+      if (isDown) {
+        if (!pressedButtons.has(button)) {
+          justPressedButtons.add(button)
+        }
+        pressedButtons.add(button)
+      } else {
+        pressedButtons.delete(button)
+      }
+      runtimeMouseRef.current = {
+        ...runtimeMouseRef.current,
+        pressedButtons,
+        justPressedButtons
+      }
+    },
     run() {
       if (isRunning) return
       const withTimeMetric = setTimeToFirstPlayableFunMs(project, Date.now() - startedAtMs)
       setProject(withTimeMetric)
       setRunSnapshot(withTimeMetric)
+      runtimeMouseRef.current = {
+        x: 0,
+        y: 0,
+        moved: false,
+        pressedButtons: new Set<RuntimeMouseButton>(),
+        justPressedButtons: new Set<RuntimeMouseButton>()
+      }
       const initialRuntime = createInitialRuntimeState(withTimeMetric)
       runtimeRef.current = initialRuntime
       setRuntimeState(initialRuntime)
@@ -568,6 +623,13 @@ export function useEditorController() {
       setIsRunning(false)
       setRunSnapshot(nextResetState.runSnapshot)
       setActiveRoomId(nextResetState.roomId)
+      runtimeMouseRef.current = {
+        x: 0,
+        y: 0,
+        moved: false,
+        pressedButtons: new Set<RuntimeMouseButton>(),
+        justPressedButtons: new Set<RuntimeMouseButton>()
+      }
       const resetRuntime = createInitialRuntimeState(nextResetState.project)
       runtimeRef.current = resetRuntime
       setRuntimeState(resetRuntime)

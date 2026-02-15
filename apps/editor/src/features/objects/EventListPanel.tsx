@@ -1,4 +1,4 @@
-import { Activity, Keyboard, MousePointerClick, Play, Zap, Plus, X, Scan, Timer } from "lucide-react"
+import { Activity, Keyboard, Mouse, MousePointer2, MousePointerClick, Play, Zap, Plus, X, Scan, Timer } from "lucide-react"
 import { useState } from "react"
 import { Button } from "../../components/ui/button.js"
 import {
@@ -31,7 +31,10 @@ const EVENT_ICONS: Record<ObjectEventType, React.ElementType> = {
   Keyboard: Keyboard,
   OnDestroy: X,
   OutsideRoom: Scan,
-  Timer: Timer
+  Timer: Timer,
+  MouseMove: MousePointer2,
+  MouseDown: Mouse,
+  MouseClick: MousePointerClick
 }
 
 export function EventListPanel({

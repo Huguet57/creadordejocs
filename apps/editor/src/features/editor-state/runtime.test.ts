@@ -77,6 +77,128 @@ function createKeyboardScoringProject(mode: "down" | "press"): ProjectV1 {
   }
 }
 
+function createMouseScoringProject(eventType: "MouseMove" | "MouseDown" | "MouseClick"): ProjectV1 {
+  return {
+    version: 1,
+    metadata: {
+      id: `project-${eventType}`,
+      name: `${eventType} scoring test`,
+      locale: "ca",
+      createdAtIso: new Date().toISOString()
+    },
+    resources: {
+      sprites: [],
+      sounds: []
+    },
+    variables: {
+      global: [],
+      objectByObjectId: {}
+    },
+    objects: [
+      {
+        id: "object-player",
+        name: "Player",
+        spriteId: null,
+        x: 0,
+        y: 0,
+        speed: 0,
+        direction: 0,
+        events: [
+          {
+            id: "event-mouse",
+            type: eventType,
+            key: null,
+            keyboardMode: null,
+            targetObjectId: null,
+            intervalMs: null,
+            items: [
+              {
+                id: "item-action-score",
+                type: "action",
+                action: { id: "action-score", type: "changeScore", delta: 1 }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    rooms: [{ id: "room-main", name: "Main", instances: [{ id: "instance-player", objectId: "object-player", x: 0, y: 0 }] }],
+    scenes: [],
+    metrics: {
+      appStart: 0,
+      projectLoad: 0,
+      runtimeErrors: 0,
+      tutorialCompletion: 0,
+      stuckRate: 0,
+      timeToFirstPlayableFunMs: null
+    }
+  }
+}
+
+function createMouseBuiltinConditionProject(): ProjectV1 {
+  return {
+    version: 1,
+    metadata: {
+      id: "project-mouse-builtins",
+      name: "mouse builtins test",
+      locale: "ca",
+      createdAtIso: new Date().toISOString()
+    },
+    resources: {
+      sprites: [],
+      sounds: []
+    },
+    variables: {
+      global: [],
+      objectByObjectId: {}
+    },
+    objects: [
+      {
+        id: "object-player",
+        name: "Player",
+        spriteId: null,
+        x: 0,
+        y: 0,
+        speed: 0,
+        direction: 0,
+        events: [
+          {
+            id: "event-step",
+            type: "Step",
+            key: null,
+            keyboardMode: null,
+            targetObjectId: null,
+            intervalMs: null,
+            items: [
+              {
+                id: "if-mouse-x",
+                type: "if",
+                condition: {
+                  left: { scope: "global", variableId: "__mouse_x" },
+                  operator: ">",
+                  right: 100
+                },
+                thenActions: [{ id: "item-score", type: "action", action: { id: "action-score", type: "changeScore", delta: 1 } }],
+                elseActions: []
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    rooms: [{ id: "room-main", name: "Main", instances: [{ id: "instance-player", objectId: "object-player", x: 0, y: 0 }] }],
+    scenes: [],
+    metrics: {
+      appStart: 0,
+      projectLoad: 0,
+      runtimeErrors: 0,
+      tutorialCompletion: 0,
+      stuckRate: 0,
+      timeToFirstPlayableFunMs: null
+    }
+  }
+}
+
 describe("runtime regressions", () => {
   it("Coin Dash template has no OnDestroy events on the Coin object", () => {
     const template = createCoinDashTemplateProject()
@@ -265,6 +387,108 @@ describe("runtime regressions", () => {
     expect(held.runtime.score).toBe(1)
     expect(released.runtime.score).toBe(1)
     expect(secondPress.runtime.score).toBe(2)
+  })
+
+  it("runs MouseMove on ticks where pointer moved", () => {
+    const project = createMouseScoringProject("MouseMove")
+    const runtime = createInitialRuntimeState(project)
+
+    const first = runRuntimeTick(project, "room-main", new Set(), runtime, new Set(), {
+      x: 10,
+      y: 12,
+      moved: true,
+      pressedButtons: new Set(),
+      justPressedButtons: new Set()
+    })
+    const second = runRuntimeTick(first.project, "room-main", new Set(), first.runtime, new Set(), {
+      x: 10,
+      y: 12,
+      moved: false,
+      pressedButtons: new Set(),
+      justPressedButtons: new Set()
+    })
+
+    expect(first.runtime.score).toBe(1)
+    expect(second.runtime.score).toBe(1)
+  })
+
+  it("runs MouseDown while any mouse button is held", () => {
+    const project = createMouseScoringProject("MouseDown")
+    const runtime = createInitialRuntimeState(project)
+
+    const held = runRuntimeTick(project, "room-main", new Set(), runtime, new Set(), {
+      x: 0,
+      y: 0,
+      moved: false,
+      pressedButtons: new Set(["left"]),
+      justPressedButtons: new Set(["left"])
+    })
+    const released = runRuntimeTick(held.project, "room-main", new Set(), held.runtime, new Set(), {
+      x: 0,
+      y: 0,
+      moved: false,
+      pressedButtons: new Set(),
+      justPressedButtons: new Set()
+    })
+
+    expect(held.runtime.score).toBe(1)
+    expect(released.runtime.score).toBe(1)
+  })
+
+  it("runs MouseClick only on press edge", () => {
+    const project = createMouseScoringProject("MouseClick")
+    const runtime = createInitialRuntimeState(project)
+
+    const first = runRuntimeTick(project, "room-main", new Set(), runtime, new Set(), {
+      x: 0,
+      y: 0,
+      moved: false,
+      pressedButtons: new Set(["left"]),
+      justPressedButtons: new Set(["left"])
+    })
+    const held = runRuntimeTick(first.project, "room-main", new Set(), first.runtime, new Set(), {
+      x: 0,
+      y: 0,
+      moved: false,
+      pressedButtons: new Set(["left"]),
+      justPressedButtons: new Set()
+    })
+    const secondPress = runRuntimeTick(held.project, "room-main", new Set(), held.runtime, new Set(), {
+      x: 0,
+      y: 0,
+      moved: false,
+      pressedButtons: new Set(["left"]),
+      justPressedButtons: new Set(["left"])
+    })
+
+    expect(first.runtime.score).toBe(1)
+    expect(held.runtime.score).toBe(1)
+    expect(secondPress.runtime.score).toBe(2)
+  })
+
+  it("resolves mouse_x as readonly runtime builtin global", () => {
+    const project = createMouseBuiltinConditionProject()
+    const runtime = createInitialRuntimeState(project)
+
+    const belowThreshold = runRuntimeTick(project, "room-main", new Set(), runtime, new Set(), {
+      x: 90,
+      y: 30,
+      moved: true,
+      pressedButtons: new Set(),
+      justPressedButtons: new Set()
+    })
+    const aboveThreshold = runRuntimeTick(project, "room-main", new Set(), belowThreshold.runtime, new Set(), {
+      x: 120,
+      y: 30,
+      moved: true,
+      pressedButtons: new Set(),
+      justPressedButtons: new Set()
+    })
+
+    expect(belowThreshold.runtime.score).toBe(0)
+    expect(aboveThreshold.runtime.score).toBe(1)
+    expect(aboveThreshold.runtime.globalVariables.__mouse_x).toBe(120)
+    expect(aboveThreshold.runtime.globalVariables.__mouse_y).toBe(30)
   })
 
   it("wins Coin Dash only after collecting all coins", () => {
