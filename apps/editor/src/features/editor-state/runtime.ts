@@ -1,4 +1,16 @@
 import type { ProjectV1 } from "@creadordejocs/project-format"
+import {
+  buildWaitActionKey,
+  filterEventLocksByAliveInstances,
+  filterEventLocksByRemovedInstances,
+  filterWaitProgressByAliveInstances,
+  filterWaitProgressByRemovedInstances,
+  hasEventLock,
+  parseEventLockKey,
+  removeEventLock,
+  removeWaitProgress,
+  transitionEventLock
+} from "./event-lock-utils.js"
 
 export const ROOM_WIDTH = 560
 export const ROOM_HEIGHT = 320
@@ -33,6 +45,7 @@ export type RuntimeState = {
   restartRoomRequested: boolean
   timerElapsedByEventId: Record<string, number>
   waitElapsedByInstanceActionId: Record<string, number>
+  eventLocksByKey: Record<string, true>
 }
 
 function clampValue(value: number, min: number, max: number): number {
@@ -75,8 +88,15 @@ function applyActionResultToRuntime(_runtime: RuntimeState, actionResult: Runtim
   return nextRuntime
 }
 
-function getWaitActionKey(instanceId: string, actionId: string): string {
-  return `${instanceId}:${actionId}`
+function clearRuntimeStateForRemovedInstances(runtime: RuntimeState, removedInstanceIds: string[]): RuntimeState {
+  return {
+    ...runtime,
+    waitElapsedByInstanceActionId: filterWaitProgressByRemovedInstances(
+      runtime.waitElapsedByInstanceActionId,
+      removedInstanceIds
+    ),
+    eventLocksByKey: filterEventLocksByRemovedInstances(runtime.eventLocksByKey, removedInstanceIds)
+  }
 }
 
 function isOutsideRoom(instance: ProjectV1["rooms"][number]["instances"][number]): boolean {
@@ -342,10 +362,12 @@ function destroyInstancesAndRunOnDestroy(
   instances: ProjectV1["rooms"][number]["instances"]
   runtime: RuntimeState
   removedIndices: number[]
+  removedInstanceIds: string[]
 } {
   let mutableInstances = [...instances]
   let nextRuntime = { ...runtime }
   const removedIndices: number[] = []
+  const removedInstanceIds: string[] = []
 
   for (const instanceId of instanceIds) {
     const index = mutableInstances.findIndex((instanceEntry) => instanceEntry.id === instanceId)
@@ -358,13 +380,14 @@ function destroyInstancesAndRunOnDestroy(
     }
     mutableInstances.splice(index, 1)
     removedIndices.push(index)
+    removedInstanceIds.push(target.id)
 
     const onDestroyResult = runOnDestroyEvents(project, target, nextRuntime)
     nextRuntime = applyActionResultToRuntime(nextRuntime, onDestroyResult)
     mutableInstances = [...mutableInstances, ...onDestroyResult.spawned]
   }
 
-  return { instances: mutableInstances, runtime: nextRuntime, removedIndices }
+  return { instances: mutableInstances, runtime: nextRuntime, removedIndices, removedInstanceIds }
 }
 
 function runEventActions(
@@ -643,7 +666,7 @@ function runEventActions(
       continue
     }
     if (actionEntry.type === "wait") {
-      const waitKey = getWaitActionKey(result.instance.id, actionEntry.id)
+      const waitKey = buildWaitActionKey(result.instance.id, actionEntry.id, collisionOtherInstanceId)
       const elapsed = result.runtime.waitElapsedByInstanceActionId[waitKey] ?? 0
       const nextElapsed = elapsed + RUNTIME_TICK_MS
       if (nextElapsed < actionEntry.durationMs) {
@@ -660,13 +683,11 @@ function runEventActions(
         }
         break
       }
-      const nextWaitMap = { ...result.runtime.waitElapsedByInstanceActionId }
-      delete nextWaitMap[waitKey]
       result = {
         ...result,
         runtime: {
           ...result.runtime,
-          waitElapsedByInstanceActionId: nextWaitMap
+          waitElapsedByInstanceActionId: removeWaitProgress(result.runtime.waitElapsedByInstanceActionId, waitKey)
         }
       }
       continue
@@ -748,6 +769,74 @@ function applyCollisionEvents(
 ): { instances: ProjectV1["rooms"][number]["instances"]; runtime: RuntimeState } {
   let mutableInstances = [...instances]
   let nextRuntime = { ...runtime }
+
+  // Continue locked collision events until their action chain completes.
+  for (const lockKey of Object.keys(nextRuntime.eventLocksByKey)) {
+    const parsed = parseEventLockKey(lockKey)
+    if (!parsed?.targetId) {
+      continue
+    }
+
+    const ownerIndex = mutableInstances.findIndex((instanceEntry) => instanceEntry.id === parsed.instanceId)
+    const targetExists = mutableInstances.some((instanceEntry) => instanceEntry.id === parsed.targetId)
+    if (ownerIndex === -1 || !targetExists) {
+      nextRuntime = {
+        ...nextRuntime,
+        eventLocksByKey: removeEventLock(nextRuntime.eventLocksByKey, parsed.instanceId, parsed.eventId, parsed.targetId)
+      }
+      continue
+    }
+
+    const ownerInstance = mutableInstances[ownerIndex]
+    if (!ownerInstance) {
+      continue
+    }
+    const ownerObject = project.objects.find((objectEntry) => objectEntry.id === ownerInstance.objectId)
+    const collisionEvent = ownerObject?.events.find((eventEntry) => eventEntry.id === parsed.eventId && eventEntry.type === "Collision")
+    if (!collisionEvent) {
+      nextRuntime = {
+        ...nextRuntime,
+        eventLocksByKey: removeEventLock(nextRuntime.eventLocksByKey, parsed.instanceId, parsed.eventId, parsed.targetId)
+      }
+      continue
+    }
+
+    const startPosition = getInstanceStartPosition(nextRuntime, ownerInstance)
+    const eventResult = runEventItems(
+      project,
+      ownerInstance,
+      getEventItems(collisionEvent),
+      nextRuntime,
+      startPosition,
+      parsed.targetId
+    )
+    const ownerGetsDestroyed = eventResult.destroyedInstanceIds.includes(parsed.instanceId)
+    if (!ownerGetsDestroyed) {
+      mutableInstances[ownerIndex] = eventResult.instance
+    }
+    nextRuntime = applyActionResultToRuntime(nextRuntime, eventResult)
+    nextRuntime = {
+      ...nextRuntime,
+      eventLocksByKey: transitionEventLock(
+        nextRuntime.eventLocksByKey,
+        parsed.instanceId,
+        parsed.eventId,
+        parsed.targetId,
+        eventResult.halted
+      )
+    }
+    if (eventResult.destroyedInstanceIds.length > 0) {
+      const destroyResult = destroyInstancesAndRunOnDestroy(
+        project,
+        mutableInstances,
+        eventResult.destroyedInstanceIds,
+        nextRuntime
+      )
+      mutableInstances = destroyResult.instances
+      nextRuntime = clearRuntimeStateForRemovedInstances(destroyResult.runtime, destroyResult.removedInstanceIds)
+    }
+  }
+
   for (let i = 0; i < mutableInstances.length; i += 1) {
     for (let j = i + 1; j < mutableInstances.length; j += 1) {
       const first = mutableInstances[i]
@@ -776,6 +865,9 @@ function applyCollisionEvents(
       const secondId = second.id
 
       for (const eventEntry of firstEvents) {
+        if (hasEventLock(nextRuntime.eventLocksByKey, firstId, eventEntry.id, secondId)) {
+          continue
+        }
         const firstIndex = mutableInstances.findIndex((instanceEntry) => instanceEntry.id === firstId)
         if (firstIndex === -1) {
           break
@@ -791,6 +883,10 @@ function applyCollisionEvents(
           mutableInstances[firstIndex] = eventResult.instance
         }
         nextRuntime = applyActionResultToRuntime(nextRuntime, eventResult)
+        nextRuntime = {
+          ...nextRuntime,
+          eventLocksByKey: transitionEventLock(nextRuntime.eventLocksByKey, firstId, eventEntry.id, secondId, eventResult.halted)
+        }
         if (eventResult.destroyedInstanceIds.length > 0) {
           const destroyResult = destroyInstancesAndRunOnDestroy(
             project,
@@ -799,7 +895,7 @@ function applyCollisionEvents(
             nextRuntime
           )
           mutableInstances = destroyResult.instances
-          nextRuntime = destroyResult.runtime
+          nextRuntime = clearRuntimeStateForRemovedInstances(destroyResult.runtime, destroyResult.removedInstanceIds)
           for (const removedIndex of destroyResult.removedIndices) {
             if (removedIndex <= i) {
               i -= 1
@@ -815,6 +911,9 @@ function applyCollisionEvents(
       }
 
       for (const eventEntry of secondEvents) {
+        if (hasEventLock(nextRuntime.eventLocksByKey, secondId, eventEntry.id, firstId)) {
+          continue
+        }
         const secondIndex = mutableInstances.findIndex((instanceEntry) => instanceEntry.id === secondId)
         if (secondIndex === -1) {
           break
@@ -830,6 +929,10 @@ function applyCollisionEvents(
           mutableInstances[secondIndex] = eventResult.instance
         }
         nextRuntime = applyActionResultToRuntime(nextRuntime, eventResult)
+        nextRuntime = {
+          ...nextRuntime,
+          eventLocksByKey: transitionEventLock(nextRuntime.eventLocksByKey, secondId, eventEntry.id, firstId, eventResult.halted)
+        }
         if (eventResult.destroyedInstanceIds.length > 0) {
           const destroyResult = destroyInstancesAndRunOnDestroy(
             project,
@@ -838,7 +941,7 @@ function applyCollisionEvents(
             nextRuntime
           )
           mutableInstances = destroyResult.instances
-          nextRuntime = destroyResult.runtime
+          nextRuntime = clearRuntimeStateForRemovedInstances(destroyResult.runtime, destroyResult.removedInstanceIds)
           for (const removedIndex of destroyResult.removedIndices) {
             if (removedIndex <= i) {
               i -= 1
@@ -871,7 +974,8 @@ export function createInitialRuntimeState(project?: ProjectV1): RuntimeState {
     nextRoomId: null,
     restartRoomRequested: false,
     timerElapsedByEventId: {},
-    waitElapsedByInstanceActionId: {}
+    waitElapsedByInstanceActionId: {},
+    eventLocksByKey: {}
   }
 }
 
@@ -920,12 +1024,25 @@ export function runRuntimeTick(
 
     let nextInstance = instanceEntry
     const shouldInitialize = !runtime.initializedInstanceIds.includes(instanceEntry.id)
-    const matchingEvents = objectEntry.events.filter((eventEntry) => {
+    const matchingEvents: ProjectV1["objects"][number]["events"] = []
+    for (const eventEntry of objectEntry.events) {
+      if (eventEntry.type === "Collision" || eventEntry.type === "OutsideRoom" || eventEntry.type === "OnDestroy") {
+        continue
+      }
+      const eventLockTargetId = null
+      if (hasEventLock(nextRuntime.eventLocksByKey, nextInstance.id, eventEntry.id, eventLockTargetId)) {
+        matchingEvents.push(eventEntry)
+        continue
+      }
       if (eventEntry.type === "Step") {
-        return true
+        matchingEvents.push(eventEntry)
+        continue
       }
       if (eventEntry.type === "Create") {
-        return shouldInitialize
+        if (shouldInitialize) {
+          matchingEvents.push(eventEntry)
+        }
+        continue
       }
       if (eventEntry.type === "Timer") {
         const intervalMs = eventEntry.intervalMs ?? 1000
@@ -937,15 +1054,20 @@ export function runRuntimeTick(
             [eventEntry.id]: elapsed >= intervalMs ? 0 : elapsed
           }
         }
-        return elapsed >= intervalMs
+        if (elapsed >= intervalMs) {
+          matchingEvents.push(eventEntry)
+        }
+        continue
       }
       if (eventEntry.type === "Keyboard" && eventEntry.key && eventEntry.keyboardMode) {
-        return eventEntry.keyboardMode === "down"
+        const shouldRun = eventEntry.keyboardMode === "down"
           ? pressedKeys.has(eventEntry.key)
           : justPressedKeys.has(eventEntry.key)
+        if (shouldRun) {
+          matchingEvents.push(eventEntry)
+        }
       }
-      return false
-    })
+    }
 
     let destroySelf = false
     let spawned: ProjectV1["rooms"][number]["instances"] = []
@@ -961,11 +1083,20 @@ export function runRuntimeTick(
       }
       spawned = [...spawned, ...eventResult.spawned]
       nextRuntime = applyActionResultToRuntime(nextRuntime, eventResult)
+      nextRuntime = {
+        ...nextRuntime,
+        eventLocksByKey: transitionEventLock(nextRuntime.eventLocksByKey, nextInstance.id, eventEntry.id, null, eventResult.halted)
+      }
     }
 
-    if (!destroySelf && isOutsideRoom(nextInstance)) {
+    if (!destroySelf) {
       const outsideEvents = objectEntry.events.filter((eventEntry) => eventEntry.type === "OutsideRoom")
       for (const eventEntry of outsideEvents) {
+        const eventLockTargetId = null
+        const isLocked = hasEventLock(nextRuntime.eventLocksByKey, nextInstance.id, eventEntry.id, eventLockTargetId)
+        if (!isLocked && !isOutsideRoom(nextInstance)) {
+          continue
+        }
         const eventResult = runEventItems(project, nextInstance, getEventItems(eventEntry), nextRuntime, startPosition)
         nextInstance = eventResult.instance
         for (const instanceId of eventResult.destroyedInstanceIds) {
@@ -977,6 +1108,10 @@ export function runRuntimeTick(
         }
         spawned = [...spawned, ...eventResult.spawned]
         nextRuntime = applyActionResultToRuntime(nextRuntime, eventResult)
+        nextRuntime = {
+          ...nextRuntime,
+          eventLocksByKey: transitionEventLock(nextRuntime.eventLocksByKey, nextInstance.id, eventEntry.id, null, eventResult.halted)
+        }
         if (destroySelf) {
           break
         }
@@ -1008,7 +1143,7 @@ export function runRuntimeTick(
       nextRuntime
     )
     nextInstances = destroyResult.instances
-    nextRuntime = destroyResult.runtime
+    nextRuntime = clearRuntimeStateForRemovedInstances(destroyResult.runtime, destroyResult.removedInstanceIds)
   }
 
   const collisionResult = applyCollisionEvents(project, nextInstances, nextRuntime)
@@ -1018,10 +1153,16 @@ export function runRuntimeTick(
     keptStartPositions[instanceEntry.id] = getInstanceStartPosition(collisionResult.runtime, instanceEntry)
     keptObjectVariableStates[instanceEntry.id] = collisionResult.runtime.objectInstanceVariables[instanceEntry.id] ?? {}
   }
+  const aliveInstanceIds = new Set(Object.keys(keptStartPositions))
   const compactedRuntime: RuntimeState = {
     ...collisionResult.runtime,
     instanceStartPositions: keptStartPositions,
     objectInstanceVariables: keptObjectVariableStates,
+    waitElapsedByInstanceActionId: filterWaitProgressByAliveInstances(
+      collisionResult.runtime.waitElapsedByInstanceActionId,
+      aliveInstanceIds
+    ),
+    eventLocksByKey: filterEventLocksByAliveInstances(collisionResult.runtime.eventLocksByKey, aliveInstanceIds),
     nextRoomId: null,
     restartRoomRequested: false
   }

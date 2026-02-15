@@ -1673,6 +1673,301 @@ describe("runtime regressions", () => {
     expect(runtime.score).toBe(8)
   })
 
+  it("continues a locked collision event until completion even if objects stop colliding", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-collision-lock-continuation",
+        name: "Collision lock continuation test",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: {
+        sprites: [],
+        sounds: []
+      },
+      variables: {
+        global: [],
+        objectByObjectId: {}
+      },
+      objects: [
+        {
+          id: "object-source",
+          name: "Source",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-collision",
+              type: "Collision",
+              key: null,
+              targetObjectId: "object-target",
+              intervalMs: null,
+              items: [
+                {
+                  id: "item-wait",
+                  type: "action",
+                  action: { id: "action-wait", type: "wait", durationMs: 200 }
+                },
+                {
+                  id: "item-score",
+                  type: "action",
+                  action: { id: "action-score", type: "changeScore", delta: 5 }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          id: "object-target",
+          name: "Target",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: []
+        }
+      ],
+      rooms: [
+        {
+          id: "room-main",
+          name: "Main",
+          instances: [
+            { id: "instance-source", objectId: "object-source", x: 20, y: 20 },
+            { id: "instance-target", objectId: "object-target", x: 20, y: 20 }
+          ]
+        }
+      ],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const first = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    expect(first.runtime.score).toBe(0)
+    expect(Object.keys(first.runtime.eventLocksByKey)).toHaveLength(1)
+
+    const separatedProject = updateRoomInstances(first.project, "room-main", (instances) =>
+      instances.map((instanceEntry) =>
+        instanceEntry.id === "instance-target" ? { ...instanceEntry, x: 400, y: 200 } : instanceEntry
+      )
+    )
+
+    const second = runRuntimeTick(separatedProject, "room-main", new Set(), first.runtime)
+    expect(second.runtime.score).toBe(0)
+    expect(Object.keys(second.runtime.eventLocksByKey)).toHaveLength(1)
+
+    const third = runRuntimeTick(second.project, "room-main", new Set(), second.runtime)
+    expect(third.runtime.score).toBe(5)
+    expect(Object.keys(third.runtime.eventLocksByKey)).toHaveLength(0)
+  })
+
+  it("keeps collision locks independent per target instance", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-collision-lock-per-target",
+        name: "Collision lock per target test",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: {
+        sprites: [],
+        sounds: []
+      },
+      variables: {
+        global: [],
+        objectByObjectId: {}
+      },
+      objects: [
+        {
+          id: "object-source",
+          name: "Source",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-collision",
+              type: "Collision",
+              key: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [
+                {
+                  id: "item-wait",
+                  type: "action",
+                  action: { id: "action-wait", type: "wait", durationMs: 200 }
+                },
+                {
+                  id: "item-score",
+                  type: "action",
+                  action: { id: "action-score", type: "changeScore", delta: 1 }
+                }
+              ]
+            }
+          ]
+        },
+        { id: "object-target", name: "Target", spriteId: null, x: 0, y: 0, speed: 0, direction: 0, events: [] }
+      ],
+      rooms: [
+        {
+          id: "room-main",
+          name: "Main",
+          instances: [
+            { id: "instance-source", objectId: "object-source", x: 20, y: 20 },
+            { id: "instance-target-a", objectId: "object-target", x: 20, y: 20 },
+            { id: "instance-target-b", objectId: "object-target", x: 320, y: 200 }
+          ]
+        }
+      ],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const first = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    expect(Object.keys(first.runtime.eventLocksByKey)).toHaveLength(1)
+    expect(first.runtime.score).toBe(0)
+
+    const moveToSecondTarget = updateRoomInstances(first.project, "room-main", (instances) =>
+      instances.map((instanceEntry) =>
+        instanceEntry.id === "instance-source" ? { ...instanceEntry, x: 320, y: 200 } : instanceEntry
+      )
+    )
+
+    const second = runRuntimeTick(moveToSecondTarget, "room-main", new Set(), first.runtime)
+    expect(Object.keys(second.runtime.eventLocksByKey)).toHaveLength(2)
+    expect(second.runtime.score).toBe(0)
+
+    const third = runRuntimeTick(second.project, "room-main", new Set(), second.runtime)
+    const fourth = runRuntimeTick(third.project, "room-main", new Set(), third.runtime)
+    expect(fourth.runtime.score).toBe(2)
+    expect(Object.keys(fourth.runtime.eventLocksByKey)).toHaveLength(1)
+  })
+
+  it("cleans collision lock when target instance is destroyed", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-collision-lock-cleanup",
+        name: "Collision lock cleanup test",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: {
+        sprites: [],
+        sounds: []
+      },
+      variables: {
+        global: [],
+        objectByObjectId: {}
+      },
+      objects: [
+        {
+          id: "object-source",
+          name: "Source",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-source-collision",
+              type: "Collision",
+              key: null,
+              targetObjectId: "object-target",
+              intervalMs: null,
+              items: [
+                {
+                  id: "item-wait",
+                  type: "action",
+                  action: { id: "action-wait", type: "wait", durationMs: 200 }
+                },
+                {
+                  id: "item-score",
+                  type: "action",
+                  action: { id: "action-score", type: "changeScore", delta: 5 }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          id: "object-target",
+          name: "Target",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-target-collision",
+              type: "Collision",
+              key: null,
+              targetObjectId: "object-source",
+              intervalMs: null,
+              items: [
+                {
+                  id: "item-destroy-self",
+                  type: "action",
+                  action: { id: "action-destroy-self", type: "destroySelf" }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      rooms: [
+        {
+          id: "room-main",
+          name: "Main",
+          instances: [
+            { id: "instance-source", objectId: "object-source", x: 20, y: 20 },
+            { id: "instance-target", objectId: "object-target", x: 20, y: 20 }
+          ]
+        }
+      ],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const first = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    expect(first.runtime.score).toBe(0)
+    expect(Object.keys(first.runtime.eventLocksByKey)).toHaveLength(0)
+
+    const second = runRuntimeTick(first.project, "room-main", new Set(), first.runtime)
+    expect(second.runtime.score).toBe(0)
+    expect(Object.keys(second.runtime.eventLocksByKey)).toHaveLength(0)
+  })
+
   it("triggers Timer events only when interval elapsed", () => {
     const project: ProjectV1 = {
       version: 1,
