@@ -1,6 +1,5 @@
 import type { ProjectV1 } from "@creadordejocs/project-format"
 import {
-  buildWaitActionKey,
   filterEventLocksByAliveInstances,
   filterEventLocksByRemovedInstances,
   filterWaitProgressByAliveInstances,
@@ -8,32 +7,33 @@ import {
   hasEventLock,
   parseEventLockKey,
   removeEventLock,
-  removeWaitProgress,
   transitionEventLock
 } from "./event-lock-utils.js"
+import { advanceRuntimeToastQueue, type RuntimeToastState } from "./message-toast-utils.js"
+import { executeAction, type ActionContext } from "./action-handlers.js"
 import {
-  advanceRuntimeToastQueue,
-  enqueueRuntimeToast,
-  type RuntimeToast,
-  type RuntimeToastState
-} from "./message-toast-utils.js"
+  BUILTIN_MOUSE_X_VARIABLE_ID,
+  BUILTIN_MOUSE_Y_VARIABLE_ID,
+  INSTANCE_SIZE,
+  ROOM_HEIGHT,
+  ROOM_WIDTH,
+  RUNTIME_TICK_MS,
+  getDefaultRuntimeActionResult,
+  isSameVariableValueType,
+  resolveTargetInstanceId,
+  type RuntimeAction,
+  type RuntimeActionResult,
+  type RuntimeEventItem,
+  type RuntimeMouseButton,
+  type RuntimeMouseInput,
+  type RuntimeState,
+  type RuntimeVariableValue
+} from "./runtime-types.js"
 
-export const ROOM_WIDTH = 560
-export const ROOM_HEIGHT = 320
-const INSTANCE_SIZE = 32
-const RUNTIME_TICK_MS = 80
-const BUILTIN_MOUSE_X_VARIABLE_ID = "__mouse_x"
-const BUILTIN_MOUSE_Y_VARIABLE_ID = "__mouse_y"
+export { ROOM_WIDTH, ROOM_HEIGHT }
+export type { RuntimeMouseButton, RuntimeMouseInput, RuntimeState }
+
 const EMPTY_MOUSE_BUTTONS = new Set<RuntimeMouseButton>()
-
-export type RuntimeMouseButton = "left" | "middle" | "right"
-export type RuntimeMouseInput = {
-  x: number
-  y: number
-  moved: boolean
-  pressedButtons: Set<RuntimeMouseButton>
-  justPressedButtons: Set<RuntimeMouseButton>
-}
 
 const DEFAULT_RUNTIME_MOUSE_INPUT: RuntimeMouseInput = {
   x: 0,
@@ -41,63 +41,6 @@ const DEFAULT_RUNTIME_MOUSE_INPUT: RuntimeMouseInput = {
   moved: false,
   pressedButtons: EMPTY_MOUSE_BUTTONS,
   justPressedButtons: EMPTY_MOUSE_BUTTONS
-}
-
-type RuntimeActionResult = {
-  instance: ProjectV1["rooms"][number]["instances"][number]
-  destroyedInstanceIds: string[]
-  spawned: ProjectV1["rooms"][number]["instances"][number][]
-  scoreDelta: number
-  gameOverMessage: string | null
-  playedSoundIds: string[]
-  halted: boolean
-  runtime: RuntimeState
-}
-
-type RuntimeVariableValue = ProjectV1["variables"]["global"][number]["initialValue"]
-type RuntimeEventItem = ProjectV1["objects"][number]["events"][number]["items"][number]
-type RuntimeAction = Extract<RuntimeEventItem, { type: "action" }>["action"]
-
-export type RuntimeState = {
-  score: number
-  gameOver: boolean
-  message: string
-  activeToast: RuntimeToast | null
-  queuedToasts: RuntimeToast[]
-  initializedInstanceIds: string[]
-  playedSoundIds: string[]
-  instanceStartPositions: Record<string, { x: number; y: number }>
-  globalVariables: Record<string, RuntimeVariableValue>
-  objectInstanceVariables: Record<string, Record<string, RuntimeVariableValue>>
-  nextRoomId: string | null
-  restartRoomRequested: boolean
-  timerElapsedByEventId: Record<string, number>
-  waitElapsedByInstanceActionId: Record<string, number>
-  eventLocksByKey: Record<string, true>
-}
-
-function clampValue(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value))
-}
-
-function getDefaultRuntimeActionResult(
-  instance: ProjectV1["rooms"][number]["instances"][number],
-  runtime: RuntimeState
-): RuntimeActionResult {
-  return {
-    instance,
-    destroyedInstanceIds: [],
-    spawned: [],
-    scoreDelta: 0,
-    gameOverMessage: null,
-    playedSoundIds: [],
-    halted: false,
-    runtime
-  }
-}
-
-function mergeDestroyedIds(existing: string[], nextId: string): string[] {
-  return existing.includes(nextId) ? existing : [...existing, nextId]
 }
 
 function applyActionResultToRuntime(_runtime: RuntimeState, actionResult: RuntimeActionResult): RuntimeState {
@@ -171,25 +114,6 @@ function ensureInstanceVariables(
       [instance.id]: buildInitialObjectVariablesForObject(project, instance.objectId)
     }
   }
-}
-
-function resolveTargetInstanceId(
-  instance: ProjectV1["rooms"][number]["instances"][number],
-  target: "self" | "other" | "instanceId",
-  targetInstanceId: string | null,
-  collisionOtherInstanceId: string | null
-): string | null {
-  if (target === "self") {
-    return instance.id
-  }
-  if (target === "other") {
-    return collisionOtherInstanceId
-  }
-  return targetInstanceId
-}
-
-function isSameVariableValueType(left: RuntimeVariableValue, right: RuntimeVariableValue): boolean {
-  return typeof left === typeof right
 }
 
 function getEventItems(eventEntry: ProjectV1["objects"][number]["events"][number]): RuntimeEventItem[] {
@@ -304,34 +228,6 @@ function evaluateIfCondition(
   return leftValue <= rightValue
 }
 
-function applyGlobalNumericOperation(
-  runtime: RuntimeState,
-  variableId: string,
-  value: number,
-  operation: "add" | "subtract" | "multiply"
-): RuntimeState {
-  if (isReadonlyGlobalVariableId(variableId)) {
-    return runtime
-  }
-  const existingValue = runtime.globalVariables[variableId]
-  if (typeof existingValue !== "number") {
-    return runtime
-  }
-  const nextValue =
-    operation === "add" ? existingValue + value : operation === "subtract" ? existingValue - value : existingValue * value
-  return {
-    ...runtime,
-    globalVariables: {
-      ...runtime.globalVariables,
-      [variableId]: nextValue
-    }
-  }
-}
-
-function isReadonlyGlobalVariableId(variableId: string): boolean {
-  return variableId === BUILTIN_MOUSE_X_VARIABLE_ID || variableId === BUILTIN_MOUSE_Y_VARIABLE_ID
-}
-
 function applyMouseBuiltinsToRuntime(runtime: RuntimeState, mouseInput: RuntimeMouseInput): RuntimeState {
   return {
     ...runtime,
@@ -339,35 +235,6 @@ function applyMouseBuiltinsToRuntime(runtime: RuntimeState, mouseInput: RuntimeM
       ...runtime.globalVariables,
       [BUILTIN_MOUSE_X_VARIABLE_ID]: mouseInput.x,
       [BUILTIN_MOUSE_Y_VARIABLE_ID]: mouseInput.y
-    }
-  }
-}
-
-function applyObjectNumericOperation(
-  runtime: RuntimeState,
-  targetInstanceId: string | null,
-  variableId: string,
-  value: number,
-  operation: "add" | "subtract" | "multiply"
-): RuntimeState {
-  if (!targetInstanceId) {
-    return runtime
-  }
-  const targetVariables = runtime.objectInstanceVariables[targetInstanceId]
-  const existingValue = targetVariables?.[variableId]
-  if (typeof existingValue !== "number") {
-    return runtime
-  }
-  const nextValue =
-    operation === "add" ? existingValue + value : operation === "subtract" ? existingValue - value : existingValue * value
-  return {
-    ...runtime,
-    objectInstanceVariables: {
-      ...runtime.objectInstanceVariables,
-      [targetInstanceId]: {
-        ...runtime.objectInstanceVariables[targetInstanceId],
-        [variableId]: nextValue
-      }
     }
   }
 }
@@ -389,7 +256,15 @@ function runOnDestroyEvents(
   let aggregate = getDefaultRuntimeActionResult(instance, runtime)
   const startPosition = getInstanceStartPosition(runtime, instance)
   for (const eventEntry of onDestroyEvents) {
-    const eventResult = runEventItems(project, aggregate.instance, getEventItems(eventEntry), aggregate.runtime, startPosition)
+    const eventResult = runEventItems(
+      project,
+      aggregate.instance,
+      getEventItems(eventEntry),
+      aggregate.runtime,
+      startPosition,
+      null,
+      []
+    )
     aggregate = {
       ...aggregate,
       instance: eventResult.instance,
@@ -446,328 +321,21 @@ function runEventActions(
   actions: RuntimeAction[],
   runtime: RuntimeState,
   startPosition: { x: number; y: number } | null = null,
-  collisionOtherInstanceId: string | null = null
+  collisionOtherInstanceId: string | null = null,
+  roomInstances: ProjectV1["rooms"][number]["instances"] = []
 ): RuntimeActionResult {
   let result = getDefaultRuntimeActionResult(instance, runtime)
+  const actionContext: ActionContext = {
+    project,
+    startPosition,
+    collisionOtherInstanceId,
+    roomInstances
+  }
   for (const actionEntry of actions) {
-    if (actionEntry.type === "move") {
-      result = {
-        ...result,
-        instance: {
-          ...result.instance,
-          x: result.instance.x + actionEntry.dx,
-          y: result.instance.y + actionEntry.dy
-        }
-      }
-      continue
-    }
-    if (actionEntry.type === "setVelocity") {
-      const radians = (actionEntry.direction * Math.PI) / 180
-      result = {
-        ...result,
-        instance: {
-          ...result.instance,
-          x: result.instance.x + Math.cos(radians) * actionEntry.speed,
-          y: result.instance.y + Math.sin(radians) * actionEntry.speed
-        }
-      }
-      continue
-    }
-    if (actionEntry.type === "clampToRoom") {
-      result = {
-        ...result,
-        instance: {
-          ...result.instance,
-          x: clampValue(result.instance.x, 0, ROOM_WIDTH - INSTANCE_SIZE),
-          y: clampValue(result.instance.y, 0, ROOM_HEIGHT - INSTANCE_SIZE)
-        }
-      }
-      continue
-    }
-    if (actionEntry.type === "teleport") {
-      if (actionEntry.mode === "position") {
-        result = {
-          ...result,
-          instance: {
-            ...result.instance,
-            x: actionEntry.x ?? result.instance.x,
-            y: actionEntry.y ?? result.instance.y
-          }
-        }
-      } else if (actionEntry.mode === "mouse") {
-        const mouseX = result.runtime.globalVariables[BUILTIN_MOUSE_X_VARIABLE_ID]
-        const mouseY = result.runtime.globalVariables[BUILTIN_MOUSE_Y_VARIABLE_ID]
-        result = {
-          ...result,
-          instance: {
-            ...result.instance,
-            x: typeof mouseX === "number" ? mouseX : result.instance.x,
-            y: typeof mouseY === "number" ? mouseY : result.instance.y
-          }
-        }
-      } else if (startPosition) {
-        result = {
-          ...result,
-          instance: {
-            ...result.instance,
-            x: startPosition.x,
-            y: startPosition.y
-          }
-        }
-      }
-      continue
-    }
-    if (actionEntry.type === "destroySelf") {
-      result = {
-        ...result,
-        destroyedInstanceIds: mergeDestroyedIds(result.destroyedInstanceIds, result.instance.id)
-      }
-      continue
-    }
-    if (actionEntry.type === "destroyOther") {
-      if (collisionOtherInstanceId) {
-        result = {
-          ...result,
-          destroyedInstanceIds: mergeDestroyedIds(result.destroyedInstanceIds, collisionOtherInstanceId)
-        }
-      }
-      continue
-    }
-    if (actionEntry.type === "spawnObject") {
-      const targetObjectExists = project.objects.some((objectEntry) => objectEntry.id === actionEntry.objectId)
-      if (!targetObjectExists) {
-        continue
-      }
-      result = {
-        ...result,
-        spawned: [
-          ...result.spawned,
-          {
-            id: `instance-${crypto.randomUUID()}`,
-            objectId: actionEntry.objectId,
-            x: result.instance.x + actionEntry.offsetX,
-            y: result.instance.y + actionEntry.offsetY
-          }
-        ]
-      }
-      continue
-    }
-    if (actionEntry.type === "changeScore") {
-      result = {
-        ...result,
-        scoreDelta: result.scoreDelta + actionEntry.delta
-      }
-      continue
-    }
-    if (actionEntry.type === "endGame") {
-      result = {
-        ...result,
-        gameOverMessage: actionEntry.message
-      }
-      continue
-    }
-    if (actionEntry.type === "message") {
-      result = {
-        ...result,
-        runtime: enqueueRuntimeToast(result.runtime as RuntimeToastState, {
-          text: actionEntry.text,
-          durationMs: actionEntry.durationMs
-        }) as RuntimeState
-      }
-      continue
-    }
-    if (actionEntry.type === "playSound") {
-      result = {
-        ...result,
-        playedSoundIds: [...result.playedSoundIds, actionEntry.soundId]
-      }
-      continue
-    }
-    if (actionEntry.type === "changeVariable") {
-      if (actionEntry.scope === "global") {
-        if (isReadonlyGlobalVariableId(actionEntry.variableId)) {
-          continue
-        }
-        if (actionEntry.operator === "set") {
-          const existingValue = result.runtime.globalVariables[actionEntry.variableId]
-          if (existingValue === undefined || !isSameVariableValueType(existingValue, actionEntry.value)) {
-            continue
-          }
-          result = {
-            ...result,
-            runtime: {
-              ...result.runtime,
-              globalVariables: {
-                ...result.runtime.globalVariables,
-                [actionEntry.variableId]: actionEntry.value
-              }
-            }
-          }
-        } else {
-          const numValue = typeof actionEntry.value === "number" ? actionEntry.value : 0
-          result = {
-            ...result,
-            runtime: applyGlobalNumericOperation(result.runtime, actionEntry.variableId, numValue, actionEntry.operator)
-          }
-        }
-        continue
-      }
-
-      const resolvedTargetInstanceId = resolveTargetInstanceId(
-        result.instance,
-        actionEntry.target ?? "self",
-        actionEntry.targetInstanceId ?? null,
-        collisionOtherInstanceId
-      )
-      if (!resolvedTargetInstanceId) {
-        continue
-      }
-      if (actionEntry.operator === "set") {
-        const targetVariables = result.runtime.objectInstanceVariables[resolvedTargetInstanceId]
-        if (!targetVariables) {
-          continue
-        }
-        const existingValue = targetVariables[actionEntry.variableId]
-        if (existingValue === undefined || !isSameVariableValueType(existingValue, actionEntry.value)) {
-          continue
-        }
-        result = {
-          ...result,
-          runtime: {
-            ...result.runtime,
-            objectInstanceVariables: {
-              ...result.runtime.objectInstanceVariables,
-              [resolvedTargetInstanceId]: {
-                ...result.runtime.objectInstanceVariables[resolvedTargetInstanceId],
-                [actionEntry.variableId]: actionEntry.value
-              }
-            }
-          }
-        }
-      } else {
-        const numValue = typeof actionEntry.value === "number" ? actionEntry.value : 0
-        result = {
-          ...result,
-          runtime: applyObjectNumericOperation(
-            result.runtime,
-            resolvedTargetInstanceId,
-            actionEntry.variableId,
-            numValue,
-            actionEntry.operator
-          )
-        }
-      }
-      continue
-    }
-    if (actionEntry.type === "copyVariable") {
-      const resolvedInstanceId = resolveTargetInstanceId(
-        result.instance,
-        actionEntry.instanceTarget,
-        actionEntry.instanceTargetId,
-        collisionOtherInstanceId
-      )
-      if (!resolvedInstanceId) {
-        continue
-      }
-      if (actionEntry.direction === "globalToObject") {
-        const globalValue = result.runtime.globalVariables[actionEntry.globalVariableId]
-        const targetVariables = result.runtime.objectInstanceVariables[resolvedInstanceId]
-        if (globalValue === undefined || !targetVariables) {
-          continue
-        }
-        const existingValue = targetVariables[actionEntry.objectVariableId]
-        if (existingValue === undefined || !isSameVariableValueType(existingValue, globalValue)) {
-          continue
-        }
-        result = {
-          ...result,
-          runtime: {
-            ...result.runtime,
-            objectInstanceVariables: {
-              ...result.runtime.objectInstanceVariables,
-              [resolvedInstanceId]: {
-                ...result.runtime.objectInstanceVariables[resolvedInstanceId],
-                [actionEntry.objectVariableId]: globalValue
-              }
-            }
-          }
-        }
-      } else {
-        const sourceVariables = result.runtime.objectInstanceVariables[resolvedInstanceId]
-        if (!sourceVariables || !(actionEntry.objectVariableId in sourceVariables)) {
-          continue
-        }
-        const sourceValue = sourceVariables[actionEntry.objectVariableId]
-        if (isReadonlyGlobalVariableId(actionEntry.globalVariableId)) {
-          continue
-        }
-        const existingGlobalValue = result.runtime.globalVariables[actionEntry.globalVariableId]
-        if (sourceValue === undefined || existingGlobalValue === undefined || !isSameVariableValueType(existingGlobalValue, sourceValue)) {
-          continue
-        }
-        result = {
-          ...result,
-          runtime: {
-            ...result.runtime,
-            globalVariables: {
-              ...result.runtime.globalVariables,
-              [actionEntry.globalVariableId]: sourceValue
-            }
-          }
-        }
-      }
-      continue
-    }
-    if (actionEntry.type === "goToRoom") {
-      const targetRoom = project.rooms.find((roomEntry) => roomEntry.id === actionEntry.roomId)
-      if (!targetRoom) {
-        continue
-      }
-      result = {
-        ...result,
-        runtime: {
-          ...result.runtime,
-          nextRoomId: actionEntry.roomId
-        }
-      }
-      continue
-    }
-    if (actionEntry.type === "restartRoom") {
-      result = {
-        ...result,
-        runtime: {
-          ...result.runtime,
-          restartRoomRequested: true
-        }
-      }
-      continue
-    }
-    if (actionEntry.type === "wait") {
-      const waitKey = buildWaitActionKey(result.instance.id, actionEntry.id, collisionOtherInstanceId)
-      const elapsed = result.runtime.waitElapsedByInstanceActionId[waitKey] ?? 0
-      const nextElapsed = elapsed + RUNTIME_TICK_MS
-      if (nextElapsed < actionEntry.durationMs) {
-        result = {
-          ...result,
-          halted: true,
-          runtime: {
-            ...result.runtime,
-            waitElapsedByInstanceActionId: {
-              ...result.runtime.waitElapsedByInstanceActionId,
-              [waitKey]: nextElapsed
-            }
-          }
-        }
-        break
-      }
-      result = {
-        ...result,
-        runtime: {
-          ...result.runtime,
-          waitElapsedByInstanceActionId: removeWaitProgress(result.runtime.waitElapsedByInstanceActionId, waitKey)
-        }
-      }
-      continue
+    const actionExecution = executeAction(actionEntry, result, actionContext)
+    result = actionExecution.result
+    if (actionExecution.halt) {
+      break
     }
   }
 
@@ -780,7 +348,8 @@ function runEventItems(
   items: RuntimeEventItem[],
   runtime: RuntimeState,
   startPosition: { x: number; y: number } | null = null,
-  collisionOtherInstanceId: string | null = null
+  collisionOtherInstanceId: string | null = null,
+  roomInstances: ProjectV1["rooms"][number]["instances"] = []
 ): RuntimeActionResult {
   let result = getDefaultRuntimeActionResult(instance, runtime)
   for (const itemEntry of items) {
@@ -791,7 +360,8 @@ function runEventItems(
         [itemEntry.action],
         result.runtime,
         startPosition,
-        collisionOtherInstanceId
+        collisionOtherInstanceId,
+        roomInstances
       )
       result = {
         ...actionResult,
@@ -813,7 +383,8 @@ function runEventItems(
       conditionMatched ? itemEntry.thenActions : itemEntry.elseActions,
       result.runtime,
       startPosition,
-      collisionOtherInstanceId
+      collisionOtherInstanceId,
+      roomInstances
     )
     result = {
       ...branchResult,
@@ -885,7 +456,8 @@ function applyCollisionEvents(
       getEventItems(collisionEvent),
       nextRuntime,
       startPosition,
-      parsed.targetId
+      parsed.targetId,
+      mutableInstances
     )
     const ownerGetsDestroyed = eventResult.destroyedInstanceIds.includes(parsed.instanceId)
     if (!ownerGetsDestroyed) {
@@ -954,7 +526,15 @@ function applyCollisionEvents(
           break
         }
         const firstStartPosition = getInstanceStartPosition(nextRuntime, firstInstance)
-        const eventResult = runEventItems(project, firstInstance, getEventItems(eventEntry), nextRuntime, firstStartPosition, secondId)
+        const eventResult = runEventItems(
+          project,
+          firstInstance,
+          getEventItems(eventEntry),
+          nextRuntime,
+          firstStartPosition,
+          secondId,
+          mutableInstances
+        )
         const firstGetsDestroyed = eventResult.destroyedInstanceIds.includes(firstId)
         if (!firstGetsDestroyed) {
           mutableInstances[firstIndex] = eventResult.instance
@@ -1000,7 +580,15 @@ function applyCollisionEvents(
           break
         }
         const secondStartPosition = getInstanceStartPosition(nextRuntime, secondInstance)
-        const eventResult = runEventItems(project, secondInstance, getEventItems(eventEntry), nextRuntime, secondStartPosition, firstId)
+        const eventResult = runEventItems(
+          project,
+          secondInstance,
+          getEventItems(eventEntry),
+          nextRuntime,
+          secondStartPosition,
+          firstId,
+          mutableInstances
+        )
         const secondGetsDestroyed = eventResult.destroyedInstanceIds.includes(secondId)
         if (!secondGetsDestroyed) {
           mutableInstances[secondIndex] = eventResult.instance
@@ -1172,7 +760,15 @@ export function runRuntimeTick(
     let destroySelf = false
     let spawned: ProjectV1["rooms"][number]["instances"] = []
     for (const eventEntry of matchingEvents) {
-      const eventResult = runEventItems(project, nextInstance, getEventItems(eventEntry), nextRuntime, startPosition)
+      const eventResult = runEventItems(
+        project,
+        nextInstance,
+        getEventItems(eventEntry),
+        nextRuntime,
+        startPosition,
+        null,
+        room.instances
+      )
       nextInstance = eventResult.instance
       for (const instanceId of eventResult.destroyedInstanceIds) {
         if (instanceId === nextInstance.id) {
@@ -1197,7 +793,15 @@ export function runRuntimeTick(
         if (!isLocked && !isOutsideRoom(nextInstance)) {
           continue
         }
-        const eventResult = runEventItems(project, nextInstance, getEventItems(eventEntry), nextRuntime, startPosition)
+        const eventResult = runEventItems(
+          project,
+          nextInstance,
+          getEventItems(eventEntry),
+          nextRuntime,
+          startPosition,
+          null,
+          room.instances
+        )
         nextInstance = eventResult.instance
         for (const instanceId of eventResult.destroyedInstanceIds) {
           if (instanceId === nextInstance.id) {

@@ -238,7 +238,11 @@ export function RunSection({ controller }: RunSectionProps) {
                     <div
                       key={instanceEntry.id}
                       className="mvp15-run-instance absolute flex h-8 w-8 items-center justify-center overflow-hidden rounded bg-indigo-500 text-[10px] text-white"
-                      style={{ left: instanceEntry.x, top: instanceEntry.y }}
+                      style={{
+                        left: instanceEntry.x,
+                        top: instanceEntry.y,
+                        transform: `rotate(${instanceEntry.rotation ?? 0}deg)`
+                      }}
                     >
                       {spriteSource ? (
                         <img

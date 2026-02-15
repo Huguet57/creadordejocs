@@ -29,6 +29,15 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
   const defaultActionFromType = (type: ObjectActionType): ObjectActionDraft | null => {
     if (type === "move") return { type: "move", dx: 0, dy: 0 }
     if (type === "setVelocity") return { type: "setVelocity", speed: 1, direction: 0 }
+    if (type === "rotate") return { type: "rotate", angle: 0, mode: "add" }
+    if (type === "moveToward") {
+      return {
+        type: "moveToward",
+        targetType: selectableTargetObjects.length > 0 ? "object" : "mouse",
+        targetObjectId: selectableTargetObjects[0]?.id ?? null,
+        speed: 1
+      }
+    }
     if (type === "clampToRoom") return { type: "clampToRoom" }
     if (type === "teleport") return { type: "teleport", mode: "position", x: 0, y: 0 }
     if (type === "changeVariable") {
@@ -52,6 +61,29 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
         target: "self",
         targetInstanceId: null,
         value: firstObjectVariable.initialValue
+      }
+    }
+    if (type === "randomizeVariable") {
+      const firstNumericGlobal = controller.project.variables.global.find((entry) => entry.type === "number")
+      const firstNumericObjectVariable = selectedObjectVariableDefinitions.find((entry) => entry.type === "number")
+      if (firstNumericGlobal) {
+        return {
+          type: "randomizeVariable",
+          scope: "global",
+          variableId: firstNumericGlobal.id,
+          min: 0,
+          max: 10
+        }
+      }
+      if (!firstNumericObjectVariable) return null
+      return {
+        type: "randomizeVariable",
+        scope: "object",
+        variableId: firstNumericObjectVariable.id,
+        target: "self",
+        targetInstanceId: null,
+        min: 0,
+        max: 10
       }
     }
     if (type === "copyVariable") {

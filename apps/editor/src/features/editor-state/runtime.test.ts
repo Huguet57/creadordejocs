@@ -1625,6 +1625,1002 @@ describe("runtime regressions", () => {
     expect(secondTick.runtime.objectInstanceVariables["instance-target"]?.["ov-received"]).toBe(5)
   })
 
+  it("randomizeVariable updates numeric global variables within inclusive range", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-random-global",
+        name: "Random global test",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: {
+        sprites: [],
+        sounds: []
+      },
+      variables: {
+        global: [{ id: "gv-roll", name: "roll", type: "number", initialValue: 0 }],
+        objectByObjectId: {}
+      },
+      objects: [
+        {
+          id: "object-randomizer",
+          name: "Randomizer",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step",
+              type: "Step",
+              key: null,
+              keyboardMode: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [
+                {
+                  id: "item-random-global",
+                  type: "action",
+                  action: {
+                    id: "action-random-global",
+                    type: "randomizeVariable",
+                    scope: "global",
+                    variableId: "gv-roll",
+                    min: 2,
+                    max: 4
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      rooms: [{ id: "room-main", name: "Main", instances: [{ id: "instance-randomizer", objectId: "object-randomizer", x: 0, y: 0 }] }],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    const value = result.runtime.globalVariables["gv-roll"]
+    expect(typeof value).toBe("number")
+    expect(value as number).toBeGreaterThanOrEqual(2)
+    expect(value as number).toBeLessThanOrEqual(4)
+  })
+
+  it("randomizeVariable updates numeric object variables on self target", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-random-self",
+        name: "Random self test",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: {
+        sprites: [],
+        sounds: []
+      },
+      variables: {
+        global: [],
+        objectByObjectId: {
+          "object-randomizer": [{ id: "ov-roll", name: "roll", type: "number", initialValue: 0 }]
+        }
+      },
+      objects: [
+        {
+          id: "object-randomizer",
+          name: "Randomizer",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step",
+              type: "Step",
+              key: null,
+              keyboardMode: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [
+                {
+                  id: "item-random-self",
+                  type: "action",
+                  action: {
+                    id: "action-random-self",
+                    type: "randomizeVariable",
+                    scope: "object",
+                    variableId: "ov-roll",
+                    target: "self",
+                    targetInstanceId: null,
+                    min: 10,
+                    max: 12
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      rooms: [{ id: "room-main", name: "Main", instances: [{ id: "instance-randomizer", objectId: "object-randomizer", x: 0, y: 0 }] }],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    const value = result.runtime.objectInstanceVariables["instance-randomizer"]?.["ov-roll"]
+    expect(typeof value).toBe("number")
+    expect(value as number).toBeGreaterThanOrEqual(10)
+    expect(value as number).toBeLessThanOrEqual(12)
+  })
+
+  it("randomizeVariable supports object target 'other' during collisions", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-random-other",
+        name: "Random other collision test",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: {
+        sprites: [],
+        sounds: []
+      },
+      variables: {
+        global: [],
+        objectByObjectId: {
+          "object-target": [{ id: "ov-health", name: "health", type: "number", initialValue: 100 }]
+        }
+      },
+      objects: [
+        {
+          id: "object-randomizer",
+          name: "Randomizer",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-collision",
+              type: "Collision",
+              key: null,
+              keyboardMode: null,
+              targetObjectId: "object-target",
+              intervalMs: null,
+              items: [
+                {
+                  id: "item-random-other",
+                  type: "action",
+                  action: {
+                    id: "action-random-other",
+                    type: "randomizeVariable",
+                    scope: "object",
+                    variableId: "ov-health",
+                    target: "other",
+                    targetInstanceId: null,
+                    min: 1,
+                    max: 3
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          id: "object-target",
+          name: "Target",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: []
+        }
+      ],
+      rooms: [
+        {
+          id: "room-main",
+          name: "Main",
+          instances: [
+            { id: "instance-randomizer", objectId: "object-randomizer", x: 10, y: 10 },
+            { id: "instance-target", objectId: "object-target", x: 10, y: 10 }
+          ]
+        }
+      ],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    const value = result.runtime.objectInstanceVariables["instance-target"]?.["ov-health"]
+    expect(typeof value).toBe("number")
+    expect(value as number).toBeGreaterThanOrEqual(1)
+    expect(value as number).toBeLessThanOrEqual(3)
+  })
+
+  it("randomizeVariable does nothing when min is greater than max", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-random-invalid-range",
+        name: "Random invalid range test",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: {
+        sprites: [],
+        sounds: []
+      },
+      variables: {
+        global: [{ id: "gv-roll", name: "roll", type: "number", initialValue: 7 }],
+        objectByObjectId: {}
+      },
+      objects: [
+        {
+          id: "object-randomizer",
+          name: "Randomizer",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step",
+              type: "Step",
+              key: null,
+              keyboardMode: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [
+                {
+                  id: "item-random-invalid-range",
+                  type: "action",
+                  action: {
+                    id: "action-random-invalid-range",
+                    type: "randomizeVariable",
+                    scope: "global",
+                    variableId: "gv-roll",
+                    min: 9,
+                    max: 3
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      rooms: [{ id: "room-main", name: "Main", instances: [{ id: "instance-randomizer", objectId: "object-randomizer", x: 0, y: 0 }] }],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    expect(result.runtime.globalVariables["gv-roll"]).toBe(7)
+  })
+
+  it("randomizeVariable ignores non-number target variables", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-random-type-guard",
+        name: "Random type guard test",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: {
+        sprites: [],
+        sounds: []
+      },
+      variables: {
+        global: [{ id: "gv-label", name: "label", type: "string", initialValue: "ready" }],
+        objectByObjectId: {}
+      },
+      objects: [
+        {
+          id: "object-randomizer",
+          name: "Randomizer",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step",
+              type: "Step",
+              key: null,
+              keyboardMode: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [
+                {
+                  id: "item-random-type-guard",
+                  type: "action",
+                  action: {
+                    id: "action-random-type-guard",
+                    type: "randomizeVariable",
+                    scope: "global",
+                    variableId: "gv-label",
+                    min: 1,
+                    max: 3
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      rooms: [{ id: "room-main", name: "Main", instances: [{ id: "instance-randomizer", objectId: "object-randomizer", x: 0, y: 0 }] }],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    expect(result.runtime.globalVariables["gv-label"]).toBe("ready")
+  })
+
+  it("moveToward moves toward the closest matching object instance", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-move-toward-nearest",
+        name: "Move toward nearest target",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: { sprites: [], sounds: [] },
+      variables: { global: [], objectByObjectId: {} },
+      objects: [
+        {
+          id: "object-seeker",
+          name: "Seeker",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step",
+              type: "Step",
+              key: null,
+              keyboardMode: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [
+                {
+                  id: "item-move-toward",
+                  type: "action",
+                  action: {
+                    id: "action-move-toward",
+                    type: "moveToward",
+                    targetType: "object",
+                    targetObjectId: "object-target",
+                    speed: 2
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          id: "object-target",
+          name: "Target",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: []
+        }
+      ],
+      rooms: [
+        {
+          id: "room-main",
+          name: "Main",
+          instances: [
+            { id: "instance-seeker", objectId: "object-seeker", x: 0, y: 0 },
+            { id: "instance-near", objectId: "object-target", x: 5, y: 0 },
+            { id: "instance-far", objectId: "object-target", x: 30, y: 0 }
+          ]
+        }
+      ],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    const seeker = result.project.rooms[0]?.instances.find((entry) => entry.id === "instance-seeker")
+    expect(seeker?.x).toBeCloseTo(2)
+    expect(seeker?.y).toBeCloseTo(0)
+  })
+
+  it("moveToward moves toward mouse coordinates", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-move-toward-mouse",
+        name: "Move toward mouse",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: { sprites: [], sounds: [] },
+      variables: { global: [], objectByObjectId: {} },
+      objects: [
+        {
+          id: "object-seeker",
+          name: "Seeker",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step",
+              type: "Step",
+              key: null,
+              keyboardMode: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [
+                {
+                  id: "item-move-toward-mouse",
+                  type: "action",
+                  action: {
+                    id: "action-move-toward-mouse",
+                    type: "moveToward",
+                    targetType: "mouse",
+                    targetObjectId: null,
+                    speed: 3
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      rooms: [{ id: "room-main", name: "Main", instances: [{ id: "instance-seeker", objectId: "object-seeker", x: 0, y: 0 }] }],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const result = runRuntimeTick(
+      project,
+      "room-main",
+      new Set(),
+      createInitialRuntimeState(project),
+      new Set(),
+      {
+        x: 12,
+        y: 0,
+        moved: true,
+        pressedButtons: new Set(),
+        justPressedButtons: new Set()
+      }
+    )
+    const seeker = result.project.rooms[0]?.instances.find((entry) => entry.id === "instance-seeker")
+    expect(seeker?.x).toBeCloseTo(3)
+    expect(seeker?.y).toBeCloseTo(0)
+  })
+
+  it("moveToward does nothing when no matching target instance exists", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-move-toward-missing-target",
+        name: "Move toward missing target",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: { sprites: [], sounds: [] },
+      variables: { global: [], objectByObjectId: {} },
+      objects: [
+        {
+          id: "object-seeker",
+          name: "Seeker",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step",
+              type: "Step",
+              key: null,
+              keyboardMode: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [
+                {
+                  id: "item-move-toward",
+                  type: "action",
+                  action: {
+                    id: "action-move-toward",
+                    type: "moveToward",
+                    targetType: "object",
+                    targetObjectId: "object-target",
+                    speed: 5
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          id: "object-target",
+          name: "Target",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: []
+        }
+      ],
+      rooms: [{ id: "room-main", name: "Main", instances: [{ id: "instance-seeker", objectId: "object-seeker", x: 7, y: 9 }] }],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    const seeker = result.project.rooms[0]?.instances.find((entry) => entry.id === "instance-seeker")
+    expect(seeker?.x).toBe(7)
+    expect(seeker?.y).toBe(9)
+  })
+
+  it("moveToward does nothing when speed is zero", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-move-toward-zero-speed",
+        name: "Move toward zero speed",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: { sprites: [], sounds: [] },
+      variables: { global: [], objectByObjectId: {} },
+      objects: [
+        {
+          id: "object-seeker",
+          name: "Seeker",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step",
+              type: "Step",
+              key: null,
+              keyboardMode: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [
+                {
+                  id: "item-move-toward",
+                  type: "action",
+                  action: {
+                    id: "action-move-toward",
+                    type: "moveToward",
+                    targetType: "object",
+                    targetObjectId: "object-target",
+                    speed: 0
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          id: "object-target",
+          name: "Target",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: []
+        }
+      ],
+      rooms: [
+        {
+          id: "room-main",
+          name: "Main",
+          instances: [
+            { id: "instance-seeker", objectId: "object-seeker", x: 2, y: 2 },
+            { id: "instance-target", objectId: "object-target", x: 8, y: 2 }
+          ]
+        }
+      ],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    const seeker = result.project.rooms[0]?.instances.find((entry) => entry.id === "instance-seeker")
+    expect(seeker?.x).toBe(2)
+    expect(seeker?.y).toBe(2)
+  })
+
+  it("moveToward ignores object target mode when targetObjectId is null", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-move-toward-null-target",
+        name: "Move toward null object target",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: { sprites: [], sounds: [] },
+      variables: { global: [], objectByObjectId: {} },
+      objects: [
+        {
+          id: "object-seeker",
+          name: "Seeker",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step",
+              type: "Step",
+              key: null,
+              keyboardMode: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [
+                {
+                  id: "item-move-toward",
+                  type: "action",
+                  action: {
+                    id: "action-move-toward",
+                    type: "moveToward",
+                    targetType: "object",
+                    targetObjectId: null,
+                    speed: 4
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      rooms: [{ id: "room-main", name: "Main", instances: [{ id: "instance-seeker", objectId: "object-seeker", x: 5, y: 6 }] }],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    const seeker = result.project.rooms[0]?.instances.find((entry) => entry.id === "instance-seeker")
+    expect(seeker?.x).toBe(5)
+    expect(seeker?.y).toBe(6)
+  })
+
+  it("rotate/set assigns an absolute rotation value", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-rotate-set",
+        name: "Rotate set test",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: { sprites: [], sounds: [] },
+      variables: { global: [], objectByObjectId: {} },
+      objects: [
+        {
+          id: "object-spinner",
+          name: "Spinner",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step",
+              type: "Step",
+              key: null,
+              keyboardMode: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [
+                {
+                  id: "item-rotate-set",
+                  type: "action",
+                  action: { id: "action-rotate-set", type: "rotate", angle: 45, mode: "set" }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      rooms: [{ id: "room-main", name: "Main", instances: [{ id: "instance-spinner", objectId: "object-spinner", x: 0, y: 0 }] }],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    const spinner = result.project.rooms[0]?.instances.find((entry) => entry.id === "instance-spinner")
+    expect(spinner?.rotation).toBe(45)
+  })
+
+  it("rotate/add increments existing rotation value", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-rotate-add",
+        name: "Rotate add test",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: { sprites: [], sounds: [] },
+      variables: { global: [], objectByObjectId: {} },
+      objects: [
+        {
+          id: "object-spinner",
+          name: "Spinner",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step",
+              type: "Step",
+              key: null,
+              keyboardMode: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [
+                {
+                  id: "item-rotate-add",
+                  type: "action",
+                  action: { id: "action-rotate-add", type: "rotate", angle: 15, mode: "add" }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      rooms: [
+        { id: "room-main", name: "Main", instances: [{ id: "instance-spinner", objectId: "object-spinner", x: 0, y: 0, rotation: 30 }] }
+      ],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    const spinner = result.project.rooms[0]?.instances.find((entry) => entry.id === "instance-spinner")
+    expect(spinner?.rotation).toBe(45)
+  })
+
+  it("spawnObject initializes spawned instances with rotation 0", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-spawn-rotation",
+        name: "Spawn rotation test",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: { sprites: [], sounds: [] },
+      variables: { global: [], objectByObjectId: {} },
+      objects: [
+        {
+          id: "object-spawner",
+          name: "Spawner",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step",
+              type: "Step",
+              key: null,
+              keyboardMode: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [
+                {
+                  id: "item-spawn",
+                  type: "action",
+                  action: {
+                    id: "action-spawn",
+                    type: "spawnObject",
+                    objectId: "object-target",
+                    offsetX: 10,
+                    offsetY: 0
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          id: "object-target",
+          name: "Target",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: []
+        }
+      ],
+      rooms: [{ id: "room-main", name: "Main", instances: [{ id: "instance-spawner", objectId: "object-spawner", x: 0, y: 0 }] }],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    const spawned = result.project.rooms[0]?.instances.find((entry) => entry.id !== "instance-spawner")
+    expect(spawned).toBeDefined()
+    expect(spawned?.rotation).toBe(0)
+  })
+
+  it("rotate/add treats missing rotation as zero (backward compatibility)", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-rotate-backward-compat",
+        name: "Rotate backward compatibility test",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: { sprites: [], sounds: [] },
+      variables: { global: [], objectByObjectId: {} },
+      objects: [
+        {
+          id: "object-spinner",
+          name: "Spinner",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step",
+              type: "Step",
+              key: null,
+              keyboardMode: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [
+                {
+                  id: "item-rotate-add-backcompat",
+                  type: "action",
+                  action: { id: "action-rotate-add-backcompat", type: "rotate", angle: 20, mode: "add" }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      rooms: [{ id: "room-main", name: "Main", instances: [{ id: "instance-spinner", objectId: "object-spinner", x: 0, y: 0 }] }],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    const spinner = result.project.rooms[0]?.instances.find((entry) => entry.id === "instance-spinner")
+    expect(spinner?.rotation).toBe(20)
+  })
+
   it("switches the active room when goToRoom is executed", () => {
     const project: ProjectV1 = {
       version: 1,

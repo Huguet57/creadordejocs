@@ -12,6 +12,7 @@ import {
   X,
   Locate,
   Variable,
+  Dices,
   ArrowLeftRight,
   DoorOpen,
   RotateCcw,
@@ -99,6 +100,8 @@ type ActionBlockProps = {
 const ACTION_ICONS: Record<ObjectActionType, React.ElementType> = {
   move: Move,
   setVelocity: FastForward,
+  rotate: RotateCcw,
+  moveToward: Move,
   clampToRoom: Maximize,
   teleport: Locate,
   destroySelf: Trash,
@@ -109,6 +112,7 @@ const ACTION_ICONS: Record<ObjectActionType, React.ElementType> = {
   message: MessageSquare,
   playSound: Volume2,
   changeVariable: Variable,
+  randomizeVariable: Dices,
   copyVariable: ArrowLeftRight,
   goToRoom: DoorOpen,
   restartRoom: RotateCcw,
@@ -118,6 +122,8 @@ const ACTION_ICONS: Record<ObjectActionType, React.ElementType> = {
 const ACTION_LABELS: Record<ObjectActionType, string> = {
   move: "Moure",
   setVelocity: "Velocitat",
+  rotate: "Rotar",
+  moveToward: "Anar cap a",
   clampToRoom: "Limitar",
   teleport: "Teleport",
   destroySelf: "Destruir-se",
@@ -128,6 +134,7 @@ const ACTION_LABELS: Record<ObjectActionType, string> = {
   message: "Missatge",
   playSound: "So",
   changeVariable: "Variable",
+  randomizeVariable: "Aleatori",
   copyVariable: "Copiar var.",
   goToRoom: "Anar a sala",
   restartRoom: "Reiniciar",
@@ -220,6 +227,63 @@ export function ActionBlock({
             <div className="flex items-center gap-1">
               <label className="text-[10px] font-medium opacity-60">Dir</label>
               <NumInput value={action.direction} onChange={(v) => onUpdate({ ...action, direction: v })} />
+            </div>
+          </>
+        )}
+
+        {action.type === "rotate" && (
+          <>
+            <select
+              className="action-block-rotate-mode h-7 rounded border border-slate-300 bg-white/50 px-2 text-xs"
+              value={action.mode}
+              onChange={(event) => onUpdate({ ...action, mode: event.target.value as "set" | "add" })}
+            >
+              <option value="set">Set</option>
+              <option value="add">Add</option>
+            </select>
+            <div className="action-block-rotate-angle-field flex items-center gap-1">
+              <label className="text-[10px] font-medium opacity-60">Angle</label>
+              <NumInput value={action.angle} onChange={(v) => onUpdate({ ...action, angle: v })} />
+            </div>
+          </>
+        )}
+
+        {action.type === "moveToward" && (
+          <>
+            <select
+              className="action-block-move-toward-target-type h-7 rounded border border-slate-300 bg-white/50 px-2 text-xs"
+              value={action.targetType}
+              onChange={(event) =>
+                onUpdate({
+                  ...action,
+                  targetType: event.target.value as "object" | "mouse",
+                  targetObjectId: event.target.value === "object" ? (action.targetObjectId ?? selectableObjects[0]?.id ?? null) : null
+                })
+              }
+            >
+              <option value="object">Objecte</option>
+              <option value="mouse">Ratoli</option>
+            </select>
+            {action.targetType === "object" && (
+              <select
+                className="action-block-move-toward-object-select h-7 rounded border border-slate-300 bg-white/50 px-2 text-xs focus:outline-none"
+                value={action.targetObjectId ?? ""}
+                onChange={(event) => onUpdate({ ...action, targetObjectId: event.target.value || null })}
+              >
+                {selectableObjects.length === 0 ? (
+                  <option value="">No objectes</option>
+                ) : (
+                  selectableObjects.map((obj) => (
+                    <option key={obj.id} value={obj.id}>
+                      {obj.name}
+                    </option>
+                  ))
+                )}
+              </select>
+            )}
+            <div className="action-block-move-toward-speed-field flex items-center gap-1">
+              <label className="text-[10px] font-medium opacity-60">Speed</label>
+              <NumInput value={action.speed} onChange={(v) => onUpdate({ ...action, speed: v })} />
             </div>
           </>
         )}
@@ -506,6 +570,65 @@ export function ActionBlock({
             </>
           )
         })()}
+
+        {action.type === "randomizeVariable" && (
+          <>
+            <VariablePicker
+              scope={action.scope}
+              variableId={action.variableId}
+              globalVariables={globalVariables}
+              objectVariables={objectVariableOptions}
+              showTarget
+              target={action.scope === "object" ? (action.target ?? "self") : null}
+              targetInstanceId={action.scope === "object" ? (action.targetInstanceId ?? null) : null}
+              roomInstances={roomInstances}
+              filter={(definition) => definition.type === "number"}
+              onTargetChange={(nextTarget, nextInstanceId) => {
+                onUpdate({
+                  ...action,
+                  target: nextTarget,
+                  targetInstanceId: nextInstanceId
+                })
+              }}
+              onChange={(nextScope, nextVariableId) => {
+                if (nextScope === "global") {
+                  onUpdate({
+                    type: "randomizeVariable",
+                    scope: "global",
+                    variableId: nextVariableId,
+                    min: action.min,
+                    max: action.max
+                  })
+                } else {
+                  onUpdate({
+                    ...action,
+                    type: "randomizeVariable",
+                    scope: "object",
+                    variableId: nextVariableId,
+                    target: action.scope === "object" ? (action.target ?? "self") : "self",
+                    targetInstanceId: action.scope === "object" ? (action.targetInstanceId ?? null) : null
+                  })
+                }
+              }}
+            />
+            <div className="action-block-random-min-field flex items-center gap-1">
+              <label className="text-[10px] font-medium opacity-60">Min</label>
+              <NumInput
+                value={action.min}
+                onChange={(v) => onUpdate({ ...action, min: Math.round(v) })}
+                className="action-block-random-min-input"
+              />
+            </div>
+            <div className="action-block-random-max-field flex items-center gap-1">
+              <label className="text-[10px] font-medium opacity-60">Max</label>
+              <NumInput
+                value={action.max}
+                onChange={(v) => onUpdate({ ...action, max: Math.round(v) })}
+                className="action-block-random-max-input"
+              />
+            </div>
+          </>
+        )}
       </div>
 
       <div className="action-block-controls flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">

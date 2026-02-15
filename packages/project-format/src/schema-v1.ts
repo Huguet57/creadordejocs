@@ -80,6 +80,19 @@ const ObjectActionSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     id: z.string().min(1),
+    type: z.literal("rotate"),
+    angle: z.number(),
+    mode: z.enum(["set", "add"])
+  }),
+  z.object({
+    id: z.string().min(1),
+    type: z.literal("moveToward"),
+    targetType: z.enum(["object", "mouse"]),
+    targetObjectId: z.string().nullable().default(null),
+    speed: z.number()
+  }),
+  z.object({
+    id: z.string().min(1),
     type: z.literal("clampToRoom")
   }),
   z.object({
@@ -134,6 +147,16 @@ const ObjectActionSchema = z.discriminatedUnion("type", [
     target: z.enum(["self", "other", "instanceId"]).nullable().optional(),
     targetInstanceId: z.string().nullable().optional(),
     value: VariableValueSchema
+  }),
+  z.object({
+    id: z.string().min(1),
+    type: z.literal("randomizeVariable"),
+    scope: z.enum(["global", "object"]),
+    variableId: z.string().min(1),
+    target: z.enum(["self", "other", "instanceId"]).nullable().optional(),
+    targetInstanceId: z.string().nullable().optional(),
+    min: z.number().int(),
+    max: z.number().int()
   }),
   z.object({
     id: z.string().min(1),
@@ -289,7 +312,8 @@ const RoomInstanceSchema = z.object({
   id: z.string().min(1),
   objectId: z.string().min(1),
   x: z.number(),
-  y: z.number()
+  y: z.number(),
+  rotation: z.number().optional()
 })
 
 const RoomSchema = z.object({

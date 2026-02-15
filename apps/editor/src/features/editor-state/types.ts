@@ -19,6 +19,8 @@ export type ObjectKeyboardMode = "down" | "press"
 export type ObjectActionType =
   | "move"
   | "setVelocity"
+  | "rotate"
+  | "moveToward"
   | "clampToRoom"
   | "teleport"
   | "destroySelf"
@@ -29,6 +31,7 @@ export type ObjectActionType =
   | "message"
   | "playSound"
   | "changeVariable"
+  | "randomizeVariable"
   | "copyVariable"
   | "goToRoom"
   | "restartRoom"
@@ -63,6 +66,8 @@ export const OBJECT_EVENT_KEYS: ObjectEventKey[] = ["ArrowUp", "ArrowDown", "Arr
 export const OBJECT_ACTION_TYPES: ObjectActionType[] = [
   "move",
   "setVelocity",
+  "rotate",
+  "moveToward",
   "clampToRoom",
   "teleport",
   "destroySelf",
@@ -73,6 +78,7 @@ export const OBJECT_ACTION_TYPES: ObjectActionType[] = [
   "message",
   "playSound",
   "changeVariable",
+  "randomizeVariable",
   "copyVariable",
   "goToRoom",
   "restartRoom",
@@ -82,6 +88,8 @@ export const OBJECT_ACTION_TYPES: ObjectActionType[] = [
 export const ACTION_DISPLAY_NAMES: Record<ObjectActionType, string> = {
   move: "Moure",
   setVelocity: "Velocitat",
+  rotate: "Rotar",
+  moveToward: "Anar cap a",
   clampToRoom: "Limitar a sala",
   teleport: "Teleport",
   destroySelf: "Destruir-se",
@@ -92,6 +100,7 @@ export const ACTION_DISPLAY_NAMES: Record<ObjectActionType, string> = {
   message: "Missatge",
   playSound: "Reproduir so",
   changeVariable: "Variable",
+  randomizeVariable: "Aleatori",
   copyVariable: "Copiar variable",
   goToRoom: "Anar a sala",
   restartRoom: "Reiniciar sala",
@@ -104,7 +113,7 @@ export const ACTION_CATEGORIES: { id: ActionCategory; label: string; types: Obje
   {
     id: "movement",
     label: "Moviment",
-    types: ["move", "setVelocity", "clampToRoom", "teleport"]
+    types: ["move", "setVelocity", "rotate", "moveToward", "clampToRoom", "teleport"]
   },
   {
     id: "objects",
@@ -119,7 +128,7 @@ export const ACTION_CATEGORIES: { id: ActionCategory; label: string; types: Obje
   {
     id: "variables",
     label: "Variables",
-    types: ["changeVariable", "copyVariable"]
+    types: ["changeVariable", "randomizeVariable", "copyVariable"]
   },
   {
     id: "rooms",
