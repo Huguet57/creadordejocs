@@ -3,6 +3,7 @@ import type { ProjectV1 } from "@creadordejocs/project-format"
 import { createCoinDashTemplateProject } from "./templates/coin-dash-template.js"
 import { createLaneCrosserTemplateProject } from "./templates/lane-crosser-template.js"
 import { createSpaceShooterTemplateProject } from "./templates/space-shooter-template.js"
+import { createSwitchVaultTemplateProject } from "./templates/switch-vault-template.js"
 import { createInitialRuntimeState, runRuntimeTick } from "./runtime.js"
 
 function updateRoomInstances(
@@ -1336,6 +1337,143 @@ describe("runtime regressions", () => {
     const thirdCollision = runRuntimeTick(forceRunnerCarCollision(project), template.roomId, new Set(), runtime)
     expect(thirdCollision.runtime.gameOver).toBe(true)
     expect(thirdCollision.runtime.globalVariables[livesVariableId ?? ""]).toBe(0)
+  })
+
+  it("awards Switch Vault switch score only once per switch pickup", () => {
+    const template = createSwitchVaultTemplateProject()
+    const room = template.project.rooms.find((roomEntry) => roomEntry.id === template.roomId)
+    const agentObjectId = template.project.objects.find((objectEntry) => objectEntry.name === "Agent")?.id
+    const switchObjectId = template.project.objects.find((objectEntry) => objectEntry.name === "Switch")?.id
+    const switchInstance = room?.instances.find((instanceEntry) => instanceEntry.objectId === switchObjectId)
+    expect(agentObjectId).toBeTruthy()
+    expect(switchObjectId).toBeTruthy()
+    expect(switchInstance).toBeTruthy()
+    if (!switchInstance) {
+      throw new Error("Missing switch instance in Switch Vault")
+    }
+
+    const overlappingProject = updateRoomInstances(template.project, template.roomId, (instances) =>
+      instances.map((instanceEntry) =>
+        instanceEntry.objectId === agentObjectId
+          ? { ...instanceEntry, x: switchInstance.x, y: switchInstance.y }
+          : instanceEntry
+      )
+    )
+    const firstTick = runRuntimeTick(overlappingProject, template.roomId, new Set(), createInitialRuntimeState(overlappingProject))
+    const secondTick = runRuntimeTick(firstTick.project, template.roomId, new Set(), firstTick.runtime)
+
+    expect(firstTick.runtime.score).toBe(25)
+    expect(secondTick.runtime.score).toBe(25)
+  })
+
+  it("keeps guard movement when colliding in Switch Vault", () => {
+    const template = createSwitchVaultTemplateProject()
+    const vaultRoom = template.project.rooms.find((roomEntry) => roomEntry.name === "Vault")
+    const agentObjectId = template.project.objects.find((objectEntry) => objectEntry.name === "Agent")?.id
+    const guardObjectId = template.project.objects.find((objectEntry) => objectEntry.name === "Guard")?.id
+    const firstGuard = vaultRoom?.instances.find((instanceEntry) => instanceEntry.objectId === guardObjectId)
+    expect(agentObjectId).toBeTruthy()
+    expect(guardObjectId).toBeTruthy()
+    expect(firstGuard).toBeTruthy()
+    if (!firstGuard) {
+      throw new Error("Missing guard instance in Switch Vault")
+    }
+
+    if (!vaultRoom) {
+      throw new Error("Missing vault room in Switch Vault")
+    }
+
+    const forcedCollisionProject = updateRoomInstances(template.project, vaultRoom.id, (instances) =>
+      instances.map((instanceEntry) =>
+        instanceEntry.objectId === agentObjectId ? { ...instanceEntry, x: firstGuard.x, y: firstGuard.y } : instanceEntry
+      )
+    )
+    const result = runRuntimeTick(
+      forcedCollisionProject,
+      vaultRoom.id,
+      new Set(),
+      createInitialRuntimeState(forcedCollisionProject)
+    )
+    const updatedRoom = result.project.rooms.find((roomEntry) => roomEntry.id === vaultRoom.id)
+    const updatedGuard = updatedRoom?.instances.find((instanceEntry) => instanceEntry.id === firstGuard.id)
+
+    expect(updatedGuard).toBeTruthy()
+    expect(updatedGuard?.x).toBeCloseTo(firstGuard.x - 2.2, 3)
+    expect(updatedGuard?.y).toBeCloseTo(firstGuard.y, 3)
+  })
+
+  it("does not enter Vault from lift before switch activation", () => {
+    const template = createSwitchVaultTemplateProject()
+    const room = template.project.rooms.find((roomEntry) => roomEntry.id === template.roomId)
+    const agentObjectId = template.project.objects.find((objectEntry) => objectEntry.name === "Agent")?.id
+    const liftObjectId = template.project.objects.find((objectEntry) => objectEntry.name === "Lift")?.id
+    const controlLift = room?.instances.find((instanceEntry) => instanceEntry.objectId === liftObjectId)
+    expect(agentObjectId).toBeTruthy()
+    expect(liftObjectId).toBeTruthy()
+    expect(controlLift).toBeTruthy()
+    if (!controlLift) {
+      throw new Error("Missing lift instance in control room")
+    }
+
+    const initialized = runRuntimeTick(template.project, template.roomId, new Set(), createInitialRuntimeState(template.project))
+    const onLiftProject = updateRoomInstances(initialized.project, template.roomId, (instances) =>
+      instances.map((instanceEntry) =>
+        instanceEntry.objectId === agentObjectId ? { ...instanceEntry, x: controlLift.x, y: controlLift.y } : instanceEntry
+      )
+    )
+    const result = runRuntimeTick(onLiftProject, template.roomId, new Set(), initialized.runtime)
+    const roomAfter = result.project.rooms.find((roomEntry) => roomEntry.id === template.roomId)
+    const agentAfter = roomAfter?.instances.find((instanceEntry) => instanceEntry.objectId === agentObjectId)
+
+    expect(result.activeRoomId).toBe(template.roomId)
+    expect(agentAfter?.x).toBe(80)
+    expect(agentAfter?.y).toBe(260)
+  })
+
+  it("keeps an Agent instance available after entering Vault", () => {
+    const template = createSwitchVaultTemplateProject()
+    const controlRoom = template.project.rooms.find((roomEntry) => roomEntry.id === template.roomId)
+    const vaultRoom = template.project.rooms.find((roomEntry) => roomEntry.name === "Vault")
+    const agentObjectId = template.project.objects.find((objectEntry) => objectEntry.name === "Agent")?.id
+    const switchObjectId = template.project.objects.find((objectEntry) => objectEntry.name === "Switch")?.id
+    const liftObjectId = template.project.objects.find((objectEntry) => objectEntry.name === "Lift")?.id
+    const switchInstance = controlRoom?.instances.find((instanceEntry) => instanceEntry.objectId === switchObjectId)
+    const controlLift = controlRoom?.instances.find((instanceEntry) => instanceEntry.objectId === liftObjectId)
+    expect(vaultRoom).toBeTruthy()
+    expect(agentObjectId).toBeTruthy()
+    expect(switchInstance).toBeTruthy()
+    expect(controlLift).toBeTruthy()
+    if (!switchInstance || !controlLift || !vaultRoom || !agentObjectId) {
+      throw new Error("Missing Switch Vault setup instances")
+    }
+
+    const switchCollisionProject = updateRoomInstances(template.project, template.roomId, (instances) =>
+      instances.map((instanceEntry) =>
+        instanceEntry.objectId === agentObjectId ? { ...instanceEntry, x: switchInstance.x, y: switchInstance.y } : instanceEntry
+      )
+    )
+    const afterSwitch = runRuntimeTick(
+      switchCollisionProject,
+      template.roomId,
+      new Set(),
+      createInitialRuntimeState(switchCollisionProject)
+    )
+
+    const liftCollisionProject = updateRoomInstances(afterSwitch.project, template.roomId, (instances) =>
+      instances.map((instanceEntry) =>
+        instanceEntry.objectId === agentObjectId ? { ...instanceEntry, x: controlLift.x, y: controlLift.y } : instanceEntry
+      )
+    )
+    const afterLift = runRuntimeTick(liftCollisionProject, template.roomId, new Set(), afterSwitch.runtime)
+    const vaultAfter = afterLift.project.rooms.find((roomEntry) => roomEntry.id === vaultRoom.id)
+    const vaultAgents = vaultAfter?.instances.filter((instanceEntry) => instanceEntry.objectId === agentObjectId) ?? []
+    const vaultLift = vaultAfter?.instances.find((instanceEntry) => instanceEntry.objectId === liftObjectId)
+    const firstVaultAgent = vaultAgents[0]
+
+    expect(afterLift.activeRoomId).toBe(vaultRoom.id)
+    expect(vaultAgents.length).toBeGreaterThan(0)
+    expect(firstVaultAgent?.x).not.toBe(vaultLift?.x)
+    expect(firstVaultAgent?.y).toBe(vaultLift?.y)
   })
 })
 

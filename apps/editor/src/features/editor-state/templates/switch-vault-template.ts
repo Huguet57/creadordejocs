@@ -82,7 +82,7 @@ export function createSwitchVaultTemplateProject(): TemplateProjectResult {
   const withLiftVault = addRoomInstance(withAgentVault, {
     roomId: vaultRoom.roomId,
     objectId: liftObject.objectId,
-    x: 80,
+    x: 180,
     y: 260
   }).project
   const withGuardA = addRoomInstance(withLiftVault, {
@@ -137,25 +137,42 @@ export function createSwitchVaultTemplateProject(): TemplateProjectResult {
         operator: "set",
         value: true
       },
-      { type: "changeScore", delta: 25 }
+      { type: "changeScore", delta: 25 },
+      { type: "destroySelf" }
     ]
   )
-  project = addEventWithActions(
+  project = addEventWithActions(project, agentObject.objectId, { type: "Collision", targetObjectId: liftObject.objectId }, [])
+  project = addIfBlockToLatestEvent(
     project,
-    liftObject.objectId,
-    { type: "Collision", targetObjectId: agentObject.objectId },
+    agentObject.objectId,
+    {
+      left: { scope: "global", variableId: vaultOpenId },
+      operator: "==",
+      right: true
+    },
     [
       { type: "playSound", soundId: soundLift.soundId },
+      { type: "jumpToStart" },
       { type: "goToRoom", roomId: vaultRoom.roomId }
     ]
+  )
+  project = addIfBlockToLatestEvent(
+    project,
+    agentObject.objectId,
+    {
+      left: { scope: "global", variableId: vaultOpenId },
+      operator: "==",
+      right: false
+    },
+    [{ type: "jumpToStart" }]
   )
   project = addEventWithActions(project, guardObject.objectId, { type: "Step" }, [
     { type: "setVelocity", speed: 2.2, direction: 180 }
   ])
   project = addEventWithActions(
     project,
-    guardObject.objectId,
-    { type: "Collision", targetObjectId: agentObject.objectId },
+    agentObject.objectId,
+    { type: "Collision", targetObjectId: guardObject.objectId },
     [
       { type: "playSound", soundId: soundGuard.soundId },
       { type: "jumpToStart" }
