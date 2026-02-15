@@ -8,19 +8,16 @@ const INTERMEDIATE_TEMPLATE_IDS: GameTemplateId[] = [
   "switch-vault"
 ]
 const ADVANCED_TEMPLATE_IDS: GameTemplateId[] = [
-  "turret-gauntlet",
-  "cursor-courier",
-  "vault-calibrator"
+  "cursor-courier"
 ]
 const ELSE_ENABLED_TEMPLATE_IDS: GameTemplateId[] = [
   "battery-courier",
   "mine-reset",
   "lane-crosser",
   "switch-vault",
-  "cursor-courier",
-  "vault-calibrator"
+  "cursor-courier"
 ]
-const NESTED_IF_TEMPLATE_IDS: GameTemplateId[] = ["battery-courier", "mine-reset", "turret-gauntlet", "vault-calibrator"]
+const NESTED_IF_TEMPLATE_IDS: GameTemplateId[] = ["battery-courier", "mine-reset"]
 
 function projectHasIfBlocks(templateId: GameTemplateId): boolean {
   const created = createTemplateProject(templateId)
@@ -78,10 +75,10 @@ describe("template catalog", () => {
     expect(projectHasIfBlocks(templateId)).toBe(true)
   })
 
-  it("exposes exactly three advanced templates", () => {
+  it("exposes exactly one advanced template", () => {
     const advanced = GAME_TEMPLATES.filter((entry) => entry.difficulty === "advanced")
 
-    expect(advanced).toHaveLength(3)
+    expect(advanced).toHaveLength(1)
     expect(advanced.map((entry) => entry.id)).toEqual(ADVANCED_TEMPLATE_IDS)
   })
 

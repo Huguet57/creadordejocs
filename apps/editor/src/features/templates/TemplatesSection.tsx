@@ -1,4 +1,4 @@
-import { Coins, Crosshair, MousePointer2, Route, ShieldAlert, Waypoints } from "lucide-react"
+import { Coins, Crosshair, MousePointer2, Route, Waypoints } from "lucide-react"
 import { Button } from "../../components/ui/button.js"
 import {
   GAME_TEMPLATES,
@@ -18,9 +18,7 @@ const templateIcons: Record<GameTemplateId, React.ElementType> = {
   "battery-courier": Coins,
   "mine-reset": Route,
   "switch-vault": Waypoints,
-  "turret-gauntlet": ShieldAlert,
-  "cursor-courier": MousePointer2,
-  "vault-calibrator": Waypoints
+  "cursor-courier": MousePointer2
 }
 
 type TemplateCard = GameTemplateDefinition & {
