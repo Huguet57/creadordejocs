@@ -264,16 +264,6 @@ function PlayRuntime({ initialProject }: { initialProject: ProjectV1 }) {
             Reiniciar
           </Button>
         )}
-        {isRunning && (
-          <div className="mvp-play-hud flex items-center gap-4 text-sm text-slate-600">
-            <span>Puntuació: <strong className="text-slate-900">{runtimeState.score}</strong></span>
-            {runtimeState.gameOver && (
-              <span className="mvp-play-gameover font-semibold text-red-600">
-                Game Over{runtimeState.message ? ` — ${runtimeState.message}` : ""}
-              </span>
-            )}
-          </div>
-        )}
       </div>
 
       {/* Canvas */}
