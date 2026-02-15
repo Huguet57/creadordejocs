@@ -55,7 +55,7 @@ type ActionEditorPanelProps = {
   onUpdateAction: (actionId: string, action: ObjectActionDraft) => void
   onMoveAction: (actionId: string, direction: "up" | "down") => void
   onRemoveAction: (actionId: string) => void
-  onAddIfBlock: (condition: IfCondition) => void
+  onAddIfBlock: (condition: IfCondition, parentIfBlockId?: string, parentBranch?: "then" | "else") => void
   onUpdateIfCondition: (ifBlockId: string, condition: IfCondition) => void
   onRemoveIfBlock: (ifBlockId: string) => void
   onAddIfAction: (ifBlockId: string, type: ObjectActionType, branch: "then" | "else") => void
@@ -266,6 +266,7 @@ export function ActionEditorPanel({
                     rooms={rooms}
                     onUpdateIfCondition={onUpdateIfCondition}
                     onRemoveIfBlock={onRemoveIfBlock}
+                    onAddIfBlock={onAddIfBlock}
                     onAddIfAction={onAddIfAction}
                     onUpdateIfAction={onUpdateIfAction}
                     onRemoveIfAction={onRemoveIfAction}

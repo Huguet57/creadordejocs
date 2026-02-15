@@ -21,6 +21,20 @@ function projectHasIfBlocks(templateId: GameTemplateId): boolean {
   )
 }
 
+function itemsContainActionType(
+  items: ReturnType<typeof createTemplateProject>["project"]["objects"][number]["events"][number]["items"],
+  actionType: string
+): boolean {
+  return items.some((itemEntry) => {
+    if (itemEntry.type === "action") {
+      return itemEntry.action.type === actionType
+    }
+    return (
+      itemsContainActionType(itemEntry.thenActions, actionType) || itemsContainActionType(itemEntry.elseActions, actionType)
+    )
+  })
+}
+
 describe("template catalog", () => {
   it("exposes exactly three intermediate templates", () => {
     const intermediate = GAME_TEMPLATES.filter((entry) => entry.difficulty === "intermediate")
@@ -44,17 +58,7 @@ describe("template catalog", () => {
   ] as const)("builds %s with distinctive action %s", (templateId, actionType) => {
     const created = createTemplateProject(templateId)
     const hasAction = created.project.objects.some((objectEntry) =>
-      objectEntry.events.some((eventEntry) =>
-        eventEntry.items.some((itemEntry) => {
-          if (itemEntry.type === "action") {
-            return itemEntry.action.type === actionType
-          }
-          return (
-            itemEntry.thenActions.some((nestedAction) => nestedAction.type === actionType) ||
-            itemEntry.elseActions.some((nestedAction) => nestedAction.type === actionType)
-          )
-        })
-      )
+      objectEntry.events.some((eventEntry) => itemsContainActionType(eventEntry.items, actionType))
     )
 
     expect(hasAction).toBe(true)

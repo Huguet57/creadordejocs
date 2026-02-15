@@ -5,13 +5,14 @@ import {
   ACTION_DISPLAY_NAMES,
   OBJECT_ACTION_TYPES,
   type IfCondition,
+  type ObjectEventItem,
   type ObjectActionDraft,
   type ObjectActionType,
   type ObjectIfBlockItem
 } from "../editor-state/types.js"
 import { ActionBlock } from "./ActionBlock.js"
 import type { ProjectV1 } from "@creadordejocs/project-format"
-import { coerceIfConditionRightValue } from "./if-condition-utils.js"
+import { buildDefaultIfCondition, coerceIfConditionRightValue } from "./if-condition-utils.js"
 
 type IfBlockProps = {
   item: ObjectIfBlockItem
@@ -25,6 +26,7 @@ type IfBlockProps = {
   rooms: ProjectV1["rooms"]
   onUpdateIfCondition: (ifBlockId: string, condition: IfCondition) => void
   onRemoveIfBlock: (ifBlockId: string) => void
+  onAddIfBlock: (condition: IfCondition, parentIfBlockId?: string, parentBranch?: "then" | "else") => void
   onAddIfAction: (ifBlockId: string, type: ObjectActionType, branch: "then" | "else") => void
   onUpdateIfAction: (ifBlockId: string, actionId: string, action: ObjectActionDraft, branch: "then" | "else") => void
   onRemoveIfAction: (ifBlockId: string, actionId: string, branch: "then" | "else") => void
@@ -102,6 +104,7 @@ export function IfBlock({
   rooms,
   onUpdateIfCondition,
   onRemoveIfBlock,
+  onAddIfBlock,
   onAddIfAction,
   onUpdateIfAction,
   onRemoveIfAction
@@ -109,6 +112,54 @@ export function IfBlock({
   const variableSource = item.condition.left.scope === "global" ? globalVariables : selectedObjectVariables
   const selectedVariable = variableSource.find((variable) => variable.id === item.condition.left.variableId)
   const selectedType = selectedVariable?.type ?? "number"
+  const defaultIfCondition = buildDefaultIfCondition(globalVariables, selectedObjectVariables)
+
+  const renderBranchItems = (branch: "then" | "else", items: ObjectEventItem[]) => {
+    return items.map((branchItem, branchIndex) => {
+      if (branchItem.type === "action") {
+        return (
+          <ActionBlock
+            key={`${branch}-${branchItem.id}`}
+            action={branchItem.action}
+            index={branchIndex}
+            isFirst={branchIndex === 0}
+            isLast={branchIndex === items.length - 1}
+            onUpdate={(updatedAction) => onUpdateIfAction(item.id, branchItem.action.id, updatedAction, branch)}
+            onMoveUp={() => undefined}
+            onMoveDown={() => undefined}
+            onRemove={() => onRemoveIfAction(item.id, branchItem.action.id, branch)}
+            selectableObjects={selectableTargetObjects}
+            sounds={sounds}
+            globalVariables={globalVariables}
+            objectVariablesByObjectId={objectVariablesByObjectId}
+            roomInstances={roomInstances}
+            allObjects={allObjects}
+            rooms={rooms}
+          />
+        )
+      }
+      return (
+        <IfBlock
+          key={`${branch}-${branchItem.id}`}
+          item={branchItem}
+          selectableTargetObjects={selectableTargetObjects}
+          sounds={sounds}
+          globalVariables={globalVariables}
+          selectedObjectVariables={selectedObjectVariables}
+          objectVariablesByObjectId={objectVariablesByObjectId}
+          roomInstances={roomInstances}
+          allObjects={allObjects}
+          rooms={rooms}
+          onUpdateIfCondition={onUpdateIfCondition}
+          onRemoveIfBlock={onRemoveIfBlock}
+          onAddIfBlock={onAddIfBlock}
+          onAddIfAction={onAddIfAction}
+          onUpdateIfAction={onUpdateIfAction}
+          onRemoveIfAction={onRemoveIfAction}
+        />
+      )
+    })
+  }
 
   return (
     <div className="if-block-container flex flex-col rounded-lg border border-amber-200 bg-white shadow-sm overflow-hidden">
@@ -222,30 +273,24 @@ export function IfBlock({
       <div className="if-block-then-branch px-3 pt-2 pb-1">
         <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Then</span>
         <div className="flex flex-col gap-2 mt-1.5">
-          {item.thenActions.map((nestedAction, nestedIndex) => (
-            <ActionBlock
-              key={`then-${nestedAction.id}`}
-              action={nestedAction}
-              index={nestedIndex}
-              isFirst={nestedIndex === 0}
-              isLast={nestedIndex === item.thenActions.length - 1}
-              onUpdate={(updatedAction) => onUpdateIfAction(item.id, nestedAction.id, updatedAction, "then")}
-              onMoveUp={() => undefined}
-              onMoveDown={() => undefined}
-              onRemove={() => onRemoveIfAction(item.id, nestedAction.id, "then")}
-              selectableObjects={selectableTargetObjects}
-              sounds={sounds}
-              globalVariables={globalVariables}
-              objectVariablesByObjectId={objectVariablesByObjectId}
-              roomInstances={roomInstances}
-              allObjects={allObjects}
-              rooms={rooms}
-            />
-          ))}
+          {renderBranchItems("then", item.thenActions)}
           <BranchAddButton
             branch="then"
             onAdd={(type) => onAddIfAction(item.id, type, "then")}
           />
+          <button
+            type="button"
+            className="if-block-branch-add-if-toggle flex items-center gap-1 mt-1 px-2 py-1.5 text-[10px] text-slate-500 rounded border border-dashed border-slate-300 hover:text-amber-600 hover:border-amber-300 hover:bg-amber-50 transition-colors"
+            disabled={!defaultIfCondition}
+            onClick={() => {
+              if (defaultIfCondition) {
+                onAddIfBlock(defaultIfCondition, item.id, "then")
+              }
+            }}
+          >
+            <Plus className="h-3 w-3" />
+            Add then if
+          </button>
         </div>
       </div>
 
@@ -253,30 +298,24 @@ export function IfBlock({
       <div className="if-block-else-branch px-3 pt-2 pb-2">
         <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Else</span>
         <div className="flex flex-col gap-2 mt-1.5">
-          {item.elseActions.map((nestedAction, nestedIndex) => (
-            <ActionBlock
-              key={`else-${nestedAction.id}`}
-              action={nestedAction}
-              index={nestedIndex}
-              isFirst={nestedIndex === 0}
-              isLast={nestedIndex === item.elseActions.length - 1}
-              onUpdate={(updatedAction) => onUpdateIfAction(item.id, nestedAction.id, updatedAction, "else")}
-              onMoveUp={() => undefined}
-              onMoveDown={() => undefined}
-              onRemove={() => onRemoveIfAction(item.id, nestedAction.id, "else")}
-              selectableObjects={selectableTargetObjects}
-              sounds={sounds}
-              globalVariables={globalVariables}
-              objectVariablesByObjectId={objectVariablesByObjectId}
-              roomInstances={roomInstances}
-              allObjects={allObjects}
-              rooms={rooms}
-            />
-          ))}
+          {renderBranchItems("else", item.elseActions)}
           <BranchAddButton
             branch="else"
             onAdd={(type) => onAddIfAction(item.id, type, "else")}
           />
+          <button
+            type="button"
+            className="if-block-branch-add-if-toggle flex items-center gap-1 mt-1 px-2 py-1.5 text-[10px] text-slate-500 rounded border border-dashed border-slate-300 hover:text-amber-600 hover:border-amber-300 hover:bg-amber-50 transition-colors"
+            disabled={!defaultIfCondition}
+            onClick={() => {
+              if (defaultIfCondition) {
+                onAddIfBlock(defaultIfCondition, item.id, "else")
+              }
+            }}
+          >
+            <Plus className="h-3 w-3" />
+            Add else if
+          </button>
         </div>
       </div>
     </div>

@@ -446,10 +446,22 @@ export function useEditorController() {
         "Reorder event action"
       )
     },
-    addObjectEventIfBlock(eventId: string, condition: IfCondition) {
+    addObjectEventIfBlock(
+      eventId: string,
+      condition: IfCondition,
+      parentIfBlockId?: string,
+      parentBranch?: "then" | "else"
+    ) {
       if (!selectedObject) return
+      const addIfInput = {
+        objectId: selectedObject.id,
+        eventId,
+        condition,
+        ...(parentIfBlockId ? { parentIfBlockId } : {}),
+        ...(parentBranch ? { parentBranch } : {})
+      }
       pushProjectChange(
-        addObjectEventIfBlockModel(project, { objectId: selectedObject.id, eventId, condition }),
+        addObjectEventIfBlockModel(project, addIfInput),
         "Add if block"
       )
     },

@@ -811,8 +811,20 @@ describe("runtime regressions", () => {
                     operator: "==",
                     right: true
                   },
-                  thenActions: [{ id: "then-action", type: "changeScore", delta: 5 }],
-                  elseActions: [{ id: "else-action", type: "changeScore", delta: 2 }]
+                  thenActions: [
+                    {
+                      id: "then-item",
+                      type: "action",
+                      action: { id: "then-action", type: "changeScore", delta: 5 }
+                    }
+                  ],
+                  elseActions: [
+                    {
+                      id: "else-item",
+                      type: "action",
+                      action: { id: "else-action", type: "changeScore", delta: 2 }
+                    }
+                  ]
                 }
               ]
             }
@@ -833,6 +845,112 @@ describe("runtime regressions", () => {
 
     const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
     expect(result.runtime.score).toBe(2)
+  })
+
+  it("runs nested if branches recursively", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-nested-if",
+        name: "Nested if test",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: {
+        sprites: [],
+        sounds: []
+      },
+      variables: {
+        global: [
+          { id: "gv-first", name: "first", type: "boolean", initialValue: true },
+          { id: "gv-second", name: "second", type: "boolean", initialValue: false }
+        ],
+        objectByObjectId: {}
+      },
+      objects: [
+        {
+          id: "object-nested-checker",
+          name: "NestedChecker",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step",
+              type: "Step",
+              key: null,
+              keyboardMode: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [
+                {
+                  id: "if-root",
+                  type: "if",
+                  condition: {
+                    left: { scope: "global", variableId: "gv-first" },
+                    operator: "==",
+                    right: true
+                  },
+                  thenActions: [
+                    {
+                      id: "if-nested",
+                      type: "if",
+                      condition: {
+                        left: { scope: "global", variableId: "gv-second" },
+                        operator: "==",
+                        right: true
+                      },
+                      thenActions: [
+                        {
+                          id: "nested-then-item",
+                          type: "action",
+                          action: { id: "nested-then-action", type: "changeScore", delta: 10 }
+                        }
+                      ],
+                      elseActions: [
+                        {
+                          id: "nested-else-item",
+                          type: "action",
+                          action: { id: "nested-else-action", type: "changeScore", delta: 3 }
+                        }
+                      ]
+                    }
+                  ],
+                  elseActions: [
+                    {
+                      id: "root-else-item",
+                      type: "action",
+                      action: { id: "root-else-action", type: "changeScore", delta: 1 }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      rooms: [
+        {
+          id: "room-main",
+          name: "Main",
+          instances: [{ id: "instance-nested-checker", objectId: "object-nested-checker", x: 0, y: 0 }]
+        }
+      ],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    expect(result.runtime.score).toBe(3)
   })
 
   it("supports cross-instance variable transfer with collision self/other", () => {

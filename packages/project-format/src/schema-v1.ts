@@ -166,20 +166,53 @@ const IfConditionSchema = z.object({
   right: VariableValueSchema
 })
 
-const ObjectEventItemSchema = z.discriminatedUnion("type", [
-  z.object({
-    id: z.string().min(1),
-    type: z.literal("action"),
-    action: ObjectActionSchema
-  }),
-  z.object({
-    id: z.string().min(1),
-    type: z.literal("if"),
-    condition: IfConditionSchema,
-    thenActions: z.array(ObjectActionSchema).default([]),
-    elseActions: z.array(ObjectActionSchema).default([])
-  })
-])
+export type ObjectActionOutput = z.output<typeof ObjectActionSchema>
+export type IfConditionOutput = z.output<typeof IfConditionSchema>
+
+export type ObjectActionItem = {
+  id: string
+  type: "action"
+  action: ObjectActionOutput
+}
+
+export type ObjectIfItem = {
+  id: string
+  type: "if"
+  condition: IfConditionOutput
+  thenActions: ObjectEventItemType[]
+  elseActions: ObjectEventItemType[]
+}
+
+export type ObjectEventItemType = ObjectActionItem | ObjectIfItem
+
+const ObjectActionItemSchema = z.object({
+  id: z.string().min(1),
+  type: z.literal("action"),
+  action: ObjectActionSchema
+})
+
+const ObjectEventItemSchema: z.ZodType<ObjectEventItemType, z.ZodTypeDef, unknown> = z.lazy(() => {
+  const ObjectBranchEntrySchema: z.ZodType<ObjectEventItemType, z.ZodTypeDef, unknown> = z.lazy(() =>
+    z.union([
+      ObjectEventItemSchema,
+      ObjectActionSchema.transform((actionEntry) => ({
+        id: `legacy-item-${actionEntry.id}`,
+        type: "action" as const,
+        action: actionEntry
+      }))
+    ])
+  )
+  return z.discriminatedUnion("type", [
+    ObjectActionItemSchema,
+    z.object({
+      id: z.string().min(1),
+      type: z.literal("if"),
+      condition: IfConditionSchema,
+      thenActions: z.array(ObjectBranchEntrySchema).default([]),
+      elseActions: z.array(ObjectBranchEntrySchema).default([])
+    })
+  ])
+})
 
 const ObjectEventSchema = z
   .object({

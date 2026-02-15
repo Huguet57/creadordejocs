@@ -623,7 +623,7 @@ function runEventItems(
       continue
     }
     const conditionMatched = evaluateIfCondition(itemEntry.condition, result.instance, result.runtime, collisionOtherInstanceId)
-    const branchResult = runEventActions(
+    const branchResult = runEventItems(
       project,
       result.instance,
       conditionMatched ? itemEntry.thenActions : itemEntry.elseActions,

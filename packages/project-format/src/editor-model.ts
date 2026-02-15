@@ -44,6 +44,7 @@ export type ObjectEventKey = "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight
 export type ObjectKeyboardMode = "down" | "press"
 export type ObjectEventItem = ProjectV1["objects"][number]["events"][number]["items"][number]
 export type ObjectAction = Extract<ObjectEventItem, { type: "action" }>["action"]
+export type ObjectIfBlock = Extract<ObjectEventItem, { type: "if" }>
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never
 export type ObjectActionDraft = DistributiveOmit<ObjectAction, "id">
 export type IfCondition = Extract<ObjectEventItem, { type: "if" }>["condition"]
@@ -95,6 +96,8 @@ export type AddObjectEventIfBlockInput = {
   objectId: string
   eventId: string
   condition: IfCondition
+  parentIfBlockId?: string
+  parentBranch?: "then" | "else"
 }
 
 export type UpdateObjectEventIfBlockConditionInput = {
@@ -190,6 +193,66 @@ function toActionItem(action: ObjectActionDraft): Extract<ObjectEventItem, { typ
     type: "action",
     action: { id: actionId, ...action } as ObjectAction
   }
+}
+
+function updateIfBlockInItems(
+  items: ObjectEventItem[],
+  ifBlockId: string,
+  updater: (ifBlock: ObjectIfBlock) => ObjectIfBlock
+): { items: ObjectEventItem[]; updated: boolean } {
+  let updated = false
+  const nextItems = items.map((itemEntry) => {
+    if (itemEntry.type !== "if") {
+      return itemEntry
+    }
+    if (itemEntry.id === ifBlockId) {
+      updated = true
+      return updater(itemEntry)
+    }
+    const thenResult = updateIfBlockInItems(itemEntry.thenActions, ifBlockId, updater)
+    const elseResult = updateIfBlockInItems(itemEntry.elseActions, ifBlockId, updater)
+    if (!thenResult.updated && !elseResult.updated) {
+      return itemEntry
+    }
+    updated = true
+    return {
+      ...itemEntry,
+      thenActions: thenResult.items,
+      elseActions: elseResult.items
+    }
+  })
+  return { items: nextItems, updated }
+}
+
+function removeIfBlockFromItems(
+  items: ObjectEventItem[],
+  ifBlockId: string
+): { items: ObjectEventItem[]; updated: boolean } {
+  let updated = false
+  const nextItems: ObjectEventItem[] = []
+  for (const itemEntry of items) {
+    if (itemEntry.type !== "if") {
+      nextItems.push(itemEntry)
+      continue
+    }
+    if (itemEntry.id === ifBlockId) {
+      updated = true
+      continue
+    }
+    const thenResult = removeIfBlockFromItems(itemEntry.thenActions, ifBlockId)
+    const elseResult = removeIfBlockFromItems(itemEntry.elseActions, ifBlockId)
+    if (thenResult.updated || elseResult.updated) {
+      updated = true
+      nextItems.push({
+        ...itemEntry,
+        thenActions: thenResult.items,
+        elseActions: elseResult.items
+      })
+      continue
+    }
+    nextItems.push(itemEntry)
+  }
+  return { items: nextItems, updated }
 }
 
 function normalizeVariableName(name: string): string {
@@ -539,6 +602,14 @@ export function moveObjectEventAction(project: ProjectV1, input: MoveObjectEvent
 }
 
 export function addObjectEventIfBlock(project: ProjectV1, input: AddObjectEventIfBlockInput): ProjectV1 {
+  const parentBranch = input.parentBranch ?? "then"
+  const nextIfBlock: ObjectIfBlock = {
+    id: makeId("if"),
+    type: "if",
+    condition: input.condition,
+    thenActions: [],
+    elseActions: []
+  }
   return {
     ...project,
     objects: project.objects.map((objectEntry) =>
@@ -549,16 +620,20 @@ export function addObjectEventIfBlock(project: ProjectV1, input: AddObjectEventI
               eventEntry.id === input.eventId
                 ? {
                     ...eventEntry,
-                    items: [
-                      ...eventEntry.items,
-                      {
-                        id: makeId("if"),
-                        type: "if",
-                        condition: input.condition,
-                        thenActions: [],
-                        elseActions: []
-                      }
-                    ]
+                    items:
+                      input.parentIfBlockId === undefined
+                        ? [...eventEntry.items, nextIfBlock]
+                        : updateIfBlockInItems(eventEntry.items, input.parentIfBlockId, (ifBlockEntry) => ({
+                            ...ifBlockEntry,
+                            thenActions:
+                              parentBranch === "then"
+                                ? [...ifBlockEntry.thenActions, nextIfBlock]
+                                : ifBlockEntry.thenActions,
+                            elseActions:
+                              parentBranch === "else"
+                                ? [...ifBlockEntry.elseActions, nextIfBlock]
+                                : ifBlockEntry.elseActions
+                          })).items
                   }
                 : eventEntry
             )
@@ -579,11 +654,10 @@ export function updateObjectEventIfBlockCondition(project: ProjectV1, input: Upd
               eventEntry.id === input.eventId
                 ? {
                     ...eventEntry,
-                    items: eventEntry.items.map((itemEntry) =>
-                      itemEntry.type === "if" && itemEntry.id === input.ifBlockId
-                        ? { ...itemEntry, condition: input.condition }
-                        : itemEntry
-                    )
+                    items: updateIfBlockInItems(eventEntry.items, input.ifBlockId, (ifBlockEntry) => ({
+                      ...ifBlockEntry,
+                      condition: input.condition
+                    })).items
                   }
                 : eventEntry
             )
@@ -604,7 +678,7 @@ export function removeObjectEventIfBlock(project: ProjectV1, input: RemoveObject
               eventEntry.id === input.eventId
                 ? {
                     ...eventEntry,
-                    items: eventEntry.items.filter((itemEntry) => itemEntry.type !== "if" || itemEntry.id !== input.ifBlockId)
+                    items: removeIfBlockFromItems(eventEntry.items, input.ifBlockId).items
                   }
                 : eventEntry
             )
@@ -616,6 +690,7 @@ export function removeObjectEventIfBlock(project: ProjectV1, input: RemoveObject
 
 export function addObjectEventIfAction(project: ProjectV1, input: AddObjectEventIfActionInput): ProjectV1 {
   const branch = input.branch ?? "then"
+  const nextActionItem = toActionItem(input.action)
   return {
     ...project,
     objects: project.objects.map((objectEntry) =>
@@ -626,21 +701,11 @@ export function addObjectEventIfAction(project: ProjectV1, input: AddObjectEvent
               eventEntry.id === input.eventId
                 ? {
                     ...eventEntry,
-                    items: eventEntry.items.map((itemEntry) =>
-                      itemEntry.type === "if" && itemEntry.id === input.ifBlockId
-                        ? {
-                            ...itemEntry,
-                            thenActions:
-                              branch === "then"
-                                ? [...itemEntry.thenActions, { id: makeId("action"), ...input.action } as ObjectAction]
-                                : itemEntry.thenActions,
-                            elseActions:
-                              branch === "else"
-                                ? [...itemEntry.elseActions, { id: makeId("action"), ...input.action } as ObjectAction]
-                                : itemEntry.elseActions
-                          }
-                        : itemEntry
-                    )
+                    items: updateIfBlockInItems(eventEntry.items, input.ifBlockId, (ifBlockEntry) => ({
+                      ...ifBlockEntry,
+                      thenActions: branch === "then" ? [...ifBlockEntry.thenActions, nextActionItem] : ifBlockEntry.thenActions,
+                      elseActions: branch === "else" ? [...ifBlockEntry.elseActions, nextActionItem] : ifBlockEntry.elseActions
+                    })).items
                   }
                 : eventEntry
             )
@@ -652,6 +717,7 @@ export function addObjectEventIfAction(project: ProjectV1, input: AddObjectEvent
 
 export function updateObjectEventIfAction(project: ProjectV1, input: UpdateObjectEventIfActionInput): ProjectV1 {
   const branch = input.branch ?? "then"
+  const nextAction = { id: input.actionId, ...input.action } as ObjectAction
   return {
     ...project,
     objects: project.objects.map((objectEntry) =>
@@ -662,29 +728,25 @@ export function updateObjectEventIfAction(project: ProjectV1, input: UpdateObjec
               eventEntry.id === input.eventId
                 ? {
                     ...eventEntry,
-                    items: eventEntry.items.map((itemEntry) =>
-                      itemEntry.type === "if" && itemEntry.id === input.ifBlockId
-                        ? {
-                            ...itemEntry,
-                            thenActions:
-                              branch === "then"
-                                ? itemEntry.thenActions.map((actionEntry) =>
-                                    actionEntry.id === input.actionId
-                                      ? ({ id: input.actionId, ...input.action } as ObjectAction)
-                                      : actionEntry
-                                  )
-                                : itemEntry.thenActions,
-                            elseActions:
-                              branch === "else"
-                                ? itemEntry.elseActions.map((actionEntry) =>
-                                    actionEntry.id === input.actionId
-                                      ? ({ id: input.actionId, ...input.action } as ObjectAction)
-                                      : actionEntry
-                                  )
-                                : itemEntry.elseActions
-                          }
-                        : itemEntry
-                    )
+                    items: updateIfBlockInItems(eventEntry.items, input.ifBlockId, (ifBlockEntry) => ({
+                      ...ifBlockEntry,
+                      thenActions:
+                        branch === "then"
+                          ? ifBlockEntry.thenActions.map((entry) =>
+                              entry.type === "action" && entry.action.id === input.actionId
+                                ? { ...entry, action: nextAction }
+                                : entry
+                            )
+                          : ifBlockEntry.thenActions,
+                      elseActions:
+                        branch === "else"
+                          ? ifBlockEntry.elseActions.map((entry) =>
+                              entry.type === "action" && entry.action.id === input.actionId
+                                ? { ...entry, action: nextAction }
+                                : entry
+                            )
+                          : ifBlockEntry.elseActions
+                    })).items
                   }
                 : eventEntry
             )
@@ -706,21 +768,21 @@ export function removeObjectEventIfAction(project: ProjectV1, input: RemoveObjec
               eventEntry.id === input.eventId
                 ? {
                     ...eventEntry,
-                    items: eventEntry.items.map((itemEntry) =>
-                      itemEntry.type === "if" && itemEntry.id === input.ifBlockId
-                        ? {
-                            ...itemEntry,
-                            thenActions:
-                              branch === "then"
-                                ? itemEntry.thenActions.filter((actionEntry) => actionEntry.id !== input.actionId)
-                                : itemEntry.thenActions,
-                            elseActions:
-                              branch === "else"
-                                ? itemEntry.elseActions.filter((actionEntry) => actionEntry.id !== input.actionId)
-                                : itemEntry.elseActions
-                          }
-                        : itemEntry
-                    )
+                    items: updateIfBlockInItems(eventEntry.items, input.ifBlockId, (ifBlockEntry) => ({
+                      ...ifBlockEntry,
+                      thenActions:
+                        branch === "then"
+                          ? ifBlockEntry.thenActions.filter(
+                              (entry) => entry.type !== "action" || entry.action.id !== input.actionId
+                            )
+                          : ifBlockEntry.thenActions,
+                      elseActions:
+                        branch === "else"
+                          ? ifBlockEntry.elseActions.filter(
+                              (entry) => entry.type !== "action" || entry.action.id !== input.actionId
+                            )
+                          : ifBlockEntry.elseActions
+                    })).items
                   }
                 : eventEntry
             )

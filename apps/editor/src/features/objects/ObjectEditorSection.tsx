@@ -195,9 +195,9 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
                 controller.removeObjectEventAction(activeEvent.id, actionId)
               }
             }}
-            onAddIfBlock={(condition) => {
+            onAddIfBlock={(condition, parentIfBlockId, parentBranch) => {
               if (activeEvent) {
-                controller.addObjectEventIfBlock(activeEvent.id, condition ?? defaultIfCondition())
+                controller.addObjectEventIfBlock(activeEvent.id, condition ?? defaultIfCondition(), parentIfBlockId, parentBranch)
               }
             }}
             onUpdateIfCondition={(ifBlockId, condition) => {

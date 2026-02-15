@@ -180,10 +180,12 @@ describe("editor model helpers", () => {
       ifBlockId: ifBlock.id,
       action: { type: "changeScore", delta: 2 }
     })
-    const nestedActionId = withNestedAction.objects[0]?.events[0]?.items.find((item) => item.type === "if" && item.id === ifBlock.id)
-    if (nestedActionId?.type !== "if" || !nestedActionId.thenActions[0]) {
+    const withNestedActionItems = withNestedAction.objects[0]?.events[0]?.items
+    const nestedActionId = withNestedActionItems?.find((item) => item.type === "if" && item.id === ifBlock.id)
+    if (nestedActionId?.type !== "if" || nestedActionId.thenActions[0]?.type !== "action") {
       throw new Error("Expected nested action")
     }
+    const nestedIfActionId = nestedActionId.thenActions[0].action.id
 
     const withUpdatedCondition = updateObjectEventIfBlockCondition(withNestedAction, {
       objectId: objectResult.objectId,
@@ -199,14 +201,14 @@ describe("editor model helpers", () => {
       objectId: objectResult.objectId,
       eventId,
       ifBlockId: ifBlock.id,
-      actionId: nestedActionId.thenActions[0].id,
+      actionId: nestedIfActionId,
       action: { type: "changeScore", delta: 4 }
     })
     const withRemovedNested = removeObjectEventIfAction(withUpdatedNested, {
       objectId: objectResult.objectId,
       eventId,
       ifBlockId: ifBlock.id,
-      actionId: nestedActionId.thenActions[0].id
+      actionId: nestedIfActionId
     })
     const withoutIf = removeObjectEventIfBlock(withRemovedNested, {
       objectId: objectResult.objectId,
@@ -214,20 +216,110 @@ describe("editor model helpers", () => {
       ifBlockId: ifBlock.id
     })
 
-    const updatedIf = withUpdatedNested.objects[0]?.events[0]?.items.find((item) => item.type === "if" && item.id === ifBlock.id)
+    const withUpdatedNestedItems = withUpdatedNested.objects[0]?.events[0]?.items
+    const updatedIf = withUpdatedNestedItems?.find((item) => item.type === "if" && item.id === ifBlock.id)
     expect(updatedIf?.type).toBe("if")
     if (updatedIf?.type === "if") {
       expect(updatedIf.condition.left.scope).toBe("object")
-      expect(updatedIf.thenActions[0]?.type).toBe("changeScore")
-      if (updatedIf.thenActions[0]?.type === "changeScore") {
-        expect(updatedIf.thenActions[0].delta).toBe(4)
+      expect(updatedIf.thenActions[0]?.type).toBe("action")
+      if (updatedIf.thenActions[0]?.type === "action" && updatedIf.thenActions[0].action.type === "changeScore") {
+        expect(updatedIf.thenActions[0].action.delta).toBe(4)
       }
     }
-    const remainingIf = withRemovedNested.objects[0]?.events[0]?.items.find((item) => item.type === "if" && item.id === ifBlock.id)
+    const withRemovedNestedItems = withRemovedNested.objects[0]?.events[0]?.items
+    const remainingIf = withRemovedNestedItems?.find((item) => item.type === "if" && item.id === ifBlock.id)
     if (remainingIf?.type === "if") {
       expect(remainingIf.thenActions).toHaveLength(0)
     }
     expect(withoutIf.objects[0]?.events[0]?.items.some((item) => item.type === "if")).toBe(false)
+  })
+
+  it("adds and removes nested if blocks inside if branches", () => {
+    const initial = createEmptyProjectV1("Nested if blocks")
+    const objectResult = quickCreateObject(initial, { name: "Player" })
+    const withEvent = addObjectEvent(objectResult.project, { objectId: objectResult.objectId, type: "Step" })
+    const eventId = withEvent.objects[0]?.events[0]?.id
+    if (!eventId) {
+      throw new Error("Expected event to be created")
+    }
+
+    const withRootIf = addObjectEventIfBlock(withEvent, {
+      objectId: objectResult.objectId,
+      eventId,
+      condition: {
+        left: { scope: "global", variableId: "gv-root" },
+        operator: "==",
+        right: 1
+      }
+    })
+    const withRootIfItems = withRootIf.objects[0]?.events[0]?.items
+    const rootIf = withRootIfItems?.find((item) => item.type === "if")
+    if (rootIf?.type !== "if") {
+      throw new Error("Expected root if block")
+    }
+
+    const withNestedIf = addObjectEventIfBlock(withRootIf, {
+      objectId: objectResult.objectId,
+      eventId,
+      condition: {
+        left: { scope: "global", variableId: "gv-nested" },
+        operator: ">",
+        right: 0
+      },
+      parentIfBlockId: rootIf.id,
+      parentBranch: "then"
+    })
+    const withNestedIfItems = withNestedIf.objects[0]?.events[0]?.items
+    const nestedRootIf = withNestedIfItems?.find((item) => item.type === "if" && item.id === rootIf.id)
+    if (nestedRootIf?.type !== "if") {
+      throw new Error("Expected nested root if block")
+    }
+    const nestedIf = nestedRootIf.thenActions.find((item) => item.type === "if")
+    if (nestedIf?.type !== "if") {
+      throw new Error("Expected nested if block")
+    }
+
+    const withNestedAction = addObjectEventIfAction(withNestedIf, {
+      objectId: objectResult.objectId,
+      eventId,
+      ifBlockId: nestedIf.id,
+      action: { type: "changeScore", delta: 3 }
+    })
+    const withUpdatedNestedCondition = updateObjectEventIfBlockCondition(withNestedAction, {
+      objectId: objectResult.objectId,
+      eventId,
+      ifBlockId: nestedIf.id,
+      condition: {
+        left: { scope: "object", variableId: "ov-health" },
+        operator: "<=",
+        right: 0
+      }
+    })
+    const withNestedRemoved = removeObjectEventIfBlock(withUpdatedNestedCondition, {
+      objectId: objectResult.objectId,
+      eventId,
+      ifBlockId: nestedIf.id
+    })
+
+    const withUpdatedNestedConditionItems = withUpdatedNestedCondition.objects[0]?.events[0]?.items
+    const rootIfAfterUpdate = withUpdatedNestedConditionItems?.find((item) => item.type === "if" && item.id === rootIf.id)
+    const nestedBeforeRemove =
+      rootIfAfterUpdate?.type === "if"
+        ? rootIfAfterUpdate.thenActions.find((item) => item.type === "if" && item.id === nestedIf.id)
+        : undefined
+    expect(nestedBeforeRemove?.type).toBe("if")
+    if (nestedBeforeRemove?.type === "if") {
+      expect(nestedBeforeRemove.condition.left.scope).toBe("object")
+      expect(nestedBeforeRemove.thenActions[0]?.type).toBe("action")
+    }
+
+    const withNestedRemovedItems = withNestedRemoved.objects[0]?.events[0]?.items
+    const rootIfAfterRemove = withNestedRemovedItems?.find((item) => item.type === "if" && item.id === rootIf.id)
+    const nestedAfterRemove =
+      rootIfAfterRemove?.type === "if"
+        ? rootIfAfterRemove.thenActions.some((item) => item.type === "if" && item.id === nestedIf.id)
+        : false
+    expect(nestedAfterRemove).toBe(false)
   })
 
   it("manages global and object variable definitions with uniqueness", () => {
