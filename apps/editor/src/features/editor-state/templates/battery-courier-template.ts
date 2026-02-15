@@ -179,9 +179,6 @@ export function createBatteryCourierTemplateProject(): TemplateProjectResult {
     [{ type: "changeScore", delta: 10 }, { type: "teleport", mode: "start", x: null, y: null }],
     [{ type: "teleport", mode: "start", x: null, y: null }]
   )
-  project = addEventWithActions(project, hazardObject.objectId, { type: "Step" }, [
-    { type: "moveToward", targetType: "object", targetObjectId: courierObject.objectId, speed: 5 }
-  ])
   project = addEventWithActions(
     project,
     hazardObject.objectId,

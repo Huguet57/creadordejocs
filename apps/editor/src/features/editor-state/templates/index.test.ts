@@ -107,23 +107,6 @@ describe("template catalog", () => {
     expect(actionTypes.has("teleport")).toBe(true)
   })
 
-  it.each(ADVANCED_TEMPLATE_IDS)("builds %s with mouse_x or mouse_y runtime builtins in conditions", (templateId) => {
-    const created = createTemplateProject(templateId)
-    const hasMouseBuiltinCondition = created.project.objects.some((objectEntry) =>
-      objectEntry.events.some((eventEntry) =>
-        eventEntry.items.some(
-          (itemEntry) =>
-            itemEntry.type === "if" &&
-            "left" in itemEntry.condition &&
-            itemEntry.condition.left.scope === "global" &&
-            (itemEntry.condition.left.variableId === "__mouse_x" || itemEntry.condition.left.variableId === "__mouse_y")
-        )
-      )
-    )
-
-    expect(hasMouseBuiltinCondition).toBe(true)
-  })
-
   it.each([
     ["battery-courier", "copyVariable"],
     ["mine-reset", "restartRoom"],

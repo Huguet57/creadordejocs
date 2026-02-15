@@ -99,20 +99,10 @@ export function createCursorCourierTemplateProject(): TemplateProjectResult {
     { type: "teleport", mode: "mouse", x: null, y: null },
     { type: "clampToRoom" }
   ])
-  project = addEventWithActions(project, courierObject.objectId, { type: "MouseMove" }, [])
-  project = addIfElseBlockToLatestEvent(
-    project,
-    courierObject.objectId,
-    {
-      left: { scope: "global", variableId: "__mouse_x" },
-      operator: ">=",
-      right: 500
-    },
-    [{ type: "teleport", mode: "position", x: 520, y: 50 }],
-    []
-  )
   project = addEventWithActions(project, courierObject.objectId, { type: "Step" }, [{ type: "clampToRoom" }])
-  project = addEventWithActions(project, hazardObject.objectId, { type: "Step" }, [{ type: "setVelocity", speed: 2.2, direction: 0 }])
+  project = addEventWithActions(project, hazardObject.objectId, { type: "Step" }, [
+    { type: "moveToward", targetType: "object", targetObjectId: courierObject.objectId, speed: 5 }
+  ])
   project = addEventWithActions(project, hazardObject.objectId, { type: "OutsideRoom" }, [{ type: "teleport", mode: "start", x: null, y: null }])
   project = addEventWithActions(project, courierObject.objectId, { type: "Collision", targetObjectId: packetObject.objectId }, [
     { type: "playSound", soundId: soundPickup.soundId },
