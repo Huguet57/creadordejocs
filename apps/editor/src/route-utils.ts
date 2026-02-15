@@ -1,6 +1,6 @@
 import type { EditorSection } from "./features/editor-state/types.js"
 
-export type AppRoute = "landing" | "editor"
+export type AppRoute = "landing" | "editor" | "play"
 
 const VALID_EDITOR_SECTIONS: readonly EditorSection[] = [
   "sprites",
@@ -22,7 +22,23 @@ export function normalizePathname(pathname: string): string {
 
 export function resolveAppRoute(pathname: string): AppRoute {
   const normalizedPathname = normalizePathname(pathname)
-  return normalizedPathname === "/editor" || normalizedPathname.startsWith("/editor/") ? "editor" : "landing"
+  if (normalizedPathname === "/editor" || normalizedPathname.startsWith("/editor/")) {
+    return "editor"
+  }
+  if (normalizedPathname.startsWith("/play/")) {
+    return "play"
+  }
+  return "landing"
+}
+
+export function resolvePlayShareId(pathname: string): string | null {
+  const normalized = normalizePathname(pathname)
+  const prefix = "/play/"
+  if (!normalized.startsWith(prefix)) {
+    return null
+  }
+  const segment = normalized.slice(prefix.length)
+  return segment || null
 }
 
 export function resolveEditorSection(pathname: string): EditorSection | null {

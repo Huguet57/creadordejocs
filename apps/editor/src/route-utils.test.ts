@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { normalizePathname, resolveAppRoute, resolveEditorSection, buildEditorSectionPath } from "./route-utils.js"
+import { normalizePathname, resolveAppRoute, resolveEditorSection, resolvePlayShareId, buildEditorSectionPath } from "./route-utils.js"
 
 describe("normalizePathname", () => {
   it("keeps root path unchanged", () => {
@@ -32,8 +32,35 @@ describe("resolveAppRoute", () => {
     expect(resolveAppRoute("/editor/objects/")).toBe("editor")
   })
 
+  it("renders play at /play/abc123", () => {
+    expect(resolveAppRoute("/play/abc123")).toBe("play")
+  })
+
+  it("renders play at /play/abc123/", () => {
+    expect(resolveAppRoute("/play/abc123/")).toBe("play")
+  })
+
   it("falls back to landing for unknown routes", () => {
     expect(resolveAppRoute("/com-crear-un-joc")).toBe("landing")
+  })
+})
+
+describe("resolvePlayShareId", () => {
+  it("extracts id from /play/:id", () => {
+    expect(resolvePlayShareId("/play/abc123")).toBe("abc123")
+  })
+
+  it("handles trailing slash", () => {
+    expect(resolvePlayShareId("/play/abc123/")).toBe("abc123")
+  })
+
+  it("returns null for non-play paths", () => {
+    expect(resolvePlayShareId("/editor")).toBeNull()
+  })
+
+  it("returns null for /play without id", () => {
+    expect(resolvePlayShareId("/play")).toBeNull()
+    expect(resolvePlayShareId("/play/")).toBeNull()
   })
 })
 

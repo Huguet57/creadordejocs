@@ -4,6 +4,7 @@
   "framework": "vite",
   "rewrites": [
     { "source": "/editor", "destination": "/" },
-    { "source": "/editor/", "destination": "/" }
+    { "source": "/editor/", "destination": "/" },
+    { "source": "/play/:id", "destination": "/" }
   ]
 }

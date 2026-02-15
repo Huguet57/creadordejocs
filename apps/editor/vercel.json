@@ -7,6 +7,10 @@
     {
       "source": "/editor/",
       "destination": "/"
+    },
+    {
+      "source": "/play/:id",
+      "destination": "/"
     }
   ]
 }

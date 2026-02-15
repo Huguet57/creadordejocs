@@ -49,6 +49,22 @@ export async function publishProjectToShareApi(project: ProjectV1, options: Publ
   return { id: payload.id }
 }
 
+export async function loadPublishedProject(shareId: string, options: PublishOptions = {}): Promise<ProjectV1> {
+  const response = await fetch(`${resolveApiBaseUrl(options.apiBaseUrl)}/api/share/${shareId}`)
+  if (response.status === 404) {
+    throw new Error("Game not found.")
+  }
+  if (!response.ok) {
+    throw new Error("Could not load shared game.")
+  }
+  const payload = (await response.json()) as { projectSource?: string }
+  if (typeof payload.projectSource !== "string") {
+    throw new Error("Invalid shared game payload.")
+  }
+  const { loadProjectV1 } = await import("@creadordejocs/project-format")
+  return loadProjectV1(payload.projectSource)
+}
+
 export async function copyPermalinkToClipboard(permalink: string, clipboard: ClipboardLike = navigator.clipboard): Promise<void> {
   await clipboard.writeText(permalink)
 }

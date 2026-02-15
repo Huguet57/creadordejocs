@@ -6,12 +6,15 @@ import { LandingPage } from "./features/landing/LandingPage.js"
 import type { EditorSection } from "./features/editor-state/types.js"
 import { EditorSidebarCompact } from "./layout/EditorSidebarCompact.js"
 import { EditorWorkspace } from "./layout/EditorWorkspace.js"
-import { resolveAppRoute, resolveEditorSection, buildEditorSectionPath, type AppRoute } from "./route-utils.js"
+import { PlayPage } from "./features/play/PlayPage.js"
+import { resolveAppRoute, resolveEditorSection, resolvePlayShareId, buildEditorSectionPath, type AppRoute } from "./route-utils.js"
 
 const landingTitle = "Creador de jocs online | Com crear un joc gratis | CreadorDeJocs"
 const editorTitle = "Editor de jocs online | CreadorDeJocs"
+const playTitle = "Joc compartit | CreadorDeJocs"
 const landingRobots = "index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1"
 const editorRobots = "noindex, nofollow"
+const playRobots = "noindex, nofollow"
 
 function formatStatus(status: "idle" | "saved" | "saving" | "error"): string {
   if (status === "saving") return "Saving..."
@@ -175,6 +178,11 @@ export function App() {
       setCanonicalHref("https://creadordejocs.com/editor")
       return
     }
+    if (route === "play") {
+      document.title = playTitle
+      setMetaContent('meta[name="robots"]', playRobots)
+      return
+    }
 
     document.title = landingTitle
     setMetaContent('meta[name="robots"]', landingRobots)
@@ -187,6 +195,14 @@ export function App() {
     }
     setRoute("editor")
     window.scrollTo(0, 0)
+  }
+
+  if (route === "play") {
+    const shareId = resolvePlayShareId(window.location.pathname)
+    if (!shareId) {
+      return <LandingPage onStartEditor={openEditor} />
+    }
+    return <PlayPage shareId={shareId} />
   }
 
   if (route === "landing") {
