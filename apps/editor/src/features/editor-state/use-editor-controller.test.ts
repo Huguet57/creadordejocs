@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest"
 import {
   getRuntimeKeyFromKeyboardEvent,
-  resolveResetState
+  resolveResetState,
+  shouldResetWhenSwitchingSection
 } from "./use-editor-controller.js"
 import { createEmptyProjectV1, createRoom } from "@creadordejocs/project-format"
 
@@ -62,5 +63,19 @@ describe("resolveResetState", () => {
     const result = resolveResetState(base, null, currentRoomId)
 
     expect(result.roomId).toBe(currentRoomId)
+  })
+})
+
+describe("shouldResetWhenSwitchingSection", () => {
+  it("returns true when leaving run while runtime is active", () => {
+    expect(shouldResetWhenSwitchingSection("run", "objects", true)).toBe(true)
+  })
+
+  it("returns false when runtime is not active", () => {
+    expect(shouldResetWhenSwitchingSection("run", "objects", false)).toBe(false)
+  })
+
+  it("returns false when staying in run", () => {
+    expect(shouldResetWhenSwitchingSection("run", "run", true)).toBe(false)
   })
 })

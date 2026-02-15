@@ -1,7 +1,8 @@
 import { Redo2, Save, Undo2 } from "lucide-react"
 import { EditorSidebarCompact } from "./layout/EditorSidebarCompact.js"
 import { EditorWorkspace } from "./layout/EditorWorkspace.js"
-import { useEditorController } from "./features/editor-state/use-editor-controller.js"
+import { shouldResetWhenSwitchingSection, useEditorController } from "./features/editor-state/use-editor-controller.js"
+import type { EditorSection } from "./features/editor-state/types.js"
 import { Button } from "./components/ui/button.js"
 
 function formatStatus(status: "idle" | "saved" | "saving" | "error"): string {
@@ -9,6 +10,19 @@ function formatStatus(status: "idle" | "saved" | "saving" | "error"): string {
   if (status === "saved") return "Saved"
   if (status === "error") return "Error"
   return "Saved"
+}
+
+export function handleSidebarSectionChange(
+  currentSection: EditorSection,
+  nextSection: EditorSection,
+  isRunning: boolean,
+  reset: () => void,
+  setActiveSection: (section: EditorSection) => void
+): void {
+  if (shouldResetWhenSwitchingSection(currentSection, nextSection, isRunning)) {
+    reset()
+  }
+  setActiveSection(nextSection)
 }
 
 export function App() {
@@ -60,7 +74,15 @@ export function App() {
         <div className="mvp15-editor-layout grid gap-3 lg:grid-cols-[64px_1fr]">
           <EditorSidebarCompact
             activeSection={controller.activeSection}
-            onSectionChange={(section) => controller.setActiveSection(section)}
+            onSectionChange={(section) => {
+              handleSidebarSectionChange(
+                controller.activeSection,
+                section,
+                controller.isRunning,
+                () => controller.reset(),
+                (nextSection) => controller.setActiveSection(nextSection)
+              )
+            }}
           />
           <EditorWorkspace controller={controller} />
         </div>

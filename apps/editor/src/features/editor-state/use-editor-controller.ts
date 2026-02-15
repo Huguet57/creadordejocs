@@ -97,6 +97,14 @@ export function resolveResetState(
   }
 }
 
+export function shouldResetWhenSwitchingSection(
+  currentSection: EditorSection,
+  nextSection: EditorSection,
+  isRunning: boolean
+): boolean {
+  return isRunning && currentSection === "run" && nextSection !== "run"
+}
+
 export function useEditorController() {
   const initial = createInitialEditorState()
   const [project, setProject] = useState<ProjectV1>(initial.project)
@@ -168,6 +176,25 @@ export function useEditorController() {
     }
     window.addEventListener("beforeunload", onBeforeUnload)
     return () => window.removeEventListener("beforeunload", onBeforeUnload)
+  }, [isDirty, project])
+
+  useEffect(() => {
+    const persistIfDirty = (): void => {
+      if (isDirty) {
+        saveProjectLocally(project)
+      }
+    }
+    const onVisibilityChange = (): void => {
+      if (document.visibilityState === "hidden") {
+        persistIfDirty()
+      }
+    }
+    window.addEventListener("pagehide", persistIfDirty)
+    document.addEventListener("visibilitychange", onVisibilityChange)
+    return () => {
+      window.removeEventListener("pagehide", persistIfDirty)
+      document.removeEventListener("visibilitychange", onVisibilityChange)
+    }
   }, [isDirty, project])
 
   useEffect(() => {
