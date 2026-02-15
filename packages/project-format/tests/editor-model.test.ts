@@ -220,7 +220,7 @@ describe("editor model helpers", () => {
     const updatedIf = withUpdatedNestedItems?.find((item) => item.type === "if" && item.id === ifBlock.id)
     expect(updatedIf?.type).toBe("if")
     if (updatedIf?.type === "if") {
-      expect(updatedIf.condition.left.scope).toBe("object")
+      expect("left" in updatedIf.condition ? updatedIf.condition.left.scope : null).toBe("object")
       expect(updatedIf.thenActions[0]?.type).toBe("action")
       if (updatedIf.thenActions[0]?.type === "action" && updatedIf.thenActions[0].action.type === "changeScore") {
         expect(updatedIf.thenActions[0].action.delta).toBe(4)
@@ -309,7 +309,7 @@ describe("editor model helpers", () => {
         : undefined
     expect(nestedBeforeRemove?.type).toBe("if")
     if (nestedBeforeRemove?.type === "if") {
-      expect(nestedBeforeRemove.condition.left.scope).toBe("object")
+      expect("left" in nestedBeforeRemove.condition ? nestedBeforeRemove.condition.left.scope : null).toBe("object")
       expect(nestedBeforeRemove.thenActions[0]?.type).toBe("action")
     }
 

@@ -33,6 +33,38 @@ type IfBlockProps = {
   onRemoveIfAction: (ifBlockId: string, actionId: string, branch: "then" | "else") => void
 }
 
+type ComparisonIfCondition = Extract<IfCondition, { left: { scope: "global" | "object"; variableId: string } }>
+type CompoundIfCondition = Extract<IfCondition, { logic: "AND" | "OR" }>
+
+function isComparisonIfCondition(condition: IfCondition): condition is ComparisonIfCondition {
+  return "left" in condition
+}
+
+function isCompoundIfCondition(condition: IfCondition): condition is CompoundIfCondition {
+  return "logic" in condition
+}
+
+function getFallbackComparisonCondition(defaultCondition: IfCondition | null): ComparisonIfCondition {
+  if (defaultCondition && isComparisonIfCondition(defaultCondition)) {
+    return defaultCondition
+  }
+  return {
+    left: { scope: "global", variableId: "" },
+    operator: "==",
+    right: 0
+  }
+}
+
+function ensureComparisonIfCondition(
+  condition: IfCondition | undefined,
+  fallbackCondition: ComparisonIfCondition
+): ComparisonIfCondition {
+  if (condition && isComparisonIfCondition(condition)) {
+    return condition
+  }
+  return fallbackCondition
+}
+
 function BranchAddButton({
   branch,
   onAdd
@@ -110,10 +142,13 @@ export function IfBlock({
   onUpdateIfAction,
   onRemoveIfAction
 }: IfBlockProps) {
-  const variableSource = item.condition.left.scope === "global" ? globalVariables : selectedObjectVariables
-  const selectedVariable = variableSource.find((variable) => variable.id === item.condition.left.variableId)
-  const selectedType = selectedVariable?.type ?? "number"
   const defaultIfCondition = buildDefaultIfCondition(globalVariables, selectedObjectVariables)
+  const fallbackComparisonCondition = getFallbackComparisonCondition(defaultIfCondition)
+  const isSingleCondition = isComparisonIfCondition(item.condition)
+  const compoundCondition = isCompoundIfCondition(item.condition) ? item.condition : null
+  const currentPrimaryCondition = isComparisonIfCondition(item.condition)
+    ? item.condition
+    : ensureComparisonIfCondition(item.condition.conditions[0], fallbackComparisonCondition)
 
   const objectVarOptionsForPicker: ObjectVariableOption[] = selectedObjectVariables.map((v) => ({
     id: v.id,
@@ -169,15 +204,19 @@ export function IfBlock({
     })
   }
 
-  return (
-    <div className="if-block-container bg-white">
-      {/* IF condition row */}
-      <div className="if-block-header group flex items-center gap-2 py-2 px-3 bg-blue-100 border-b border-blue-200">
-        <span className="text-[11px] font-bold text-blue-700 uppercase tracking-wider shrink-0">IF</span>
+  const renderComparisonConditionEditor = (
+    condition: ComparisonIfCondition,
+    onChange: (nextCondition: ComparisonIfCondition) => void
+  ) => {
+    const variableSource = condition.left.scope === "global" ? globalVariables : selectedObjectVariables
+    const selectedVariable = variableSource.find((variable) => variable.id === condition.left.variableId)
+    const selectedType = selectedVariable?.type ?? "number"
 
+    return (
+      <>
         <VariablePicker
-          scope={item.condition.left.scope}
-          variableId={item.condition.left.variableId}
+          scope={condition.left.scope}
+          variableId={condition.left.variableId}
           globalVariables={globalVariables}
           objectVariables={objectVarOptionsForPicker}
           variant="blue"
@@ -185,9 +224,9 @@ export function IfBlock({
             const nextSource = nextScope === "global" ? globalVariables : selectedObjectVariables
             const nextVariable = nextSource.find((v) => v.id === nextVariableId)
             if (!nextVariable) return
-            onUpdateIfCondition(item.id, {
+            onChange({
               left: { scope: nextScope, variableId: nextVariableId },
-              operator: item.condition.operator,
+              operator: condition.operator,
               right: nextVariable.initialValue
             })
           }}
@@ -195,11 +234,11 @@ export function IfBlock({
 
         <select
           className="if-block-operator-select h-6 w-12 text-center font-mono rounded border border-blue-200 bg-white px-1 text-xs focus:border-blue-400 focus:outline-none"
-          value={item.condition.operator}
+          value={condition.operator}
           onChange={(event) =>
-            onUpdateIfCondition(item.id, {
-              ...item.condition,
-              operator: event.target.value as IfCondition["operator"]
+            onChange({
+              ...condition,
+              operator: event.target.value as ComparisonIfCondition["operator"]
             })
           }
         >
@@ -214,10 +253,10 @@ export function IfBlock({
         {selectedType === "boolean" ? (
           <select
             className="if-block-value-bool h-6 rounded border border-blue-200 bg-white px-2 text-xs focus:border-blue-400 focus:outline-none"
-            value={String(item.condition.right)}
+            value={String(condition.right)}
             onChange={(event) =>
-              onUpdateIfCondition(item.id, {
-                ...item.condition,
+              onChange({
+                ...condition,
                 right: event.target.value === "true"
               })
             }
@@ -228,13 +267,13 @@ export function IfBlock({
         ) : (
           <input
             className="if-block-value-input h-6 rounded border border-blue-200 bg-white px-2 text-xs focus:border-blue-400 focus:outline-none"
-            style={{ width: `${Math.max(4, String(item.condition.right).length + 1)}ch` }}
+            style={{ width: `${Math.max(4, String(condition.right).length + 1)}ch` }}
             type="text"
             inputMode={selectedType === "number" ? "numeric" : "text"}
-            value={String(item.condition.right)}
+            value={String(condition.right)}
             onChange={(event) =>
-              onUpdateIfCondition(item.id, {
-                ...item.condition,
+              onChange({
+                ...condition,
                 right:
                   selectedType === "number"
                     ? coerceIfConditionRightValue("number", event.target.value)
@@ -242,6 +281,50 @@ export function IfBlock({
               })
             }
           />
+        )}
+      </>
+    )
+  }
+
+  const handleAddCondition = () => {
+    const secondaryCondition = defaultIfCondition
+      ? ensureComparisonIfCondition(defaultIfCondition, fallbackComparisonCondition)
+      : fallbackComparisonCondition
+    onUpdateIfCondition(item.id, {
+      logic: "AND",
+      conditions: [currentPrimaryCondition, secondaryCondition]
+    })
+  }
+
+  const handleRemoveSecondCondition = () => {
+    onUpdateIfCondition(item.id, currentPrimaryCondition)
+  }
+
+  return (
+    <div className="if-block-container bg-white">
+      {/* First condition row: IF [...condition...] [+] [trash] */}
+      <div className="if-block-header group flex items-center gap-2 py-2 px-3 bg-blue-100 border-b border-blue-200">
+        <span className="text-[11px] font-bold text-blue-700 uppercase tracking-wider shrink-0">IF</span>
+
+        {renderComparisonConditionEditor(currentPrimaryCondition, (nextCondition) => {
+          if (compoundCondition) {
+            const nextConditions = [...compoundCondition.conditions]
+            nextConditions[0] = nextCondition
+            onUpdateIfCondition(item.id, { ...compoundCondition, conditions: nextConditions })
+          } else {
+            onUpdateIfCondition(item.id, nextCondition)
+          }
+        })}
+
+        {isSingleCondition && (
+          <button
+            type="button"
+            className="if-block-add-condition h-6 w-6 flex items-center justify-center rounded text-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-colors shrink-0"
+            onClick={handleAddCondition}
+            title="Afegir condició AND/OR"
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </button>
         )}
 
         <Button
@@ -255,6 +338,46 @@ export function IfBlock({
           <Trash className="h-3.5 w-3.5" />
         </Button>
       </div>
+
+      {/* AND/OR row + second condition (only when compound) */}
+      {compoundCondition && (
+        <div className="if-block-compound-second group flex items-center gap-2 py-2 px-3 bg-blue-100 border-b border-blue-200">
+          <select
+            className="if-block-logic-select h-5 rounded border border-blue-300 bg-blue-50 px-1.5 text-[11px] font-bold text-blue-700 uppercase tracking-wider focus:border-blue-400 focus:outline-none shrink-0"
+            value={compoundCondition.logic}
+            onChange={(event) =>
+              onUpdateIfCondition(item.id, {
+                ...compoundCondition,
+                logic: event.target.value as "AND" | "OR"
+              })
+            }
+          >
+            <option value="AND">AND</option>
+            <option value="OR">OR</option>
+          </select>
+
+          {renderComparisonConditionEditor(
+            ensureComparisonIfCondition(compoundCondition.conditions[1], fallbackComparisonCondition),
+            (nextCondition) => {
+              const nextConditions = [...compoundCondition.conditions]
+              if (nextConditions.length < 2) {
+                nextConditions.push(fallbackComparisonCondition)
+              }
+              nextConditions[1] = nextCondition
+              onUpdateIfCondition(item.id, { ...compoundCondition, conditions: nextConditions })
+            }
+          )}
+
+          <button
+            type="button"
+            className="if-block-remove-second h-6 w-6 flex items-center justify-center rounded text-slate-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity ml-auto shrink-0"
+            onClick={handleRemoveSecondCondition}
+            title="Treure segona condició"
+          >
+            <Trash className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* THEN content — indented with left border */}
       <div className="if-block-then-branch border-l-2 border-blue-200 ml-3 pl-3">

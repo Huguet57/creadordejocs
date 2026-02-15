@@ -97,7 +97,7 @@ describe("project format v1", () => {
     if (firstItem?.type !== "if") {
       throw new Error("Expected if item")
     }
-    expect(firstItem.condition.operator).toBe(">=")
+    expect("operator" in firstItem.condition ? firstItem.condition.operator : null).toBe(">=")
     expect(firstItem.thenActions).toHaveLength(1)
   })
 

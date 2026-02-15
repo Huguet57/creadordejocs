@@ -152,7 +152,7 @@ function getEventItems(eventEntry: ProjectV1["objects"][number]["events"][number
 }
 
 function resolveConditionLeftValue(
-  condition: Extract<RuntimeEventItem, { type: "if" }>["condition"],
+  condition: Extract<Extract<RuntimeEventItem, { type: "if" }>["condition"], { left: { scope: "global" | "object"; variableId: string } }>,
   instance: ProjectV1["rooms"][number]["instances"][number],
   runtime: RuntimeState,
   collisionOtherInstanceId: string | null
@@ -167,12 +167,32 @@ function resolveConditionLeftValue(
   return runtime.objectInstanceVariables[targetInstanceId]?.[condition.left.variableId]
 }
 
+function isComparisonCondition(
+  condition: Extract<RuntimeEventItem, { type: "if" }>["condition"]
+): condition is Extract<
+  Extract<RuntimeEventItem, { type: "if" }>["condition"],
+  { left: { scope: "global" | "object"; variableId: string } }
+> {
+  return "left" in condition
+}
+
 function evaluateIfCondition(
   condition: Extract<RuntimeEventItem, { type: "if" }>["condition"],
   instance: ProjectV1["rooms"][number]["instances"][number],
   runtime: RuntimeState,
   collisionOtherInstanceId: string | null
 ): boolean {
+  if (!isComparisonCondition(condition)) {
+    if (condition.logic === "AND") {
+      return condition.conditions.every((entry) =>
+        evaluateIfCondition(entry, instance, runtime, collisionOtherInstanceId)
+      )
+    }
+    return condition.conditions.some((entry) =>
+      evaluateIfCondition(entry, instance, runtime, collisionOtherInstanceId)
+    )
+  }
+
   const leftValue = resolveConditionLeftValue(condition, instance, runtime, collisionOtherInstanceId)
   if (leftValue === undefined || !isSameVariableValueType(leftValue, condition.right)) {
     return false

@@ -953,6 +953,190 @@ describe("runtime regressions", () => {
     expect(result.runtime.score).toBe(3)
   })
 
+  it("runs thenActions when AND compound condition is true", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-if-and",
+        name: "If AND test",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: {
+        sprites: [],
+        sounds: []
+      },
+      variables: {
+        global: [
+          { id: "gv-a", name: "a", type: "boolean", initialValue: true },
+          { id: "gv-b", name: "b", type: "boolean", initialValue: true }
+        ],
+        objectByObjectId: {}
+      },
+      objects: [
+        {
+          id: "object-checker",
+          name: "Checker",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step",
+              type: "Step",
+              key: null,
+              keyboardMode: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [
+                {
+                  id: "if-and",
+                  type: "if",
+                  condition: {
+                    logic: "AND",
+                    conditions: [
+                      {
+                        left: { scope: "global", variableId: "gv-a" },
+                        operator: "==",
+                        right: true
+                      },
+                      {
+                        left: { scope: "global", variableId: "gv-b" },
+                        operator: "==",
+                        right: true
+                      }
+                    ]
+                  },
+                  thenActions: [
+                    {
+                      id: "then-item",
+                      type: "action",
+                      action: { id: "then-action", type: "changeScore", delta: 7 }
+                    }
+                  ],
+                  elseActions: [
+                    {
+                      id: "else-item",
+                      type: "action",
+                      action: { id: "else-action", type: "changeScore", delta: 2 }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      rooms: [{ id: "room-main", name: "Main", instances: [{ id: "instance-checker", objectId: "object-checker", x: 0, y: 0 }] }],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    expect(result.runtime.score).toBe(7)
+  })
+
+  it("runs thenActions when OR compound condition has one true branch", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-if-or",
+        name: "If OR test",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: {
+        sprites: [],
+        sounds: []
+      },
+      variables: {
+        global: [
+          { id: "gv-a", name: "a", type: "boolean", initialValue: false },
+          { id: "gv-b", name: "b", type: "boolean", initialValue: true }
+        ],
+        objectByObjectId: {}
+      },
+      objects: [
+        {
+          id: "object-checker",
+          name: "Checker",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step",
+              type: "Step",
+              key: null,
+              keyboardMode: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [
+                {
+                  id: "if-or",
+                  type: "if",
+                  condition: {
+                    logic: "OR",
+                    conditions: [
+                      {
+                        left: { scope: "global", variableId: "gv-a" },
+                        operator: "==",
+                        right: true
+                      },
+                      {
+                        left: { scope: "global", variableId: "gv-b" },
+                        operator: "==",
+                        right: true
+                      }
+                    ]
+                  },
+                  thenActions: [
+                    {
+                      id: "then-item",
+                      type: "action",
+                      action: { id: "then-action", type: "changeScore", delta: 9 }
+                    }
+                  ],
+                  elseActions: [
+                    {
+                      id: "else-item",
+                      type: "action",
+                      action: { id: "else-action", type: "changeScore", delta: 1 }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      rooms: [{ id: "room-main", name: "Main", instances: [{ id: "instance-checker", objectId: "object-checker", x: 0, y: 0 }] }],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    expect(result.runtime.score).toBe(9)
+  })
+
   it("supports cross-instance variable transfer with collision self/other", () => {
     const project: ProjectV1 = {
       version: 1,

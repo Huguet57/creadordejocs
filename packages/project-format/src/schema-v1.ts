@@ -160,14 +160,29 @@ const IfConditionLeftSchema = z.discriminatedUnion("scope", [
   })
 ])
 
-const IfConditionSchema = z.object({
+const IfComparisonConditionSchema = z.object({
   left: IfConditionLeftSchema,
   operator: z.enum(["==", "!=", ">", ">=", "<", "<="]),
   right: VariableValueSchema
 })
 
 export type ObjectActionOutput = z.output<typeof ObjectActionSchema>
-export type IfConditionOutput = z.output<typeof IfConditionSchema>
+export type IfConditionOutput =
+  | z.output<typeof IfComparisonConditionSchema>
+  | {
+      logic: "AND" | "OR"
+      conditions: IfConditionOutput[]
+    }
+
+const IfConditionSchema: z.ZodType<IfConditionOutput> = z.lazy(() =>
+  z.union([
+    IfComparisonConditionSchema,
+    z.object({
+      logic: z.enum(["AND", "OR"]),
+      conditions: z.array(IfConditionSchema).min(2)
+    })
+  ])
+)
 
 export type ObjectActionItem = {
   id: string
