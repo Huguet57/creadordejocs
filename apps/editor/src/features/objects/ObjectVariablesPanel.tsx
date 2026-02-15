@@ -42,7 +42,7 @@ export function ObjectVariablesPanel({
   onRemoveVariable
 }: ObjectVariablesPanelProps) {
   const [isAdding, setIsAdding] = useState(false)
-  const [newVariableName, setNewVariableName] = useState("local_value")
+  const [newVariableName, setNewVariableName] = useState("")
   const [newVariableType, setNewVariableType] = useState<VariableType>("number")
   const [newVariableRawValue, setNewVariableRawValue] = useState("0")
 
@@ -66,7 +66,7 @@ export function ObjectVariablesPanel({
   const handleAdd = () => {
     if (!canAdd) return
     onAddVariable(objectId, newVariableName, newVariableType, parseInitialValue(newVariableType, newVariableRawValue))
-    setNewVariableName("local_value")
+    setNewVariableName("")
     setNewVariableType("number")
     setNewVariableRawValue("0")
     setIsAdding(false)
@@ -172,7 +172,7 @@ export function ObjectVariablesPanel({
                   if (event.key === "Escape") setIsAdding(false)
                 }}
                 className="flex h-8 w-full rounded-md border border-slate-300 bg-white px-3 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
-                placeholder="Name..."
+                placeholder="Eg: xSpeed, jumpForce, health, isAlive"
               />
               <div className="flex gap-2">
                 <select

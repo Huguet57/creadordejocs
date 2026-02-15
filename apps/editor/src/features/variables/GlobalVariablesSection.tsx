@@ -27,7 +27,7 @@ function formatInputValue(type: VariableType, value: VariableValue): string {
 }
 
 export function GlobalVariablesSection({ controller }: GlobalVariablesSectionProps) {
-  const [newVariableName, setNewVariableName] = useState("global_value")
+  const [newVariableName, setNewVariableName] = useState("")
   const [newVariableType, setNewVariableType] = useState<VariableType>("number")
   const [newVariableRawValue, setNewVariableRawValue] = useState("0")
 
@@ -118,7 +118,7 @@ export function GlobalVariablesSection({ controller }: GlobalVariablesSectionPro
             className="h-8 rounded-md border border-slate-300 bg-white px-2 text-xs text-slate-900"
             value={newVariableName}
             onChange={(event) => setNewVariableName(event.target.value)}
-            placeholder="Variable name"
+            placeholder="Eg: score, lives, level, coins"
           />
           <select
             className="h-8 rounded-md border border-slate-300 bg-white px-2 text-xs text-slate-900"
