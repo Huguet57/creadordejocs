@@ -24,10 +24,24 @@ function statusMessage(status: ShareStatus, hasPermalink: boolean): string {
   return "Publica el joc i comparteix l'enllaç amb els teus amics."
 }
 
+function stateBadge(status: ShareStatus, hasPermalink: boolean): { label: string; className: string } {
+  if (status === "publishing") {
+    return { label: "Publicant", className: "bg-amber-100 text-amber-800" }
+  }
+  if (status === "published" && hasPermalink) {
+    return { label: "Compartit", className: "bg-emerald-100 text-emerald-800" }
+  }
+  if (status === "error") {
+    return { label: "Error", className: "bg-red-100 text-red-800" }
+  }
+  return { label: "No compartit", className: "bg-slate-100 text-slate-700" }
+}
+
 export function ShareSection({ controller }: ShareSectionProps) {
   const [shareStatus, setShareStatus] = useState<ShareStatus>("idle")
   const [sharePermalink, setSharePermalink] = useState("")
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "error">("idle")
+  const currentState = stateBadge(shareStatus, Boolean(sharePermalink))
 
   const publish = async (): Promise<void> => {
     try {
@@ -56,10 +70,29 @@ export function ShareSection({ controller }: ShareSectionProps) {
 
   return (
     <section className="mvp-share-section flex min-h-[700px] w-full flex-col gap-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-      <header className="mvp-share-header space-y-1">
-        <h2 className="mvp-share-title text-xl font-semibold text-slate-900">Share</h2>
-        <p className="mvp-share-subtitle text-sm text-slate-500">{statusMessage(shareStatus, Boolean(sharePermalink))}</p>
+      <header className="mvp-share-header space-y-2">
+        <div className="mvp-share-title-row flex items-center gap-2">
+          <h2 className="mvp-share-title text-xl font-semibold text-slate-900">Compartir</h2>
+          <span
+            data-testid="share-state-badge"
+            className={`mvp-share-state-badge rounded-full px-2 py-0.5 text-xs font-medium ${currentState.className}`}
+          >
+            {currentState.label}
+          </span>
+        </div>
+        <p className="mvp-share-subtitle text-sm text-slate-500" aria-live="polite">
+          {statusMessage(shareStatus, Boolean(sharePermalink))}
+        </p>
       </header>
+
+      <div className="mvp-share-explainer rounded-md border border-slate-200 bg-slate-50 p-3">
+        <p className="mvp-share-explainer-title text-sm font-semibold text-slate-800">Què vol dir compartir?</p>
+        <ul className="mvp-share-explainer-list mt-2 list-disc space-y-1 pl-5 text-xs text-slate-600">
+          <li>En publicar, es crea una versió del joc accessible amb una URL única.</li>
+          <li>Els teus amics obriran aquesta URL en mode jugar (play-only), no en mode editar.</li>
+          <li>Si fas canvis al joc, cal tornar a publicar per generar un enllaç nou amb la versió actualitzada.</li>
+        </ul>
+      </div>
 
       <div className="mvp-share-actions flex flex-wrap items-center gap-2">
         <Button
@@ -95,6 +128,16 @@ export function ShareSection({ controller }: ShareSectionProps) {
           value={sharePermalink}
           placeholder="https://creadordejocs.com/play/..."
         />
+        {!sharePermalink && (
+          <p data-testid="share-not-published" className="mvp-share-not-published text-xs text-slate-500">
+            Aquest joc encara no s'ha compartit.
+          </p>
+        )}
+        {sharePermalink && (
+          <p data-testid="share-published-note" className="mvp-share-published-note text-xs text-slate-500">
+            Aquest és l'últim enllaç publicat. Guarda'l o comparteix-lo directament.
+          </p>
+        )}
         {copyStatus === "copied" && (
           <p data-testid="share-copy-status" className="mvp-share-copy-status text-xs text-emerald-600">
             Enllaç copiat.
