@@ -198,24 +198,16 @@ export function LandingPage({ onStartEditor }: LandingPageProps) {
               Un editor visual on defineixes objectes, els hi assignes comportaments — col·lisions, moviment, puntuació —
               i proves el resultat al moment. Tot al navegador, sense instal·lar res.
             </p>
-            <div className="flex flex-wrap gap-3">
-              <a
-                className="landing-cta-primary inline-flex items-center gap-2 rounded-lg bg-slate-900 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
-                data-testid="landing-primary-cta"
-                href="/editor"
-                onClick={(event) => handleEditorCtaClick(event, onStartEditor)}
-              >
-                Comença gratis sense login
-              </a>
-              <a
-                className="landing-cta-secondary inline-flex items-center rounded-lg border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                href="#com-funciona"
-              >
-                Veure com funciona
-              </a>
-            </div>
+            <a
+              className="landing-cta-primary inline-flex items-center gap-2 rounded-lg bg-slate-900 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
+              data-testid="landing-primary-cta"
+              href="/editor"
+              onClick={(event) => handleEditorCtaClick(event, onStartEditor)}
+            >
+              Ves a l&apos;editor
+            </a>
             <p className="text-sm text-slate-500">
-              Per a estudiants, educadors i qualsevol persona amb una idea de joc.
+              Tens una idea de joc? Porta-la a la realitat en minuts.
             </p>
           </div>
           <div className="landing-hero-visual hidden lg:block">

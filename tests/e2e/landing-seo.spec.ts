@@ -9,7 +9,7 @@ test("shows SEO landing and opens editor without login", async ({ page }) => {
       name: "Creador de jocs: crea el teu joc des del navegador"
     })
   ).toBeVisible()
-  await expect(page.getByText("Comença gratis sense login")).toBeVisible()
+  await expect(page.getByText("Ves a l'editor")).toBeVisible()
 
   await page.getByTestId("landing-primary-cta").click()
 
