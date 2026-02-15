@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { Play, Square, RotateCcw } from "lucide-react"
+import { Play, Square } from "lucide-react"
 import type { EditorController } from "../editor-state/use-editor-controller.js"
 import { Button } from "../../components/ui/button.js"
 import { resolveAssetSource } from "../assets/asset-source-resolver.js"
@@ -74,14 +74,6 @@ export function RunSection({ controller }: RunSectionProps) {
                   Run
                 </>
               )}
-            </Button>
-            <Button
-              variant="outline"
-              className="w-full h-9 text-xs"
-              onClick={() => controller.reset()}
-            >
-              <RotateCcw className="mr-2 h-3.5 w-3.5" />
-              Reset
             </Button>
           </div>
 
