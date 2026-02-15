@@ -14,7 +14,8 @@ import {
   ArrowLeftRight,
   DoorOpen,
   RotateCcw,
-  Hourglass
+  Hourglass,
+  MessageSquare
 } from "lucide-react"
 import { useState } from "react"
 import { Button } from "../../components/ui/button.js"
@@ -74,6 +75,7 @@ const ACTION_ICONS: Record<ObjectActionType, React.ElementType> = {
   spawnObject: CopyPlus,
   changeScore: Trophy,
   endGame: Flag,
+  message: MessageSquare,
   playSound: Volume2,
   changeVariable: Variable,
   copyVariable: ArrowLeftRight,

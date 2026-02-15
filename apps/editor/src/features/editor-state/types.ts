@@ -15,6 +15,7 @@ export type ObjectActionType =
   | "spawnObject"
   | "changeScore"
   | "endGame"
+  | "message"
   | "playSound"
   | "changeVariable"
   | "copyVariable"
@@ -50,6 +51,7 @@ export const OBJECT_ACTION_TYPES: ObjectActionType[] = [
   "spawnObject",
   "changeScore",
   "endGame",
+  "message",
   "playSound",
   "changeVariable",
   "copyVariable",
@@ -68,6 +70,7 @@ export const ACTION_DISPLAY_NAMES: Record<ObjectActionType, string> = {
   spawnObject: "Crear objecte",
   changeScore: "Canviar punts",
   endGame: "Fi del joc",
+  message: "Missatge",
   playSound: "Reproduir so",
   changeVariable: "Variable",
   copyVariable: "Copiar variable",
@@ -92,7 +95,7 @@ export const ACTION_CATEGORIES: { id: ActionCategory; label: string; types: Obje
   {
     id: "game",
     label: "Joc",
-    types: ["changeScore", "endGame", "playSound"]
+    types: ["changeScore", "endGame", "message", "playSound"]
   },
   {
     id: "variables",

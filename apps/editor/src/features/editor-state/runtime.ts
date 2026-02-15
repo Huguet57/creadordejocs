@@ -11,6 +11,12 @@ import {
   removeWaitProgress,
   transitionEventLock
 } from "./event-lock-utils.js"
+import {
+  advanceRuntimeToastQueue,
+  enqueueRuntimeToast,
+  type RuntimeToast,
+  type RuntimeToastState
+} from "./message-toast-utils.js"
 
 export const ROOM_WIDTH = 560
 export const ROOM_HEIGHT = 320
@@ -36,6 +42,8 @@ export type RuntimeState = {
   score: number
   gameOver: boolean
   message: string
+  activeToast: RuntimeToast | null
+  queuedToasts: RuntimeToast[]
   initializedInstanceIds: string[]
   playedSoundIds: string[]
   instanceStartPositions: Record<string, { x: number; y: number }>
@@ -505,6 +513,16 @@ function runEventActions(
       }
       continue
     }
+    if (actionEntry.type === "message") {
+      result = {
+        ...result,
+        runtime: enqueueRuntimeToast(result.runtime as RuntimeToastState, {
+          text: actionEntry.text,
+          durationMs: actionEntry.durationMs
+        }) as RuntimeState
+      }
+      continue
+    }
     if (actionEntry.type === "playSound") {
       result = {
         ...result,
@@ -966,6 +984,8 @@ export function createInitialRuntimeState(project?: ProjectV1): RuntimeState {
     score: 0,
     gameOver: false,
     message: "",
+    activeToast: null,
+    queuedToasts: [],
     initializedInstanceIds: [],
     playedSoundIds: [],
     instanceStartPositions: {},
@@ -1001,6 +1021,7 @@ export function runRuntimeTick(
     nextRoomId: null,
     restartRoomRequested: false
   }
+  nextRuntime = advanceRuntimeToastQueue(nextRuntime as RuntimeToastState, RUNTIME_TICK_MS) as RuntimeState
   let nextInstances: ProjectV1["rooms"][number]["instances"] = []
   const pendingDestroyedInstanceIds = new Set<string>()
   for (const instanceEntry of room.instances) {

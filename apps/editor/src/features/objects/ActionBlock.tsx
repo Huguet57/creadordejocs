@@ -15,7 +15,8 @@ import {
   ArrowLeftRight,
   DoorOpen,
   RotateCcw,
-  Hourglass
+  Hourglass,
+  MessageSquare
 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { Button } from "../../components/ui/button.js"
@@ -103,6 +104,7 @@ const ACTION_ICONS: Record<ObjectActionType, React.ElementType> = {
   spawnObject: CopyPlus,
   changeScore: Trophy,
   endGame: Flag,
+  message: MessageSquare,
   playSound: Volume2,
   changeVariable: Variable,
   copyVariable: ArrowLeftRight,
@@ -121,6 +123,7 @@ const ACTION_LABELS: Record<ObjectActionType, string> = {
   spawnObject: "Crear obj.",
   changeScore: "Punts",
   endGame: "Fi joc",
+  message: "Missatge",
   playSound: "So",
   changeVariable: "Variable",
   copyVariable: "Copiar var.",
@@ -301,6 +304,27 @@ export function ActionBlock({
               onChange={(e) => onUpdate({ ...action, message: e.target.value })}
             />
           </div>
+        )}
+
+        {action.type === "message" && (
+          <>
+            <div className="action-block-message-text-field flex items-center gap-1 flex-1">
+              <label className="text-[10px] font-medium opacity-60">Txt</label>
+              <Input
+                className="action-block-message-text-input h-7 w-full px-2 text-xs bg-white/50 border-slate-300"
+                value={action.text}
+                onChange={(event) => onUpdate({ ...action, text: event.target.value })}
+              />
+            </div>
+            <div className="action-block-message-duration-field flex items-center gap-1">
+              <label className="text-[10px] font-medium opacity-60">ms</label>
+              <NumInput
+                value={action.durationMs}
+                onChange={(value) => onUpdate({ ...action, durationMs: Math.max(1, Math.round(value)) })}
+                className="action-block-message-duration-input"
+              />
+            </div>
+          </>
         )}
 
         {action.type === "goToRoom" && (

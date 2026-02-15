@@ -177,6 +177,13 @@ export function RunSection({ controller }: RunSectionProps) {
                   </div>
                 )
               })}
+              {runtimeState.activeToast && (
+                <div className="mvp17-run-toast-overlay pointer-events-none absolute inset-x-0 top-3 z-20 flex justify-center px-3">
+                  <div className="mvp17-run-toast-bubble max-w-[90%] rounded-md bg-slate-900/90 px-3 py-1.5 text-[11px] font-medium text-white shadow-lg">
+                    {runtimeState.activeToast.text}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -1673,6 +1673,208 @@ describe("runtime regressions", () => {
     expect(runtime.score).toBe(8)
   })
 
+  it("shows runtime message toast when message action is executed", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-message-toast",
+        name: "Message toast test",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: {
+        sprites: [],
+        sounds: []
+      },
+      variables: {
+        global: [],
+        objectByObjectId: {}
+      },
+      objects: [
+        {
+          id: "object-speaker",
+          name: "Speaker",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-create",
+              type: "Create",
+              key: null,
+              keyboardMode: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [
+                {
+                  id: "item-message",
+                  type: "action",
+                  action: { id: "action-message", type: "message", text: "Benvingut!", durationMs: 160 }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      rooms: [{ id: "room-main", name: "Main", instances: [{ id: "instance-speaker", objectId: "object-speaker", x: 0, y: 0 }] }],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const firstTick = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    expect(firstTick.runtime.activeToast?.text ?? "").toBe("Benvingut!")
+  })
+
+  it("clears runtime message after duration elapsed", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-message-expire",
+        name: "Message expiration test",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: {
+        sprites: [],
+        sounds: []
+      },
+      variables: {
+        global: [],
+        objectByObjectId: {}
+      },
+      objects: [
+        {
+          id: "object-speaker",
+          name: "Speaker",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-create",
+              type: "Create",
+              key: null,
+              keyboardMode: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [
+                {
+                  id: "item-message",
+                  type: "action",
+                  action: { id: "action-message", type: "message", text: "Curt", durationMs: 160 }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      rooms: [{ id: "room-main", name: "Main", instances: [{ id: "instance-speaker", objectId: "object-speaker", x: 0, y: 0 }] }],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const firstTick = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    const secondTick = runRuntimeTick(firstTick.project, "room-main", new Set(), firstTick.runtime)
+    const thirdTick = runRuntimeTick(secondTick.project, "room-main", new Set(), secondTick.runtime)
+
+    expect(firstTick.runtime.activeToast?.text ?? "").toBe("Curt")
+    expect(secondTick.runtime.activeToast?.text ?? "").toBe("Curt")
+    expect(thirdTick.runtime.activeToast?.text ?? "").toBe("")
+  })
+
+  it("queues multiple message actions and shows them in order", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-message-queue",
+        name: "Message queue test",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: {
+        sprites: [],
+        sounds: []
+      },
+      variables: {
+        global: [],
+        objectByObjectId: {}
+      },
+      objects: [
+        {
+          id: "object-speaker",
+          name: "Speaker",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-create",
+              type: "Create",
+              key: null,
+              keyboardMode: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [
+                {
+                  id: "item-message-a",
+                  type: "action",
+                  action: { id: "action-message-a", type: "message", text: "Primer", durationMs: 160 }
+                },
+                {
+                  id: "item-message-b",
+                  type: "action",
+                  action: { id: "action-message-b", type: "message", text: "Segon", durationMs: 160 }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      rooms: [{ id: "room-main", name: "Main", instances: [{ id: "instance-speaker", objectId: "object-speaker", x: 0, y: 0 }] }],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const firstTick = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    const secondTick = runRuntimeTick(firstTick.project, "room-main", new Set(), firstTick.runtime)
+    const thirdTick = runRuntimeTick(secondTick.project, "room-main", new Set(), secondTick.runtime)
+    const fourthTick = runRuntimeTick(thirdTick.project, "room-main", new Set(), thirdTick.runtime)
+    const fifthTick = runRuntimeTick(fourthTick.project, "room-main", new Set(), fourthTick.runtime)
+
+    expect(firstTick.runtime.activeToast?.text ?? "").toBe("Primer")
+    expect(secondTick.runtime.activeToast?.text ?? "").toBe("Primer")
+    expect(thirdTick.runtime.activeToast?.text ?? "").toBe("Segon")
+    expect(fourthTick.runtime.activeToast?.text ?? "").toBe("Segon")
+    expect(fifthTick.runtime.activeToast?.text ?? "").toBe("")
+  })
+
   it("continues a locked collision event until completion even if objects stop colliding", () => {
     const project: ProjectV1 = {
       version: 1,

@@ -77,6 +77,7 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
     if (type === "destroyOther") return { type: "destroyOther" }
     if (type === "changeScore") return { type: "changeScore", delta: 1 }
     if (type === "endGame") return { type: "endGame", message: "Game over" }
+    if (type === "message") return { type: "message", text: "Missatge", durationMs: 2000 }
     if (type === "spawnObject") {
       const target = selectableTargetObjects[0]
       if (!target) return null

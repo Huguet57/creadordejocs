@@ -109,6 +109,12 @@ const ObjectActionSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     id: z.string().min(1),
+    type: z.literal("message"),
+    text: z.string().min(1),
+    durationMs: z.number().int().min(1)
+  }),
+  z.object({
+    id: z.string().min(1),
     type: z.literal("playSound"),
     soundId: z.string().min(1)
   }),
