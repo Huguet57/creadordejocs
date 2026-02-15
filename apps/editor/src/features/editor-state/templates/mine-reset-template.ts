@@ -6,7 +6,7 @@ import {
   quickCreateSound,
   quickCreateSprite
 } from "@creadordejocs/project-format"
-import { addEventWithActions, addGlobalVariableWithId, addIfBlockToLatestEvent } from "./helpers.js"
+import { addEventWithActions, addGlobalVariableWithId, addIfElseBlockToLatestEvent } from "./helpers.js"
 import type { TemplateProjectResult } from "./types.js"
 
 export function createMineResetTemplateProject(): TemplateProjectResult {
@@ -96,16 +96,16 @@ export function createMineResetTemplateProject(): TemplateProjectResult {
   const collectedChipsId = withCollectedChips.variableId
 
   let project = withCollectedChips.project
-  project = addEventWithActions(project, runnerObject.objectId, { type: "KeyDown", key: "ArrowUp" }, [
+  project = addEventWithActions(project, runnerObject.objectId, { type: "Keyboard", keyboardMode: "down", key: "ArrowUp" }, [
     { type: "move", dx: 0, dy: -8 }
   ])
-  project = addEventWithActions(project, runnerObject.objectId, { type: "KeyDown", key: "ArrowDown" }, [
+  project = addEventWithActions(project, runnerObject.objectId, { type: "Keyboard", keyboardMode: "down", key: "ArrowDown" }, [
     { type: "move", dx: 0, dy: 8 }
   ])
-  project = addEventWithActions(project, runnerObject.objectId, { type: "KeyDown", key: "ArrowLeft" }, [
+  project = addEventWithActions(project, runnerObject.objectId, { type: "Keyboard", keyboardMode: "down", key: "ArrowLeft" }, [
     { type: "move", dx: -8, dy: 0 }
   ])
-  project = addEventWithActions(project, runnerObject.objectId, { type: "KeyDown", key: "ArrowRight" }, [
+  project = addEventWithActions(project, runnerObject.objectId, { type: "Keyboard", keyboardMode: "down", key: "ArrowRight" }, [
     { type: "move", dx: 8, dy: 0 }
   ])
   project = addEventWithActions(project, runnerObject.objectId, { type: "Step" }, [{ type: "clampToRoom" }])
@@ -116,7 +116,8 @@ export function createMineResetTemplateProject(): TemplateProjectResult {
     [
       { type: "playSound", soundId: soundPickup.soundId },
       {
-        type: "changeGlobalVariable",
+        type: "changeVariable",
+        scope: "global",
         variableId: collectedChipsId,
         operator: "add",
         value: 1
@@ -136,7 +137,7 @@ export function createMineResetTemplateProject(): TemplateProjectResult {
   project = addEventWithActions(project, exitObject.objectId, { type: "Collision", targetObjectId: runnerObject.objectId }, [
     { type: "playSound", soundId: soundWin.soundId }
   ])
-  project = addIfBlockToLatestEvent(
+  project = addIfElseBlockToLatestEvent(
     project,
     exitObject.objectId,
     {
@@ -144,17 +145,8 @@ export function createMineResetTemplateProject(): TemplateProjectResult {
       operator: ">=",
       right: 2
     },
-    [{ type: "endGame", message: "Has sortit de la sala de mines!" }]
-  )
-  project = addIfBlockToLatestEvent(
-    project,
-    exitObject.objectId,
-    {
-      left: { scope: "global", variableId: collectedChipsId },
-      operator: "<",
-      right: 2
-    },
-    [{ type: "jumpToStart" }]
+    [{ type: "endGame", message: "Has sortit de la sala de mines!" }],
+    [{ type: "teleport", mode: "start", x: null, y: null }]
   )
 
   return {

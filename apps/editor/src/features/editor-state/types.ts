@@ -2,22 +2,21 @@ import type { ProjectV1, ObjectActionDraft } from "@creadordejocs/project-format
 
 export type EditorSection = "sprites" | "sounds" | "objects" | "rooms" | "run" | "templates" | "globalVariables"
 
-export type ObjectEventType = "Create" | "Step" | "Draw" | "Collision" | "KeyDown" | "KeyPress" | "OnDestroy" | "OutsideRoom" | "Timer"
+export type ObjectEventType = "Create" | "Step" | "Draw" | "Collision" | "Keyboard" | "OnDestroy" | "OutsideRoom" | "Timer"
 export type ObjectEventKey = "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight" | "Space"
+export type ObjectKeyboardMode = "down" | "press"
 export type ObjectActionType =
   | "move"
   | "setVelocity"
   | "clampToRoom"
-  | "jumpToPosition"
-  | "jumpToStart"
+  | "teleport"
   | "destroySelf"
   | "destroyOther"
   | "spawnObject"
   | "changeScore"
   | "endGame"
   | "playSound"
-  | "changeGlobalVariable"
-  | "changeObjectVariable"
+  | "changeVariable"
   | "copyVariable"
   | "goToRoom"
   | "restartRoom"
@@ -34,8 +33,7 @@ export const OBJECT_EVENT_TYPES: ObjectEventType[] = [
   "Step",
   "Draw",
   "Collision",
-  "KeyDown",
-  "KeyPress",
+  "Keyboard",
   "OnDestroy",
   "OutsideRoom",
   "Timer"
@@ -45,16 +43,14 @@ export const OBJECT_ACTION_TYPES: ObjectActionType[] = [
   "move",
   "setVelocity",
   "clampToRoom",
-  "jumpToPosition",
-  "jumpToStart",
+  "teleport",
   "destroySelf",
   "destroyOther",
   "spawnObject",
   "changeScore",
   "endGame",
   "playSound",
-  "changeGlobalVariable",
-  "changeObjectVariable",
+  "changeVariable",
   "copyVariable",
   "goToRoom",
   "restartRoom"
@@ -66,7 +62,7 @@ export const ACTION_CATEGORIES: { id: ActionCategory; label: string; types: Obje
   {
     id: "movement",
     label: "Moviment",
-    types: ["move", "setVelocity", "clampToRoom", "jumpToPosition", "jumpToStart"]
+    types: ["move", "setVelocity", "clampToRoom", "teleport"]
   },
   {
     id: "objects",
@@ -81,7 +77,7 @@ export const ACTION_CATEGORIES: { id: ActionCategory; label: string; types: Obje
   {
     id: "variables",
     label: "Variables",
-    types: ["changeGlobalVariable", "changeObjectVariable", "copyVariable"]
+    types: ["changeVariable", "copyVariable"]
   },
   {
     id: "rooms",

@@ -9,7 +9,7 @@ import {
 import {
   addEventWithActions,
   addGlobalVariableWithId,
-  addIfBlockToLatestEvent,
+  addIfElseBlockToLatestEvent,
   addObjectVariableWithId
 } from "./helpers.js"
 import type { TemplateProjectResult } from "./types.js"
@@ -108,16 +108,16 @@ export function createBatteryCourierTemplateProject(): TemplateProjectResult {
   const carriedId = withCarried.variableId
 
   let project = withCarried.project
-  project = addEventWithActions(project, courierObject.objectId, { type: "KeyDown", key: "ArrowUp" }, [
+  project = addEventWithActions(project, courierObject.objectId, { type: "Keyboard", keyboardMode: "down", key: "ArrowUp" }, [
     { type: "move", dx: 0, dy: -8 }
   ])
-  project = addEventWithActions(project, courierObject.objectId, { type: "KeyDown", key: "ArrowDown" }, [
+  project = addEventWithActions(project, courierObject.objectId, { type: "Keyboard", keyboardMode: "down", key: "ArrowDown" }, [
     { type: "move", dx: 0, dy: 8 }
   ])
-  project = addEventWithActions(project, courierObject.objectId, { type: "KeyDown", key: "ArrowLeft" }, [
+  project = addEventWithActions(project, courierObject.objectId, { type: "Keyboard", keyboardMode: "down", key: "ArrowLeft" }, [
     { type: "move", dx: -8, dy: 0 }
   ])
-  project = addEventWithActions(project, courierObject.objectId, { type: "KeyDown", key: "ArrowRight" }, [
+  project = addEventWithActions(project, courierObject.objectId, { type: "Keyboard", keyboardMode: "down", key: "ArrowRight" }, [
     { type: "move", dx: 8, dy: 0 }
   ])
   project = addEventWithActions(project, courierObject.objectId, { type: "Step" }, [{ type: "clampToRoom" }])
@@ -128,7 +128,8 @@ export function createBatteryCourierTemplateProject(): TemplateProjectResult {
     [
       { type: "playSound", soundId: soundPickup.soundId },
       {
-        type: "changeObjectVariable",
+        type: "changeVariable",
+        scope: "object",
         variableId: carriedId,
         operator: "add",
         target: "other",
@@ -154,7 +155,7 @@ export function createBatteryCourierTemplateProject(): TemplateProjectResult {
       }
     ]
   )
-  project = addIfBlockToLatestEvent(
+  project = addIfElseBlockToLatestEvent(
     project,
     reactorObject.objectId,
     {
@@ -162,17 +163,8 @@ export function createBatteryCourierTemplateProject(): TemplateProjectResult {
       operator: ">=",
       right: 3
     },
-    [{ type: "endGame", message: "Has recarregat el reactor. Missio completada!" }]
-  )
-  project = addIfBlockToLatestEvent(
-    project,
-    reactorObject.objectId,
-    {
-      left: { scope: "global", variableId: deliveredId },
-      operator: "<",
-      right: 3
-    },
-    [{ type: "jumpToStart" }]
+    [{ type: "endGame", message: "Has recarregat el reactor. Missio completada!" }],
+    [{ type: "teleport", mode: "start", x: null, y: null }]
   )
   project = addEventWithActions(
     project,

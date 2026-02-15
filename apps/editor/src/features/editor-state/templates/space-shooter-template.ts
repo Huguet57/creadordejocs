@@ -81,19 +81,19 @@ export function createSpaceShooterTemplateProject(): TemplateProjectResult {
   })
   const weaponHeatId = withWeaponHeat.variableId
   let project = withWeaponHeat.project
-  project = addEventWithActions(project, shipObject.objectId, { type: "KeyDown", key: "ArrowLeft" }, [
+  project = addEventWithActions(project, shipObject.objectId, { type: "Keyboard", keyboardMode: "down", key: "ArrowLeft" }, [
     { type: "move", dx: -6, dy: 0 }
   ])
-  project = addEventWithActions(project, shipObject.objectId, { type: "KeyDown", key: "ArrowRight" }, [
+  project = addEventWithActions(project, shipObject.objectId, { type: "Keyboard", keyboardMode: "down", key: "ArrowRight" }, [
     { type: "move", dx: 6, dy: 0 }
   ])
-  project = addEventWithActions(project, shipObject.objectId, { type: "KeyDown", key: "ArrowUp" }, [
+  project = addEventWithActions(project, shipObject.objectId, { type: "Keyboard", keyboardMode: "down", key: "ArrowUp" }, [
     { type: "move", dx: 0, dy: -4 }
   ])
-  project = addEventWithActions(project, shipObject.objectId, { type: "KeyDown", key: "ArrowDown" }, [
+  project = addEventWithActions(project, shipObject.objectId, { type: "Keyboard", keyboardMode: "down", key: "ArrowDown" }, [
     { type: "move", dx: 0, dy: 4 }
   ])
-  project = addEventWithActions(project, shipObject.objectId, { type: "KeyDown", key: "Space" }, [])
+  project = addEventWithActions(project, shipObject.objectId, { type: "Keyboard", keyboardMode: "down", key: "Space" }, [])
   project = addIfBlockToLatestEvent(
     project,
     shipObject.objectId,
@@ -106,7 +106,8 @@ export function createSpaceShooterTemplateProject(): TemplateProjectResult {
       { type: "playSound", soundId: soundShoot.soundId },
       { type: "spawnObject", objectId: bulletObject.objectId, offsetX: 0, offsetY: -18 },
       {
-        type: "changeGlobalVariable",
+        type: "changeVariable",
+        scope: "global",
         variableId: weaponHeatId,
         operator: "add",
         value: 1
@@ -124,7 +125,8 @@ export function createSpaceShooterTemplateProject(): TemplateProjectResult {
     },
     [
       {
-        type: "changeGlobalVariable",
+        type: "changeVariable",
+        scope: "global",
         variableId: weaponHeatId,
         operator: "subtract",
         value: 1

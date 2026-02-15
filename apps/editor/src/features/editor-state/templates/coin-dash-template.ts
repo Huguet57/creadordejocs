@@ -82,16 +82,16 @@ export function createCoinDashTemplateProject(): TemplateProjectResult {
   })
   const coinsRemainingId = withCoinsRemaining.variableId
   let project = withCoinsRemaining.project
-  project = addEventWithActions(project, playerObject.objectId, { type: "KeyDown", key: "ArrowUp" }, [
+  project = addEventWithActions(project, playerObject.objectId, { type: "Keyboard", keyboardMode: "down", key: "ArrowUp" }, [
     { type: "move", dx: 0, dy: -6 }
   ])
-  project = addEventWithActions(project, playerObject.objectId, { type: "KeyDown", key: "ArrowDown" }, [
+  project = addEventWithActions(project, playerObject.objectId, { type: "Keyboard", keyboardMode: "down", key: "ArrowDown" }, [
     { type: "move", dx: 0, dy: 6 }
   ])
-  project = addEventWithActions(project, playerObject.objectId, { type: "KeyDown", key: "ArrowLeft" }, [
+  project = addEventWithActions(project, playerObject.objectId, { type: "Keyboard", keyboardMode: "down", key: "ArrowLeft" }, [
     { type: "move", dx: -6, dy: 0 }
   ])
-  project = addEventWithActions(project, playerObject.objectId, { type: "KeyDown", key: "ArrowRight" }, [
+  project = addEventWithActions(project, playerObject.objectId, { type: "Keyboard", keyboardMode: "down", key: "ArrowRight" }, [
     { type: "move", dx: 6, dy: 0 }
   ])
   project = addEventWithActions(project, playerObject.objectId, { type: "Step" }, [{ type: "clampToRoom" }])
@@ -106,7 +106,8 @@ export function createCoinDashTemplateProject(): TemplateProjectResult {
       { type: "playSound", soundId: soundCoin.soundId },
       { type: "changeScore", delta: 100 },
       {
-        type: "changeGlobalVariable",
+        type: "changeVariable",
+        scope: "global",
         variableId: coinsRemainingId,
         operator: "subtract",
         value: 1

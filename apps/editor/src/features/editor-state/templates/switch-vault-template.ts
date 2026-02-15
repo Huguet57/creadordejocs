@@ -112,16 +112,16 @@ export function createSwitchVaultTemplateProject(): TemplateProjectResult {
   const vaultOpenId = withVaultOpen.variableId
 
   let project = withVaultOpen.project
-  project = addEventWithActions(project, agentObject.objectId, { type: "KeyDown", key: "ArrowUp" }, [
+  project = addEventWithActions(project, agentObject.objectId, { type: "Keyboard", keyboardMode: "down", key: "ArrowUp" }, [
     { type: "move", dx: 0, dy: -8 }
   ])
-  project = addEventWithActions(project, agentObject.objectId, { type: "KeyDown", key: "ArrowDown" }, [
+  project = addEventWithActions(project, agentObject.objectId, { type: "Keyboard", keyboardMode: "down", key: "ArrowDown" }, [
     { type: "move", dx: 0, dy: 8 }
   ])
-  project = addEventWithActions(project, agentObject.objectId, { type: "KeyDown", key: "ArrowLeft" }, [
+  project = addEventWithActions(project, agentObject.objectId, { type: "Keyboard", keyboardMode: "down", key: "ArrowLeft" }, [
     { type: "move", dx: -8, dy: 0 }
   ])
-  project = addEventWithActions(project, agentObject.objectId, { type: "KeyDown", key: "ArrowRight" }, [
+  project = addEventWithActions(project, agentObject.objectId, { type: "Keyboard", keyboardMode: "down", key: "ArrowRight" }, [
     { type: "move", dx: 8, dy: 0 }
   ])
   project = addEventWithActions(project, agentObject.objectId, { type: "Step" }, [{ type: "clampToRoom" }])
@@ -132,7 +132,8 @@ export function createSwitchVaultTemplateProject(): TemplateProjectResult {
     [
       { type: "playSound", soundId: soundSwitch.soundId },
       {
-        type: "changeGlobalVariable",
+        type: "changeVariable",
+        scope: "global",
         variableId: vaultOpenId,
         operator: "set",
         value: true
@@ -152,7 +153,7 @@ export function createSwitchVaultTemplateProject(): TemplateProjectResult {
     },
     [
       { type: "playSound", soundId: soundLift.soundId },
-      { type: "jumpToStart" },
+      { type: "teleport", mode: "start", x: null, y: null },
       { type: "goToRoom", roomId: vaultRoom.roomId }
     ]
   )
@@ -164,7 +165,7 @@ export function createSwitchVaultTemplateProject(): TemplateProjectResult {
       operator: "==",
       right: false
     },
-    [{ type: "jumpToStart" }]
+    [{ type: "teleport", mode: "start", x: null, y: null }]
   )
   project = addEventWithActions(project, guardObject.objectId, { type: "Step" }, [
     { type: "setVelocity", speed: 2.2, direction: 180 }
@@ -175,7 +176,7 @@ export function createSwitchVaultTemplateProject(): TemplateProjectResult {
     { type: "Collision", targetObjectId: guardObject.objectId },
     [
       { type: "playSound", soundId: soundGuard.soundId },
-      { type: "jumpToStart" }
+      { type: "teleport", mode: "start", x: null, y: null }
     ]
   )
   project = addEventWithActions(

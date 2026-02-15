@@ -1,13 +1,25 @@
 import { Activity, Keyboard, MousePointerClick, Play, Zap, Plus, X, Scan, Timer } from "lucide-react"
 import { useState } from "react"
 import { Button } from "../../components/ui/button.js"
-import { OBJECT_EVENT_TYPES, OBJECT_EVENT_KEYS, type ObjectEventType, type ObjectEventKey, type ObjectEventEntry } from "../editor-state/types.js"
+import {
+  OBJECT_EVENT_TYPES,
+  OBJECT_EVENT_KEYS,
+  type ObjectEventType,
+  type ObjectEventKey,
+  type ObjectEventEntry,
+  type ObjectKeyboardMode
+} from "../editor-state/types.js"
 
 type EventListPanelProps = {
   events: ObjectEventEntry[]
   activeEventId: string | null
   onSelectEvent: (id: string) => void
-  onAddEvent: (type: ObjectEventType, key?: ObjectEventKey | null, intervalMs?: number | null) => void
+  onAddEvent: (
+    type: ObjectEventType,
+    key?: ObjectEventKey | null,
+    keyboardMode?: ObjectKeyboardMode | null,
+    intervalMs?: number | null
+  ) => void
   onRemoveEvent: (id: string) => void
 }
 
@@ -16,8 +28,7 @@ const EVENT_ICONS: Record<ObjectEventType, React.ElementType> = {
   Step: Activity,
   Draw: MousePointerClick, // Placeholder
   Collision: Zap,
-  KeyDown: Keyboard,
-  KeyPress: Keyboard,
+  Keyboard: Keyboard,
   OnDestroy: X,
   OutsideRoom: Scan,
   Timer: Timer
@@ -33,12 +44,14 @@ export function EventListPanel({
   const [isAdding, setIsAdding] = useState(false)
   const [eventType, setEventType] = useState<ObjectEventType>("Create")
   const [eventKey, setEventKey] = useState<ObjectEventKey>("ArrowLeft")
+  const [keyboardMode, setKeyboardMode] = useState<ObjectKeyboardMode>("down")
   const [timerIntervalMs, setTimerIntervalMs] = useState(1000)
 
   const handleAddEvent = () => {
     onAddEvent(
       eventType,
-      eventType === "KeyDown" || eventType === "KeyPress" ? eventKey : null,
+      eventType === "Keyboard" ? eventKey : null,
+      eventType === "Keyboard" ? keyboardMode : null,
       eventType === "Timer" ? timerIntervalMs : null
     )
     setIsAdding(false)
@@ -76,8 +89,10 @@ export function EventListPanel({
                     <span className={`truncate text-sm ${activeEventId === event.id ? "font-medium text-slate-900" : "text-slate-600"}`}>
                       {event.type}
                     </span>
-                    {(event.type === "KeyDown" || event.type === "KeyPress") && event.key && (
-                      <span className="truncate text-[10px] text-slate-400">Key: {event.key}</span>
+                    {event.type === "Keyboard" && event.key && (
+                      <span className="truncate text-[10px] text-slate-400">
+                        Key: {event.key} ({event.keyboardMode ?? "down"})
+                      </span>
                     )}
                     {event.type === "Timer" && (
                       <span className="truncate text-[10px] text-slate-400">Every: {event.intervalMs ?? 1000}ms</span>
@@ -139,18 +154,28 @@ export function EventListPanel({
               </Button>
             </div>
 
-            {(eventType === "KeyDown" || eventType === "KeyPress") && (
-              <select
-                className="h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-none"
-                value={eventKey}
-                onChange={(e) => {
-                  setEventKey(e.target.value as ObjectEventKey)
-                }}
-              >
-                {OBJECT_EVENT_KEYS.map((key) => (
-                  <option key={key} value={key}>{key}</option>
-                ))}
-              </select>
+            {eventType === "Keyboard" && (
+              <div className="mvp16-keyboard-config-grid grid grid-cols-2 gap-2">
+                <select
+                  className="h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-none"
+                  value={eventKey}
+                  onChange={(e) => {
+                    setEventKey(e.target.value as ObjectEventKey)
+                  }}
+                >
+                  {OBJECT_EVENT_KEYS.map((key) => (
+                    <option key={key} value={key}>{key}</option>
+                  ))}
+                </select>
+                <select
+                  className="h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-none"
+                  value={keyboardMode}
+                  onChange={(e) => setKeyboardMode(e.target.value as ObjectKeyboardMode)}
+                >
+                  <option value="down">Held</option>
+                  <option value="press">Pressed</option>
+                </select>
+              </div>
             )}
 
             {eventType === "Timer" && (

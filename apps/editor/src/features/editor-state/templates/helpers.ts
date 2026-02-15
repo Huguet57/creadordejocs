@@ -54,6 +54,29 @@ export function addIfBlockToLatestEvent(
   )
 }
 
+export function addIfElseBlockToLatestEvent(
+  project: ProjectV1,
+  objectId: string,
+  condition: IfCondition,
+  thenActions: ObjectActionDraft[],
+  elseActions: ObjectActionDraft[]
+): ProjectV1 {
+  const withThenBranch = addIfBlockToLatestEvent(project, objectId, condition, thenActions)
+  const eventId = getLatestEventId(withThenBranch, objectId)
+  const latestEvent = withThenBranch.objects
+    .find((entry) => entry.id === objectId)
+    ?.events.find((entry) => entry.id === eventId)
+  const ifItem = latestEvent?.items.at(-1)
+  if (ifItem?.type !== "if") {
+    throw new Error(`Missing if block for object "${objectId}" and event "${eventId}"`)
+  }
+  return elseActions.reduce(
+    (currentProject, action) =>
+      addObjectEventIfAction(currentProject, { objectId, eventId, ifBlockId: ifItem.id, branch: "else", action }),
+    withThenBranch
+  )
+}
+
 export function addGlobalVariableWithId(
   project: ProjectV1,
   input: AddGlobalVariableInput

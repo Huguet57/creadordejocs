@@ -43,7 +43,10 @@ describe("template catalog", () => {
           if (itemEntry.type === "action") {
             return itemEntry.action.type === actionType
           }
-          return itemEntry.actions.some((nestedAction) => nestedAction.type === actionType)
+          return (
+            itemEntry.thenActions.some((nestedAction) => nestedAction.type === actionType) ||
+            itemEntry.elseActions.some((nestedAction) => nestedAction.type === actionType)
+          )
         })
       )
     )

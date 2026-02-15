@@ -19,12 +19,12 @@ function updateRoomInstances(
   }
 }
 
-function createKeyboardScoringProject(eventType: "KeyDown" | "KeyPress"): ProjectV1 {
+function createKeyboardScoringProject(mode: "down" | "press"): ProjectV1 {
   return {
     version: 1,
     metadata: {
-      id: `project-${eventType.toLowerCase()}`,
-      name: `${eventType} scoring test`,
+      id: `project-${mode}`,
+      name: `${mode} keyboard scoring test`,
       locale: "ca",
       createdAtIso: new Date().toISOString()
     },
@@ -48,8 +48,9 @@ function createKeyboardScoringProject(eventType: "KeyDown" | "KeyPress"): Projec
         events: [
           {
             id: "event-keyboard",
-            type: eventType,
+            type: "Keyboard",
             key: "Space",
+            keyboardMode: mode,
             targetObjectId: null,
             intervalMs: null,
             items: [
@@ -238,8 +239,8 @@ describe("runtime regressions", () => {
     expect(spawnedBullet?.y).toBe((shipBefore?.y ?? 0) - 18)
   })
 
-  it("runs KeyDown on every tick while key is held", () => {
-    const project = createKeyboardScoringProject("KeyDown")
+  it("runs Keyboard/down on every tick while key is held", () => {
+    const project = createKeyboardScoringProject("down")
     const runtime = createInitialRuntimeState(project)
 
     const first = runRuntimeTick(project, "room-main", new Set(["Space"]), runtime, new Set(["Space"]))
@@ -251,8 +252,8 @@ describe("runtime regressions", () => {
     expect(third.runtime.score).toBe(3)
   })
 
-  it("runs KeyPress only once per press", () => {
-    const project = createKeyboardScoringProject("KeyPress")
+  it("runs Keyboard/press only once per press", () => {
+    const project = createKeyboardScoringProject("press")
     const runtime = createInitialRuntimeState(project)
 
     const first = runRuntimeTick(project, "room-main", new Set(["Space"]), runtime, new Set(["Space"]))
@@ -471,7 +472,13 @@ describe("runtime regressions", () => {
               key: null,
               targetObjectId: null,
               intervalMs: null,
-              items: [{ id: "item-action-jump-start", type: "action", action: { id: "action-jump-start", type: "jumpToStart" } }]
+              items: [
+                {
+                  id: "item-action-jump-start",
+                  type: "action",
+                  action: { id: "action-jump-start", type: "teleport", mode: "start", x: null, y: null }
+                }
+              ]
             }
           ]
         }
@@ -502,12 +509,12 @@ describe("runtime regressions", () => {
     expect(player?.y).toBe(50)
   })
 
-  it("jumpToStart works inside collision events after moving", () => {
+  it("teleport/start works inside collision events after moving", () => {
     const project: ProjectV1 = {
       version: 1,
       metadata: {
         id: "project-collision-jump-start",
-        name: "Collision jumpToStart test",
+        name: "Collision teleport/start test",
         locale: "ca",
         createdAtIso: new Date().toISOString()
       },
@@ -553,7 +560,7 @@ describe("runtime regressions", () => {
                 {
                   id: "item-action-jump-start",
                   type: "action",
-                  action: { id: "action-jump-start", type: "jumpToStart" }
+                  action: { id: "action-jump-start", type: "teleport", mode: "start", x: null, y: null }
                 }
               ]
             }
@@ -592,7 +599,7 @@ describe("runtime regressions", () => {
     }
 
     // First tick: player starts at (100,200), Step moves it to (300,200),
-    // now overlaps with enemy at (305,200), collision fires jumpToStart
+    // now overlaps with enemy at (305,200), collision fires teleport/start
     const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState())
     const room = result.project.rooms.find((roomEntry) => roomEntry.id === "room-main")
     const player = room?.instances.find((instanceEntry) => instanceEntry.id === "instance-player")
@@ -602,7 +609,7 @@ describe("runtime regressions", () => {
     expect(player?.y).toBe(200)
   })
 
-  it("applies jumpToPosition as an absolute move", () => {
+  it("applies teleport/position as an absolute move", () => {
     const project: ProjectV1 = {
       version: 1,
       metadata: {
@@ -639,7 +646,7 @@ describe("runtime regressions", () => {
                 {
                   id: "item-action-jump-pos",
                   type: "action",
-                  action: { id: "action-jump-pos", type: "jumpToPosition", x: 123, y: 77 }
+                  action: { id: "action-jump-pos", type: "teleport", mode: "position", x: 123, y: 77 }
                 }
               ]
             }
@@ -716,7 +723,8 @@ describe("runtime regressions", () => {
                   type: "action",
                   action: {
                     id: "action-global",
-                    type: "changeGlobalVariable",
+                    type: "changeVariable",
+                    scope: "global",
                     variableId: "gv-score",
                     operator: "set",
                     value: 9
@@ -727,7 +735,8 @@ describe("runtime regressions", () => {
                   type: "action",
                   action: {
                     id: "action-object",
-                    type: "changeObjectVariable",
+                    type: "changeVariable",
+                    scope: "object",
                     variableId: "ov-health",
                     operator: "set",
                     target: "self",
@@ -757,6 +766,73 @@ describe("runtime regressions", () => {
     expect(result.runtime.globalVariables["gv-score"]).toBe(9)
     expect(result.runtime.globalVariables["gv-flag"]).toBe(false)
     expect(result.runtime.objectInstanceVariables["instance-player"]?.["ov-health"]).toBe(7)
+  })
+
+  it("runs elseActions when if condition is false", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-if-else",
+        name: "If else test",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: {
+        sprites: [],
+        sounds: []
+      },
+      variables: {
+        global: [{ id: "gv-flag", name: "flag", type: "boolean", initialValue: false }],
+        objectByObjectId: {}
+      },
+      objects: [
+        {
+          id: "object-checker",
+          name: "Checker",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step",
+              type: "Step",
+              key: null,
+              keyboardMode: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [
+                {
+                  id: "if-branch",
+                  type: "if",
+                  condition: {
+                    left: { scope: "global", variableId: "gv-flag" },
+                    operator: "==",
+                    right: true
+                  },
+                  thenActions: [{ id: "then-action", type: "changeScore", delta: 5 }],
+                  elseActions: [{ id: "else-action", type: "changeScore", delta: 2 }]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      rooms: [{ id: "room-main", name: "Main", instances: [{ id: "instance-checker", objectId: "object-checker", x: 0, y: 0 }] }],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    expect(result.runtime.score).toBe(2)
   })
 
   it("supports cross-instance variable transfer with collision self/other", () => {
@@ -1192,29 +1268,30 @@ describe("runtime regressions", () => {
                 {
                   id: "item-a1",
                   type: "action",
-                  action: { id: "a1", type: "changeGlobalVariable", variableId: "gv-number", operator: "add", value: 3 }
+                  action: { id: "a1", type: "changeVariable", scope: "global", variableId: "gv-number", operator: "add", value: 3 }
                 },
                 {
                   id: "item-a2",
                   type: "action",
-                  action: { id: "a2", type: "changeGlobalVariable", variableId: "gv-number", operator: "subtract", value: 1 }
+                  action: { id: "a2", type: "changeVariable", scope: "global", variableId: "gv-number", operator: "subtract", value: 1 }
                 },
                 {
                   id: "item-a3",
                   type: "action",
-                  action: { id: "a3", type: "changeGlobalVariable", variableId: "gv-number", operator: "multiply", value: 5 }
+                  action: { id: "a3", type: "changeVariable", scope: "global", variableId: "gv-number", operator: "multiply", value: 5 }
                 },
                 {
                   id: "item-a4",
                   type: "action",
-                  action: { id: "a4", type: "changeGlobalVariable", variableId: "gv-string", operator: "add", value: 9 }
+                  action: { id: "a4", type: "changeVariable", scope: "global", variableId: "gv-string", operator: "add", value: 9 }
                 },
                 {
                   id: "item-a5",
                   type: "action",
                   action: {
                     id: "a5",
-                    type: "changeObjectVariable",
+                    type: "changeVariable",
+                    scope: "object",
                     variableId: "ov-number",
                     operator: "add",
                     target: "self",
@@ -1227,7 +1304,8 @@ describe("runtime regressions", () => {
                   type: "action",
                   action: {
                     id: "a6",
-                    type: "changeObjectVariable",
+                    type: "changeVariable",
+                    scope: "object",
                     variableId: "ov-number",
                     operator: "subtract",
                     target: "self",
@@ -1240,7 +1318,8 @@ describe("runtime regressions", () => {
                   type: "action",
                   action: {
                     id: "a7",
-                    type: "changeObjectVariable",
+                    type: "changeVariable",
+                    scope: "object",
                     variableId: "ov-number",
                     operator: "multiply",
                     target: "self",
@@ -1253,7 +1332,8 @@ describe("runtime regressions", () => {
                   type: "action",
                   action: {
                     id: "a8",
-                    type: "changeObjectVariable",
+                    type: "changeVariable",
+                    scope: "object",
                     variableId: "ov-bool",
                     operator: "add",
                     target: "self",

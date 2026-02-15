@@ -181,7 +181,7 @@ describe("editor model helpers", () => {
       action: { type: "changeScore", delta: 2 }
     })
     const nestedActionId = withNestedAction.objects[0]?.events[0]?.items.find((item) => item.type === "if" && item.id === ifBlock.id)
-    if (nestedActionId?.type !== "if" || !nestedActionId.actions[0]) {
+    if (nestedActionId?.type !== "if" || !nestedActionId.thenActions[0]) {
       throw new Error("Expected nested action")
     }
 
@@ -199,14 +199,14 @@ describe("editor model helpers", () => {
       objectId: objectResult.objectId,
       eventId,
       ifBlockId: ifBlock.id,
-      actionId: nestedActionId.actions[0].id,
+      actionId: nestedActionId.thenActions[0].id,
       action: { type: "changeScore", delta: 4 }
     })
     const withRemovedNested = removeObjectEventIfAction(withUpdatedNested, {
       objectId: objectResult.objectId,
       eventId,
       ifBlockId: ifBlock.id,
-      actionId: nestedActionId.actions[0].id
+      actionId: nestedActionId.thenActions[0].id
     })
     const withoutIf = removeObjectEventIfBlock(withRemovedNested, {
       objectId: objectResult.objectId,
@@ -218,14 +218,14 @@ describe("editor model helpers", () => {
     expect(updatedIf?.type).toBe("if")
     if (updatedIf?.type === "if") {
       expect(updatedIf.condition.left.scope).toBe("object")
-      expect(updatedIf.actions[0]?.type).toBe("changeScore")
-      if (updatedIf.actions[0]?.type === "changeScore") {
-        expect(updatedIf.actions[0].delta).toBe(4)
+      expect(updatedIf.thenActions[0]?.type).toBe("changeScore")
+      if (updatedIf.thenActions[0]?.type === "changeScore") {
+        expect(updatedIf.thenActions[0].delta).toBe(4)
       }
     }
     const remainingIf = withRemovedNested.objects[0]?.events[0]?.items.find((item) => item.type === "if" && item.id === ifBlock.id)
     if (remainingIf?.type === "if") {
-      expect(remainingIf.actions).toHaveLength(0)
+      expect(remainingIf.thenActions).toHaveLength(0)
     }
     expect(withoutIf.objects[0]?.events[0]?.items.some((item) => item.type === "if")).toBe(false)
   })

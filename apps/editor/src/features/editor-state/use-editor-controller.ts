@@ -50,7 +50,7 @@ import {
 import { selectActiveRoom, selectObject } from "./selectors.js"
 import { createTemplateProject, type GameTemplateId } from "./game-templates.js"
 import { createInitialRuntimeState, runRuntimeTick, type RuntimeState } from "./runtime.js"
-import type { EditorSection, ObjectEventKey, ObjectEventType } from "./types.js"
+import type { EditorSection, ObjectEventKey, ObjectEventType, ObjectKeyboardMode } from "./types.js"
 import { resolveAssetSource } from "../assets/asset-source-resolver.js"
 
 const AUTOSAVE_MS = 4000
@@ -382,18 +382,20 @@ export function useEditorController() {
     addObjectEvent(
       type: ObjectEventType,
       key: ObjectEventKey | null = null,
+      keyboardMode: ObjectKeyboardMode | null = null,
       targetObjectId: string | null = null,
       intervalMs: number | null = null
     ) {
       if (!selectedObject) return
       pushProjectChange(
-        addObjectEvent(project, { objectId: selectedObject.id, type, key, targetObjectId, intervalMs }),
+        addObjectEvent(project, { objectId: selectedObject.id, type, key, keyboardMode, targetObjectId, intervalMs }),
         `Add ${type} event`
       )
     },
     updateObjectEventConfig(
       eventId: string,
       key: ObjectEventKey | null,
+      keyboardMode: ObjectKeyboardMode | null,
       targetObjectId: string | null,
       intervalMs: number | null
     ) {
@@ -403,6 +405,7 @@ export function useEditorController() {
           objectId: selectedObject.id,
           eventId,
           key,
+          keyboardMode,
           targetObjectId,
           intervalMs
         })
@@ -469,24 +472,30 @@ export function useEditorController() {
         "Remove if block"
       )
     },
-    addObjectEventIfAction(eventId: string, ifBlockId: string, action: ObjectActionDraft) {
+    addObjectEventIfAction(eventId: string, ifBlockId: string, action: ObjectActionDraft, branch: "then" | "else" = "then") {
       if (!selectedObject) return
       pushProjectChange(
-        addObjectEventIfActionModel(project, { objectId: selectedObject.id, eventId, ifBlockId, action }),
+        addObjectEventIfActionModel(project, { objectId: selectedObject.id, eventId, ifBlockId, action, branch }),
         "Add if block action"
       )
     },
-    updateObjectEventIfAction(eventId: string, ifBlockId: string, actionId: string, action: ObjectActionDraft) {
+    updateObjectEventIfAction(
+      eventId: string,
+      ifBlockId: string,
+      actionId: string,
+      action: ObjectActionDraft,
+      branch: "then" | "else" = "then"
+    ) {
       if (!selectedObject) return
       pushProjectChange(
-        updateObjectEventIfActionModel(project, { objectId: selectedObject.id, eventId, ifBlockId, actionId, action }),
+        updateObjectEventIfActionModel(project, { objectId: selectedObject.id, eventId, ifBlockId, actionId, action, branch }),
         "Update if block action"
       )
     },
-    removeObjectEventIfAction(eventId: string, ifBlockId: string, actionId: string) {
+    removeObjectEventIfAction(eventId: string, ifBlockId: string, actionId: string, branch: "then" | "else" = "then") {
       if (!selectedObject) return
       pushProjectChange(
-        removeObjectEventIfActionModel(project, { objectId: selectedObject.id, eventId, ifBlockId, actionId }),
+        removeObjectEventIfActionModel(project, { objectId: selectedObject.id, eventId, ifBlockId, actionId, branch }),
         "Remove if block action"
       )
     },

@@ -11,8 +11,6 @@ import {
   Volume2,
   X,
   Locate,
-  LocateFixed,
-  Globe2,
   Variable,
   ArrowLeftRight,
   DoorOpen,
@@ -45,16 +43,14 @@ const ACTION_ICONS: Record<ObjectActionType, React.ElementType> = {
   move: Move,
   setVelocity: FastForward,
   clampToRoom: Maximize,
-  jumpToPosition: Locate,
-  jumpToStart: LocateFixed,
+  teleport: Locate,
   destroySelf: Trash,
   destroyOther: X,
   spawnObject: CopyPlus,
   changeScore: Trophy,
   endGame: Flag,
   playSound: Volume2,
-  changeGlobalVariable: Globe2,
-  changeObjectVariable: Variable,
+  changeVariable: Variable,
   copyVariable: ArrowLeftRight,
   goToRoom: DoorOpen,
   restartRoom: RotateCcw,
@@ -64,16 +60,14 @@ const ACTION_LABELS: Record<ObjectActionType, string> = {
   move: "Moure",
   setVelocity: "Velocitat",
   clampToRoom: "Limitar",
-  jumpToPosition: "Saltar pos.",
-  jumpToStart: "Saltar inici",
+  teleport: "Teleport",
   destroySelf: "Destruir-se",
   destroyOther: "Destruir altre",
   spawnObject: "Crear obj.",
   changeScore: "Punts",
   endGame: "Fi joc",
   playSound: "So",
-  changeGlobalVariable: "Var. global",
-  changeObjectVariable: "Var. objecte",
+  changeVariable: "Variable",
   copyVariable: "Copiar var.",
   goToRoom: "Anar a sala",
   restartRoom: "Reiniciar",
@@ -245,26 +239,45 @@ export function ActionBlock({
           </div>
         )}
 
-        {action.type === "jumpToPosition" && (
+        {action.type === "teleport" && (
           <>
-            <div className="flex items-center gap-1">
-              <label className="text-[10px] font-medium opacity-60">X</label>
-              <Input
-                type="number"
-                className="h-6 w-16 px-1 text-xs bg-white/50 border-slate-300"
-                value={action.x}
-                onChange={(e) => onUpdate({ ...action, x: Number(e.target.value) })}
-              />
-            </div>
-            <div className="flex items-center gap-1">
-              <label className="text-[10px] font-medium opacity-60">Y</label>
-              <Input
-                type="number"
-                className="h-6 w-16 px-1 text-xs bg-white/50 border-slate-300"
-                value={action.y}
-                onChange={(e) => onUpdate({ ...action, y: Number(e.target.value) })}
-              />
-            </div>
+            <select
+              className="action-block-teleport-mode h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
+              value={action.mode}
+              onChange={(event) =>
+                onUpdate({
+                  ...action,
+                  mode: event.target.value as "position" | "start",
+                  x: event.target.value === "position" ? (action.x ?? 0) : null,
+                  y: event.target.value === "position" ? (action.y ?? 0) : null
+                })
+              }
+            >
+              <option value="position">Position</option>
+              <option value="start">Start</option>
+            </select>
+            {action.mode === "position" && (
+              <>
+                <div className="flex items-center gap-1">
+                  <label className="text-[10px] font-medium opacity-60">X</label>
+                  <Input
+                    type="number"
+                    className="h-6 w-16 px-1 text-xs bg-white/50 border-slate-300"
+                    value={action.x ?? 0}
+                    onChange={(e) => onUpdate({ ...action, x: Number(e.target.value) })}
+                  />
+                </div>
+                <div className="flex items-center gap-1">
+                  <label className="text-[10px] font-medium opacity-60">Y</label>
+                  <Input
+                    type="number"
+                    className="h-6 w-16 px-1 text-xs bg-white/50 border-slate-300"
+                    value={action.y ?? 0}
+                    onChange={(e) => onUpdate({ ...action, y: Number(e.target.value) })}
+                  />
+                </div>
+              </>
+            )}
           </>
         )}
 
@@ -295,120 +308,123 @@ export function ActionBlock({
 
         {action.type === "restartRoom" && <span className="text-[10px] font-medium text-slate-500">Sala actual</span>}
 
-        {action.type === "changeGlobalVariable" && (
+        {action.type === "changeVariable" && (
           <>
             <select
-              className="action-block-operator-select h-6 w-12 rounded border border-slate-300 bg-white/50 px-1 text-xs font-bold text-center"
-              value={action.operator}
+              className="action-block-scope-select h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
+              value={action.scope}
               onChange={(event) => {
-                const newOp = event.target.value as "set" | "add" | "subtract" | "multiply"
-                if (newOp !== "set" && typeof action.value !== "number") {
-                  onUpdate({ ...action, operator: newOp, value: 0 })
-                } else {
-                  onUpdate({ ...action, operator: newOp })
+                const nextScope = event.target.value as "global" | "object"
+                if (nextScope === "global") {
+                  const firstGlobal = globalVariables[0]
+                  if (!firstGlobal) return
+                  onUpdate({
+                    scope: "global",
+                    type: "changeVariable",
+                    variableId: firstGlobal.id,
+                    operator: action.operator,
+                    value: action.operator === "set" ? firstGlobal.initialValue : 0
+                  })
+                  return
                 }
-              }}
-            >
-              <option value="set">=</option>
-              <option value="add">+</option>
-              <option value="subtract">−</option>
-              <option value="multiply">×</option>
-            </select>
-            <select
-              className="action-block-globalvar-select h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs focus:outline-none"
-              value={action.variableId}
-              onChange={(event) => {
-                const selected = globalVariables.find((definition) => definition.id === event.target.value)
-                if (!selected) return
-                onUpdate({ ...action, variableId: selected.id, value: action.operator === "set" ? selected.initialValue : 0 })
-              }}
-            >
-              {(action.operator === "set" ? globalVariables : globalVariables.filter((d) => d.type === "number")).map((definition) => (
-                <option key={definition.id} value={definition.id}>{definition.name}</option>
-              ))}
-            </select>
-            {typeof action.value === "boolean" ? (
-              <select
-                className="action-block-bool-select h-6 w-16 rounded border border-slate-300 bg-white/50 px-1 text-xs"
-                value={String(action.value)}
-                onChange={(event) => onUpdate({ ...action, value: event.target.value === "true" })}
-              >
-                <option value="true">true</option>
-                <option value="false">false</option>
-              </select>
-            ) : (
-              <Input
-                type={typeof action.value === "number" ? "number" : "text"}
-                className="h-6 w-16 px-1 text-xs bg-white/50 border-slate-300"
-                value={formatValue(action.value)}
-                onChange={(event) => {
-                  const selected = globalVariables.find((definition) => definition.id === action.variableId)
-                  if (!selected) return
-                  onUpdate({ ...action, value: parseValueForType(selected.type, event.target.value) })
-                }}
-              />
-            )}
-          </>
-        )}
-
-        {action.type === "changeObjectVariable" && (
-          <>
-            <select
-              className="action-block-operator-select h-6 w-12 rounded border border-slate-300 bg-white/50 px-1 text-xs font-bold text-center"
-              value={action.operator}
-              onChange={(event) => {
-                const newOp = event.target.value as "set" | "add" | "subtract" | "multiply"
-                if (newOp !== "set" && typeof action.value !== "number") {
-                  onUpdate({ ...action, operator: newOp, value: 0 })
-                } else {
-                  onUpdate({ ...action, operator: newOp })
-                }
-              }}
-            >
-              <option value="set">=</option>
-              <option value="add">+</option>
-              <option value="subtract">−</option>
-              <option value="multiply">×</option>
-            </select>
-            <select
-              className="action-block-target-select h-6 w-14 rounded border border-slate-300 bg-white/50 px-1 text-xs"
-              value={action.target}
-              onChange={(event) =>
+                const firstObject = objectVariableOptions[0]
+                if (!firstObject) return
                 onUpdate({
                   ...action,
-                  target: event.target.value as "self" | "other" | "instanceId",
-                  targetInstanceId: event.target.value === "instanceId" ? action.targetInstanceId : null
+                  scope: "object",
+                  variableId: firstObject.id,
+                  target: "self",
+                  targetInstanceId: null,
+                  value: action.operator === "set" ? parseValueForType(firstObject.type, formatValue(action.value)) : 0
                 })
-              }
-            >
-              <option value="self">self</option>
-              <option value="other">other</option>
-              <option value="instanceId">id</option>
-            </select>
-            {action.target === "instanceId" && (
-              <select
-                className="action-block-instance-select h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
-                value={action.targetInstanceId ?? roomInstances[0]?.id ?? ""}
-                onChange={(event) => onUpdate({ ...action, targetInstanceId: event.target.value })}
-              >
-                {roomInstances.map((instanceEntry) => (
-                  <option key={instanceEntry.id} value={instanceEntry.id}>{instanceEntry.id}</option>
-                ))}
-              </select>
-            )}
-            <select
-              className="action-block-objvar-select h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
-              value={action.variableId}
-              onChange={(event) => {
-                const selected = objectVariableOptions.find((option) => option.id === event.target.value)
-                if (!selected) return
-                onUpdate({ ...action, variableId: selected.id })
               }}
             >
-              {(action.operator === "set" ? objectVariableOptions : objectVariableOptions.filter((o) => o.type === "number")).map((option) => (
-                <option key={`${option.objectName}-${option.id}`} value={option.id}>{option.label}</option>
-              ))}
+              <option value="global">Global</option>
+              <option value="object">Objecte</option>
             </select>
+            <select
+              className="action-block-operator-select h-6 w-12 rounded border border-slate-300 bg-white/50 px-1 text-xs font-bold text-center"
+              value={action.operator}
+              onChange={(event) => {
+                const newOp = event.target.value as "set" | "add" | "subtract" | "multiply"
+                if (newOp !== "set" && typeof action.value !== "number") {
+                  onUpdate({ ...action, operator: newOp, value: 0 })
+                } else {
+                  onUpdate({ ...action, operator: newOp })
+                }
+              }}
+            >
+              <option value="set">=</option>
+              <option value="add">+</option>
+              <option value="subtract">−</option>
+              <option value="multiply">×</option>
+            </select>
+            <select
+              className="action-block-var-select h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
+              value={action.variableId}
+              onChange={(event) => {
+                const selected =
+                  action.scope === "global"
+                    ? globalVariables.find((definition) => definition.id === event.target.value)
+                    : objectVariableOptions.find((option) => option.id === event.target.value)
+                if (!selected) return
+                const selectedType = "type" in selected ? selected.type : "string"
+                onUpdate({
+                  ...action,
+                  variableId: selected.id,
+                  value: action.operator === "set" ? parseValueForType(selectedType, formatValue(action.value)) : 0
+                })
+              }}
+            >
+              {(action.scope === "global"
+                ? action.operator === "set"
+                  ? globalVariables
+                  : globalVariables.filter((definition) => definition.type === "number")
+                : action.operator === "set"
+                  ? objectVariableOptions
+                  : objectVariableOptions.filter((option) => option.type === "number")
+              ).map((entry) =>
+                "objectName" in entry ? (
+                  <option key={`${entry.objectName}-${entry.id}`} value={entry.id}>
+                    {entry.label}
+                  </option>
+                ) : (
+                  <option key={entry.id} value={entry.id}>
+                    {entry.name}
+                  </option>
+                )
+              )}
+            </select>
+            {action.scope === "object" && (
+              <>
+                <select
+                  className="action-block-target-select h-6 w-14 rounded border border-slate-300 bg-white/50 px-1 text-xs"
+                  value={action.target ?? "self"}
+                  onChange={(event) =>
+                    onUpdate({
+                      ...action,
+                      target: event.target.value as "self" | "other" | "instanceId",
+                      targetInstanceId: event.target.value === "instanceId" ? action.targetInstanceId : null
+                    })
+                  }
+                >
+                  <option value="self">self</option>
+                  <option value="other">other</option>
+                  <option value="instanceId">id</option>
+                </select>
+                {(action.target ?? "self") === "instanceId" && (
+                  <select
+                    className="action-block-instance-select h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
+                    value={action.targetInstanceId ?? roomInstances[0]?.id ?? ""}
+                    onChange={(event) => onUpdate({ ...action, targetInstanceId: event.target.value })}
+                  >
+                    {roomInstances.map((instanceEntry) => (
+                      <option key={instanceEntry.id} value={instanceEntry.id}>{instanceEntry.id}</option>
+                    ))}
+                  </select>
+                )}
+              </>
+            )}
             {typeof action.value === "boolean" ? (
               <select
                 className="action-block-bool-select h-6 w-16 rounded border border-slate-300 bg-white/50 px-1 text-xs"
@@ -424,9 +440,13 @@ export function ActionBlock({
                 className="h-6 w-16 px-1 text-xs bg-white/50 border-slate-300"
                 value={formatValue(action.value)}
                 onChange={(event) => {
-                  const selected = objectVariableOptions.find((option) => option.id === action.variableId)
+                  const selected =
+                    action.scope === "global"
+                      ? globalVariables.find((definition) => definition.id === action.variableId)
+                      : objectVariableOptions.find((option) => option.id === action.variableId)
                   if (!selected) return
-                  onUpdate({ ...action, value: parseValueForType(selected.type, event.target.value) })
+                  const selectedType = "type" in selected ? selected.type : "string"
+                  onUpdate({ ...action, value: parseValueForType(selectedType, event.target.value) })
                 }}
               />
             )}

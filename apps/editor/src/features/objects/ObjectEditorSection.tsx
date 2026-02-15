@@ -29,18 +29,23 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
     if (type === "move") return { type: "move", dx: 0, dy: 0 }
     if (type === "setVelocity") return { type: "setVelocity", speed: 1, direction: 0 }
     if (type === "clampToRoom") return { type: "clampToRoom" }
-    if (type === "jumpToPosition") return { type: "jumpToPosition", x: 0, y: 0 }
-    if (type === "jumpToStart") return { type: "jumpToStart" }
-    if (type === "changeGlobalVariable") {
+    if (type === "teleport") return { type: "teleport", mode: "position", x: 0, y: 0 }
+    if (type === "changeVariable") {
       const firstGlobal = controller.project.variables.global[0]
-      if (!firstGlobal) return null
-      return { type: "changeGlobalVariable", variableId: firstGlobal.id, operator: "set", value: firstGlobal.initialValue }
-    }
-    if (type === "changeObjectVariable") {
       const firstObjectVariable = selectedObjectVariableDefinitions[0]
+      if (firstGlobal) {
+        return {
+          type: "changeVariable",
+          scope: "global",
+          variableId: firstGlobal.id,
+          operator: "set",
+          value: firstGlobal.initialValue
+        }
+      }
       if (!firstObjectVariable) return null
       return {
-        type: "changeObjectVariable",
+        type: "changeVariable",
+        scope: "object",
         variableId: firstObjectVariable.id,
         operator: "set",
         target: "self",
@@ -111,14 +116,6 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
     }
   }
 
-  const handleAddIfAction = (ifBlockId: string, type: ObjectActionType) => {
-    if (!activeEvent) return
-    const action = defaultActionFromType(type)
-    if (action) {
-      controller.addObjectEventIfAction(activeEvent.id, ifBlockId, action)
-    }
-  }
-
   const defaultIfCondition = (): IfCondition => {
     return (
       buildDefaultIfCondition(controller.project.variables.global, selectedObjectVariableDefinitions) ?? {
@@ -156,8 +153,8 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
             events={selectedObject.events}
             activeEventId={activeEventId}
             onSelectEvent={setActiveEventId}
-            onAddEvent={(type, key, intervalMs) => {
-              controller.addObjectEvent(type, key ?? null, null, intervalMs ?? null)
+            onAddEvent={(type, key, keyboardMode, intervalMs) => {
+              controller.addObjectEvent(type, key ?? null, keyboardMode ?? null, null, intervalMs ?? null)
               setSelectNewestListener(true)
             }}
             onRemoveEvent={(id) => {
@@ -177,9 +174,9 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
             roomInstances={controller.activeRoom?.instances ?? []}
             allObjects={controller.project.objects}
             rooms={controller.project.rooms}
-            onUpdateEventConfig={(key, targetId, intervalMs) => {
+            onUpdateEventConfig={(key, keyboardMode, targetId, intervalMs) => {
               if (activeEvent) {
-                controller.updateObjectEventConfig(activeEvent.id, key, targetId, intervalMs)
+                controller.updateObjectEventConfig(activeEvent.id, key, keyboardMode, targetId, intervalMs)
               }
             }}
             onAddAction={handleAddAction}
@@ -213,17 +210,21 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
                 controller.removeObjectEventIfBlock(activeEvent.id, ifBlockId)
               }
             }}
-            onAddIfAction={(ifBlockId, type) => {
-              handleAddIfAction(ifBlockId, type)
-            }}
-            onUpdateIfAction={(ifBlockId, actionId, action) => {
-              if (activeEvent) {
-                controller.updateObjectEventIfAction(activeEvent.id, ifBlockId, actionId, action)
+            onAddIfAction={(ifBlockId, type, branch) => {
+              if (!activeEvent) return
+              const action = defaultActionFromType(type)
+              if (action) {
+                controller.addObjectEventIfAction(activeEvent.id, ifBlockId, action, branch)
               }
             }}
-            onRemoveIfAction={(ifBlockId, actionId) => {
+            onUpdateIfAction={(ifBlockId, actionId, action, branch) => {
               if (activeEvent) {
-                controller.removeObjectEventIfAction(activeEvent.id, ifBlockId, actionId)
+                controller.updateObjectEventIfAction(activeEvent.id, ifBlockId, actionId, action, branch)
+              }
+            }}
+            onRemoveIfAction={(ifBlockId, actionId, branch) => {
+              if (activeEvent) {
+                controller.removeObjectEventIfAction(activeEvent.id, ifBlockId, actionId, branch)
               }
             }}
           />

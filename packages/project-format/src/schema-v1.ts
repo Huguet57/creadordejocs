@@ -114,28 +114,19 @@ const ObjectActionSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     id: z.string().min(1),
-    type: z.literal("jumpToPosition"),
-    x: z.number(),
-    y: z.number()
+    type: z.literal("teleport"),
+    mode: z.enum(["position", "start"]),
+    x: z.number().nullable().default(null),
+    y: z.number().nullable().default(null)
   }),
   z.object({
     id: z.string().min(1),
-    type: z.literal("jumpToStart")
-  }),
-  z.object({
-    id: z.string().min(1),
-    type: z.literal("changeGlobalVariable"),
+    type: z.literal("changeVariable"),
+    scope: z.enum(["global", "object"]),
     variableId: z.string().min(1),
     operator: VariableOperatorSchema,
-    value: VariableValueSchema
-  }),
-  z.object({
-    id: z.string().min(1),
-    type: z.literal("changeObjectVariable"),
-    variableId: z.string().min(1),
-    operator: VariableOperatorSchema,
-    target: z.enum(["self", "other", "instanceId"]),
-    targetInstanceId: z.string().nullable().default(null),
+    target: z.enum(["self", "other", "instanceId"]).nullable().optional(),
+    targetInstanceId: z.string().nullable().optional(),
     value: VariableValueSchema
   }),
   z.object({
@@ -185,32 +176,22 @@ const ObjectEventItemSchema = z.discriminatedUnion("type", [
     id: z.string().min(1),
     type: z.literal("if"),
     condition: IfConditionSchema,
-    actions: z.array(ObjectActionSchema).default([])
+    thenActions: z.array(ObjectActionSchema).default([]),
+    elseActions: z.array(ObjectActionSchema).default([])
   })
 ])
 
 const ObjectEventSchema = z
-  .preprocess((input) => {
-    if (!input || typeof input !== "object") {
-      return input
-    }
-    const eventEntry = input as Record<string, unknown>
-    if (eventEntry.type === "Keyboard") {
-      return {
-        ...eventEntry,
-        type: "KeyDown"
-      }
-    }
-    return input
-  }, z.object({
+  .object({
     id: z.string().min(1),
-    type: z.enum(["Create", "Step", "Draw", "Collision", "KeyDown", "KeyPress", "OnDestroy", "OutsideRoom", "Timer"]),
+    type: z.enum(["Create", "Step", "Draw", "Collision", "Keyboard", "OnDestroy", "OutsideRoom", "Timer"]),
     key: z.enum(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"]).nullable().default(null),
+    keyboardMode: z.enum(["down", "press"]).nullable().optional(),
     targetObjectId: z.string().nullable().default(null),
     intervalMs: z.number().positive().nullable().default(null),
     items: z.array(ObjectEventItemSchema).optional(),
     actions: z.array(ObjectActionSchema).optional()
-  }))
+  })
   .transform(({ items, actions, ...eventEntry }) => ({
     ...eventEntry,
     items:

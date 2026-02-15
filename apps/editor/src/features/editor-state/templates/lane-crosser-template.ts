@@ -87,16 +87,16 @@ export function createLaneCrosserTemplateProject(): TemplateProjectResult {
   })
   const livesVariableId = withLives.variableId
   let project = withLives.project
-  project = addEventWithActions(project, playerObject.objectId, { type: "KeyDown", key: "ArrowUp" }, [
+  project = addEventWithActions(project, playerObject.objectId, { type: "Keyboard", keyboardMode: "down", key: "ArrowUp" }, [
     { type: "move", dx: 0, dy: -24 }
   ])
-  project = addEventWithActions(project, playerObject.objectId, { type: "KeyDown", key: "ArrowDown" }, [
+  project = addEventWithActions(project, playerObject.objectId, { type: "Keyboard", keyboardMode: "down", key: "ArrowDown" }, [
     { type: "move", dx: 0, dy: 24 }
   ])
-  project = addEventWithActions(project, playerObject.objectId, { type: "KeyDown", key: "ArrowLeft" }, [
+  project = addEventWithActions(project, playerObject.objectId, { type: "Keyboard", keyboardMode: "down", key: "ArrowLeft" }, [
     { type: "move", dx: -18, dy: 0 }
   ])
-  project = addEventWithActions(project, playerObject.objectId, { type: "KeyDown", key: "ArrowRight" }, [
+  project = addEventWithActions(project, playerObject.objectId, { type: "Keyboard", keyboardMode: "down", key: "ArrowRight" }, [
     { type: "move", dx: 18, dy: 0 }
   ])
   project = addEventWithActions(project, playerObject.objectId, { type: "Step" }, [{ type: "clampToRoom" }])
@@ -113,7 +113,8 @@ export function createLaneCrosserTemplateProject(): TemplateProjectResult {
     [
       { type: "playSound", soundId: soundCrash.soundId },
       {
-        type: "changeGlobalVariable",
+        type: "changeVariable",
+        scope: "global",
         variableId: livesVariableId,
         operator: "subtract",
         value: 1
@@ -128,7 +129,7 @@ export function createLaneCrosserTemplateProject(): TemplateProjectResult {
       operator: ">",
       right: 0
     },
-    [{ type: "jumpToStart" }]
+    [{ type: "teleport", mode: "start", x: null, y: null }]
   )
   project = addIfBlockToLatestEvent(
     project,
@@ -147,7 +148,8 @@ export function createLaneCrosserTemplateProject(): TemplateProjectResult {
     [
       { type: "playSound", soundId: soundCrash.soundId },
       {
-        type: "changeGlobalVariable",
+        type: "changeVariable",
+        scope: "global",
         variableId: livesVariableId,
         operator: "subtract",
         value: 1
@@ -162,7 +164,7 @@ export function createLaneCrosserTemplateProject(): TemplateProjectResult {
       operator: ">",
       right: 0
     },
-    [{ type: "jumpToStart" }]
+    [{ type: "teleport", mode: "start", x: null, y: null }]
   )
   project = addIfBlockToLatestEvent(
     project,

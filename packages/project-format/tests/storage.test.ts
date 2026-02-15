@@ -81,7 +81,8 @@ describe("project format v1", () => {
                     operator: ">=",
                     right: 10
                   },
-                  actions: [{ id: "action-score", type: "changeScore", delta: 1 }]
+                  thenActions: [{ id: "action-score", type: "changeScore", delta: 1 }],
+                  elseActions: []
                 }
               ]
             }
@@ -97,7 +98,7 @@ describe("project format v1", () => {
       throw new Error("Expected if item")
     }
     expect(firstItem.condition.operator).toBe(">=")
-    expect(firstItem.actions).toHaveLength(1)
+    expect(firstItem.thenActions).toHaveLength(1)
   })
 
   it("loads legacy payloads using actions[] and normalizes them to items[]", () => {
@@ -144,7 +145,7 @@ describe("project format v1", () => {
     expect(serializeProjectV1(loaded)).not.toContain("\"actions\"")
   })
 
-  it("loads legacy Keyboard events and normalizes them to KeyDown", () => {
+  it("parses Keyboard events with keyboardMode", () => {
     const project = createEmptyProjectV1("Legacy keyboard event")
     const legacySource = JSON.stringify({
       ...project,
@@ -164,6 +165,7 @@ describe("project format v1", () => {
               key: "Space",
               targetObjectId: null,
               intervalMs: null,
+              keyboardMode: "down",
               items: [{ id: "item-score", type: "action", action: { id: "action-score", type: "changeScore", delta: 1 } }]
             }
           ]
@@ -172,6 +174,7 @@ describe("project format v1", () => {
     })
 
     const loaded = parseProjectV1(legacySource)
-    expect(loaded.objects[0]?.events[0]?.type).toBe("KeyDown")
+    expect(loaded.objects[0]?.events[0]?.type).toBe("Keyboard")
+    expect(loaded.objects[0]?.events[0]?.keyboardMode).toBe("down")
   })
 })

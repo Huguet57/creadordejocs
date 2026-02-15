@@ -9,9 +9,7 @@ import {
   Volume2,
   Plus,
   Locate,
-  LocateFixed,
   X,
-  Globe2,
   Variable,
   ArrowLeftRight,
   DoorOpen,
@@ -28,7 +26,8 @@ import {
   type ObjectActionDraft,
   type ObjectActionType,
   type ObjectEventEntry,
-  type ObjectEventKey
+  type ObjectEventKey,
+  type ObjectKeyboardMode
 } from "../editor-state/types.js"
 import { ActionBlock } from "./ActionBlock.js"
 import type { ProjectV1 } from "@creadordejocs/project-format"
@@ -45,7 +44,12 @@ type ActionEditorPanelProps = {
   roomInstances: ProjectV1["rooms"][number]["instances"]
   allObjects: ProjectV1["objects"]
   rooms: ProjectV1["rooms"]
-  onUpdateEventConfig: (key: ObjectEventKey | null, targetId: string | null, intervalMs: number | null) => void
+  onUpdateEventConfig: (
+    key: ObjectEventKey | null,
+    keyboardMode: ObjectKeyboardMode | null,
+    targetId: string | null,
+    intervalMs: number | null
+  ) => void
   onAddAction: (type: ObjectActionType) => void
   onUpdateAction: (actionId: string, action: ObjectActionDraft) => void
   onMoveAction: (actionId: string, direction: "up" | "down") => void
@@ -53,25 +57,23 @@ type ActionEditorPanelProps = {
   onAddIfBlock: (condition: IfCondition) => void
   onUpdateIfCondition: (ifBlockId: string, condition: IfCondition) => void
   onRemoveIfBlock: (ifBlockId: string) => void
-  onAddIfAction: (ifBlockId: string, type: ObjectActionType) => void
-  onUpdateIfAction: (ifBlockId: string, actionId: string, action: ObjectActionDraft) => void
-  onRemoveIfAction: (ifBlockId: string, actionId: string) => void
+  onAddIfAction: (ifBlockId: string, type: ObjectActionType, branch: "then" | "else") => void
+  onUpdateIfAction: (ifBlockId: string, actionId: string, action: ObjectActionDraft, branch: "then" | "else") => void
+  onRemoveIfAction: (ifBlockId: string, actionId: string, branch: "then" | "else") => void
 }
 
 const ACTION_ICONS: Record<ObjectActionType, React.ElementType> = {
   move: Move,
   setVelocity: FastForward,
   clampToRoom: Maximize,
-  jumpToPosition: Locate,
-  jumpToStart: LocateFixed,
+  teleport: Locate,
   destroySelf: Trash,
   destroyOther: X,
   spawnObject: CopyPlus,
   changeScore: Trophy,
   endGame: Flag,
   playSound: Volume2,
-  changeGlobalVariable: Globe2,
-  changeObjectVariable: Variable,
+  changeVariable: Variable,
   copyVariable: ArrowLeftRight,
   goToRoom: DoorOpen,
   restartRoom: RotateCcw,
@@ -81,16 +83,14 @@ const ACTION_DISPLAY_NAMES: Record<ObjectActionType, string> = {
   move: "Moure",
   setVelocity: "Velocitat",
   clampToRoom: "Limitar a sala",
-  jumpToPosition: "Saltar a posició",
-  jumpToStart: "Saltar a inici",
+  teleport: "Teleport",
   destroySelf: "Destruir-se",
   destroyOther: "Destruir altre",
   spawnObject: "Crear objecte",
   changeScore: "Canviar punts",
   endGame: "Fi del joc",
   playSound: "Reproduir so",
-  changeGlobalVariable: "Var. global",
-  changeObjectVariable: "Var. objecte",
+  changeVariable: "Variable",
   copyVariable: "Copiar variable",
   goToRoom: "Anar a sala",
   restartRoom: "Reiniciar sala",
@@ -152,13 +152,36 @@ export function ActionEditorPanel({
           When <span className="font-semibold text-slate-900">{activeEvent.type}</span>
         </h3>
 
-        {(activeEvent.type === "KeyDown" || activeEvent.type === "KeyPress") && (
-          <div className="flex items-center gap-2">
+        {activeEvent.type === "Keyboard" && (
+          <div className="mvp16-keyboard-event-config flex items-center gap-2">
+            <Label className="text-xs text-slate-400">Mode</Label>
+            <select
+              className="h-7 rounded border border-slate-200 bg-slate-50 px-2 text-xs text-slate-700 focus:border-slate-400 focus:outline-none"
+              value={activeEvent.keyboardMode ?? "down"}
+              onChange={(e) =>
+                onUpdateEventConfig(
+                  activeEvent.key ?? "ArrowLeft",
+                  e.target.value as ObjectKeyboardMode,
+                  activeEvent.targetObjectId,
+                  activeEvent.intervalMs
+                )
+              }
+            >
+              <option value="down">Held</option>
+              <option value="press">Pressed</option>
+            </select>
             <Label className="text-xs text-slate-400">Key</Label>
             <select
               className="h-7 rounded border border-slate-200 bg-slate-50 px-2 text-xs text-slate-700 focus:border-slate-400 focus:outline-none"
               value={activeEvent.key ?? "ArrowLeft"}
-              onChange={(e) => onUpdateEventConfig(e.target.value as ObjectEventKey, activeEvent.targetObjectId, activeEvent.intervalMs)}
+              onChange={(e) =>
+                onUpdateEventConfig(
+                  e.target.value as ObjectEventKey,
+                  activeEvent.keyboardMode ?? "down",
+                  activeEvent.targetObjectId,
+                  activeEvent.intervalMs
+                )
+              }
             >
               {OBJECT_EVENT_KEYS.map((key) => (
                 <option key={key} value={key}>{key}</option>
@@ -174,7 +197,12 @@ export function ActionEditorPanel({
               className="h-7 rounded border border-slate-200 bg-slate-50 px-2 text-xs text-slate-700 focus:border-slate-400 focus:outline-none"
               value={activeEvent.targetObjectId ?? "any"}
               onChange={(e) =>
-                onUpdateEventConfig(activeEvent.key, e.target.value === "any" ? null : e.target.value, activeEvent.intervalMs)
+                onUpdateEventConfig(
+                  activeEvent.key,
+                  activeEvent.keyboardMode ?? null,
+                  e.target.value === "any" ? null : e.target.value,
+                  activeEvent.intervalMs
+                )
               }
             >
               <option value="any">Any object</option>
@@ -193,7 +221,14 @@ export function ActionEditorPanel({
               min={1}
               className="h-7 w-24 rounded border border-slate-200 bg-slate-50 px-2 text-xs text-slate-700 focus:border-slate-400 focus:outline-none"
               value={activeEvent.intervalMs ?? 1000}
-              onChange={(e) => onUpdateEventConfig(activeEvent.key, activeEvent.targetObjectId, Math.max(1, Number(e.target.value) || 1))}
+              onChange={(e) =>
+                onUpdateEventConfig(
+                  activeEvent.key,
+                  activeEvent.keyboardMode ?? null,
+                  activeEvent.targetObjectId,
+                  Math.max(1, Number(e.target.value) || 1)
+                )
+              }
             />
           </div>
         )}
@@ -345,55 +380,63 @@ export function ActionEditorPanel({
                       )}
                     </div>
 
-                    <div className="mvp16-if-actions-list space-y-2">
-                      {item.actions.map((nestedAction, nestedIndex) => (
-                        <ActionBlock
-                          key={nestedAction.id}
-                          action={nestedAction}
-                          index={nestedIndex}
-                          isFirst
-                          isLast
-                          onUpdate={(updatedAction) => onUpdateIfAction(item.id, nestedAction.id, updatedAction)}
-                          onMoveUp={() => undefined}
-                          onMoveDown={() => undefined}
-                          onRemove={() => onRemoveIfAction(item.id, nestedAction.id)}
-                          selectableObjects={selectableTargetObjects}
-                          sounds={sounds}
-                          globalVariables={globalVariables}
-                          objectVariablesByObjectId={objectVariablesByObjectId}
-                          roomInstances={roomInstances}
-                          allObjects={allObjects}
-                          rooms={rooms}
-                        />
+                    <div className="mvp16-if-actions-list space-y-3">
+                      {(["then", "else"] as const).map((branch) => (
+                        <div key={`${item.id}-${branch}`} className="mvp16-if-branch rounded border border-amber-200 bg-amber-50/40 p-2">
+                          <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-700 mb-2">
+                            {branch === "then" ? "Then" : "Else"}
+                          </p>
+                          <div className="space-y-2">
+                            {(branch === "then" ? item.thenActions : item.elseActions).map((nestedAction, nestedIndex) => (
+                              <ActionBlock
+                                key={`${branch}-${nestedAction.id}`}
+                                action={nestedAction}
+                                index={nestedIndex}
+                                isFirst
+                                isLast
+                                onUpdate={(updatedAction) => onUpdateIfAction(item.id, nestedAction.id, updatedAction, branch)}
+                                onMoveUp={() => undefined}
+                                onMoveDown={() => undefined}
+                                onRemove={() => onRemoveIfAction(item.id, nestedAction.id, branch)}
+                                selectableObjects={selectableTargetObjects}
+                                sounds={sounds}
+                                globalVariables={globalVariables}
+                                objectVariablesByObjectId={objectVariablesByObjectId}
+                                roomInstances={roomInstances}
+                                allObjects={allObjects}
+                                rooms={rooms}
+                              />
+                            ))}
+                          </div>
+                          <div className="mvp16-if-add-action mt-2 flex items-center gap-2">
+                            <select
+                              className="mvp16-if-add-type h-7 rounded border border-amber-300 bg-white px-2 text-xs"
+                              value={selectedAddType}
+                              onChange={(event) =>
+                                setIfActionTypeByBlockId((previous) => ({
+                                  ...previous,
+                                  [item.id]: event.target.value as ObjectActionType
+                                }))
+                              }
+                            >
+                              {OBJECT_ACTION_TYPES.map((type) => (
+                                <option key={`${item.id}-${branch}-${type}`} value={type}>
+                                  {ACTION_DISPLAY_NAMES[type]}
+                                </option>
+                              ))}
+                            </select>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="mvp16-if-add-action-button h-7 text-xs"
+                              onClick={() => onAddIfAction(item.id, selectedAddType, branch)}
+                            >
+                              Add {branch} action
+                            </Button>
+                          </div>
+                        </div>
                       ))}
-                    </div>
-
-                    <div className="mvp16-if-add-action mt-2 flex items-center gap-2">
-                      <select
-                        className="mvp16-if-add-type h-7 rounded border border-amber-300 bg-white px-2 text-xs"
-                        value={selectedAddType}
-                        onChange={(event) =>
-                          setIfActionTypeByBlockId((previous) => ({
-                            ...previous,
-                            [item.id]: event.target.value as ObjectActionType
-                          }))
-                        }
-                      >
-                        {OBJECT_ACTION_TYPES.map((type) => (
-                          <option key={`${item.id}-${type}`} value={type}>
-                            {ACTION_DISPLAY_NAMES[type]}
-                          </option>
-                        ))}
-                      </select>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="mvp16-if-add-action-button h-7 text-xs"
-                        onClick={() => onAddIfAction(item.id, selectedAddType)}
-                      >
-                        Add nested action
-                      </Button>
                     </div>
                   </div>
                 )

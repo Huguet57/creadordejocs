@@ -357,27 +357,24 @@ function runEventActions(
       }
       continue
     }
-    if (actionEntry.type === "jumpToPosition") {
-      result = {
-        ...result,
-        instance: {
-          ...result.instance,
-          x: actionEntry.x,
-          y: actionEntry.y
+    if (actionEntry.type === "teleport") {
+      if (actionEntry.mode === "position") {
+        result = {
+          ...result,
+          instance: {
+            ...result.instance,
+            x: actionEntry.x ?? result.instance.x,
+            y: actionEntry.y ?? result.instance.y
+          }
         }
-      }
-      continue
-    }
-    if (actionEntry.type === "jumpToStart") {
-      if (!startPosition) {
-        continue
-      }
-      result = {
-        ...result,
-        instance: {
-          ...result.instance,
-          x: startPosition.x,
-          y: startPosition.y
+      } else if (startPosition) {
+        result = {
+          ...result,
+          instance: {
+            ...result.instance,
+            x: startPosition.x,
+            y: startPosition.y
+          }
         }
       }
       continue
@@ -438,36 +435,37 @@ function runEventActions(
       }
       continue
     }
-    if (actionEntry.type === "changeGlobalVariable") {
-      if (actionEntry.operator === "set") {
-        const existingValue = result.runtime.globalVariables[actionEntry.variableId]
-        if (existingValue === undefined || !isSameVariableValueType(existingValue, actionEntry.value)) {
-          continue
-        }
-        result = {
-          ...result,
-          runtime: {
-            ...result.runtime,
-            globalVariables: {
-              ...result.runtime.globalVariables,
-              [actionEntry.variableId]: actionEntry.value
+    if (actionEntry.type === "changeVariable") {
+      if (actionEntry.scope === "global") {
+        if (actionEntry.operator === "set") {
+          const existingValue = result.runtime.globalVariables[actionEntry.variableId]
+          if (existingValue === undefined || !isSameVariableValueType(existingValue, actionEntry.value)) {
+            continue
+          }
+          result = {
+            ...result,
+            runtime: {
+              ...result.runtime,
+              globalVariables: {
+                ...result.runtime.globalVariables,
+                [actionEntry.variableId]: actionEntry.value
+              }
             }
           }
+        } else {
+          const numValue = typeof actionEntry.value === "number" ? actionEntry.value : 0
+          result = {
+            ...result,
+            runtime: applyGlobalNumericOperation(result.runtime, actionEntry.variableId, numValue, actionEntry.operator)
+          }
         }
-      } else {
-        const numValue = typeof actionEntry.value === "number" ? actionEntry.value : 0
-        result = {
-          ...result,
-          runtime: applyGlobalNumericOperation(result.runtime, actionEntry.variableId, numValue, actionEntry.operator)
-        }
+        continue
       }
-      continue
-    }
-    if (actionEntry.type === "changeObjectVariable") {
+
       const resolvedTargetInstanceId = resolveTargetInstanceId(
         result.instance,
-        actionEntry.target,
-        actionEntry.targetInstanceId,
+        actionEntry.target ?? "self",
+        actionEntry.targetInstanceId ?? null,
         collisionOtherInstanceId
       )
       if (!resolvedTargetInstanceId) {
@@ -499,7 +497,13 @@ function runEventActions(
         const numValue = typeof actionEntry.value === "number" ? actionEntry.value : 0
         result = {
           ...result,
-          runtime: applyObjectNumericOperation(result.runtime, resolvedTargetInstanceId, actionEntry.variableId, numValue, actionEntry.operator)
+          runtime: applyObjectNumericOperation(
+            result.runtime,
+            resolvedTargetInstanceId,
+            actionEntry.variableId,
+            numValue,
+            actionEntry.operator
+          )
         }
       }
       continue
@@ -618,13 +622,11 @@ function runEventItems(
       }
       continue
     }
-    if (!evaluateIfCondition(itemEntry.condition, result.instance, result.runtime, collisionOtherInstanceId)) {
-      continue
-    }
+    const conditionMatched = evaluateIfCondition(itemEntry.condition, result.instance, result.runtime, collisionOtherInstanceId)
     const branchResult = runEventActions(
       project,
       result.instance,
-      itemEntry.actions,
+      conditionMatched ? itemEntry.thenActions : itemEntry.elseActions,
       result.runtime,
       startPosition,
       collisionOtherInstanceId
@@ -850,11 +852,10 @@ export function runRuntimeTick(
         }
         return elapsed >= intervalMs
       }
-      if (eventEntry.type === "KeyDown" && eventEntry.key) {
-        return pressedKeys.has(eventEntry.key)
-      }
-      if (eventEntry.type === "KeyPress" && eventEntry.key) {
-        return justPressedKeys.has(eventEntry.key)
+      if (eventEntry.type === "Keyboard" && eventEntry.key && eventEntry.keyboardMode) {
+        return eventEntry.keyboardMode === "down"
+          ? pressedKeys.has(eventEntry.key)
+          : justPressedKeys.has(eventEntry.key)
       }
       return false
     })
