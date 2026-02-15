@@ -256,7 +256,7 @@ export function IfBlock({
 
       {/* THEN content — indented with left border */}
       <div className="if-block-then-branch border-l-2 border-blue-200 ml-3 pl-3">
-        <div className="flex flex-col gap-px">
+        <div className="flex flex-col gap-px bg-slate-200">
           {renderBranchItems("then", item.thenActions)}
         </div>
         <div className="if-block-then-add-row flex items-center gap-2 px-3 py-1.5">
@@ -287,7 +287,7 @@ export function IfBlock({
 
       {/* ELSE content — indented with left border */}
       <div className="if-block-else-branch border-l-2 border-blue-200 ml-3 pl-3">
-        <div className="flex flex-col gap-px">
+        <div className="flex flex-col gap-px bg-slate-200">
           {renderBranchItems("else", item.elseActions)}
         </div>
         <div className="if-block-else-add-row flex items-center gap-2 px-3 py-1.5">
