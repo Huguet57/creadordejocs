@@ -14,11 +14,13 @@ export function createCursorCourierTemplateProject(): TemplateProjectResult {
   const spriteCourier = quickCreateSprite(empty, "Courier")
   const spritePacket = quickCreateSprite(spriteCourier.project, "Packet")
   const spriteHazard = quickCreateSprite(spritePacket.project, "Hazard")
-  const soundPickup = quickCreateSound(spriteHazard.project, "Pickup")
+  const spriteNode = quickCreateSprite(spriteHazard.project, "Node")
+  const soundPickup = quickCreateSound(spriteNode.project, "Pickup")
   const soundBoost = quickCreateSound(soundPickup.project, "Boost")
   const soundHit = quickCreateSound(soundBoost.project, "Hit")
+  const soundRoute = quickCreateSound(soundHit.project, "Route")
 
-  const courierObject = quickCreateObject(soundHit.project, {
+  const courierObject = quickCreateObject(soundRoute.project, {
     name: "Courier",
     spriteId: spriteCourier.spriteId,
     x: 80,
@@ -36,8 +38,14 @@ export function createCursorCourierTemplateProject(): TemplateProjectResult {
     x: 440,
     y: 220
   })
+  const nodeObject = quickCreateObject(hazardObject.project, {
+    name: "Node",
+    spriteId: spriteNode.spriteId,
+    x: 520,
+    y: 50
+  })
 
-  const room = createRoom(hazardObject.project, "Data Hall")
+  const room = createRoom(nodeObject.project, "Data Hall")
   const withCourier = addRoomInstance(room.project, {
     roomId: room.roomId,
     objectId: courierObject.objectId,
@@ -74,55 +82,73 @@ export function createCursorCourierTemplateProject(): TemplateProjectResult {
     x: 250,
     y: 200
   }).project
+  const withNode = addRoomInstance(withHazardB, {
+    roomId: room.roomId,
+    objectId: nodeObject.objectId,
+    x: 520,
+    y: 50
+  }).project
 
-  const withPacketsRemaining = addGlobalVariableWithId(withHazardB, {
+  const withPacketsRemaining = addGlobalVariableWithId(withNode, {
     name: "packetsRemaining",
     type: "number",
     initialValue: 3
   })
   const packetsRemainingId = withPacketsRemaining.variableId
+  const withBoost = addGlobalVariableWithId(withPacketsRemaining.project, {
+    name: "boost",
+    type: "number",
+    initialValue: 3
+  })
+  const boostId = withBoost.variableId
 
-  let project = withPacketsRemaining.project
-  project = addEventWithActions(project, courierObject.objectId, { type: "MouseMove" }, [])
-  project = addIfElseBlockToLatestEvent(
-    project,
-    courierObject.objectId,
-    {
-      left: { scope: "global", variableId: "__mouse_x" },
-      operator: ">",
-      right: 280
-    },
-    [{ type: "move", dx: 6, dy: 0 }],
-    [{ type: "move", dx: -6, dy: 0 }]
-  )
-  project = addEventWithActions(project, courierObject.objectId, { type: "MouseMove" }, [])
-  project = addIfElseBlockToLatestEvent(
-    project,
-    courierObject.objectId,
-    {
-      left: { scope: "global", variableId: "__mouse_y" },
-      operator: ">",
-      right: 160
-    },
-    [{ type: "move", dx: 0, dy: 6 }],
-    [{ type: "move", dx: 0, dy: -6 }]
-  )
-  project = addEventWithActions(project, courierObject.objectId, { type: "MouseDown" }, [
-    { type: "playSound", soundId: soundBoost.soundId }
+  let project = withBoost.project
+  project = addEventWithActions(project, courierObject.objectId, { type: "MouseMove" }, [
+    { type: "teleport", mode: "mouse", x: null, y: null },
+    { type: "clampToRoom" }
   ])
+  project = addEventWithActions(project, courierObject.objectId, { type: "MouseDown" }, [])
+  project = addIfElseBlockToLatestEvent(
+    project,
+    courierObject.objectId,
+    {
+      left: { scope: "global", variableId: boostId },
+      operator: ">",
+      right: 0
+    },
+    [
+      { type: "playSound", soundId: soundBoost.soundId },
+      { type: "teleport", mode: "mouse", x: null, y: null },
+      { type: "changeVariable", scope: "global", variableId: boostId, operator: "subtract", value: 1 }
+    ],
+    [{ type: "message", text: "Sense boost. Espera recarrega.", durationMs: 800 }]
+  )
+  project = addEventWithActions(project, courierObject.objectId, { type: "MouseClick" }, [])
   project = addIfElseBlockToLatestEvent(
     project,
     courierObject.objectId,
     {
       left: { scope: "global", variableId: "__mouse_x" },
-      operator: ">",
-      right: 280
+      operator: ">=",
+      right: 500
     },
-    [{ type: "move", dx: 10, dy: 0 }],
-    [{ type: "move", dx: -10, dy: 0 }]
+    [{ type: "playSound", soundId: soundRoute.soundId }, { type: "teleport", mode: "position", x: 520, y: 50 }],
+    []
+  )
+  project = addEventWithActions(project, courierObject.objectId, { type: "Timer", intervalMs: 700 }, [])
+  project = addIfElseBlockToLatestEvent(
+    project,
+    courierObject.objectId,
+    {
+      left: { scope: "global", variableId: boostId },
+      operator: "<",
+      right: 3
+    },
+    [{ type: "changeVariable", scope: "global", variableId: boostId, operator: "add", value: 1 }],
+    []
   )
   project = addEventWithActions(project, courierObject.objectId, { type: "Step" }, [{ type: "clampToRoom" }])
-  project = addEventWithActions(project, hazardObject.objectId, { type: "Step" }, [{ type: "setVelocity", speed: 2.1, direction: 0 }])
+  project = addEventWithActions(project, hazardObject.objectId, { type: "Step" }, [{ type: "setVelocity", speed: 2.2, direction: 0 }])
   project = addEventWithActions(project, hazardObject.objectId, { type: "OutsideRoom" }, [{ type: "teleport", mode: "start", x: null, y: null }])
   project = addEventWithActions(project, courierObject.objectId, { type: "Collision", targetObjectId: packetObject.objectId }, [
     { type: "playSound", soundId: soundPickup.soundId },
@@ -144,8 +170,20 @@ export function createCursorCourierTemplateProject(): TemplateProjectResult {
       operator: "<=",
       right: 0
     },
-    [{ type: "endGame", message: "Entrega completada. Xarxa restablerta!" }],
+    [{ type: "message", text: "Paquets complets! Ves al node final.", durationMs: 1200 }],
     []
+  )
+  project = addEventWithActions(project, courierObject.objectId, { type: "Collision", targetObjectId: nodeObject.objectId }, [])
+  project = addIfElseBlockToLatestEvent(
+    project,
+    courierObject.objectId,
+    {
+      left: { scope: "global", variableId: packetsRemainingId },
+      operator: "<=",
+      right: 0
+    },
+    [{ type: "endGame", message: "Entrega completada. Xarxa restablerta!" }],
+    [{ type: "teleport", mode: "start", x: null, y: null }]
   )
   project = addEventWithActions(project, courierObject.objectId, { type: "Collision", targetObjectId: hazardObject.objectId }, [
     { type: "playSound", soundId: soundHit.soundId },

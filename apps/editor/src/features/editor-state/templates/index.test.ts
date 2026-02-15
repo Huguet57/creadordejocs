@@ -42,6 +42,17 @@ function itemsContainActionType(items: EventItems, actionType: string): boolean 
   })
 }
 
+function collectActionTypes(items: EventItems, target: Set<string>): void {
+  for (const itemEntry of items) {
+    if (itemEntry.type === "action") {
+      target.add(itemEntry.action.type)
+    } else {
+      collectActionTypes(itemEntry.thenActions, target)
+      collectActionTypes(itemEntry.elseActions, target)
+    }
+  }
+}
+
 function itemsContainNestedIf(items: EventItems): boolean {
   return items.some(
     (itemEntry) =>
@@ -77,14 +88,26 @@ describe("template catalog", () => {
   it.each(ADVANCED_TEMPLATE_IDS)("builds %s with conditionals and mouse event usage", (templateId) => {
     const created = createTemplateProject(templateId)
     const mouseEventTypes = new Set(["MouseMove", "MouseDown", "MouseClick"])
-    const hasMouseEvent = created.project.objects.some((objectEntry) =>
-      objectEntry.events.some((eventEntry) => mouseEventTypes.has(eventEntry.type))
-    )
+    const usedMouseEventTypes = new Set<string>()
+    for (const objectEntry of created.project.objects) {
+      for (const eventEntry of objectEntry.events) {
+        if (mouseEventTypes.has(eventEntry.type)) {
+          usedMouseEventTypes.add(eventEntry.type)
+        }
+      }
+    }
+    const actionTypes = new Set<string>()
+    for (const objectEntry of created.project.objects) {
+      for (const eventEntry of objectEntry.events) {
+        collectActionTypes(eventEntry.items, actionTypes)
+      }
+    }
 
     expect(created.project.rooms.length).toBeGreaterThan(0)
     expect(created.project.objects.some((entry) => entry.id === created.focusObjectId)).toBe(true)
     expect(projectHasIfBlocks(templateId)).toBe(true)
-    expect(hasMouseEvent).toBe(true)
+    expect(usedMouseEventTypes.size).toBeGreaterThanOrEqual(2)
+    expect(actionTypes.has("teleport")).toBe(true)
   })
 
   it.each(ADVANCED_TEMPLATE_IDS)("builds %s with mouse_x or mouse_y runtime builtins in conditions", (templateId) => {
