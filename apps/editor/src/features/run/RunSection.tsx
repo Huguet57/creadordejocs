@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { Play, RotateCcw } from "lucide-react"
+import { Play, Square, RotateCcw } from "lucide-react"
 import type { EditorController } from "../editor-state/use-editor-controller.js"
 import { Button } from "../../components/ui/button.js"
 import { resolveAssetSource } from "../assets/asset-source-resolver.js"
@@ -61,10 +61,19 @@ export function RunSection({ controller }: RunSectionProps) {
           <div className="space-y-2">
             <Button
               className="w-full h-9 text-xs"
-              onClick={() => controller.run()}
+              onClick={() => controller.isRunning ? controller.reset() : controller.run()}
             >
-              <Play className="mr-2 h-3.5 w-3.5" />
-              Run
+              {controller.isRunning ? (
+                <>
+                  <Square className="mr-2 h-3.5 w-3.5" />
+                  Stop
+                </>
+              ) : (
+                <>
+                  <Play className="mr-2 h-3.5 w-3.5" />
+                  Run
+                </>
+              )}
             </Button>
             <Button
               variant="outline"
@@ -143,43 +152,45 @@ export function RunSection({ controller }: RunSectionProps) {
               <p>Create a room first to run the game</p>
             </div>
           ) : (
-            <div
-              className="mvp15-run-canvas relative overflow-hidden rounded-md border border-dashed border-slate-300 bg-white"
-              style={{ width: ROOM_WIDTH, height: ROOM_HEIGHT }}
-            >
-              {controller.activeRoom.instances.map((instanceEntry) => {
-                const isOutsideRoom =
-                  instanceEntry.x < 0 ||
-                  instanceEntry.y < 0 ||
-                  instanceEntry.x > ROOM_WIDTH - INSTANCE_SIZE ||
-                  instanceEntry.y > ROOM_HEIGHT - INSTANCE_SIZE
-                if (isOutsideRoom) {
-                  return null
-                }
-                const objectEntry = controller.project.objects.find((entry) => entry.id === instanceEntry.objectId)
-                const spriteEntry = objectEntry?.spriteId ? spriteById[objectEntry.spriteId] : undefined
-                const spriteSource = spriteEntry ? resolvedSpriteSources[spriteEntry.id] : undefined
-                return (
-                  <div
-                    key={instanceEntry.id}
-                    className="mvp15-run-instance absolute flex h-8 w-8 items-center justify-center overflow-hidden rounded bg-indigo-500 text-[10px] text-white"
-                    style={{ left: instanceEntry.x, top: instanceEntry.y }}
-                  >
-                    {spriteSource ? (
-                      <img
-                        className="mvp15-run-instance-sprite h-full w-full object-cover"
-                        src={spriteSource}
-                        alt={spriteEntry?.name ?? objectEntry?.name ?? "Sprite"}
-                      />
-                    ) : (
-                      objectEntry?.name.slice(0, 2).toUpperCase() ?? "??"
-                    )}
-                  </div>
-                )
-              })}
+            <div className="mvp17-run-canvas-wrapper relative" style={{ width: ROOM_WIDTH }}>
+              <div
+                className="mvp15-run-canvas relative overflow-hidden rounded-md border border-dashed border-slate-300 bg-white"
+                style={{ width: ROOM_WIDTH, height: ROOM_HEIGHT }}
+              >
+                {controller.activeRoom.instances.map((instanceEntry) => {
+                  const isOutsideRoom =
+                    instanceEntry.x < 0 ||
+                    instanceEntry.y < 0 ||
+                    instanceEntry.x > ROOM_WIDTH - INSTANCE_SIZE ||
+                    instanceEntry.y > ROOM_HEIGHT - INSTANCE_SIZE
+                  if (isOutsideRoom) {
+                    return null
+                  }
+                  const objectEntry = controller.project.objects.find((entry) => entry.id === instanceEntry.objectId)
+                  const spriteEntry = objectEntry?.spriteId ? spriteById[objectEntry.spriteId] : undefined
+                  const spriteSource = spriteEntry ? resolvedSpriteSources[spriteEntry.id] : undefined
+                  return (
+                    <div
+                      key={instanceEntry.id}
+                      className="mvp15-run-instance absolute flex h-8 w-8 items-center justify-center overflow-hidden rounded bg-indigo-500 text-[10px] text-white"
+                      style={{ left: instanceEntry.x, top: instanceEntry.y }}
+                    >
+                      {spriteSource ? (
+                        <img
+                          className="mvp15-run-instance-sprite h-full w-full object-cover"
+                          src={spriteSource}
+                          alt={spriteEntry?.name ?? objectEntry?.name ?? "Sprite"}
+                        />
+                      ) : (
+                        objectEntry?.name.slice(0, 2).toUpperCase() ?? "??"
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
               {runtimeState.activeToast && (
-                <div className="mvp17-run-toast-overlay pointer-events-none absolute inset-x-0 top-3 z-20 flex justify-center px-3">
-                  <div className="mvp17-run-toast-bubble max-w-[90%] rounded-md bg-slate-900/90 px-3 py-1.5 text-[11px] font-medium text-white shadow-lg">
+                <div className="mvp17-run-toast-overlay pointer-events-none absolute bottom-2 right-2 z-20">
+                  <div className="mvp17-run-toast-bubble rounded-md bg-slate-900/90 px-3 py-1.5 text-[11px] font-medium text-white shadow-lg">
                     {runtimeState.activeToast.text}
                   </div>
                 </div>
