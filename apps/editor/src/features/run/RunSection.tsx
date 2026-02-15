@@ -187,7 +187,7 @@ export function RunSection({ controller }: RunSectionProps) {
                   <div key={variableEntry.id} className="mvp16-run-global-var-row flex items-center justify-between">
                     <span className="mvp16-run-global-var-name text-xs text-slate-500">{variableEntry.name}</span>
                     <span className="mvp16-run-global-var-value text-xs font-medium text-slate-800">
-                      {String(variableEntry.value)}
+                      {variableEntry.value === undefined ? "–" : String(variableEntry.value)}
                     </span>
                   </div>
                 ))}

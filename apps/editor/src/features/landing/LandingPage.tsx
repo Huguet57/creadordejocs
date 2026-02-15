@@ -102,66 +102,25 @@ function handleEditorCtaClick(event: MouseEvent<HTMLAnchorElement>, onStartEdito
   onStartEditor()
 }
 
-function EditorPreviewMockup() {
+function EditorScreenshot() {
   return (
-    <div className="landing-mockup-wrapper rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden">
-      <div className="landing-mockup-titlebar flex items-center gap-2 border-b border-slate-100 bg-slate-50 px-4 py-2.5">
+    <div className="landing-screenshot-wrapper rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden">
+      <div className="landing-screenshot-titlebar flex items-center gap-2 border-b border-slate-100 bg-slate-50 px-4 py-2">
         <div className="flex gap-1.5">
-          <span className="landing-mockup-dot-red block h-2.5 w-2.5 rounded-full bg-rose-400" />
-          <span className="landing-mockup-dot-yellow block h-2.5 w-2.5 rounded-full bg-amber-400" />
-          <span className="landing-mockup-dot-green block h-2.5 w-2.5 rounded-full bg-emerald-400" />
+          <span className="landing-screenshot-dot-red block h-2.5 w-2.5 rounded-full bg-rose-400" />
+          <span className="landing-screenshot-dot-yellow block h-2.5 w-2.5 rounded-full bg-amber-400" />
+          <span className="landing-screenshot-dot-green block h-2.5 w-2.5 rounded-full bg-emerald-400" />
         </div>
         <span className="text-[11px] text-slate-400">CreadorDeJocs — Editor</span>
       </div>
-      <div className="landing-mockup-body flex min-h-[220px]">
-        <div className="landing-mockup-sidebar flex w-11 flex-col items-center gap-2.5 border-r border-slate-100 bg-slate-50/60 py-3">
-          <div className="h-5 w-5 rounded bg-slate-200" />
-          <div className="h-5 w-5 rounded bg-slate-200" />
-          <div className="h-5 w-5 rounded bg-sky-400/80 ring-2 ring-sky-200/40" />
-          <div className="h-5 w-5 rounded bg-slate-200" />
-          <div className="h-5 w-5 rounded bg-slate-200" />
-        </div>
-        <div className="landing-mockup-panels flex flex-1 gap-2.5 p-3">
-          <div className="landing-mockup-panel-objects flex flex-1 flex-col rounded-md border border-slate-200 p-2.5">
-            <span className="text-[9px] font-semibold uppercase tracking-widest text-slate-400">Objectes</span>
-            <div className="mt-2.5 space-y-1.5">
-              <div className="flex items-center gap-1.5">
-                <span className="block h-2.5 w-2.5 rounded-full bg-sky-400" />
-                <div className="h-3 w-14 rounded bg-slate-100" />
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="block h-2.5 w-2.5 rounded-full bg-emerald-400" />
-                <div className="h-3 w-10 rounded bg-slate-100" />
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="block h-2.5 w-2.5 rounded-full bg-amber-400" />
-                <div className="h-3 w-16 rounded bg-sky-50" />
-              </div>
-            </div>
-          </div>
-          <div className="landing-mockup-panel-events flex flex-1 flex-col rounded-md border border-slate-200 p-2.5">
-            <span className="text-[9px] font-semibold uppercase tracking-widest text-slate-400">Events</span>
-            <div className="mt-2.5 space-y-1.5">
-              <div className="h-3 w-full rounded bg-slate-100" />
-              <div className="h-3 w-3/4 rounded bg-sky-50" />
-              <div className="h-3 w-5/6 rounded bg-slate-100" />
-            </div>
-          </div>
-          <div className="landing-mockup-panel-actions hidden flex-1 flex-col rounded-md border border-slate-200 p-2.5 sm:flex">
-            <span className="text-[9px] font-semibold uppercase tracking-widest text-slate-400">Accions</span>
-            <div className="mt-2.5 space-y-1.5">
-              <div className="flex items-center gap-1">
-                <div className="h-3 w-3 rounded bg-sky-200" />
-                <div className="h-3 flex-1 rounded bg-slate-100" />
-              </div>
-              <div className="flex items-center gap-1">
-                <div className="h-3 w-3 rounded bg-emerald-200" />
-                <div className="h-3 flex-1 rounded bg-slate-100" />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <img
+        alt="Captura de l'editor de jocs CreadorDeJocs: objectes, events, accions i condicionals"
+        className="landing-screenshot-img block w-full"
+        height={596}
+        loading="eager"
+        src="/landing-page.png"
+        width={1024}
+      />
     </div>
   )
 }
@@ -233,7 +192,7 @@ export function LandingPage({ onStartEditor }: LandingPageProps) {
               Editor de jocs online — gratuït i al navegador
             </span>
             <h1 className="text-4xl font-bold leading-tight tracking-tight text-slate-900 md:text-5xl">
-              Creador de jocs: com crear un joc sense programar
+              Creador de jocs: crea el teu joc des del navegador
             </h1>
             <p className="max-w-xl text-lg leading-relaxed text-slate-600">
               Un editor visual on defineixes objectes, els hi assignes comportaments — col·lisions, moviment, puntuació —
@@ -260,7 +219,7 @@ export function LandingPage({ onStartEditor }: LandingPageProps) {
             </p>
           </div>
           <div className="landing-hero-visual hidden lg:block">
-            <EditorPreviewMockup />
+            <EditorScreenshot />
           </div>
         </div>
       </section>
