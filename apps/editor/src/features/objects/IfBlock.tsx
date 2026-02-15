@@ -12,8 +12,9 @@ import {
 } from "../editor-state/types.js"
 import { ActionBlock } from "./ActionBlock.js"
 import type { ProjectV1 } from "@creadordejocs/project-format"
-import { buildDefaultIfCondition, coerceIfConditionRightValue } from "./if-condition-utils.js"
+import { buildDefaultIfCondition } from "./if-condition-utils.js"
 import { VariablePicker, type ObjectVariableOption } from "./VariablePicker.js"
+import { RightValuePicker } from "./RightValuePicker.js"
 
 type IfBlockProps = {
   item: ObjectIfBlockItem
@@ -35,7 +36,6 @@ type IfBlockProps = {
 
 type ComparisonIfCondition = Extract<IfCondition, { left: { scope: "global" | "object"; variableId: string } }>
 type CompoundIfCondition = Extract<IfCondition, { logic: "AND" | "OR" }>
-
 function isComparisonIfCondition(condition: IfCondition): condition is ComparisonIfCondition {
   return "left" in condition
 }
@@ -250,38 +250,19 @@ export function IfBlock({
           <option value="<=">&lt;=</option>
         </select>
 
-        {selectedType === "boolean" ? (
-          <select
-            className="if-block-value-bool h-6 rounded border border-blue-200 bg-white px-2 text-xs focus:border-blue-400 focus:outline-none"
-            value={String(condition.right)}
-            onChange={(event) =>
-              onChange({
-                ...condition,
-                right: event.target.value === "true"
-              })
-            }
-          >
-            <option value="true">true</option>
-            <option value="false">false</option>
-          </select>
-        ) : (
-          <input
-            className="if-block-value-input h-6 rounded border border-blue-200 bg-white px-2 text-xs focus:border-blue-400 focus:outline-none"
-            style={{ width: `${Math.max(4, String(condition.right).length + 1)}ch` }}
-            type="text"
-            inputMode={selectedType === "number" ? "numeric" : "text"}
-            value={String(condition.right)}
-            onChange={(event) =>
-              onChange({
-                ...condition,
-                right:
-                  selectedType === "number"
-                    ? coerceIfConditionRightValue("number", event.target.value)
-                    : coerceIfConditionRightValue("string", event.target.value)
-              })
-            }
-          />
-        )}
+        <RightValuePicker
+          value={condition.right}
+          leftVariableType={selectedType}
+          globalVariables={globalVariables}
+          objectVariables={objectVarOptionsForPicker}
+          variant="blue"
+          onChange={(nextRight) =>
+            onChange({
+              ...condition,
+              right: nextRight
+            })
+          }
+        />
       </>
     )
   }

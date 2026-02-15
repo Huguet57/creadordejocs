@@ -101,6 +101,66 @@ describe("project format v1", () => {
     expect(firstItem.thenActions).toHaveLength(1)
   })
 
+  it("parses if conditions with right-side variable references", () => {
+    const project = createEmptyProjectV1("If variable reference")
+    const source = JSON.stringify({
+      ...project,
+      variables: {
+        global: [
+          { id: "global-left", name: "left", type: "number", initialValue: 2 },
+          { id: "global-right", name: "right", type: "number", initialValue: 1 }
+        ],
+        objectByObjectId: {}
+      },
+      objects: [
+        {
+          id: "object-player",
+          name: "Player",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step",
+              type: "Step",
+              key: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [
+                {
+                  id: "if-1",
+                  type: "if",
+                  condition: {
+                    left: { scope: "global", variableId: "global-left" },
+                    operator: ">",
+                    right: { scope: "global", variableId: "global-right" }
+                  },
+                  thenActions: [{ id: "action-score", type: "changeScore", delta: 1 }],
+                  elseActions: []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    })
+    const loaded = parseProjectV1(source)
+    const firstItem = loaded.objects[0]?.events[0]?.items[0]
+
+    expect(firstItem?.type).toBe("if")
+    if (firstItem?.type !== "if") {
+      throw new Error("Expected if item")
+    }
+    expect(
+      "right" in firstItem.condition &&
+        typeof firstItem.condition.right === "object" &&
+        firstItem.condition.right !== null &&
+        "scope" in firstItem.condition.right
+    ).toBe(true)
+  })
+
   it("loads legacy payloads using actions[] and normalizes them to items[]", () => {
     const project = createEmptyProjectV1("Legacy actions")
     const legacySource = JSON.stringify({

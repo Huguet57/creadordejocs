@@ -167,6 +167,31 @@ function resolveConditionLeftValue(
   return runtime.objectInstanceVariables[targetInstanceId]?.[condition.left.variableId]
 }
 
+function isVariableReference(
+  value: RuntimeVariableValue | { scope: "global" | "object"; variableId: string }
+): value is { scope: "global" | "object"; variableId: string } {
+  return typeof value === "object" && value !== null && "scope" in value && "variableId" in value
+}
+
+function resolveConditionRightValue(
+  condition: Extract<Extract<RuntimeEventItem, { type: "if" }>["condition"], { left: { scope: "global" | "object"; variableId: string } }>,
+  instance: ProjectV1["rooms"][number]["instances"][number],
+  runtime: RuntimeState,
+  collisionOtherInstanceId: string | null
+): RuntimeVariableValue | undefined {
+  if (!isVariableReference(condition.right)) {
+    return condition.right
+  }
+  if (condition.right.scope === "global") {
+    return runtime.globalVariables[condition.right.variableId]
+  }
+  const targetInstanceId = resolveTargetInstanceId(instance, "self", null, collisionOtherInstanceId)
+  if (!targetInstanceId) {
+    return undefined
+  }
+  return runtime.objectInstanceVariables[targetInstanceId]?.[condition.right.variableId]
+}
+
 function isComparisonCondition(
   condition: Extract<RuntimeEventItem, { type: "if" }>["condition"]
 ): condition is Extract<
@@ -194,28 +219,29 @@ function evaluateIfCondition(
   }
 
   const leftValue = resolveConditionLeftValue(condition, instance, runtime, collisionOtherInstanceId)
-  if (leftValue === undefined || !isSameVariableValueType(leftValue, condition.right)) {
+  const rightValue = resolveConditionRightValue(condition, instance, runtime, collisionOtherInstanceId)
+  if (leftValue === undefined || rightValue === undefined || !isSameVariableValueType(leftValue, rightValue)) {
     return false
   }
   if (condition.operator === "==") {
-    return leftValue === condition.right
+    return leftValue === rightValue
   }
   if (condition.operator === "!=") {
-    return leftValue !== condition.right
+    return leftValue !== rightValue
   }
-  if (typeof leftValue !== "number" || typeof condition.right !== "number") {
+  if (typeof leftValue !== "number" || typeof rightValue !== "number") {
     return false
   }
   if (condition.operator === ">") {
-    return leftValue > condition.right
+    return leftValue > rightValue
   }
   if (condition.operator === ">=") {
-    return leftValue >= condition.right
+    return leftValue >= rightValue
   }
   if (condition.operator === "<") {
-    return leftValue < condition.right
+    return leftValue < rightValue
   }
-  return leftValue <= condition.right
+  return leftValue <= rightValue
 }
 
 function applyGlobalNumericOperation(

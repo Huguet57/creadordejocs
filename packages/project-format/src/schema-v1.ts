@@ -163,7 +163,7 @@ const IfConditionLeftSchema = z.discriminatedUnion("scope", [
 const IfComparisonConditionSchema = z.object({
   left: IfConditionLeftSchema,
   operator: z.enum(["==", "!=", ">", ">=", "<", "<="]),
-  right: VariableValueSchema
+  right: z.union([VariableValueSchema, IfConditionLeftSchema])
 })
 
 export type ObjectActionOutput = z.output<typeof ObjectActionSchema>
