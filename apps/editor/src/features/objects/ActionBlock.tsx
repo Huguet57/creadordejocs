@@ -16,24 +16,62 @@ import {
   DoorOpen,
   RotateCcw
 } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
 import { Button } from "../../components/ui/button.js"
 import { Input } from "../../components/ui/input.js"
 import type { ObjectActionDraft, ProjectV1, VariableType, VariableValue } from "@creadordejocs/project-format"
 import { type ObjectActionType } from "../editor-state/types.js"
 import { VariablePicker } from "./VariablePicker.js"
 
-/** Returns a width style for number inputs: min 3 digits + 1 extra for padding */
-function numInputWidth(value: number | string): React.CSSProperties {
-  const len = String(value).length
-  const ch = Math.max(4, len + 1)
-  return { width: `${ch}ch` }
-}
+/** Numeric text input: free typing, auto-width, red border when invalid & unfocused */
+function NumInput({ value, onChange, className }: { value: number; onChange: (v: number) => void; className?: string }) {
+  const [raw, setRaw] = useState(String(value))
+  const [focused, setFocused] = useState(false)
+  const lastExternal = useRef(value)
 
-/** Tolerant number parse: keeps intermediate states like "-", "" as the previous value */
-function safeParseNum(raw: string, prev: number): number {
-  if (raw === "" || raw === "-" || raw === "." || raw === "-.") return prev
-  const n = Number(raw)
-  return Number.isFinite(n) ? n : prev
+  // Sync when external value changes (not from local edits)
+  useEffect(() => {
+    if (value !== lastExternal.current) {
+      lastExternal.current = value
+      if (!focused) setRaw(String(value))
+    }
+  }, [value, focused])
+
+  const parsed = Number(raw)
+  const isValid = raw !== "" && Number.isFinite(parsed)
+  const isError = !focused && !isValid
+
+  const ch = Math.max(4, raw.length + 1)
+
+  return (
+    <Input
+      type="text"
+      inputMode="numeric"
+      className={`h-6 px-1 text-xs ${isError ? "border-red-400 bg-red-50" : "bg-white/50 border-slate-300"} ${className ?? ""}`}
+      style={{ width: `${ch}ch` }}
+      value={focused ? raw : String(value)}
+      onChange={(e) => {
+        setRaw(e.target.value)
+        const n = Number(e.target.value)
+        if (Number.isFinite(n)) {
+          lastExternal.current = n
+          onChange(n)
+        }
+      }}
+      onFocus={() => {
+        setRaw(String(value))
+        setFocused(true)
+      }}
+      onBlur={() => {
+        setFocused(false)
+        if (isValid) {
+          lastExternal.current = parsed
+          onChange(parsed)
+          setRaw(String(parsed))
+        }
+      }}
+    />
+  )
 }
 
 type ActionBlockProps = {
@@ -156,25 +194,11 @@ export function ActionBlock({
           <>
             <div className="flex items-center gap-1">
               <label className="text-[10px] font-medium opacity-60">DX</label>
-              <Input
-                type="text"
-                inputMode="numeric"
-                className="h-6 px-1 text-xs bg-white/50 border-slate-300"
-                style={numInputWidth(action.dx)}
-                value={action.dx}
-                onChange={(e) => onUpdate({ ...action, dx: safeParseNum(e.target.value, action.dx) })}
-              />
+              <NumInput value={action.dx} onChange={(v) => onUpdate({ ...action, dx: v })} />
             </div>
             <div className="flex items-center gap-1">
               <label className="text-[10px] font-medium opacity-60">DY</label>
-              <Input
-                type="text"
-                inputMode="numeric"
-                className="h-6 px-1 text-xs bg-white/50 border-slate-300"
-                style={numInputWidth(action.dy)}
-                value={action.dy}
-                onChange={(e) => onUpdate({ ...action, dy: safeParseNum(e.target.value, action.dy) })}
-              />
+              <NumInput value={action.dy} onChange={(v) => onUpdate({ ...action, dy: v })} />
             </div>
           </>
         )}
@@ -183,25 +207,11 @@ export function ActionBlock({
           <>
             <div className="flex items-center gap-1">
               <label className="text-[10px] font-medium opacity-60">Speed</label>
-              <Input
-                type="text"
-                inputMode="numeric"
-                className="h-6 px-1 text-xs bg-white/50 border-slate-300"
-                style={numInputWidth(action.speed)}
-                value={action.speed}
-                onChange={(e) => onUpdate({ ...action, speed: safeParseNum(e.target.value, action.speed) })}
-              />
+              <NumInput value={action.speed} onChange={(v) => onUpdate({ ...action, speed: v })} />
             </div>
             <div className="flex items-center gap-1">
               <label className="text-[10px] font-medium opacity-60">Dir</label>
-              <Input
-                type="text"
-                inputMode="numeric"
-                className="h-6 px-1 text-xs bg-white/50 border-slate-300"
-                style={numInputWidth(action.direction)}
-                value={action.direction}
-                onChange={(e) => onUpdate({ ...action, direction: safeParseNum(e.target.value, action.direction) })}
-              />
+              <NumInput value={action.direction} onChange={(v) => onUpdate({ ...action, direction: v })} />
             </div>
           </>
         )}
@@ -219,25 +229,11 @@ export function ActionBlock({
             </select>
             <div className="flex items-center gap-1">
               <label className="text-[10px] font-medium opacity-60">X</label>
-              <Input
-                type="text"
-                inputMode="numeric"
-                className="h-6 px-1 text-xs bg-white/50 border-slate-300"
-                style={numInputWidth(action.offsetX)}
-                value={action.offsetX}
-                onChange={(e) => onUpdate({ ...action, offsetX: safeParseNum(e.target.value, action.offsetX) })}
-              />
+              <NumInput value={action.offsetX} onChange={(v) => onUpdate({ ...action, offsetX: v })} />
             </div>
             <div className="flex items-center gap-1">
               <label className="text-[10px] font-medium opacity-60">Y</label>
-              <Input
-                type="text"
-                inputMode="numeric"
-                className="h-6 px-1 text-xs bg-white/50 border-slate-300"
-                style={numInputWidth(action.offsetY)}
-                value={action.offsetY}
-                onChange={(e) => onUpdate({ ...action, offsetY: safeParseNum(e.target.value, action.offsetY) })}
-              />
+              <NumInput value={action.offsetY} onChange={(v) => onUpdate({ ...action, offsetY: v })} />
             </div>
           </>
         )}
@@ -257,14 +253,7 @@ export function ActionBlock({
         {action.type === "changeScore" && (
           <div className="flex items-center gap-1">
             <label className="text-[10px] font-medium opacity-60">+/−</label>
-            <Input
-              type="text"
-              inputMode="numeric"
-              className="h-6 px-1 text-xs bg-white/50 border-slate-300"
-              style={numInputWidth(action.delta)}
-              value={action.delta}
-              onChange={(e) => onUpdate({ ...action, delta: safeParseNum(e.target.value, action.delta) })}
-            />
+            <NumInput value={action.delta} onChange={(v) => onUpdate({ ...action, delta: v })} />
           </div>
         )}
 
@@ -289,25 +278,11 @@ export function ActionBlock({
               <>
                 <div className="flex items-center gap-1">
                   <label className="text-[10px] font-medium opacity-60">X</label>
-                  <Input
-                    type="text"
-                    inputMode="numeric"
-                    className="h-6 px-1 text-xs bg-white/50 border-slate-300"
-                    style={numInputWidth(action.x ?? 0)}
-                    value={action.x ?? 0}
-                    onChange={(e) => onUpdate({ ...action, x: safeParseNum(e.target.value, action.x ?? 0) })}
-                  />
+                  <NumInput value={action.x ?? 0} onChange={(v) => onUpdate({ ...action, x: v })} />
                 </div>
                 <div className="flex items-center gap-1">
                   <label className="text-[10px] font-medium opacity-60">Y</label>
-                  <Input
-                    type="text"
-                    inputMode="numeric"
-                    className="h-6 px-1 text-xs bg-white/50 border-slate-300"
-                    style={numInputWidth(action.y ?? 0)}
-                    value={action.y ?? 0}
-                    onChange={(e) => onUpdate({ ...action, y: safeParseNum(e.target.value, action.y ?? 0) })}
-                  />
+                  <NumInput value={action.y ?? 0} onChange={(v) => onUpdate({ ...action, y: v })} />
                 </div>
               </>
             )}
@@ -411,21 +386,19 @@ export function ActionBlock({
                 <option value="true">true</option>
                 <option value="false">false</option>
               </select>
+            ) : typeof action.value === "number" ? (
+              <NumInput
+                value={action.value}
+                onChange={(v) => onUpdate({ ...action, value: v })}
+              />
             ) : (
               <Input
                 type="text"
-                inputMode={typeof action.value === "number" ? "numeric" : "text"}
                 className="h-6 px-1 text-xs bg-white/50 border-slate-300"
-                style={numInputWidth(formatValue(action.value))}
+                style={{ width: `${Math.max(4, formatValue(action.value).length + 1)}ch` }}
                 value={formatValue(action.value)}
                 onChange={(event) => {
-                  const selected =
-                    action.scope === "global"
-                      ? globalVariables.find((definition) => definition.id === action.variableId)
-                      : objectVariableOptions.find((option) => option.id === action.variableId)
-                  if (!selected) return
-                  const selectedType = "type" in selected ? selected.type : "string"
-                  onUpdate({ ...action, value: parseValueForType(selectedType, event.target.value) })
+                  onUpdate({ ...action, value: event.target.value })
                 }}
               />
             )}
