@@ -249,7 +249,7 @@ export function ActionBlock({
 
         {action.type === "changeScore" && (
           <div className="flex items-center gap-1">
-            <label className="text-[10px] font-medium opacity-60">Delta</label>
+            <label className="text-[10px] font-medium opacity-60">+/−</label>
             <Input
               type="text"
               inputMode="numeric"
