@@ -72,6 +72,7 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
       return { type: "goToRoom", roomId: firstRoom.id }
     }
     if (type === "restartRoom") return { type: "restartRoom" }
+    if (type === "wait") return { type: "wait", durationMs: 500 }
     if (type === "destroySelf") return { type: "destroySelf" }
     if (type === "destroyOther") return { type: "destroyOther" }
     if (type === "changeScore") return { type: "changeScore", delta: 1 }

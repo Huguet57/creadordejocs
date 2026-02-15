@@ -20,6 +20,7 @@ export type ObjectActionType =
   | "copyVariable"
   | "goToRoom"
   | "restartRoom"
+  | "wait"
 
 export type ObjectEventEntry = ProjectV1["objects"][number]["events"][number]
 export type ObjectEventItem = ObjectEventEntry["items"][number]
@@ -53,7 +54,8 @@ export const OBJECT_ACTION_TYPES: ObjectActionType[] = [
   "changeVariable",
   "copyVariable",
   "goToRoom",
-  "restartRoom"
+  "restartRoom",
+  "wait"
 ]
 
 export const ACTION_DISPLAY_NAMES: Record<ObjectActionType, string> = {
@@ -71,9 +73,10 @@ export const ACTION_DISPLAY_NAMES: Record<ObjectActionType, string> = {
   copyVariable: "Copiar variable",
   goToRoom: "Anar a sala",
   restartRoom: "Reiniciar sala",
+  wait: "Esperar",
 }
 
-export type ActionCategory = "movement" | "objects" | "game" | "variables" | "rooms"
+export type ActionCategory = "movement" | "objects" | "game" | "variables" | "rooms" | "flow"
 
 export const ACTION_CATEGORIES: { id: ActionCategory; label: string; types: ObjectActionType[] }[] = [
   {
@@ -100,5 +103,10 @@ export const ACTION_CATEGORIES: { id: ActionCategory; label: string; types: Obje
     id: "rooms",
     label: "Sales",
     types: ["goToRoom", "restartRoom"]
+  },
+  {
+    id: "flow",
+    label: "Flux",
+    types: ["wait"]
   }
 ]

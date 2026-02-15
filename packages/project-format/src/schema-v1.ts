@@ -146,6 +146,11 @@ const ObjectActionSchema = z.discriminatedUnion("type", [
   z.object({
     id: z.string().min(1),
     type: z.literal("restartRoom")
+  }),
+  z.object({
+    id: z.string().min(1),
+    type: z.literal("wait"),
+    durationMs: z.number().int().min(1)
   })
 ])
 

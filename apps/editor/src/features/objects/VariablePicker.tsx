@@ -106,7 +106,7 @@ export function VariablePicker({
     <div className="variable-picker-container relative" ref={containerRef}>
       <button
         type="button"
-        className={`variable-picker-trigger flex items-center gap-1 h-6 rounded border ${borderColor} bg-white px-1.5 text-xs ${hoverBg} ${focusBorder} focus:outline-none transition-colors max-w-[180px]`}
+        className={`variable-picker-trigger flex items-center gap-1.5 h-7 rounded border ${borderColor} bg-white px-2 text-xs ${hoverBg} ${focusBorder} focus:outline-none transition-colors max-w-[180px]`}
         onClick={() => setIsOpen(!isOpen)}
       >
         <ScopeIcon className="h-3 w-3 shrink-0 text-slate-400" />

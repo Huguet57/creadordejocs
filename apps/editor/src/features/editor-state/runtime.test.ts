@@ -1526,6 +1526,153 @@ describe("runtime regressions", () => {
     expect(result.activeRoomId).toBe("room-main")
   })
 
+  it("wait action delays following actions until duration is reached", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-wait-delay",
+        name: "Wait delay test",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: {
+        sprites: [],
+        sounds: []
+      },
+      variables: {
+        global: [],
+        objectByObjectId: {}
+      },
+      objects: [
+        {
+          id: "object-waiter",
+          name: "Waiter",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step",
+              type: "Step",
+              key: null,
+              keyboardMode: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [
+                {
+                  id: "item-wait",
+                  type: "action",
+                  action: { id: "action-wait", type: "wait", durationMs: 200 }
+                },
+                {
+                  id: "item-score",
+                  type: "action",
+                  action: { id: "action-score", type: "changeScore", delta: 1 }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      rooms: [{ id: "room-main", name: "Main", instances: [{ id: "instance-a", objectId: "object-waiter", x: 0, y: 0 }] }],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    let runtime = createInitialRuntimeState(project)
+    runtime = runRuntimeTick(project, "room-main", new Set(), runtime).runtime
+    expect(runtime.score).toBe(0)
+    runtime = runRuntimeTick(project, "room-main", new Set(), runtime).runtime
+    expect(runtime.score).toBe(0)
+    runtime = runRuntimeTick(project, "room-main", new Set(), runtime).runtime
+    expect(runtime.score).toBe(1)
+  })
+
+  it("wait action blocks later actions but keeps earlier actions running", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-wait-order",
+        name: "Wait ordering test",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: {
+        sprites: [],
+        sounds: []
+      },
+      variables: {
+        global: [],
+        objectByObjectId: {}
+      },
+      objects: [
+        {
+          id: "object-flow",
+          name: "Flow",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step",
+              type: "Step",
+              key: null,
+              keyboardMode: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [
+                {
+                  id: "item-before",
+                  type: "action",
+                  action: { id: "action-before", type: "changeScore", delta: 1 }
+                },
+                {
+                  id: "item-wait",
+                  type: "action",
+                  action: { id: "action-wait", type: "wait", durationMs: 200 }
+                },
+                {
+                  id: "item-after",
+                  type: "action",
+                  action: { id: "action-after", type: "changeScore", delta: 5 }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      rooms: [{ id: "room-main", name: "Main", instances: [{ id: "instance-a", objectId: "object-flow", x: 0, y: 0 }] }],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    let runtime = createInitialRuntimeState(project)
+    runtime = runRuntimeTick(project, "room-main", new Set(), runtime).runtime
+    expect(runtime.score).toBe(1)
+    runtime = runRuntimeTick(project, "room-main", new Set(), runtime).runtime
+    expect(runtime.score).toBe(2)
+    runtime = runRuntimeTick(project, "room-main", new Set(), runtime).runtime
+    expect(runtime.score).toBe(8)
+  })
+
   it("triggers Timer events only when interval elapsed", () => {
     const project: ProjectV1 = {
       version: 1,

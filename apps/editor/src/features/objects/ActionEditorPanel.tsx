@@ -13,7 +13,8 @@ import {
   Variable,
   ArrowLeftRight,
   DoorOpen,
-  RotateCcw
+  RotateCcw,
+  Hourglass
 } from "lucide-react"
 import { useState } from "react"
 import { Button } from "../../components/ui/button.js"
@@ -78,6 +79,7 @@ const ACTION_ICONS: Record<ObjectActionType, React.ElementType> = {
   copyVariable: ArrowLeftRight,
   goToRoom: DoorOpen,
   restartRoom: RotateCcw,
+  wait: Hourglass
 }
 
 export function ActionEditorPanel({

@@ -3,6 +3,7 @@ import type { ProjectV1 } from "@creadordejocs/project-format"
 export const ROOM_WIDTH = 560
 export const ROOM_HEIGHT = 320
 const INSTANCE_SIZE = 32
+const RUNTIME_TICK_MS = 80
 
 type RuntimeActionResult = {
   instance: ProjectV1["rooms"][number]["instances"][number]
@@ -11,6 +12,7 @@ type RuntimeActionResult = {
   scoreDelta: number
   gameOverMessage: string | null
   playedSoundIds: string[]
+  halted: boolean
   runtime: RuntimeState
 }
 
@@ -30,6 +32,7 @@ export type RuntimeState = {
   nextRoomId: string | null
   restartRoomRequested: boolean
   timerElapsedByEventId: Record<string, number>
+  waitElapsedByInstanceActionId: Record<string, number>
 }
 
 function clampValue(value: number, min: number, max: number): number {
@@ -47,6 +50,7 @@ function getDefaultRuntimeActionResult(
     scoreDelta: 0,
     gameOverMessage: null,
     playedSoundIds: [],
+    halted: false,
     runtime
   }
 }
@@ -69,6 +73,10 @@ function applyActionResultToRuntime(_runtime: RuntimeState, actionResult: Runtim
     }
   }
   return nextRuntime
+}
+
+function getWaitActionKey(instanceId: string, actionId: string): string {
+  return `${instanceId}:${actionId}`
 }
 
 function isOutsideRoom(instance: ProjectV1["rooms"][number]["instances"][number]): boolean {
@@ -634,6 +642,35 @@ function runEventActions(
       }
       continue
     }
+    if (actionEntry.type === "wait") {
+      const waitKey = getWaitActionKey(result.instance.id, actionEntry.id)
+      const elapsed = result.runtime.waitElapsedByInstanceActionId[waitKey] ?? 0
+      const nextElapsed = elapsed + RUNTIME_TICK_MS
+      if (nextElapsed < actionEntry.durationMs) {
+        result = {
+          ...result,
+          halted: true,
+          runtime: {
+            ...result.runtime,
+            waitElapsedByInstanceActionId: {
+              ...result.runtime.waitElapsedByInstanceActionId,
+              [waitKey]: nextElapsed
+            }
+          }
+        }
+        break
+      }
+      const nextWaitMap = { ...result.runtime.waitElapsedByInstanceActionId }
+      delete nextWaitMap[waitKey]
+      result = {
+        ...result,
+        runtime: {
+          ...result.runtime,
+          waitElapsedByInstanceActionId: nextWaitMap
+        }
+      }
+      continue
+    }
   }
 
   return result
@@ -665,6 +702,9 @@ function runEventItems(
         scoreDelta: result.scoreDelta + actionResult.scoreDelta,
         gameOverMessage: actionResult.gameOverMessage ?? result.gameOverMessage,
         playedSoundIds: [...result.playedSoundIds, ...actionResult.playedSoundIds]
+      }
+      if (actionResult.halted) {
+        break
       }
       continue
     }
@@ -830,7 +870,8 @@ export function createInitialRuntimeState(project?: ProjectV1): RuntimeState {
     objectInstanceVariables: {},
     nextRoomId: null,
     restartRoomRequested: false,
-    timerElapsedByEventId: {}
+    timerElapsedByEventId: {},
+    waitElapsedByInstanceActionId: {}
   }
 }
 
@@ -888,7 +929,7 @@ export function runRuntimeTick(
       }
       if (eventEntry.type === "Timer") {
         const intervalMs = eventEntry.intervalMs ?? 1000
-        const elapsed = (nextRuntime.timerElapsedByEventId[eventEntry.id] ?? 0) + 80
+        const elapsed = (nextRuntime.timerElapsedByEventId[eventEntry.id] ?? 0) + RUNTIME_TICK_MS
         nextRuntime = {
           ...nextRuntime,
           timerElapsedByEventId: {

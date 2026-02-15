@@ -35,7 +35,7 @@ type IfBlockProps = {
 }
 
 type ComparisonIfCondition = Extract<IfCondition, { left: { scope: "global" | "object"; variableId: string } }>
-type CompoundIfCondition = Extract<IfCondition, { logic: "AND" | "OR" }>
+type CompoundIfCondition = { logic: "AND" | "OR"; conditions: IfCondition[] }
 function isComparisonIfCondition(condition: IfCondition): condition is ComparisonIfCondition {
   return "left" in condition
 }
@@ -91,7 +91,7 @@ function BranchAddButton({
   return (
     <div className="if-block-branch-add-picker flex items-center gap-2">
       <select
-        className="if-block-branch-add-select h-6 flex-1 rounded border border-slate-200 bg-white px-2 text-xs text-slate-600 focus:border-blue-400 focus:outline-none"
+        className="if-block-branch-add-select h-7 flex-1 rounded border border-slate-200 bg-white px-2 text-xs text-slate-600 focus:border-blue-400 focus:outline-none"
         value={selectedType}
         onChange={(event) => setSelectedType(event.target.value as ObjectActionType)}
         autoFocus
@@ -106,7 +106,7 @@ function BranchAddButton({
         type="button"
         variant="outline"
         size="sm"
-        className="if-block-branch-add-confirm h-6 px-3 text-xs border-slate-200 text-slate-600 hover:bg-slate-50"
+        className="if-block-branch-add-confirm h-7 px-3 text-xs border-slate-200 text-slate-600 hover:bg-slate-50"
         onClick={() => {
           onAdd(selectedType)
           setIsOpen(false)
@@ -233,7 +233,7 @@ export function IfBlock({
         />
 
         <select
-          className="if-block-operator-select h-6 w-12 text-center font-mono rounded border border-blue-200 bg-white px-1 text-xs focus:border-blue-400 focus:outline-none"
+          className="if-block-operator-select h-7 w-14 text-center font-mono rounded border border-blue-200 bg-white px-2 text-xs focus:border-blue-400 focus:outline-none"
           value={condition.operator}
           onChange={(event) =>
             onChange({

@@ -14,7 +14,8 @@ import {
   Variable,
   ArrowLeftRight,
   DoorOpen,
-  RotateCcw
+  RotateCcw,
+  Hourglass
 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { Button } from "../../components/ui/button.js"
@@ -41,13 +42,13 @@ function NumInput({ value, onChange, className }: { value: number; onChange: (v:
   const isValid = raw !== "" && Number.isFinite(parsed)
   const isError = !focused && !isValid
 
-  const ch = Math.max(4, raw.length + 1)
+  const ch = Math.max(6, raw.length + 2)
 
   return (
     <Input
       type="text"
       inputMode="numeric"
-      className={`h-6 px-1 text-xs ${isError ? "border-red-400 bg-red-50" : "bg-white/50 border-slate-300"} ${className ?? ""}`}
+      className={`h-7 px-2 text-xs ${isError ? "border-red-400 bg-red-50" : "bg-white/50 border-slate-300"} ${className ?? ""}`}
       style={{ width: `${ch}ch` }}
       value={focused ? raw : String(value)}
       onChange={(e) => {
@@ -107,6 +108,7 @@ const ACTION_ICONS: Record<ObjectActionType, React.ElementType> = {
   copyVariable: ArrowLeftRight,
   goToRoom: DoorOpen,
   restartRoom: RotateCcw,
+  wait: Hourglass
 }
 
 const ACTION_LABELS: Record<ObjectActionType, string> = {
@@ -124,6 +126,7 @@ const ACTION_LABELS: Record<ObjectActionType, string> = {
   copyVariable: "Copiar var.",
   goToRoom: "Anar a sala",
   restartRoom: "Reiniciar",
+  wait: "Esperar",
 }
 
 // Operator labels used in the UI are inlined in the select options
@@ -219,7 +222,7 @@ export function ActionBlock({
         {action.type === "spawnObject" && (
           <>
             <select
-              className="action-block-spawn-select h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs focus:outline-none"
+              className="action-block-spawn-select h-7 rounded border border-slate-300 bg-white/50 px-2 text-xs focus:outline-none"
               value={action.objectId}
               onChange={(e) => onUpdate({ ...action, objectId: e.target.value })}
             >
@@ -240,7 +243,7 @@ export function ActionBlock({
 
         {action.type === "playSound" && (
           <select
-            className="action-block-sound-select h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs focus:outline-none min-w-[120px]"
+            className="action-block-sound-select h-7 rounded border border-slate-300 bg-white/50 px-2 text-xs focus:outline-none min-w-[120px]"
             value={action.soundId}
             onChange={(e) => onUpdate({ ...action, soundId: e.target.value })}
           >
@@ -260,7 +263,7 @@ export function ActionBlock({
         {action.type === "teleport" && (
           <>
             <select
-              className="action-block-teleport-mode h-6 rounded border border-slate-300 bg-white/50 px-1 text-xs"
+              className="action-block-teleport-mode h-7 rounded border border-slate-300 bg-white/50 px-2 text-xs"
               value={action.mode}
               onChange={(event) =>
                 onUpdate({
@@ -293,7 +296,7 @@ export function ActionBlock({
           <div className="flex items-center gap-1 flex-1">
             <label className="text-[10px] font-medium opacity-60">Msg</label>
             <Input
-              className="h-6 w-full px-1 text-xs bg-white/50 border-slate-300"
+              className="h-7 w-full px-2 text-xs bg-white/50 border-slate-300"
               value={action.message}
               onChange={(e) => onUpdate({ ...action, message: e.target.value })}
             />
@@ -302,7 +305,7 @@ export function ActionBlock({
 
         {action.type === "goToRoom" && (
           <select
-            className="action-block-room-select h-6 min-w-[140px] rounded border border-slate-300 bg-white/50 px-1 text-xs focus:outline-none"
+            className="action-block-room-select h-7 min-w-[140px] rounded border border-slate-300 bg-white/50 px-2 text-xs focus:outline-none"
             value={action.roomId}
             onChange={(event) => onUpdate({ ...action, roomId: event.target.value })}
           >
@@ -315,6 +318,17 @@ export function ActionBlock({
         )}
 
         {action.type === "restartRoom" && <span className="text-[10px] font-medium text-slate-500">Sala actual</span>}
+
+        {action.type === "wait" && (
+          <div className="action-block-wait-field flex items-center gap-1">
+            <label className="text-[10px] font-medium opacity-60">ms</label>
+            <NumInput
+              value={action.durationMs}
+              onChange={(v) => onUpdate({ ...action, durationMs: Math.max(1, Math.round(v)) })}
+              className="action-block-wait-ms"
+            />
+          </div>
+        )}
 
         {action.type === "changeVariable" && (
           <>
@@ -361,7 +375,7 @@ export function ActionBlock({
               }}
             />
             <select
-              className="action-block-operator-select h-6 w-12 rounded border border-slate-300 bg-white/50 px-1 text-xs font-bold text-center"
+              className="action-block-operator-select h-7 w-14 rounded border border-slate-300 bg-white/50 px-2 text-xs font-bold text-center"
               value={action.operator}
               onChange={(event) => {
                 const newOp = event.target.value as "set" | "add" | "subtract" | "multiply"
@@ -379,7 +393,7 @@ export function ActionBlock({
             </select>
             {typeof action.value === "boolean" ? (
               <select
-                className="action-block-bool-select h-6 w-16 rounded border border-slate-300 bg-white/50 px-1 text-xs"
+                className="action-block-bool-select h-7 w-18 rounded border border-slate-300 bg-white/50 px-2 text-xs"
                 value={String(action.value)}
                 onChange={(event) => onUpdate({ ...action, value: event.target.value === "true" })}
               >
@@ -394,8 +408,8 @@ export function ActionBlock({
             ) : (
               <Input
                 type="text"
-                className="h-6 px-1 text-xs bg-white/50 border-slate-300"
-                style={{ width: `${Math.max(4, formatValue(action.value).length + 1)}ch` }}
+                className="h-7 px-2 text-xs bg-white/50 border-slate-300"
+                style={{ width: `${Math.max(6, formatValue(action.value).length + 2)}ch` }}
                 value={formatValue(action.value)}
                 onChange={(event) => {
                   onUpdate({ ...action, value: event.target.value })
