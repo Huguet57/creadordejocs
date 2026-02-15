@@ -1,0 +1,9 @@
+{
+  "buildCommand": "npm run editor:build",
+  "outputDirectory": "apps/editor/dist",
+  "framework": "vite",
+  "rewrites": [
+    { "source": "/editor", "destination": "/" },
+    { "source": "/editor/", "destination": "/" }
+  ]
+}
