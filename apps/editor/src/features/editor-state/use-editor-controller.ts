@@ -79,11 +79,15 @@ function createInitialEditorState(): { project: ProjectV1; roomId: string } {
 
 export function resolveResetState(
   currentProject: ProjectV1,
-  runSnapshot: ProjectV1 | null
-): { project: ProjectV1; runSnapshot: null } {
+  runSnapshot: ProjectV1 | null,
+  currentRoomId: string
+): { project: ProjectV1; runSnapshot: null; roomId: string } {
+  const restoredProject = runSnapshot ?? currentProject
+  const firstRoom = restoredProject.rooms[0]
   return {
-    project: runSnapshot ?? currentProject,
-    runSnapshot: null
+    project: restoredProject,
+    runSnapshot: null,
+    roomId: firstRoom ? firstRoom.id : currentRoomId
   }
 }
 
@@ -538,10 +542,11 @@ export function useEditorController() {
       setActiveSection("run")
     },
     reset() {
-      const nextResetState = resolveResetState(project, runSnapshot)
+      const nextResetState = resolveResetState(project, runSnapshot, activeRoomId)
       setProject(nextResetState.project)
       setIsRunning(false)
       setRunSnapshot(nextResetState.runSnapshot)
+      setActiveRoomId(nextResetState.roomId)
       const resetRuntime = createInitialRuntimeState(nextResetState.project)
       runtimeRef.current = resetRuntime
       setRuntimeState(resetRuntime)
