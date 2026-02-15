@@ -273,7 +273,7 @@ export function ActionBlock({
               onChange={(event) =>
                 onUpdate({
                   ...action,
-                  mode: event.target.value as "position" | "start",
+                  mode: event.target.value as "position" | "start" | "mouse",
                   x: event.target.value === "position" ? (action.x ?? 0) : null,
                   y: event.target.value === "position" ? (action.y ?? 0) : null
                 })
@@ -281,6 +281,7 @@ export function ActionBlock({
             >
               <option value="position">Position</option>
               <option value="start">Start</option>
+              <option value="mouse">Mouse</option>
             </select>
             {action.mode === "position" && (
               <>

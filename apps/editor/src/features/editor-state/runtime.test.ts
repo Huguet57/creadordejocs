@@ -903,6 +903,82 @@ describe("runtime regressions", () => {
     expect(teleporter?.y).toBe(77)
   })
 
+  it("applies teleport/mouse using current runtime mouse coordinates", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-jump-mouse",
+        name: "Jump mouse test",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: {
+        sprites: [],
+        sounds: []
+      },
+      variables: {
+        global: [],
+        objectByObjectId: {}
+      },
+      objects: [
+        {
+          id: "object-teleporter",
+          name: "Teleporter",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step",
+              type: "Step",
+              key: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [
+                {
+                  id: "item-action-jump-mouse",
+                  type: "action",
+                  action: { id: "action-jump-mouse", type: "teleport", mode: "mouse", x: null, y: null }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      rooms: [
+        {
+          id: "room-main",
+          name: "Main",
+          instances: [{ id: "instance-teleporter", objectId: "object-teleporter", x: 10, y: 20 }]
+        }
+      ],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(), new Set(), {
+      x: 187,
+      y: 93,
+      moved: true,
+      pressedButtons: new Set(),
+      justPressedButtons: new Set()
+    })
+    const room = result.project.rooms.find((roomEntry) => roomEntry.id === "room-main")
+    const teleporter = room?.instances.find((instanceEntry) => instanceEntry.id === "instance-teleporter")
+
+    expect(teleporter?.x).toBe(187)
+    expect(teleporter?.y).toBe(93)
+  })
+
   it("initializes and mutates global plus object instance variables", () => {
     const project: ProjectV1 = {
       version: 1,

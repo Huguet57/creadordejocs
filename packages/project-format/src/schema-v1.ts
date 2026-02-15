@@ -121,7 +121,7 @@ const ObjectActionSchema = z.discriminatedUnion("type", [
   z.object({
     id: z.string().min(1),
     type: z.literal("teleport"),
-    mode: z.enum(["position", "start"]),
+    mode: z.enum(["position", "start", "mouse"]),
     x: z.number().nullable().default(null),
     y: z.number().nullable().default(null)
   }),

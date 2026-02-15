@@ -494,6 +494,17 @@ function runEventActions(
             y: actionEntry.y ?? result.instance.y
           }
         }
+      } else if (actionEntry.mode === "mouse") {
+        const mouseX = result.runtime.globalVariables[BUILTIN_MOUSE_X_VARIABLE_ID]
+        const mouseY = result.runtime.globalVariables[BUILTIN_MOUSE_Y_VARIABLE_ID]
+        result = {
+          ...result,
+          instance: {
+            ...result.instance,
+            x: typeof mouseX === "number" ? mouseX : result.instance.x,
+            y: typeof mouseY === "number" ? mouseY : result.instance.y
+          }
+        }
       } else if (startPosition) {
         result = {
           ...result,
