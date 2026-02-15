@@ -172,7 +172,7 @@ export function createBatteryCourierTemplateProject(): TemplateProjectResult {
     reactorObject.objectId,
     "else",
     {
-      left: { scope: "object", variableId: carriedId },
+      left: { scope: "global", variableId: deliveredId },
       operator: ">",
       right: 0
     },
