@@ -5,12 +5,13 @@ import { createShareWorkerHandler, type ShareWorkerEnv } from "./index.js"
 class MemoryKv {
   private store = new Map<string, string>()
 
-  async get(key: string): Promise<string | null> {
-    return this.store.get(key) ?? null
+  get(key: string): Promise<string | null> {
+    return Promise.resolve(this.store.get(key) ?? null)
   }
 
-  async put(key: string, value: string): Promise<void> {
+  put(key: string, value: string): Promise<void> {
     this.store.set(key, value)
+    return Promise.resolve()
   }
 }
 

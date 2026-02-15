@@ -1,4 +1,4 @@
-import { createEmptyProjectV1 } from "@creadordejocs/project-format"
+import { createEmptyProjectV1, serializeProjectV1 } from "@creadordejocs/project-format"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { buildSharePermalink, copyPermalinkToClipboard, publishProjectToShareApi } from "./share-api-client.js"
 
@@ -33,7 +33,7 @@ describe("publishProjectToShareApi", () => {
     expect(fetchMock).toHaveBeenCalledWith("https://api.creadordejocs.com/api/share", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: expect.any(String)
+      body: JSON.stringify({ projectSource: serializeProjectV1(project) })
     })
   })
 
