@@ -16,11 +16,20 @@ export function RunSection({ controller }: RunSectionProps) {
   const { runtimeState } = controller
   const [resolvedSpriteSources, setResolvedSpriteSources] = useState<Record<string, string>>({})
   const canvasRef = useRef<HTMLDivElement>(null)
-  const globalVariableEntries = controller.project.variables.global.map((variableEntry) => ({
+  const rawMouseX = typeof runtimeState.globalVariables.__mouse_x === "number" ? runtimeState.globalVariables.__mouse_x : 0
+  const rawMouseY = typeof runtimeState.globalVariables.__mouse_y === "number" ? runtimeState.globalVariables.__mouse_y : 0
+  const mouseX = Math.round(Math.max(0, Math.min(ROOM_WIDTH, rawMouseX)))
+  const mouseY = Math.round(Math.max(0, Math.min(ROOM_HEIGHT, rawMouseY)))
+  const userGlobalVariableEntries = controller.project.variables.global.map((variableEntry) => ({
     id: variableEntry.id,
     name: variableEntry.name,
     value: runtimeState.globalVariables[variableEntry.id]
   }))
+  const systemGlobalVariableEntries = [
+    { id: "__mouse_x", name: "mouse_x", value: mouseX },
+    { id: "__mouse_y", name: "mouse_y", value: mouseY }
+  ]
+  const globalVariableEntries = [...userGlobalVariableEntries, ...systemGlobalVariableEntries]
 
   const sprites = controller.project.resources.sprites
   const spriteById = useMemo(
