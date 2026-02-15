@@ -110,10 +110,12 @@ export function shouldResetWhenSwitchingSection(
   return isRunning && currentSection === "run" && nextSection !== "run"
 }
 
-export function useEditorController() {
+export function useEditorController(initialSectionOverride?: EditorSection) {
   const initial = createInitialEditorState()
   const [project, setProject] = useState<ProjectV1>(initial.project)
-  const [activeSection, setActiveSection] = useState<EditorSection>(() => resolveInitialSection(initial.project))
+  const [activeSection, setActiveSection] = useState<EditorSection>(
+    () => initialSectionOverride ?? resolveInitialSection(initial.project)
+  )
   const [activeRoomId, setActiveRoomId] = useState<string>(initial.roomId)
   const [activeObjectId, setActiveObjectId] = useState<string | null>(null)
   const [isRunning, setIsRunning] = useState(false)

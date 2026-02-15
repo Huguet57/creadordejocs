@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Redo2, Save, Undo2 } from "lucide-react"
 import { Button } from "./components/ui/button.js"
 import { shouldResetWhenSwitchingSection, useEditorController } from "./features/editor-state/use-editor-controller.js"
@@ -6,7 +6,7 @@ import { LandingPage } from "./features/landing/LandingPage.js"
 import type { EditorSection } from "./features/editor-state/types.js"
 import { EditorSidebarCompact } from "./layout/EditorSidebarCompact.js"
 import { EditorWorkspace } from "./layout/EditorWorkspace.js"
-import { resolveAppRoute, type AppRoute } from "./route-utils.js"
+import { resolveAppRoute, resolveEditorSection, buildEditorSectionPath, type AppRoute } from "./route-utils.js"
 
 const landingTitle = "Creador de jocs online | Com crear un joc gratis | CreadorDeJocs"
 const editorTitle = "Editor de jocs online | CreadorDeJocs"
@@ -52,7 +52,44 @@ export function handleSidebarSectionChange(
 }
 
 function EditorAppShell() {
-  const controller = useEditorController()
+  const urlSection = resolveEditorSection(window.location.pathname)
+  const controller = useEditorController(urlSection ?? undefined)
+  const isPopStateRef = useRef(false)
+  const isInitialMountRef = useRef(true)
+  const controllerRef = useRef(controller)
+  controllerRef.current = controller
+
+  // Sync URL when activeSection changes
+  useEffect(() => {
+    const sectionPath = buildEditorSectionPath(controller.activeSection)
+    if (isPopStateRef.current) {
+      isPopStateRef.current = false
+      return
+    }
+    if (isInitialMountRef.current) {
+      isInitialMountRef.current = false
+      window.history.replaceState({}, "", sectionPath)
+      return
+    }
+    window.history.pushState({}, "", sectionPath)
+  }, [controller.activeSection])
+
+  // Handle popstate for editor section changes
+  useEffect(() => {
+    const handlePopState = () => {
+      const section = resolveEditorSection(window.location.pathname)
+      if (section) {
+        isPopStateRef.current = true
+        const ctrl = controllerRef.current
+        if (shouldResetWhenSwitchingSection(ctrl.activeSection, section, ctrl.isRunning)) {
+          ctrl.reset()
+        }
+        ctrl.setActiveSection(section)
+      }
+    }
+    window.addEventListener("popstate", handlePopState)
+    return () => window.removeEventListener("popstate", handlePopState)
+  }, [])
 
   return (
     <main className="mvp15-editor-shell min-h-screen bg-slate-50 px-4 py-4 text-slate-900">
