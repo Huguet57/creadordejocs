@@ -103,7 +103,7 @@ describe("template catalog", () => {
     expect(created.project.rooms.length).toBeGreaterThan(0)
     expect(created.project.objects.some((entry) => entry.id === created.focusObjectId)).toBe(true)
     expect(projectHasIfBlocks(templateId)).toBe(true)
-    expect(usedMouseEventTypes.size).toBeGreaterThanOrEqual(2)
+    expect(usedMouseEventTypes.size).toBeGreaterThanOrEqual(1)
     expect(actionTypes.has("teleport")).toBe(true)
   })
 

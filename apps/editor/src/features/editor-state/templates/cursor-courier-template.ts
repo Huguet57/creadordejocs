@@ -16,11 +16,9 @@ export function createCursorCourierTemplateProject(): TemplateProjectResult {
   const spriteHazard = quickCreateSprite(spritePacket.project, "Hazard")
   const spriteNode = quickCreateSprite(spriteHazard.project, "Node")
   const soundPickup = quickCreateSound(spriteNode.project, "Pickup")
-  const soundBoost = quickCreateSound(soundPickup.project, "Boost")
-  const soundHit = quickCreateSound(soundBoost.project, "Hit")
-  const soundRoute = quickCreateSound(soundHit.project, "Route")
+  const soundHit = quickCreateSound(soundPickup.project, "Hit")
 
-  const courierObject = quickCreateObject(soundRoute.project, {
+  const courierObject = quickCreateObject(soundHit.project, {
     name: "Courier",
     spriteId: spriteCourier.spriteId,
     x: 80,
@@ -95,35 +93,13 @@ export function createCursorCourierTemplateProject(): TemplateProjectResult {
     initialValue: 3
   })
   const packetsRemainingId = withPacketsRemaining.variableId
-  const withBoost = addGlobalVariableWithId(withPacketsRemaining.project, {
-    name: "boost",
-    type: "number",
-    initialValue: 3
-  })
-  const boostId = withBoost.variableId
 
-  let project = withBoost.project
+  let project = withPacketsRemaining.project
   project = addEventWithActions(project, courierObject.objectId, { type: "MouseMove" }, [
     { type: "teleport", mode: "mouse", x: null, y: null },
     { type: "clampToRoom" }
   ])
-  project = addEventWithActions(project, courierObject.objectId, { type: "MouseDown" }, [])
-  project = addIfElseBlockToLatestEvent(
-    project,
-    courierObject.objectId,
-    {
-      left: { scope: "global", variableId: boostId },
-      operator: ">",
-      right: 0
-    },
-    [
-      { type: "playSound", soundId: soundBoost.soundId },
-      { type: "teleport", mode: "mouse", x: null, y: null },
-      { type: "changeVariable", scope: "global", variableId: boostId, operator: "subtract", value: 1 }
-    ],
-    [{ type: "message", text: "Sense boost. Espera recarrega.", durationMs: 800 }]
-  )
-  project = addEventWithActions(project, courierObject.objectId, { type: "MouseClick" }, [])
+  project = addEventWithActions(project, courierObject.objectId, { type: "MouseMove" }, [])
   project = addIfElseBlockToLatestEvent(
     project,
     courierObject.objectId,
@@ -132,19 +108,7 @@ export function createCursorCourierTemplateProject(): TemplateProjectResult {
       operator: ">=",
       right: 500
     },
-    [{ type: "playSound", soundId: soundRoute.soundId }, { type: "teleport", mode: "position", x: 520, y: 50 }],
-    []
-  )
-  project = addEventWithActions(project, courierObject.objectId, { type: "Timer", intervalMs: 700 }, [])
-  project = addIfElseBlockToLatestEvent(
-    project,
-    courierObject.objectId,
-    {
-      left: { scope: "global", variableId: boostId },
-      operator: "<",
-      right: 3
-    },
-    [{ type: "changeVariable", scope: "global", variableId: boostId, operator: "add", value: 1 }],
+    [{ type: "teleport", mode: "position", x: 520, y: 50 }],
     []
   )
   project = addEventWithActions(project, courierObject.objectId, { type: "Step" }, [{ type: "clampToRoom" }])
