@@ -29,6 +29,13 @@ function numInputWidth(value: number | string): React.CSSProperties {
   return { width: `${ch}ch` }
 }
 
+/** Tolerant number parse: keeps intermediate states like "-", "" as the previous value */
+function safeParseNum(raw: string, prev: number): number {
+  if (raw === "" || raw === "-" || raw === "." || raw === "-.") return prev
+  const n = Number(raw)
+  return Number.isFinite(n) ? n : prev
+}
+
 type ActionBlockProps = {
   action: ObjectActionDraft & { id: string }
   index: number
@@ -155,7 +162,7 @@ export function ActionBlock({
                 className="h-6 px-1 text-xs bg-white/50 border-slate-300"
                 style={numInputWidth(action.dx)}
                 value={action.dx}
-                onChange={(e) => onUpdate({ ...action, dx: Number(e.target.value) })}
+                onChange={(e) => onUpdate({ ...action, dx: safeParseNum(e.target.value, action.dx) })}
               />
             </div>
             <div className="flex items-center gap-1">
@@ -166,7 +173,7 @@ export function ActionBlock({
                 className="h-6 px-1 text-xs bg-white/50 border-slate-300"
                 style={numInputWidth(action.dy)}
                 value={action.dy}
-                onChange={(e) => onUpdate({ ...action, dy: Number(e.target.value) })}
+                onChange={(e) => onUpdate({ ...action, dy: safeParseNum(e.target.value, action.dy) })}
               />
             </div>
           </>
@@ -182,7 +189,7 @@ export function ActionBlock({
                 className="h-6 px-1 text-xs bg-white/50 border-slate-300"
                 style={numInputWidth(action.speed)}
                 value={action.speed}
-                onChange={(e) => onUpdate({ ...action, speed: Number(e.target.value) })}
+                onChange={(e) => onUpdate({ ...action, speed: safeParseNum(e.target.value, action.speed) })}
               />
             </div>
             <div className="flex items-center gap-1">
@@ -193,7 +200,7 @@ export function ActionBlock({
                 className="h-6 px-1 text-xs bg-white/50 border-slate-300"
                 style={numInputWidth(action.direction)}
                 value={action.direction}
-                onChange={(e) => onUpdate({ ...action, direction: Number(e.target.value) })}
+                onChange={(e) => onUpdate({ ...action, direction: safeParseNum(e.target.value, action.direction) })}
               />
             </div>
           </>
@@ -218,7 +225,7 @@ export function ActionBlock({
                 className="h-6 px-1 text-xs bg-white/50 border-slate-300"
                 style={numInputWidth(action.offsetX)}
                 value={action.offsetX}
-                onChange={(e) => onUpdate({ ...action, offsetX: Number(e.target.value) })}
+                onChange={(e) => onUpdate({ ...action, offsetX: safeParseNum(e.target.value, action.offsetX) })}
               />
             </div>
             <div className="flex items-center gap-1">
@@ -229,7 +236,7 @@ export function ActionBlock({
                 className="h-6 px-1 text-xs bg-white/50 border-slate-300"
                 style={numInputWidth(action.offsetY)}
                 value={action.offsetY}
-                onChange={(e) => onUpdate({ ...action, offsetY: Number(e.target.value) })}
+                onChange={(e) => onUpdate({ ...action, offsetY: safeParseNum(e.target.value, action.offsetY) })}
               />
             </div>
           </>
@@ -256,7 +263,7 @@ export function ActionBlock({
               className="h-6 px-1 text-xs bg-white/50 border-slate-300"
               style={numInputWidth(action.delta)}
               value={action.delta}
-              onChange={(e) => onUpdate({ ...action, delta: Number(e.target.value) })}
+              onChange={(e) => onUpdate({ ...action, delta: safeParseNum(e.target.value, action.delta) })}
             />
           </div>
         )}
@@ -288,7 +295,7 @@ export function ActionBlock({
                     className="h-6 px-1 text-xs bg-white/50 border-slate-300"
                     style={numInputWidth(action.x ?? 0)}
                     value={action.x ?? 0}
-                    onChange={(e) => onUpdate({ ...action, x: Number(e.target.value) })}
+                    onChange={(e) => onUpdate({ ...action, x: safeParseNum(e.target.value, action.x ?? 0) })}
                   />
                 </div>
                 <div className="flex items-center gap-1">
@@ -299,7 +306,7 @@ export function ActionBlock({
                     className="h-6 px-1 text-xs bg-white/50 border-slate-300"
                     style={numInputWidth(action.y ?? 0)}
                     value={action.y ?? 0}
-                    onChange={(e) => onUpdate({ ...action, y: Number(e.target.value) })}
+                    onChange={(e) => onUpdate({ ...action, y: safeParseNum(e.target.value, action.y ?? 0) })}
                   />
                 </div>
               </>
