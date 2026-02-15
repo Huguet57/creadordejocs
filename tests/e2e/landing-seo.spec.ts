@@ -13,6 +13,6 @@ test("shows SEO landing and opens editor without login", async ({ page }) => {
 
   await page.getByTestId("landing-primary-cta").click()
 
-  await expect(page).toHaveURL(/\/editor$/)
+  await expect(page).toHaveURL(/\/editor\/templates$/)
   await expect(page.getByTestId("sidebar-sprites")).toBeVisible()
 })
