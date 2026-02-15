@@ -25,8 +25,12 @@ import type { ObjectActionDraft, ProjectV1, VariableType, VariableValue } from "
 import { type ObjectActionType } from "../editor-state/types.js"
 import { VariablePicker } from "./VariablePicker.js"
 
+function numInputWidth(raw: string, minCh: number): string {
+  return `${Math.max(minCh, raw.length + 2)}ch`
+}
+
 /** Numeric text input: free typing, auto-width, red border when invalid & unfocused */
-function NumInput({ value, onChange, className }: { value: number; onChange: (v: number) => void; className?: string }) {
+function NumInput({ value, onChange, className, minCh = 6 }: { value: number; onChange: (v: number) => void; className?: string; minCh?: number }) {
   const [raw, setRaw] = useState(String(value))
   const [focused, setFocused] = useState(false)
   const lastExternal = useRef(value)
@@ -43,14 +47,12 @@ function NumInput({ value, onChange, className }: { value: number; onChange: (v:
   const isValid = raw !== "" && Number.isFinite(parsed)
   const isError = !focused && !isValid
 
-  const ch = Math.max(6, raw.length + 2)
-
   return (
     <Input
       type="text"
       inputMode="numeric"
       className={`h-7 px-2 text-xs ${isError ? "border-red-400 bg-red-50" : "bg-white/50 border-slate-300"} ${className ?? ""}`}
-      style={{ width: `${ch}ch` }}
+      style={{ width: numInputWidth(raw, minCh) }}
       value={focused ? raw : String(value)}
       onChange={(e) => {
         setRaw(e.target.value)
@@ -309,7 +311,7 @@ export function ActionBlock({
         {action.type === "message" && (
           <>
             <div className="action-block-message-text-field flex items-center gap-1 flex-1">
-              <label className="text-[10px] font-medium opacity-60">Txt</label>
+              <label className="text-[10px] font-medium opacity-60">Msg</label>
               <Input
                 className="action-block-message-text-input h-7 w-full px-2 text-xs bg-white/50 border-slate-300"
                 value={action.text}
@@ -322,6 +324,7 @@ export function ActionBlock({
                 value={action.durationMs}
                 onChange={(value) => onUpdate({ ...action, durationMs: Math.max(1, Math.round(value)) })}
                 className="action-block-message-duration-input"
+                minCh={8}
               />
             </div>
           </>
@@ -350,6 +353,7 @@ export function ActionBlock({
               value={action.durationMs}
               onChange={(v) => onUpdate({ ...action, durationMs: Math.max(1, Math.round(v)) })}
               className="action-block-wait-ms"
+              minCh={8}
             />
           </div>
         )}
