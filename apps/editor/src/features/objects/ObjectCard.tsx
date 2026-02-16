@@ -23,7 +23,7 @@ export function ObjectCard({ objectName, spriteSrc, visible, solid, onToggleVisi
           {spriteSrc ? (
             <img
               src={spriteSrc}
-              alt={objectName}
+              alt=""
               className="objcard-sprite-img h-full w-full object-contain"
             />
           ) : (

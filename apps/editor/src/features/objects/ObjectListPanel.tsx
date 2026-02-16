@@ -54,11 +54,12 @@ export function ObjectListPanel({
           {objects.map((objectEntry) => (
             <div
               key={objectEntry.id}
-              className={`group flex items-center justify-between rounded px-2 py-1.5 transition-colors ${
+              className={`group flex cursor-pointer items-center justify-between rounded px-2 py-1.5 transition-colors ${
                 activeObjectId === objectEntry.id
                   ? "bg-white shadow-sm ring-1 ring-slate-200"
                   : "hover:bg-slate-100"
               }`}
+              onClick={() => onSelectObject(objectEntry.id)}
             >
               <button
                 type="button"

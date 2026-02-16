@@ -80,11 +80,12 @@ export function EventListPanel({
             return (
               <div
                 key={event.id}
-                className={`group flex items-center justify-between rounded px-2 py-1.5 transition-colors ${
+                className={`group flex cursor-pointer items-center justify-between rounded px-2 py-1.5 transition-colors ${
                   activeEventId === event.id
                     ? "bg-white shadow-sm ring-1 ring-slate-200"
                     : "hover:bg-slate-100"
                 }`}
+                onClick={() => onSelectEvent(event.id)}
               >
                 <button
                   type="button"
