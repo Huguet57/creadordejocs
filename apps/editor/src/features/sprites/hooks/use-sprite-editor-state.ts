@@ -12,7 +12,7 @@ export function useSpriteEditorState(spriteIds: string[], initialSpriteId: strin
   const [activeSpriteId, setActiveSpriteId] = useState<string | null>(defaultSpriteId)
   const [activeTool, setActiveTool] = useState<SpriteEditorTool>("pencil")
   const [activeColor, setActiveColor] = useState("#4F46E5FF")
-  const [zoom, setZoom] = useState(15)
+  const [zoom, setZoom] = useState(12)
 
   return {
     activeSpriteId,
