@@ -1,4 +1,4 @@
-import { Plus, Trash } from "lucide-react"
+import { Plus, Trash, X } from "lucide-react"
 import { useEffect, useState } from "react"
 import { Button } from "../../components/ui/button.js"
 import {
@@ -172,6 +172,9 @@ export function IfBlock({
   const [contextMenu, setContextMenu] = useState<IfContextMenuState>(null)
   const [draggedAction, setDraggedAction] = useState<{ actionId: string; branch: "then" | "else" } | null>(null)
   const [dropTarget, setDropTarget] = useState<{ actionId: string; position: "top" | "bottom" } | null>(null)
+  const hasElseContent = item.elseActions.length > 0
+  const [showElseManually, setShowElseManually] = useState(false)
+  const elseVisible = hasElseContent || showElseManually
 
   useEffect(() => {
     if (!contextMenu) {
@@ -566,41 +569,68 @@ export function IfBlock({
         </div>
       </div>
 
-      {/* ELSE label */}
-      <div className="if-block-else-label py-2 px-3 bg-blue-50 border-t border-b border-blue-200">
-        <span className="text-[11px] font-bold text-blue-500 uppercase tracking-wider">ELSE</span>
-      </div>
+      {/* ELSE — optional, shown when it has content or user explicitly opens it */}
+      {elseVisible ? (
+        <>
+          {/* ELSE label with close button when empty */}
+          <div className="if-block-else-label group py-2 px-3 bg-blue-50 border-t border-b border-blue-200 flex items-center justify-between">
+            <span className="text-[11px] font-bold text-blue-500 uppercase tracking-wider">ELSE</span>
+            {!hasElseContent && (
+              <button
+                type="button"
+                className="if-block-else-close h-5 w-5 flex items-center justify-center rounded text-slate-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={() => setShowElseManually(false)}
+                title="Amagar else"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </div>
 
-      {/* ELSE content — indented with left border */}
-      <div className="if-block-else-branch border-l-2 border-blue-200 ml-3 pl-3">
-        <div className="flex flex-col gap-px bg-slate-200">
-          {item.elseActions.length === 0 ? (
-            <div className="if-block-ghost-action px-3 py-2 bg-white">
-              <span className="text-[11px] italic text-slate-300">Cap acció definida</span>
+          {/* ELSE content — indented with left border */}
+          <div className="if-block-else-branch border-l-2 border-blue-200 ml-3 pl-3">
+            <div className="flex flex-col gap-px bg-slate-200">
+              {item.elseActions.length === 0 ? (
+                <div className="if-block-ghost-action px-3 py-2 bg-white">
+                  <span className="text-[11px] italic text-slate-300">Cap acció definida</span>
+                </div>
+              ) : (
+                renderBranchItems("else", item.elseActions)
+              )}
             </div>
-          ) : (
-            renderBranchItems("else", item.elseActions)
-          )}
-        </div>
-        <div className="if-block-else-add-row flex items-center gap-2 px-3 py-1.5">
-          <BranchAddButton
-            onOpen={() => onOpenActionPickerForBranch(item.id, "else")}
-          />
+            <div className="if-block-else-add-row flex items-center gap-2 px-3 py-1.5">
+              <BranchAddButton
+                onOpen={() => onOpenActionPickerForBranch(item.id, "else")}
+              />
+              <button
+                type="button"
+                className="if-block-branch-add-if-toggle flex items-center gap-1 px-2 py-1 text-[10px] text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                disabled={!defaultIfCondition}
+                onClick={() => {
+                  if (defaultIfCondition) {
+                    onAddIfBlock(defaultIfCondition, item.id, "else")
+                  }
+                }}
+              >
+                <Plus className="h-3 w-3" />
+                Add if block
+              </button>
+            </div>
+          </div>
+        </>
+      ) : (
+        /* "+ Afegir else" toggle button */
+        <div className="if-block-add-else-row flex items-center px-3 py-1.5 border-t border-blue-100">
           <button
             type="button"
-            className="if-block-branch-add-if-toggle flex items-center gap-1 px-2 py-1 text-[10px] text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-            disabled={!defaultIfCondition}
-            onClick={() => {
-              if (defaultIfCondition) {
-                onAddIfBlock(defaultIfCondition, item.id, "else")
-              }
-            }}
+            className="if-block-add-else-toggle flex items-center gap-1 px-2 py-1 text-[10px] text-slate-400 rounded hover:text-blue-600 hover:bg-blue-50 transition-colors"
+            onClick={() => setShowElseManually(true)}
           >
             <Plus className="h-3 w-3" />
-            Add if block
+            Afegir else
           </button>
         </div>
-      </div>
+      )}
     </div>
   )
 }
