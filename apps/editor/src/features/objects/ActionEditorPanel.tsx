@@ -108,6 +108,9 @@ export function ActionEditorPanel({
   onRemoveIfAction
 }: ActionEditorPanelProps) {
   const [isActionPickerOpen, setIsActionPickerOpen] = useState(false)
+  const collisionTargetName = activeEvent?.type === "Collision" && activeEvent.targetObjectId
+    ? selectableTargetObjects.find((obj) => obj.id === activeEvent.targetObjectId)?.name ?? null
+    : null
 
   if (!selectedObject) {
     return (
@@ -253,6 +256,7 @@ export function ActionEditorPanel({
                       rooms={rooms}
                       selectedObjectVariables={selectedObjectVariables}
                       eventType={activeEvent.type}
+                      collisionTargetName={collisionTargetName}
                     />
                   )
                 }
@@ -269,6 +273,7 @@ export function ActionEditorPanel({
                     allObjects={allObjects}
                     rooms={rooms}
                     eventType={activeEvent.type}
+                    collisionTargetName={collisionTargetName}
                     onUpdateIfCondition={onUpdateIfCondition}
                     onRemoveIfBlock={onRemoveIfBlock}
                     onAddIfBlock={onAddIfBlock}

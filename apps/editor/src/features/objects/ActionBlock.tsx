@@ -41,6 +41,7 @@ type ActionBlockProps = {
   rooms: ProjectV1["rooms"]
   selectedObjectVariables: ProjectV1["variables"]["global"]
   eventType: ObjectEventType
+  collisionTargetName?: string | null | undefined
 }
 
 const ACTION_ICONS: Partial<Record<ObjectActionDraft["type"], React.ElementType>> = {
@@ -122,7 +123,8 @@ export function ActionBlock({
   allObjects,
   rooms,
   selectedObjectVariables,
-  eventType
+  eventType,
+  collisionTargetName
 }: ActionBlockProps) {
   const Icon = ACTION_ICONS[action.type] ?? Move
   const objectVariableOptions = allObjects.flatMap((objectEntry) =>
@@ -169,6 +171,12 @@ export function ActionBlock({
       </div>
 
       <div className="action-block-fields flex-1 flex items-center gap-3 flex-wrap">
+        {action.type === "destroyOther" && collisionTargetName && (
+          <span className="action-block-destroy-target-pill inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">
+            {collisionTargetName}
+          </span>
+        )}
+
         {action.type === "move" && (
           <>
             <div className="flex items-center gap-1">

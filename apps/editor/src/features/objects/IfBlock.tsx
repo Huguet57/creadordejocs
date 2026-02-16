@@ -27,6 +27,7 @@ type IfBlockProps = {
   allObjects: ProjectV1["objects"]
   rooms: ProjectV1["rooms"]
   eventType: ObjectEventType
+  collisionTargetName?: string | null | undefined
   onUpdateIfCondition: (ifBlockId: string, condition: IfCondition) => void
   onRemoveIfBlock: (ifBlockId: string) => void
   onAddIfBlock: (condition: IfCondition, parentIfBlockId?: string, parentBranch?: "then" | "else") => void
@@ -137,6 +138,7 @@ export function IfBlock({
   allObjects,
   rooms,
   eventType,
+  collisionTargetName,
   onUpdateIfCondition,
   onRemoveIfBlock,
   onAddIfBlock,
@@ -182,6 +184,7 @@ export function IfBlock({
             rooms={rooms}
             selectedObjectVariables={selectedObjectVariables}
             eventType={eventType}
+            collisionTargetName={collisionTargetName}
           />
         )
       }
@@ -197,6 +200,7 @@ export function IfBlock({
           allObjects={allObjects}
           rooms={rooms}
           eventType={eventType}
+          collisionTargetName={collisionTargetName}
           onUpdateIfCondition={onUpdateIfCondition}
           onRemoveIfBlock={onRemoveIfBlock}
           onAddIfBlock={onAddIfBlock}
@@ -369,7 +373,13 @@ export function IfBlock({
       {/* THEN content — indented with left border */}
       <div className="if-block-then-branch border-l-2 border-blue-200 ml-3 pl-3">
         <div className="flex flex-col gap-px bg-slate-200">
-          {renderBranchItems("then", item.thenActions)}
+          {item.thenActions.length === 0 ? (
+            <div className="if-block-ghost-action px-3 py-2 bg-white">
+              <span className="text-[11px] italic text-slate-300">Cap acció definida</span>
+            </div>
+          ) : (
+            renderBranchItems("then", item.thenActions)
+          )}
         </div>
         <div className="if-block-then-add-row flex items-center gap-2 px-3 py-1.5">
           <BranchAddButton
@@ -400,7 +410,13 @@ export function IfBlock({
       {/* ELSE content — indented with left border */}
       <div className="if-block-else-branch border-l-2 border-blue-200 ml-3 pl-3">
         <div className="flex flex-col gap-px bg-slate-200">
-          {renderBranchItems("else", item.elseActions)}
+          {item.elseActions.length === 0 ? (
+            <div className="if-block-ghost-action px-3 py-2 bg-white">
+              <span className="text-[11px] italic text-slate-300">Cap acció definida</span>
+            </div>
+          ) : (
+            renderBranchItems("else", item.elseActions)
+          )}
         </div>
         <div className="if-block-else-add-row flex items-center gap-2 px-3 py-1.5">
           <BranchAddButton
