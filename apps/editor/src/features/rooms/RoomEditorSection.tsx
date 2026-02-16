@@ -8,7 +8,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent
 } from "react"
-import { Box, Grid3X3, Plus, X } from "lucide-react"
+import { Box, EyeOff, Grid3X3, Plus, X } from "lucide-react"
 import type { EditorController } from "../editor-state/use-editor-controller.js"
 import { Button } from "../../components/ui/button.js"
 import { resolveAssetSource } from "../assets/asset-source-resolver.js"
@@ -508,10 +508,11 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                   const instanceWidth = objectEntry?.width ?? DEFAULT_INSTANCE_SIZE
                   const instanceHeight = objectEntry?.height ?? DEFAULT_INSTANCE_SIZE
                   const stackedCount = activeRoomPositionCounts.get(getPositionKey(instanceEntry.x, instanceEntry.y)) ?? 1
+                  const isInvisible = objectEntry?.visible === false
                   return (
                     <div
                       key={instanceEntry.id}
-                      className={`mvp15-room-instance group absolute flex cursor-move items-center justify-center rounded text-[10px] ${spriteSource ? "" : "bg-blue-500 text-white"} ${draggingInstanceId === instanceEntry.id ? "opacity-30" : ""}`}
+                      className={`mvp15-room-instance group absolute flex cursor-move items-center justify-center rounded text-[10px] ${spriteSource ? "" : isInvisible ? "border border-dashed border-blue-400 bg-blue-100 text-blue-400" : "bg-blue-500 text-white"} ${draggingInstanceId === instanceEntry.id ? "opacity-30" : isInvisible ? "opacity-50" : ""}`}
                       style={{ left: instanceEntry.x, top: instanceEntry.y, width: instanceWidth, height: instanceHeight }}
                       draggable
                       onDragStart={(event) => {
@@ -543,12 +544,15 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                     >
                       {spriteSource ? (
                         <img
-                          className="mvp15-room-instance-sprite h-full w-full object-contain"
+                          className={`mvp15-room-instance-sprite h-full w-full object-contain ${isInvisible ? "opacity-40" : ""}`}
                           src={spriteSource}
                           alt={spriteEntry?.name ?? objectEntry?.name ?? "Sprite"}
                         />
                       ) : (
                         objectEntry?.name.slice(0, 2).toUpperCase() ?? "??"
+                      )}
+                      {isInvisible && (
+                        <EyeOff className="mvp20-room-instance-invisible-icon pointer-events-none absolute bottom-0 left-0 h-3 w-3 text-blue-500 opacity-80" />
                       )}
                       {stackedCount > 1 && (
                         <span className="mvp20-room-instance-stack-badge pointer-events-none absolute -right-1 -top-1 z-20 flex h-4 min-w-4 items-center justify-center rounded-full bg-slate-800 px-1 text-[9px] font-semibold leading-none text-white">
