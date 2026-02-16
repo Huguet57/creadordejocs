@@ -1,7 +1,7 @@
 import type { ProjectV1 } from "@creadordejocs/project-format"
 import type { RuntimeToast } from "./message-toast-utils.js"
 
-export const ROOM_WIDTH = 840
+export const ROOM_WIDTH = 832
 export const ROOM_HEIGHT = 480
 export const INSTANCE_SIZE = 32
 export const RUNTIME_TICK_MS = 80

@@ -4,7 +4,7 @@ import type { EditorController } from "../editor-state/use-editor-controller.js"
 import { Button } from "../../components/ui/button.js"
 import { resolveAssetSource } from "../assets/asset-source-resolver.js"
 
-const ROOM_WIDTH = 840
+const ROOM_WIDTH = 832
 const ROOM_HEIGHT = 480
 const ROOM_GRID_SIZE = 32
 const DRAG_SNAP_SIZE = 4
@@ -250,7 +250,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
           ) : (
             <div className="space-y-3">
               <div
-                className="mvp15-room-canvas mvp18-room-grid-canvas relative rounded-md border border-dashed border-slate-300 bg-white"
+                className="mvp15-room-canvas mvp18-room-grid-canvas relative border border-dashed border-slate-300 bg-white"
                 style={{
                   width: ROOM_WIDTH,
                   height: ROOM_HEIGHT,

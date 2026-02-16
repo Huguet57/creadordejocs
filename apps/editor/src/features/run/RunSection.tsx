@@ -5,7 +5,7 @@ import { Button } from "../../components/ui/button.js"
 import { resolveAssetSource } from "../assets/asset-source-resolver.js"
 import type { RuntimeMouseButton, RuntimeState } from "../editor-state/runtime.js"
 
-const ROOM_WIDTH = 840
+const ROOM_WIDTH = 832
 const ROOM_HEIGHT = 480
 
 type RunSectionProps = {
@@ -255,7 +255,7 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
             <div className="mvp17-run-canvas-wrapper relative" style={{ width: ROOM_WIDTH }}>
               <div
                 ref={canvasRef}
-                className="mvp15-run-canvas relative overflow-hidden rounded-md border border-dashed border-slate-300 bg-white"
+                className="mvp15-run-canvas relative overflow-hidden border border-dashed border-slate-300 bg-white"
                 style={{ width: ROOM_WIDTH, height: ROOM_HEIGHT }}
               >
                 {controller.activeRoom.instances.map((instanceEntry) => {

@@ -14,7 +14,7 @@ describe("room drag snapping", () => {
       clientY: 95,
       rectLeft: 10,
       rectTop: 20,
-      roomWidth: 840,
+      roomWidth: 832,
       roomHeight: 480,
       instanceWidth: 32,
       instanceHeight: 32,
@@ -30,13 +30,13 @@ describe("room drag snapping", () => {
       clientY: 5000,
       rectLeft: 0,
       rectTop: 0,
-      roomWidth: 840,
+      roomWidth: 832,
       roomHeight: 480,
       instanceWidth: 32,
       instanceHeight: 32,
       snapSize: 4
     })
 
-    expect(position).toEqual({ x: 808, y: 448 })
+    expect(position).toEqual({ x: 800, y: 448 })
   })
 })
