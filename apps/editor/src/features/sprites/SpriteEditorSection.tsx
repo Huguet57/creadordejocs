@@ -81,7 +81,7 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
         }))}
         activeSpriteId={selectedSprite?.id ?? null}
         onSelectSprite={(spriteId) => controller.setActiveSpriteId(spriteId)}
-        onAddSprite={(name) => controller.addSprite(name)}
+        onAddSprite={(name, width, height) => controller.addSprite(name, width, height)}
       />
 
       <div className="mvp16-sprite-editor-main flex flex-1 flex-col">

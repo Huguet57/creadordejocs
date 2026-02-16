@@ -2,6 +2,8 @@ import { Image, Plus } from "lucide-react"
 import { useState, type ChangeEvent, type KeyboardEvent } from "react"
 import { Button } from "../../../components/ui/button.js"
 
+const DEFAULT_SPRITE_DIMENSION = 32
+
 type SpriteListEntry = {
   id: string
   name: string
@@ -13,17 +15,29 @@ type SpriteListPanelProps = {
   sprites: SpriteListEntry[]
   activeSpriteId: string | null
   onSelectSprite: (spriteId: string) => void
-  onAddSprite: (name: string) => void
+  onAddSprite: (name: string, width: number, height: number) => void
 }
 
 export function SpriteListPanel({ sprites, activeSpriteId, onSelectSprite, onAddSprite }: SpriteListPanelProps) {
   const [isAdding, setIsAdding] = useState(false)
   const [newName, setNewName] = useState("Sprite nou")
+  const [newWidth, setNewWidth] = useState(String(DEFAULT_SPRITE_DIMENSION))
+  const [newHeight, setNewHeight] = useState(String(DEFAULT_SPRITE_DIMENSION))
+
+  const parseDimensionValue = (value: string): number => {
+    const parsedValue = Number.parseInt(value, 10)
+    if (!Number.isFinite(parsedValue) || parsedValue < 1) {
+      return DEFAULT_SPRITE_DIMENSION
+    }
+    return parsedValue
+  }
 
   const handleAdd = () => {
     if (!newName.trim()) return
-    onAddSprite(newName.trim())
+    onAddSprite(newName.trim(), parseDimensionValue(newWidth), parseDimensionValue(newHeight))
     setNewName("Sprite nou")
+    setNewWidth(String(DEFAULT_SPRITE_DIMENSION))
+    setNewHeight(String(DEFAULT_SPRITE_DIMENSION))
     setIsAdding(false)
   }
 
@@ -62,7 +76,8 @@ export function SpriteListPanel({ sprites, activeSpriteId, onSelectSprite, onAdd
 
       <div className="mvp16-sprite-list-footer border-t border-slate-200 bg-white p-3">
         {isAdding ? (
-          <div className="flex gap-2">
+          <div className="mvp16-sprite-list-add-form flex flex-col gap-2">
+            <span className="text-xs font-semibold text-slate-700">Add Sprite</span>
             <input
               value={newName}
               onChange={(event: ChangeEvent<HTMLInputElement>) => setNewName(event.target.value)}
@@ -70,11 +85,43 @@ export function SpriteListPanel({ sprites, activeSpriteId, onSelectSprite, onAdd
                 if (event.key === "Enter") handleAdd()
                 if (event.key === "Escape") setIsAdding(false)
               }}
-              className="flex h-8 w-full rounded-md border border-slate-300 bg-white px-3 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+              className="mvp16-sprite-list-name-input flex h-8 w-full rounded-md border border-slate-300 bg-white px-3 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
             />
-            <Button size="sm" className="h-8 w-8 shrink-0 px-0" onClick={handleAdd}>
-              <Plus className="h-4 w-4" />
-            </Button>
+            <div className="mvp16-sprite-list-add-details flex items-end gap-2">
+              <label className="mvp16-sprite-list-dimension-field flex min-w-0 flex-1 flex-col gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                Width
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={newWidth}
+                  onChange={(event: ChangeEvent<HTMLInputElement>) => setNewWidth(event.target.value)}
+                  onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
+                    if (event.key === "Enter") handleAdd()
+                    if (event.key === "Escape") setIsAdding(false)
+                  }}
+                  className="mvp16-sprite-list-dimension-input h-8 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-normal text-slate-700 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+                />
+              </label>
+              <label className="mvp16-sprite-list-dimension-field flex min-w-0 flex-1 flex-col gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                Height
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={newHeight}
+                  onChange={(event: ChangeEvent<HTMLInputElement>) => setNewHeight(event.target.value)}
+                  onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
+                    if (event.key === "Enter") handleAdd()
+                    if (event.key === "Escape") setIsAdding(false)
+                  }}
+                  className="mvp16-sprite-list-dimension-input h-8 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-normal text-slate-700 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+                />
+              </label>
+              <Button size="sm" className="mvp16-sprite-list-submit-button h-8 w-8 shrink-0 px-0" onClick={handleAdd}>
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         ) : (
           <Button variant="outline" size="sm" className="h-8 w-full text-xs" onClick={() => setIsAdding(true)}>
