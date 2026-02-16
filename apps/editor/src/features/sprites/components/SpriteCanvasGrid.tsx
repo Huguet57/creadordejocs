@@ -32,11 +32,17 @@ export function SpriteCanvasGrid({
   return (
     <div className="mvp16-sprite-grid-wrapper flex-1 overflow-auto bg-slate-50 p-4">
       <div
-        className="mvp16-sprite-grid inline-grid border border-slate-300 bg-white shadow-sm"
+        className="mvp16-sprite-grid inline-grid border border-slate-300 shadow-sm"
         style={{
           gridTemplateColumns: `repeat(${width}, ${zoom}px)`,
           gridTemplateRows: `repeat(${height}, ${zoom}px)`,
-          cursor: SPRITE_TOOL_BY_ID[activeTool]?.cursor ?? "default"
+          cursor: SPRITE_TOOL_BY_ID[activeTool]?.cursor ?? "default",
+          backgroundColor: "#ffffff",
+          backgroundImage:
+            "linear-gradient(45deg, #d0d0d0 25%, transparent 25%, transparent 75%, #d0d0d0 75%), " +
+            "linear-gradient(45deg, #d0d0d0 25%, transparent 25%, transparent 75%, #d0d0d0 75%)",
+          backgroundSize: `${Math.max(zoom, 8)}px ${Math.max(zoom, 8)}px`,
+          backgroundPosition: `0 0, ${Math.max(zoom, 8) / 2}px ${Math.max(zoom, 8) / 2}px`
         }}
         onMouseLeave={() => {
           setIsPointerDown(false)
