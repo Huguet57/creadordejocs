@@ -340,6 +340,7 @@ export function IfBlock({
           expectedType={selectedType}
           globalVariables={globalVariables}
           internalVariables={objectVarOptionsForPicker}
+          filterByExpectedType={false}
           allowOtherTarget={eventType === "Collision"}
           allowedSources={["globalVariable", "internalVariable", "attribute"]}
           variant="blue"

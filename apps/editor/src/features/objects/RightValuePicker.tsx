@@ -22,6 +22,7 @@ type RightValuePickerProps = {
   expectedType: "number" | "string" | "boolean"
   globalVariables: VariableOption[]
   internalVariables: ObjectVariableOption[]
+  filterByExpectedType?: boolean
   allowOtherTarget?: boolean
   allowedSources?: ("literal" | "random" | "attribute" | "internalVariable" | "globalVariable")[]
   onChange: (nextValue: ValueExpression) => void
@@ -44,6 +45,7 @@ export function RightValuePicker({
   expectedType,
   globalVariables,
   internalVariables,
+  filterByExpectedType = true,
   allowOtherTarget = false,
   allowedSources = ["literal", "random", "attribute", "internalVariable", "globalVariable"],
   onChange,
@@ -163,8 +165,12 @@ export function RightValuePicker({
   const canPickAttributes = allowedSources.includes("attribute")
   const canPickInternal = allowedSources.includes("internalVariable")
   const canPickGlobal = allowedSources.includes("globalVariable")
-  const filteredGlobal = canPickGlobal ? globalVariables.filter((v) => v.type === expectedType) : []
-  const filteredInternal = canPickInternal ? internalVariables.filter((v) => v.type === expectedType) : []
+  const filteredGlobal = canPickGlobal
+    ? globalVariables.filter((variable) => !filterByExpectedType || variable.type === expectedType)
+    : []
+  const filteredInternal = canPickInternal
+    ? internalVariables.filter((variable) => !filterByExpectedType || variable.type === expectedType)
+    : []
   const hasVariables = filteredGlobal.length > 0 || filteredInternal.length > 0
 
   const borderColor = variant === "blue" ? "border-blue-200" : "border-slate-300"
