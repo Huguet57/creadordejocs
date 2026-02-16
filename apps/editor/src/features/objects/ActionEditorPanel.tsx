@@ -355,9 +355,11 @@ export function ActionEditorPanel({
               {activeEvent.items.length === 0 && (
                 <div
                   className={`mvp22-empty-root-dropzone py-6 text-center ${
-                    dropTarget?.targetIfBlockId === undefined &&
-                    dropTarget?.targetBranch === undefined &&
-                    dropTarget?.targetActionId === undefined
+                    draggedActionId &&
+                    dropTarget &&
+                    dropTarget.targetIfBlockId === undefined &&
+                    dropTarget.targetBranch === undefined &&
+                    dropTarget.targetActionId === undefined
                       ? "ring-1 ring-blue-300 bg-blue-50/40"
                       : ""
                   }`}
