@@ -5,12 +5,10 @@ import {
   type IfCondition,
   type ObjectEventItem,
   type ObjectActionDraft,
-  type ObjectActionType,
   type ObjectIfBlockItem,
   type ObjectEventType
 } from "../editor-state/types.js"
 import { ActionBlock } from "./ActionBlock.js"
-import { ActionSelectorPanel } from "./ActionSelectorPanel.js"
 import type { ProjectV1, ValueExpression } from "@creadordejocs/project-format"
 import { buildDefaultIfCondition } from "./if-condition-utils.js"
 import { type ObjectVariableOption } from "./VariablePicker.js"
@@ -30,7 +28,7 @@ type IfBlockProps = {
   onUpdateIfCondition: (ifBlockId: string, condition: IfCondition) => void
   onRemoveIfBlock: (ifBlockId: string) => void
   onAddIfBlock: (condition: IfCondition, parentIfBlockId?: string, parentBranch?: "then" | "else") => void
-  onAddIfAction: (ifBlockId: string, type: ObjectActionType, branch: "then" | "else") => void
+  onOpenActionPickerForBranch: (ifBlockId: string, branch: "then" | "else") => void
   onMoveAction: (actionId: string, direction: "up" | "down") => void
   onCopyAction: (actionId: string) => void
   onPasteAfterAction: (actionId: string) => void
@@ -124,36 +122,19 @@ function getDefaultRightValueForType(type: "number" | "string" | "boolean"): Com
 }
 
 function BranchAddButton({
-  onAdd
+  onOpen
 }: {
-  onAdd: (type: ObjectActionType) => void
+  onOpen: () => void
 }) {
-  const [isOpen, setIsOpen] = useState(false)
-
-  if (!isOpen) {
-    return (
-      <button
-        type="button"
-        className="if-block-branch-add-toggle flex items-center gap-1 px-2 py-1 text-[10px] text-slate-400 rounded hover:text-blue-600 hover:bg-blue-50 transition-colors"
-        onClick={() => setIsOpen(true)}
-      >
-        <Plus className="h-3 w-3" />
-        Add action
-      </button>
-    )
-  }
-
   return (
-    <div className="if-action-selector-container min-h-[260px] w-full rounded-md border border-slate-200 bg-white">
-      <ActionSelectorPanel
-        classNamePrefix="if-action-selector"
-        onSelectAction={(type) => {
-          onAdd(type)
-          setIsOpen(false)
-        }}
-        onClose={() => setIsOpen(false)}
-      />
-    </div>
+    <button
+      type="button"
+      className="if-block-branch-add-toggle flex items-center gap-1 px-2 py-1 text-[10px] text-slate-400 rounded hover:text-blue-600 hover:bg-blue-50 transition-colors"
+      onClick={onOpen}
+    >
+      <Plus className="h-3 w-3" />
+      Add action
+    </button>
   )
 }
 
@@ -171,7 +152,7 @@ export function IfBlock({
   onUpdateIfCondition,
   onRemoveIfBlock,
   onAddIfBlock,
-  onAddIfAction,
+  onOpenActionPickerForBranch,
   onMoveAction,
   onCopyAction,
   onPasteAfterAction,
@@ -331,7 +312,7 @@ export function IfBlock({
             onUpdateIfCondition={onUpdateIfCondition}
             onRemoveIfBlock={onRemoveIfBlock}
             onAddIfBlock={onAddIfBlock}
-            onAddIfAction={onAddIfAction}
+            onOpenActionPickerForBranch={onOpenActionPickerForBranch}
             onMoveAction={onMoveAction}
             onCopyAction={onCopyAction}
             onPasteAfterAction={onPasteAfterAction}
@@ -566,7 +547,7 @@ export function IfBlock({
         </div>
         <div className="if-block-then-add-row flex items-center gap-2 px-3 py-1.5">
           <BranchAddButton
-            onAdd={(type) => onAddIfAction(item.id, type, "then")}
+            onOpen={() => onOpenActionPickerForBranch(item.id, "then")}
           />
           <button
             type="button"
@@ -602,7 +583,7 @@ export function IfBlock({
         </div>
         <div className="if-block-else-add-row flex items-center gap-2 px-3 py-1.5">
           <BranchAddButton
-            onAdd={(type) => onAddIfAction(item.id, type, "else")}
+            onOpen={() => onOpenActionPickerForBranch(item.id, "else")}
           />
           <button
             type="button"

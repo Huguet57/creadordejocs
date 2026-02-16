@@ -56,6 +56,11 @@ type ActionEditorPanelProps = {
   onRemoveIfAction: (ifBlockId: string, actionId: string, branch: "then" | "else") => void
 }
 
+type ActionPickerTarget =
+  | { kind: "event" }
+  | { kind: "ifBranch"; ifBlockId: string; branch: "then" | "else" }
+  | null
+
 export function ActionEditorPanel({
   selectedObject,
   activeEvent,
@@ -84,7 +89,7 @@ export function ActionEditorPanel({
   onUpdateIfAction,
   onRemoveIfAction
 }: ActionEditorPanelProps) {
-  const [isActionPickerOpen, setIsActionPickerOpen] = useState(false)
+  const [actionPickerTarget, setActionPickerTarget] = useState<ActionPickerTarget>(null)
   const [backgroundContextMenu, setBackgroundContextMenu] = useState<{ x: number; y: number } | null>(null)
   const [isCollisionTargetMenuOpen, setIsCollisionTargetMenuOpen] = useState(false)
   const [draggedActionId, setDraggedActionId] = useState<string | null>(null)
@@ -142,9 +147,16 @@ export function ActionEditorPanel({
     )
   }
 
-  const handleAddAction = (type: ObjectActionType) => {
-    onAddAction(type)
-    setIsActionPickerOpen(false)
+  const handleSelectAction = (type: ObjectActionType) => {
+    if (!actionPickerTarget) {
+      return
+    }
+    if (actionPickerTarget.kind === "event") {
+      onAddAction(type)
+    } else {
+      onAddIfAction(actionPickerTarget.ifBlockId, type, actionPickerTarget.branch)
+    }
+    setActionPickerTarget(null)
   }
 
   const defaultIfCondition = buildDefaultIfCondition(globalVariables, selectedObjectVariables)
@@ -348,7 +360,7 @@ export function ActionEditorPanel({
         )}
       </div>
 
-      {!isActionPickerOpen ? (
+      {!actionPickerTarget ? (
         <>
           <div
             className="flex-1 overflow-y-auto p-4"
@@ -455,7 +467,9 @@ export function ActionEditorPanel({
                         onUpdateIfCondition={onUpdateIfCondition}
                         onRemoveIfBlock={onRemoveIfBlock}
                         onAddIfBlock={onAddIfBlock}
-                        onAddIfAction={onAddIfAction}
+                        onOpenActionPickerForBranch={(ifBlockId, branch) =>
+                          setActionPickerTarget({ kind: "ifBranch", ifBlockId, branch })
+                        }
                         onMoveAction={onMoveAction}
                         onCopyAction={onCopyAction}
                         onPasteAfterAction={onPasteAfterAction}
@@ -498,7 +512,7 @@ export function ActionEditorPanel({
                 variant="outline"
                 size="sm"
                 className="mvp3-action-picker-toggle h-8 w-full justify-start text-xs"
-                onClick={() => setIsActionPickerOpen(true)}
+                onClick={() => setActionPickerTarget({ kind: "event" })}
               >
                 <Plus className="mr-2 h-3.5 w-3.5" />
                 Add Action
@@ -524,8 +538,8 @@ export function ActionEditorPanel({
       ) : (
         <ActionSelectorPanel
           classNamePrefix="mvp3-action-picker"
-          onSelectAction={handleAddAction}
-          onClose={() => setIsActionPickerOpen(false)}
+          onSelectAction={handleSelectAction}
+          onClose={() => setActionPickerTarget(null)}
         />
       )}
     </div>
