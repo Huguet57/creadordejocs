@@ -18,6 +18,7 @@ const MIN_CROP_PX = 4
 const HANDLE_RADIUS = 7
 const CANVAS_PAD = 80
 const SQUARE_IMAGE_INITIAL_MARGIN_RATIO = 0.1
+const MAX_OUTSIDE_RATIO = 0.1
 
 type DragMode = "move" | "nw" | "ne" | "sw" | "se" | null
 
@@ -271,10 +272,12 @@ export function SpriteImportCropModal({
     const orig = dragOrigin.crop
 
     if (dragMode === "move") {
+      const marginX = Math.round(imgW * MAX_OUTSIDE_RATIO)
+      const marginY = Math.round(imgH * MAX_OUTSIDE_RATIO)
       setCrop({
         ...orig,
-        x: clamp(Math.round(orig.x + dx), -(orig.width - 1), imgW - 1),
-        y: clamp(Math.round(orig.y + dy), -(orig.height - 1), imgH - 1)
+        x: clamp(Math.round(orig.x + dx), -marginX, imgW - orig.width + marginX),
+        y: clamp(Math.round(orig.y + dy), -marginY, imgH - orig.height + marginY)
       })
       return
     }
@@ -306,15 +309,38 @@ export function SpriteImportCropModal({
       signY = 1
     }
 
+    const marginX = Math.round(imgW * MAX_OUTSIDE_RATIO)
+    const marginY = Math.round(imgH * MAX_OUTSIDE_RATIO)
+
     const rawW = orig.width + signX * dx
     const newW = clamp(Math.round(Math.abs(rawW)), MIN_CROP_PX, maxCropDimension)
     const newH = clamp(Math.round(newW / aspectRatio), MIN_CROP_PX, maxCropDimension)
-    const finalW = Math.round(newH * aspectRatio)
+    let finalW = Math.round(newH * aspectRatio)
 
-    const newX = signX > 0 ? anchorX : anchorX - finalW
-    const newY = signY > 0 ? anchorY : anchorY - newH
+    let newX = signX > 0 ? anchorX : anchorX - finalW
+    let newY = signY > 0 ? anchorY : anchorY - newH
 
-    setCrop({ x: Math.round(newX), y: Math.round(newY), width: finalW, height: newH })
+    if (newX < -marginX) {
+      newX = -marginX
+      finalW = signX > 0 ? finalW : anchorX + marginX
+    }
+    if (newY < -marginY) {
+      newY = -marginY
+    }
+    if (newX + finalW > imgW + marginX) {
+      finalW = imgW + marginX - newX
+    }
+
+    const clampedH = Math.max(MIN_CROP_PX, Math.round(finalW / aspectRatio))
+    const clampedW = Math.round(clampedH * aspectRatio)
+
+    if (signX <= 0) newX = anchorX - clampedW
+    if (signY <= 0) newY = anchorY - clampedH
+
+    newX = clamp(Math.round(newX), -marginX, imgW + marginX - clampedW)
+    newY = clamp(Math.round(newY), -marginY, imgH + marginY - clampedH)
+
+    setCrop({ x: newX, y: newY, width: clampedW, height: clampedH })
   }
 
   const handlePointerUp = () => {
