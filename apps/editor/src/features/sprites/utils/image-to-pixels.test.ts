@@ -38,4 +38,10 @@ describe("cropRgbaPixels", () => {
     const result = cropRgbaPixels(source, 2, { x: 0, y: 0, width: 2, height: 1 })
     expect(Array.from(result)).toEqual(Array.from(source))
   })
+
+  it("fills transparent pixels when crop extends beyond image bounds", () => {
+    const source = new Uint8ClampedArray([...rgba(100, 100, 100)])
+    const result = cropRgbaPixels(source, 1, { x: -1, y: 0, width: 2, height: 1 }, 1)
+    expect(Array.from(result)).toEqual([...rgba(0, 0, 0, 0), ...rgba(100, 100, 100)])
+  })
 })

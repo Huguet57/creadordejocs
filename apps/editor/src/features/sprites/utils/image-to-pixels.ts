@@ -33,21 +33,32 @@ export function scaleNearestRgbaPixels(
 export function cropRgbaPixels(
   sourcePixels: Uint8ClampedArray,
   sourceWidth: number,
-  crop: CropRect
+  crop: CropRect,
+  sourceHeight?: number
 ): Uint8ClampedArray {
-  const cx = Math.max(0, Math.round(crop.x))
-  const cy = Math.max(0, Math.round(crop.y))
+  const cx = Math.round(crop.x)
+  const cy = Math.round(crop.y)
   const cw = Math.max(1, Math.round(crop.width))
   const ch = Math.max(1, Math.round(crop.height))
+  const srcH = sourceHeight ?? Math.ceil(sourcePixels.length / 4 / sourceWidth)
   const croppedPixels = new Uint8ClampedArray(cw * ch * 4)
   for (let y = 0; y < ch; y += 1) {
+    const sy = cy + y
     for (let x = 0; x < cw; x += 1) {
-      const srcIdx = ((cy + y) * sourceWidth + (cx + x)) * 4
+      const sx = cx + x
       const dstIdx = (y * cw + x) * 4
-      croppedPixels[dstIdx] = sourcePixels[srcIdx] ?? 0
-      croppedPixels[dstIdx + 1] = sourcePixels[srcIdx + 1] ?? 0
-      croppedPixels[dstIdx + 2] = sourcePixels[srcIdx + 2] ?? 0
-      croppedPixels[dstIdx + 3] = sourcePixels[srcIdx + 3] ?? 0
+      if (sx < 0 || sy < 0 || sx >= sourceWidth || sy >= srcH) {
+        croppedPixels[dstIdx] = 0
+        croppedPixels[dstIdx + 1] = 0
+        croppedPixels[dstIdx + 2] = 0
+        croppedPixels[dstIdx + 3] = 0
+      } else {
+        const srcIdx = (sy * sourceWidth + sx) * 4
+        croppedPixels[dstIdx] = sourcePixels[srcIdx] ?? 0
+        croppedPixels[dstIdx + 1] = sourcePixels[srcIdx + 1] ?? 0
+        croppedPixels[dstIdx + 2] = sourcePixels[srcIdx + 2] ?? 0
+        croppedPixels[dstIdx + 3] = sourcePixels[srcIdx + 3] ?? 0
+      }
     }
   }
   return croppedPixels
