@@ -663,32 +663,6 @@ export function SpriteListPanel({
                 <Trash2 className="h-3.5 w-3.5" />
                 Delete
               </button>
-              <button
-                type="button"
-                className="mvp16-sprite-tree-context-item flex h-7 w-full items-center gap-2 rounded px-2 text-left text-xs hover:bg-slate-100"
-                onClick={() => {
-                  onMoveSpriteToFolder(contextMenu.node.id, null)
-                  setContextMenu(null)
-                }}
-              >
-                <FolderOpen className="h-3.5 w-3.5" />
-                Move to root
-              </button>
-              {spriteFolders.map((folderEntry) => (
-                <button
-                  key={folderEntry.id}
-                  type="button"
-                  className="mvp16-sprite-tree-context-item flex h-7 w-full items-center gap-2 rounded px-2 text-left text-xs hover:bg-slate-100"
-                  onClick={() => {
-                    onMoveSpriteToFolder(contextMenu.node.id, folderEntry.id)
-                    setExpandedFolderIds((previous) => new Set([...previous, folderEntry.id]))
-                    setContextMenu(null)
-                  }}
-                >
-                  <Folder className="h-3.5 w-3.5 text-amber-500" />
-                  Move to {folderEntry.name}
-                </button>
-              ))}
             </>
           )}
         </div>
