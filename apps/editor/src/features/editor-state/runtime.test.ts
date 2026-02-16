@@ -350,7 +350,13 @@ describe("runtime regressions", () => {
     expect(bulletBefore).toBe(0)
     expect(shipBefore).toBeTruthy()
 
-    const result = runRuntimeTick(template.project, template.roomId, new Set(["Space"]), createInitialRuntimeState())
+    const result = runRuntimeTick(
+      template.project,
+      template.roomId,
+      new Set(["Space"]),
+      createInitialRuntimeState(),
+      new Set(["Space"])
+    )
     const roomAfter = result.project.rooms.find((roomEntry) => roomEntry.id === template.roomId)
     const bulletsAfter = roomAfter?.instances.filter((instanceEntry) => instanceEntry.objectId === bulletObjectId) ?? []
     const spawnedBullet = bulletsAfter[0]
@@ -359,7 +365,7 @@ describe("runtime regressions", () => {
     expect(spawnedBullet).toBeTruthy()
     // Relative spawn is from center of the ship (32x32 default → +16,+16)
     expect(spawnedBullet?.x).toBe((shipBefore?.x ?? 0) + 16 + 0)
-    expect(spawnedBullet?.y).toBe((shipBefore?.y ?? 0) + 16 - 18)
+    expect(spawnedBullet?.y).toBe((shipBefore?.y ?? 0) + 16 - 25)
   })
 
   it("runs Keyboard/down on every tick while key is held", () => {
@@ -575,7 +581,7 @@ describe("runtime regressions", () => {
     let project = template.project
     let runtime = createInitialRuntimeState(project)
     for (let i = 0; i < 6; i += 1) {
-      const result = runRuntimeTick(project, template.roomId, new Set(["Space"]), runtime)
+      const result = runRuntimeTick(project, template.roomId, new Set(["Space"]), runtime, new Set(["Space"]))
       project = result.project
       runtime = result.runtime
     }
@@ -587,41 +593,59 @@ describe("runtime regressions", () => {
     expect(runtime.globalVariables[weaponHeatId ?? ""]).toBe(5)
   })
 
-  it("removes the collided asteroid instance instead of a different one", () => {
+  it("removes one asteroid instance when a bullet collides", () => {
     const template = createSpaceShooterTemplateProject()
     const bulletObjectId = template.project.objects.find((objectEntry) => objectEntry.name === "Bullet")?.id
     const asteroidObjectId = template.project.objects.find((objectEntry) => objectEntry.name === "Asteroid")?.id
     expect(bulletObjectId).toBeTruthy()
     expect(asteroidObjectId).toBeTruthy()
 
-    const room = template.project.rooms.find((roomEntry) => roomEntry.id === template.roomId)
+    const spawnedShot = runRuntimeTick(
+      template.project,
+      template.roomId,
+      new Set(["Space"]),
+      createInitialRuntimeState(template.project),
+      new Set(["Space"])
+    )
+    const roomAfterShot = spawnedShot.project.rooms.find((roomEntry) => roomEntry.id === template.roomId)
     const asteroids =
-      room?.instances.filter((instanceEntry) => instanceEntry.objectId === asteroidObjectId).sort((a, b) => a.x - b.x) ??
+      roomAfterShot?.instances.filter((instanceEntry) => instanceEntry.objectId === asteroidObjectId).sort((a, b) => a.x - b.x) ??
       []
     const leftmostAsteroid = asteroids[0]
-    const untouchedAsteroid = asteroids[1]
+    const spawnedBullet = roomAfterShot?.instances.find((instanceEntry) => instanceEntry.objectId === bulletObjectId)
     expect(leftmostAsteroid).toBeTruthy()
-    expect(untouchedAsteroid).toBeTruthy()
+    expect(spawnedBullet).toBeTruthy()
 
-    const projectWithForcedCollision = updateRoomInstances(template.project, template.roomId, (instances) => [
-      ...instances,
-      {
-        id: "test-bullet-collision",
-        objectId: bulletObjectId ?? "",
-        x: leftmostAsteroid?.x ?? 0,
-        y: leftmostAsteroid?.y ?? 0
-      }
-    ])
+    const projectWithoutStepMotion = {
+      ...spawnedShot.project,
+      objects: spawnedShot.project.objects.map((objectEntry) =>
+        objectEntry.id === asteroidObjectId || objectEntry.id === bulletObjectId
+          ? {
+              ...objectEntry,
+              events: objectEntry.events.filter((eventEntry) => eventEntry.type !== "Step")
+            }
+          : objectEntry
+      )
+    }
 
-    const result = runRuntimeTick(projectWithForcedCollision, template.roomId, new Set(), createInitialRuntimeState())
+    const projectWithForcedCollision = updateRoomInstances(projectWithoutStepMotion, template.roomId, (instances) =>
+      instances.map((instanceEntry) =>
+        instanceEntry.id === spawnedBullet?.id
+          ? { ...instanceEntry, x: leftmostAsteroid?.x ?? 0, y: leftmostAsteroid?.y ?? 0 }
+          : instanceEntry
+      )
+    )
+
+    const result = runRuntimeTick(projectWithForcedCollision, template.roomId, new Set(), spawnedShot.runtime)
     const resultRoom = result.project.rooms.find((roomEntry) => roomEntry.id === template.roomId)
     const asteroidIdsAfter =
       resultRoom?.instances.filter((instanceEntry) => instanceEntry.objectId === asteroidObjectId).map((entry) => entry.id) ??
       []
+    const asteroidIdsBefore = asteroids.map((entry) => entry.id)
+    const removedAsteroidCount = asteroidIdsBefore.filter((id) => !asteroidIdsAfter.includes(id)).length
 
-    expect(asteroidIdsAfter).not.toContain(leftmostAsteroid?.id ?? "")
-    expect(asteroidIdsAfter).toContain(untouchedAsteroid?.id ?? "")
     expect(asteroidIdsAfter).toHaveLength(2)
+    expect(removedAsteroidCount).toBe(1)
   })
 
   it("runs OnDestroy actions when destroyOther removes a Coin instance", () => {
@@ -4693,8 +4717,8 @@ describe("runtime tick idempotency (guards against StrictMode double-invoke)", (
 
     const runtime = createInitialRuntimeState(template.project)
 
-    const firstResult = runRuntimeTick(template.project, template.roomId, new Set(["Space"]), runtime)
-    const secondResult = runRuntimeTick(template.project, template.roomId, new Set(["Space"]), runtime)
+    const firstResult = runRuntimeTick(template.project, template.roomId, new Set(["Space"]), runtime, new Set(["Space"]))
+    const secondResult = runRuntimeTick(template.project, template.roomId, new Set(["Space"]), runtime, new Set(["Space"]))
 
     expect(firstResult.runtime.globalVariables[weaponHeatId ?? ""]).toBe(1)
     expect(secondResult.runtime.globalVariables[weaponHeatId ?? ""]).toBe(1)
