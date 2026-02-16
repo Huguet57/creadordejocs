@@ -192,8 +192,18 @@ export function SpriteImportCropModal({
     if (!ctx) return
     ctx.imageSmoothingEnabled = false
     ctx.clearRect(0, 0, previewW, previewH)
-    ctx.drawImage(imageElement, crop.x, crop.y, crop.width, crop.height, 0, 0, previewW, previewH)
-  }, [crop, imageElement, previewH, previewW])
+
+    const tiny = document.createElement("canvas")
+    tiny.width = targetWidth
+    tiny.height = targetHeight
+    const tinyCtx = tiny.getContext("2d")
+    if (!tinyCtx) return
+    tinyCtx.imageSmoothingEnabled = false
+    tinyCtx.clearRect(0, 0, targetWidth, targetHeight)
+    tinyCtx.drawImage(imageElement, crop.x, crop.y, crop.width, crop.height, 0, 0, targetWidth, targetHeight)
+
+    ctx.drawImage(tiny, 0, 0, targetWidth, targetHeight, 0, 0, previewW, previewH)
+  }, [crop, imageElement, previewH, previewW, targetWidth, targetHeight])
 
   useEffect(() => {
     drawSource()
