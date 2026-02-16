@@ -136,8 +136,12 @@ export function isSpriteCompatibleWithObjectSize(
   spriteWidth: number,
   spriteHeight: number
 ): boolean {
-  return getNormalizedObjectSize(objectWidth) === getNormalizedObjectSize(spriteWidth) &&
-    getNormalizedObjectSize(objectHeight) === getNormalizedObjectSize(spriteHeight)
+  const normalizedObjectWidth = getNormalizedObjectSize(objectWidth)
+  const normalizedObjectHeight = getNormalizedObjectSize(objectHeight)
+  const normalizedSpriteWidth = getNormalizedObjectSize(spriteWidth)
+  const normalizedSpriteHeight = getNormalizedObjectSize(spriteHeight)
+
+  return normalizedObjectWidth * normalizedSpriteHeight === normalizedObjectHeight * normalizedSpriteWidth
 }
 
 export function resolveNextActiveSpriteIdAfterDelete(

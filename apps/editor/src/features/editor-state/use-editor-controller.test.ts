@@ -121,7 +121,12 @@ describe("isSpriteCompatibleWithObjectSize", () => {
     expect(isSpriteCompatibleWithObjectSize(32, 32, 32, 32)).toBe(true)
   })
 
-  it("returns false when width or height differ", () => {
+  it("returns true when sprite has the same aspect ratio", () => {
+    expect(isSpriteCompatibleWithObjectSize(32, 32, 64, 64)).toBe(true)
+    expect(isSpriteCompatibleWithObjectSize(64, 32, 32, 16)).toBe(true)
+  })
+
+  it("returns false when aspect ratio differs", () => {
     expect(isSpriteCompatibleWithObjectSize(32, 16, 16, 16)).toBe(false)
     expect(isSpriteCompatibleWithObjectSize(16, 32, 16, 16)).toBe(false)
   })

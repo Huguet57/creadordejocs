@@ -52,12 +52,35 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
   const selectedObjectVariableDefinitions = selectedObject
     ? controller.project.variables.objectByObjectId[selectedObject.id] ?? []
     : []
-  const compatibleSprites = useMemo(() => {
+  const pickerSprites = useMemo(() => {
     if (!selectedObject) return []
-    return sprites.filter((spriteEntry) =>
-      isSpriteCompatibleWithObjectSize(selectedObject.width, selectedObject.height, spriteEntry.width, spriteEntry.height)
+    const normalizedObjectWidth = Math.max(
+      1,
+      Math.round(typeof selectedObject.width === "number" && Number.isFinite(selectedObject.width) ? selectedObject.width : 32)
     )
-  }, [selectedObject, sprites])
+    const normalizedObjectHeight = Math.max(
+      1,
+      Math.round(typeof selectedObject.height === "number" && Number.isFinite(selectedObject.height) ? selectedObject.height : 32)
+    )
+
+    return sprites.map((spriteEntry) => ({
+      id: spriteEntry.id,
+      name: spriteEntry.name,
+      folderId: spriteEntry.folderId ?? null,
+      width: spriteEntry.width,
+      height: spriteEntry.height,
+      previewSrc: resolvedSpriteSources[spriteEntry.id] ?? null,
+      isCompatible: isSpriteCompatibleWithObjectSize(
+        selectedObject.width,
+        selectedObject.height,
+        spriteEntry.width,
+        spriteEntry.height
+      ),
+      isExactSize:
+        normalizedObjectWidth === Math.max(1, Math.round(spriteEntry.width)) &&
+        normalizedObjectHeight === Math.max(1, Math.round(spriteEntry.height))
+    }))
+  }, [resolvedSpriteSources, selectedObject, sprites])
   const globalVariablesWithSystem = [...controller.project.variables.global, ...SYSTEM_MOUSE_GLOBALS]
 
   const defaultActionFromType = (type: ObjectActionType): ObjectActionDraft | null => {
@@ -313,17 +336,16 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
           objectWidth={selectedObject.width ?? 32}
           objectHeight={selectedObject.height ?? 32}
           selectedObjectSpriteId={selectedObject.spriteId}
-          availableSprites={compatibleSprites.map((spriteEntry) => ({
-            id: spriteEntry.id,
-            name: spriteEntry.name,
-            width: spriteEntry.width,
-            height: spriteEntry.height
+          availableSprites={pickerSprites}
+          spriteFolders={(controller.project.resources.spriteFolders ?? []).map((folderEntry) => ({
+            id: folderEntry.id,
+            name: folderEntry.name,
+            parentId: folderEntry.parentId ?? null
           }))}
           onClose={() => setIsSpritePickerOpen(false)}
           onSelectExisting={(spriteId) => {
             const assigned = controller.assignSelectedObjectSprite(spriteId)
             if (assigned) {
-              controller.openSpriteEditor(spriteId)
               setIsSpritePickerOpen(false)
             }
           }}
