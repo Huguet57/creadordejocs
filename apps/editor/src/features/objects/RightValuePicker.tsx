@@ -175,7 +175,8 @@ export function RightValuePicker({
       return String(value.value)
     }
     if (value.source === "random") {
-      return `random(${value.min}, ${value.max}, ${value.step})`
+      const rangeText = `${value.min}↔${value.max}`
+      return value.step === 1 ? rangeText : `${rangeText}·pas${value.step}`
     }
     if (value.source === "attribute") {
       return `${value.target}.${value.attribute}`
