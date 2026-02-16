@@ -17,8 +17,6 @@ const templateIcons: Record<GameTemplateId, React.ElementType> = {
   "coin-dash": Coins,
   "space-shooter": Crosshair,
   "lane-crosser": Route,
-  "battery-courier": Coins,
-  "mine-reset": Route,
   "switch-vault": Waypoints,
   "cursor-courier": MousePointer2
 }

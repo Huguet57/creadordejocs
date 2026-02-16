@@ -3,21 +3,17 @@ import { createTemplateProject, GAME_TEMPLATES } from "./index.js"
 import type { GameTemplateId } from "./types.js"
 
 const INTERMEDIATE_TEMPLATE_IDS: GameTemplateId[] = [
-  "battery-courier",
-  "mine-reset",
-  "switch-vault"
-]
-const ADVANCED_TEMPLATE_IDS: GameTemplateId[] = [
+  "switch-vault",
   "cursor-courier"
 ]
+const ADVANCED_TEMPLATE_IDS: GameTemplateId[] = []
 const ELSE_ENABLED_TEMPLATE_IDS: GameTemplateId[] = [
-  "battery-courier",
-  "mine-reset",
   "lane-crosser",
   "switch-vault",
   "cursor-courier"
 ]
-const NESTED_IF_TEMPLATE_IDS: GameTemplateId[] = ["battery-courier", "mine-reset"]
+const NESTED_IF_TEMPLATE_IDS: GameTemplateId[] = []
+const DISTRIBUTED_LOGIC_TEMPLATE_IDS: GameTemplateId[] = ["switch-vault"]
 
 function projectHasIfBlocks(templateId: GameTemplateId): boolean {
   const created = createTemplateProject(templateId)
@@ -60,10 +56,10 @@ function itemsContainNestedIf(items: EventItems): boolean {
 }
 
 describe("template catalog", () => {
-  it("exposes exactly three intermediate templates", () => {
+  it("exposes exactly two intermediate templates", () => {
     const intermediate = GAME_TEMPLATES.filter((entry) => entry.difficulty === "intermediate")
 
-    expect(intermediate).toHaveLength(3)
+    expect(intermediate).toHaveLength(2)
     expect(intermediate.map((entry) => entry.id)).toEqual(INTERMEDIATE_TEMPLATE_IDS)
   })
 
@@ -75,11 +71,8 @@ describe("template catalog", () => {
     expect(projectHasIfBlocks(templateId)).toBe(true)
   })
 
-  it("exposes exactly one advanced template", () => {
-    const advanced = GAME_TEMPLATES.filter((entry) => entry.difficulty === "advanced")
-
-    expect(advanced).toHaveLength(1)
-    expect(advanced.map((entry) => entry.id)).toEqual(ADVANCED_TEMPLATE_IDS)
+  it("keeps advanced template ids empty", () => {
+    expect(ADVANCED_TEMPLATE_IDS).toEqual([])
   })
 
   it.each(ADVANCED_TEMPLATE_IDS)("builds %s with conditionals and mouse event usage", (templateId) => {
@@ -107,11 +100,7 @@ describe("template catalog", () => {
     expect(actionTypes.has("teleport")).toBe(true)
   })
 
-  it.each([
-    ["battery-courier", "copyVariable"],
-    ["mine-reset", "restartRoom"],
-    ["switch-vault", "goToRoom"]
-  ] as const)("builds %s with distinctive action %s", (templateId, actionType) => {
+  it.each([["switch-vault", "goToRoom"]] as const)("builds %s with distinctive action %s", (templateId, actionType) => {
     const created = createTemplateProject(templateId)
     const hasAction = created.project.objects.some((objectEntry) =>
       objectEntry.events.some((eventEntry) => itemsContainActionType(eventEntry.items, actionType))
@@ -120,7 +109,7 @@ describe("template catalog", () => {
     expect(hasAction).toBe(true)
   })
 
-  it.each(INTERMEDIATE_TEMPLATE_IDS)("distributes runtime logic beyond the focus object for %s", (templateId) => {
+  it.each(DISTRIBUTED_LOGIC_TEMPLATE_IDS)("distributes runtime logic beyond the focus object for %s", (templateId) => {
     const created = createTemplateProject(templateId)
     const nonFocusObjectsWithEvents = created.project.objects.filter(
       (objectEntry) => objectEntry.id !== created.focusObjectId && objectEntry.events.length > 0

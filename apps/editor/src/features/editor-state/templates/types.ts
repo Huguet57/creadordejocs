@@ -4,8 +4,6 @@ export type GameTemplateId =
   | "coin-dash"
   | "space-shooter"
   | "lane-crosser"
-  | "battery-courier"
-  | "mine-reset"
   | "switch-vault"
   | "cursor-courier"
 

@@ -1,8 +1,6 @@
-import { createBatteryCourierTemplateProject } from "./battery-courier-template.js"
 import { createCoinDashTemplateProject } from "./coin-dash-template.js"
 import { createCursorCourierTemplateProject } from "./cursor-courier-template.js"
 import { createLaneCrosserTemplateProject } from "./lane-crosser-template.js"
-import { createMineResetTemplateProject } from "./mine-reset-template.js"
 import { createSpaceShooterTemplateProject } from "./space-shooter-template.js"
 import { createSwitchVaultTemplateProject } from "./switch-vault-template.js"
 import type { GameTemplateId, TemplateProjectResult } from "./types.js"
@@ -27,18 +25,6 @@ export const GAME_TEMPLATES = [
     difficulty: "starter"
   },
   {
-    id: "battery-courier",
-    name: "Battery Courier",
-    description: "Carry batteries and transfer charge using object/global variable copy.",
-    difficulty: "intermediate"
-  },
-  {
-    id: "mine-reset",
-    name: "Mine Reset",
-    description: "Collect chips and survive mines that force a full room restart.",
-    difficulty: "intermediate"
-  },
-  {
     id: "switch-vault",
     name: "Switch Vault",
     description: "Toggle the control switch and travel to the vault only when it is unlocked.",
@@ -48,7 +34,7 @@ export const GAME_TEMPLATES = [
     id: "cursor-courier",
     name: "Cursor Courier",
     description: "Guide deliveries with mouse movement and hold-to-boost bursts.",
-    difficulty: "advanced"
+    difficulty: "intermediate"
   }
 ] as const
 
@@ -62,16 +48,13 @@ export function createTemplateProject(templateId: GameTemplateId): TemplateProje
   if (templateId === "lane-crosser") {
     return createLaneCrosserTemplateProject()
   }
-  if (templateId === "battery-courier") {
-    return createBatteryCourierTemplateProject()
-  }
-  if (templateId === "mine-reset") {
-    return createMineResetTemplateProject()
-  }
   if (templateId === "switch-vault") {
     return createSwitchVaultTemplateProject()
   }
-  return createCursorCourierTemplateProject()
+  if (templateId === "cursor-courier") {
+    return createCursorCourierTemplateProject()
+  }
+  return createSwitchVaultTemplateProject()
 }
 
 export type { GameTemplateDefinition, GameTemplateId, TemplateProjectResult } from "./types.js"
