@@ -198,10 +198,6 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
             objectId={selectedObject.id}
             objectName={selectedObject.name}
             spriteSrc={selectedObject.spriteId ? (resolvedSpriteSources[selectedObject.spriteId] ?? null) : null}
-            x={selectedObject.x}
-            y={selectedObject.y}
-            speed={selectedObject.speed}
-            direction={selectedObject.direction}
             width={selectedObject.width ?? 32}
             height={selectedObject.height ?? 32}
             visible={selectedObject.visible ?? true}

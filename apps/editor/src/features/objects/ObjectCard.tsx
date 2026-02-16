@@ -9,8 +9,6 @@ type ObjectCardProps = {
   onToggleSolid: (nextValue: boolean) => void
 }
 
-const BUILTIN_ATTRIBUTES = ["x", "y", "w", "h"] as const
-
 export function ObjectCard({ objectName, spriteSrc, visible, solid, onToggleVisible, onToggleSolid }: ObjectCardProps) {
   return (
     <div className="objcard-container border-b border-slate-200 bg-white p-3">
@@ -30,16 +28,6 @@ export function ObjectCard({ objectName, spriteSrc, visible, solid, onToggleVisi
           <span className="objcard-name truncate text-sm font-semibold text-slate-900">
             {objectName}
           </span>
-          <div className="objcard-attrs flex flex-wrap gap-1">
-            {BUILTIN_ATTRIBUTES.map((attr) => (
-              <span
-                key={attr}
-                className="objcard-attr-badge inline-flex rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500"
-              >
-                {attr}
-              </span>
-            ))}
-          </div>
           <div className="objcard-v2-toggle-list mt-1 flex flex-col gap-1">
             <label className="objcard-v2-toggle-row inline-flex items-center gap-2 text-[11px] text-slate-600">
               <input

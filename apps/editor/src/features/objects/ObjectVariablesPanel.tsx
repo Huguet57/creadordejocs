@@ -8,10 +8,6 @@ type ObjectVariablesPanelProps = {
   objectId: string
   objectName: string
   spriteSrc: string | null
-  x: number
-  y: number
-  speed: number
-  direction: number
   width: number
   height: number
   visible: boolean
@@ -25,7 +21,7 @@ type ObjectVariablesPanelProps = {
   onAddVariable: (objectId: string, name: string, type: VariableType, initialValue: VariableValue) => void
   onUpdateVariable: (objectId: string, variableId: string, name: string, initialValue: VariableValue) => void
   onRemoveVariable: (objectId: string, variableId: string) => void
-  onUpdateObjectNumber: (key: "x" | "y" | "speed" | "direction" | "width" | "height", value: number) => void
+  onUpdateObjectNumber: (key: "width" | "height", value: number) => void
   onUpdateObjectFlag: (key: "visible" | "solid", value: boolean) => void
 }
 
@@ -51,10 +47,6 @@ export function ObjectVariablesPanel({
   objectId,
   objectName,
   spriteSrc,
-  x,
-  y,
-  speed,
-  direction,
   width,
   height,
   visible,
@@ -114,10 +106,6 @@ export function ObjectVariablesPanel({
       <div className="mvpv2-object-attrs-grid border-b border-slate-200 bg-white p-2">
         <div className="grid grid-cols-2 gap-1.5">
           {([
-            { key: "x", label: "x", value: x, min: undefined },
-            { key: "y", label: "y", value: y, min: undefined },
-            { key: "speed", label: "speed", value: speed, min: undefined },
-            { key: "direction", label: "direction", value: direction, min: undefined },
             { key: "width", label: "width", value: width, min: 1 },
             { key: "height", label: "height", value: height, min: 1 }
           ] as const).map((attributeEntry) => (
