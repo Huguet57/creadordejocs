@@ -255,7 +255,7 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
             <div className="mvp17-run-canvas-wrapper relative" style={{ width: ROOM_WIDTH }}>
               <div
                 ref={canvasRef}
-                className="mvp15-run-canvas relative overflow-hidden border border-dashed border-slate-300 bg-white"
+                className="mvp15-run-canvas relative overflow-hidden border-b border-slate-200 bg-white"
                 style={{ width: ROOM_WIDTH, height: ROOM_HEIGHT }}
               >
                 {controller.activeRoom.instances.map((instanceEntry) => {

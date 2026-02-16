@@ -250,7 +250,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
           ) : (
             <div className="space-y-3">
               <div
-                className="mvp15-room-canvas mvp18-room-grid-canvas relative border border-dashed border-slate-300 bg-white"
+                className="mvp15-room-canvas mvp18-room-grid-canvas relative border-b border-slate-200 bg-white"
                 style={{
                   width: ROOM_WIDTH,
                   height: ROOM_HEIGHT,
