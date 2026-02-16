@@ -52,7 +52,7 @@ function ConnectivitySelector({ selectedConnectivity, onSelect }: ConnectivitySe
 }
 
 function EmptyOptions() {
-  return <p className="text-[10px] text-slate-500">Aquesta eina no te opcions.</p>
+  return <p className="text-[10px] text-slate-500">Aquesta eina no té opcions.</p>
 }
 
 export function ToolOptionsPanel({
