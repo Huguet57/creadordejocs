@@ -143,6 +143,8 @@ export function IfBlock({
     ? item.condition
     : ensureComparisonIfCondition(item.condition.conditions[0], fallbackComparisonCondition)
   const [contextMenu, setContextMenu] = useState<IfContextMenuState>(null)
+  const [draggedAction, setDraggedAction] = useState<{ actionId: string; branch: "then" | "else" } | null>(null)
+  const [dropTarget, setDropTarget] = useState<{ actionId: string; position: "top" | "bottom" } | null>(null)
 
   useEffect(() => {
     if (!contextMenu) {
@@ -159,6 +161,32 @@ export function IfBlock({
     type: v.type,
     objectName: ""
   }))
+  const moveActionBySteps = (actionId: string, direction: "up" | "down", steps: number) => {
+    for (let index = 0; index < steps; index += 1) {
+      onMoveAction(actionId, direction)
+    }
+  }
+  const getCanonicalBranchDropTarget = (
+    items: ObjectEventItem[],
+    hoveredActionId: string,
+    hoveredPosition: "top" | "bottom"
+  ): { actionId: string; position: "top" | "bottom" } => {
+    const actionIds = items
+      .filter((itemEntry) => itemEntry.type === "action")
+      .map((itemEntry) => itemEntry.action.id)
+    const hoveredIndex = actionIds.findIndex((actionId) => actionId === hoveredActionId)
+    if (hoveredIndex < 0) {
+      return { actionId: hoveredActionId, position: hoveredPosition }
+    }
+    if (hoveredPosition === "bottom") {
+      const nextActionId = actionIds[hoveredIndex + 1]
+      if (nextActionId) {
+        // Normalize "between two actions" to one visual target: top of the next action.
+        return { actionId: nextActionId, position: "top" }
+      }
+    }
+    return { actionId: hoveredActionId, position: hoveredPosition }
+  }
 
   const renderBranchItems = (branch: "then" | "else", items: ObjectEventItem[]) => {
     return items.map((branchItem, branchIndex) => {
@@ -186,6 +214,49 @@ export function IfBlock({
             selectedObjectVariables={selectedObjectVariables}
             eventType={eventType}
             collisionTargetName={collisionTargetName}
+            isDragging={draggedAction?.actionId === branchItem.action.id}
+            dropIndicator={dropTarget?.actionId === branchItem.action.id ? dropTarget.position : null}
+            onDragStartAction={(actionId) => {
+              setDraggedAction({ actionId, branch })
+              setDropTarget(null)
+            }}
+            onDragOverAction={(actionId, position) => {
+              if (!draggedAction || draggedAction.actionId === actionId || draggedAction.branch !== branch) {
+                return
+              }
+              setDropTarget(getCanonicalBranchDropTarget(items, actionId, position))
+            }}
+            onDropOnAction={(targetActionId, position) => {
+              if (draggedAction?.branch !== branch) {
+                return
+              }
+              const canonicalDropTarget = getCanonicalBranchDropTarget(items, targetActionId, position)
+              const sourceIndex = items.findIndex(
+                (itemEntry) => itemEntry.type === "action" && itemEntry.action.id === draggedAction.actionId
+              )
+              const targetIndex = items.findIndex(
+                (itemEntry) => itemEntry.type === "action" && itemEntry.action.id === canonicalDropTarget.actionId
+              )
+              if (sourceIndex >= 0 && targetIndex >= 0) {
+                const desiredIndexBeforeRemoval = canonicalDropTarget.position === "top" ? targetIndex : targetIndex + 1
+                const desiredIndexAfterRemoval =
+                  sourceIndex < desiredIndexBeforeRemoval ? desiredIndexBeforeRemoval - 1 : desiredIndexBeforeRemoval
+                const steps = Math.abs(sourceIndex - desiredIndexAfterRemoval)
+                if (steps > 0) {
+                  moveActionBySteps(
+                    draggedAction.actionId,
+                    sourceIndex < desiredIndexAfterRemoval ? "down" : "up",
+                    steps
+                  )
+                }
+              }
+              setDraggedAction(null)
+              setDropTarget(null)
+            }}
+            onDragEndAction={() => {
+              setDraggedAction(null)
+              setDropTarget(null)
+            }}
           />
         )
       }

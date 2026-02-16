@@ -1,6 +1,4 @@
 import {
-  ChevronDown,
-  ChevronUp,
   CopyPlus,
   Flag,
   Maximize,
@@ -16,7 +14,8 @@ import {
   DoorOpen,
   RotateCcw,
   Hourglass,
-  MessageSquare
+  MessageSquare,
+  GripVertical
 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { Button } from "../../components/ui/button.js"
@@ -46,6 +45,12 @@ type ActionBlockProps = {
   selectedObjectVariables: ProjectV1["variables"]["global"]
   eventType: ObjectEventType
   collisionTargetName?: string | null | undefined
+  isDragging?: boolean
+  dropIndicator?: "top" | "bottom" | null
+  onDragStartAction?: (actionId: string) => void
+  onDragOverAction?: (actionId: string, position: "top" | "bottom") => void
+  onDropOnAction?: (actionId: string, position: "top" | "bottom") => void
+  onDragEndAction?: () => void
 }
 
 type ActionContextMenuState = {
@@ -119,11 +124,7 @@ function canBeNumericExpression(value: ValueExpression): boolean {
 
 export function ActionBlock({
   action,
-  isFirst,
-  isLast,
   onUpdate,
-  onMoveUp,
-  onMoveDown,
   onRemove,
   onCopy,
   onPaste,
@@ -136,7 +137,13 @@ export function ActionBlock({
   rooms,
   selectedObjectVariables,
   eventType,
-  collisionTargetName
+  collisionTargetName,
+  isDragging = false,
+  dropIndicator = null,
+  onDragStartAction,
+  onDragOverAction,
+  onDropOnAction,
+  onDragEndAction
 }: ActionBlockProps) {
   const Icon = ACTION_ICONS[action.type] ?? Move
   const objectVariableOptions = allObjects.flatMap((objectEntry) =>
@@ -185,7 +192,9 @@ export function ActionBlock({
 
   return (
     <div
-      className="action-block-container group relative flex items-center gap-3 py-2 px-3 bg-slate-50 hover:bg-slate-100/60 transition-colors"
+      className={`action-block-container group relative flex items-center gap-3 py-2 px-3 bg-slate-50 hover:bg-slate-100/60 transition-colors ${
+        isDragging ? "mvp18-action-block-dragging opacity-45" : ""
+      }`}
       onContextMenu={(event) => {
         event.preventDefault()
         setContextMenu({
@@ -193,7 +202,47 @@ export function ActionBlock({
           y: event.clientY
         })
       }}
+      onDragOver={(event) => {
+        if (!onDropOnAction) {
+          return
+        }
+        event.preventDefault()
+        const targetRect = event.currentTarget.getBoundingClientRect()
+        const relativeY = event.clientY - targetRect.top
+        const position: "top" | "bottom" = relativeY < targetRect.height / 2 ? "top" : "bottom"
+        onDragOverAction?.(action.id, position)
+      }}
+      onDrop={(event) => {
+        if (!onDropOnAction) {
+          return
+        }
+        event.preventDefault()
+        const targetRect = event.currentTarget.getBoundingClientRect()
+        const relativeY = event.clientY - targetRect.top
+        const position: "top" | "bottom" = relativeY < targetRect.height / 2 ? "top" : "bottom"
+        onDropOnAction(action.id, position)
+      }}
     >
+      {dropIndicator === "top" && (
+        <div className="mvp18-action-drop-indicator-top pointer-events-none absolute left-2 right-2 top-0 h-0.5 bg-blue-500" />
+      )}
+      {dropIndicator === "bottom" && (
+        <div className="mvp18-action-drop-indicator-bottom pointer-events-none absolute left-2 right-2 bottom-0 h-0.5 bg-blue-500" />
+      )}
+      <button
+        type="button"
+        draggable
+        className="mvp18-action-drag-handle flex h-6 w-6 shrink-0 items-center justify-center rounded text-slate-300 hover:bg-slate-200 hover:text-slate-600 active:cursor-grabbing cursor-grab"
+        title="Reorder action"
+        onDragStart={(event) => {
+          event.dataTransfer.setData("text/plain", action.id)
+          event.dataTransfer.effectAllowed = "move"
+          onDragStartAction?.(action.id)
+        }}
+        onDragEnd={() => onDragEndAction?.()}
+      >
+        <GripVertical className="h-3.5 w-3.5" />
+      </button>
       <div className="action-block-label flex items-center gap-1.5 min-w-[90px] shrink-0">
         <Icon className="h-3.5 w-3.5 text-slate-400 shrink-0" />
         <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 leading-tight">
@@ -716,26 +765,6 @@ export function ActionBlock({
       </div>
 
       <div className="action-block-controls flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6 text-slate-400 hover:text-slate-700"
-          disabled={isFirst}
-          onClick={onMoveUp}
-          title="Move up"
-        >
-          <ChevronUp className="h-3.5 w-3.5" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6 text-slate-400 hover:text-slate-700"
-          disabled={isLast}
-          onClick={onMoveDown}
-          title="Move down"
-        >
-          <ChevronDown className="h-3.5 w-3.5" />
-        </Button>
         <Button
           variant="ghost"
           size="icon"
