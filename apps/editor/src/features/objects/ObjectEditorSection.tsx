@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import type { ObjectActionDraft } from "@creadordejocs/project-format"
 import type { EditorController } from "../editor-state/use-editor-controller.js"
 import { SYSTEM_MOUSE_GLOBALS, type IfCondition, type ObjectActionType } from "../editor-state/types.js"
+import { resolveAssetSource } from "../assets/asset-source-resolver.js"
 import { ObjectListPanel } from "./ObjectListPanel.js"
 import { ObjectVariablesPanel } from "./ObjectVariablesPanel.js"
 import { EventListPanel } from "./EventListPanel.js"
@@ -15,6 +16,31 @@ type ObjectEditorSectionProps = {
 export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
   const [activeEventId, setActiveEventId] = useState<string | null>(null)
   const [selectNewestListener, setSelectNewestListener] = useState(false)
+  const [resolvedSpriteSources, setResolvedSpriteSources] = useState<Record<string, string>>({})
+
+  const sprites = controller.project.resources.sprites
+
+  useEffect(() => {
+    let cancelled = false
+
+    const resolveSprites = async () => {
+      const pairs = await Promise.all(
+        sprites.map(async (spriteEntry) => {
+          const resolved = await resolveAssetSource(spriteEntry.assetSource)
+          return [spriteEntry.id, resolved ?? ""] as const
+        })
+      )
+      if (!cancelled) {
+        setResolvedSpriteSources(Object.fromEntries(pairs))
+      }
+    }
+
+    void resolveSprites()
+
+    return () => {
+      cancelled = true
+    }
+  }, [sprites])
 
   const selectedObject = controller.selectedObject
   const selectableTargetObjects = useMemo(
@@ -170,6 +196,8 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
         <>
           <ObjectVariablesPanel
             objectId={selectedObject.id}
+            objectName={selectedObject.name}
+            spriteSrc={selectedObject.spriteId ? (resolvedSpriteSources[selectedObject.spriteId] ?? null) : null}
             variables={selectedObjectVariableDefinitions}
             onAddVariable={(objectId, name, type, initialValue) =>
               controller.addObjectVariable(objectId, name, type, initialValue)

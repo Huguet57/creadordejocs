@@ -2,9 +2,12 @@ import { Plus, X } from "lucide-react"
 import { useCallback, useMemo, useState, type KeyboardEvent } from "react"
 import type { VariableType, VariableValue } from "@creadordejocs/project-format"
 import { Button } from "../../components/ui/button.js"
+import { ObjectCard } from "./ObjectCard.js"
 
 type ObjectVariablesPanelProps = {
   objectId: string
+  objectName: string
+  spriteSrc: string | null
   variables: {
     id: string
     name: string
@@ -36,6 +39,8 @@ function formatInputValue(type: VariableType, value: VariableValue): string {
 
 export function ObjectVariablesPanel({
   objectId,
+  objectName,
+  spriteSrc,
   variables,
   onAddVariable,
   onUpdateVariable,
@@ -74,6 +79,8 @@ export function ObjectVariablesPanel({
 
   return (
     <aside className="mvpv1-object-vars-panel flex w-[220px] flex-col border-r border-slate-200 bg-slate-50">
+      <ObjectCard objectName={objectName} spriteSrc={spriteSrc} />
+
       <div className="flex items-center justify-between border-b border-slate-200 p-3">
         <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Variables</span>
       </div>
