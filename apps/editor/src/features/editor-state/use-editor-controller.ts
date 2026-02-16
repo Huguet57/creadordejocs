@@ -13,6 +13,7 @@ import {
   createEmptyProjectV1,
   createRoom,
   incrementMetric,
+  insertObjectEventItem as insertObjectEventItemModel,
   moveObjectEventAction as moveObjectEventActionModel,
   moveSpriteFolder as moveSpriteFolderModel,
   moveSpriteToFolder as moveSpriteToFolderModel,
@@ -42,6 +43,7 @@ import {
   updateSpriteAssetSource,
   updateSpritePixelsRgba,
   type ObjectActionDraft,
+  type ObjectEventItem,
   type IfCondition,
   type VariableType,
   type VariableValue,
@@ -718,6 +720,18 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       pushProjectChange(
         moveObjectEventActionModel(project, { objectId: selectedObject.id, eventId, actionId, direction }),
         "Reorder event action"
+      )
+    },
+    insertObjectEventItem(eventId: string, item: ObjectEventItem, afterItemId?: string) {
+      if (!selectedObject) return
+      pushProjectChange(
+        insertObjectEventItemModel(project, {
+          objectId: selectedObject.id,
+          eventId,
+          item,
+          ...(afterItemId ? { afterItemId } : {})
+        }),
+        "Paste event action"
       )
     },
     addObjectEventIfBlock(

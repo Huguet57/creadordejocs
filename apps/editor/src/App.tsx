@@ -95,7 +95,10 @@ function EditorAppShell() {
   }, [])
 
   return (
-    <main className="mvp15-editor-shell min-h-screen bg-slate-50 px-4 py-4 text-slate-900">
+    <main
+      className="mvp15-editor-shell min-h-screen bg-slate-50 px-4 py-4 text-slate-900"
+      onContextMenu={(event) => event.preventDefault()}
+    >
       <div className="mvp15-editor-frame mx-auto flex max-w-7xl flex-col gap-3">
         <div className="flex items-center justify-between px-1">
           <p data-testid="save-status" className="text-xs text-slate-400">

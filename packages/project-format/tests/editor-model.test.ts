@@ -11,6 +11,8 @@ import {
   deleteSprite,
   deleteSpriteFolder,
   moveObjectEventAction,
+  cloneObjectEventItemForPaste,
+  insertObjectEventItem,
   moveSpriteFolder,
   moveSpriteToFolder,
   moveRoomInstance,
@@ -643,6 +645,195 @@ describe("editor model helpers", () => {
         expect(nestedAfterMove.thenActions[0].action.id).toBe(secondNestedActionId)
         expect(nestedAfterMove.thenActions[1].action.id).toBe(firstNestedActionId)
       }
+    }
+  })
+
+  it("clones event items deeply with regenerated ids", () => {
+    const initial = createEmptyProjectV1("Clone event item")
+    const objectResult = quickCreateObject(initial, { name: "Player" })
+    const withEvent = addObjectEvent(objectResult.project, { objectId: objectResult.objectId, type: "Step" })
+    const eventId = withEvent.objects[0]?.events[0]?.id
+    if (!eventId) {
+      throw new Error("Expected event to be created")
+    }
+
+    const withRootIf = addObjectEventIfBlock(withEvent, {
+      objectId: objectResult.objectId,
+      eventId,
+      condition: {
+        left: { scope: "global", variableId: "gv-root" },
+        operator: "==",
+        right: 1
+      }
+    })
+    const rootIf = withRootIf.objects[0]?.events[0]?.items.find((entry) => entry.type === "if")
+    if (rootIf?.type !== "if") {
+      throw new Error("Expected root if block")
+    }
+
+    const withThenAction = addObjectEventIfAction(withRootIf, {
+      objectId: objectResult.objectId,
+      eventId,
+      ifBlockId: rootIf.id,
+      branch: "then",
+      action: { type: "changeScore", delta: 4 }
+    })
+    const withNestedIf = addObjectEventIfBlock(withThenAction, {
+      objectId: objectResult.objectId,
+      eventId,
+      parentIfBlockId: rootIf.id,
+      parentBranch: "else",
+      condition: {
+        left: { scope: "object", variableId: "ov-health" },
+        operator: ">",
+        right: 0
+      }
+    })
+    const rootIfWithChildren = withNestedIf.objects[0]?.events[0]?.items.find(
+      (entry) => entry.type === "if" && entry.id === rootIf.id
+    )
+    if (rootIfWithChildren?.type !== "if") {
+      throw new Error("Expected if block with children")
+    }
+
+    const cloned = cloneObjectEventItemForPaste(rootIfWithChildren)
+    expect(cloned.type).toBe("if")
+    if (cloned.type === "if") {
+      expect(cloned.id).not.toBe(rootIfWithChildren.id)
+      expect(cloned.condition).toEqual(rootIfWithChildren.condition)
+      expect(cloned.thenActions[0]?.type).toBe("action")
+      expect(cloned.elseActions[0]?.type).toBe("if")
+
+      const originalThenAction =
+        rootIfWithChildren.thenActions[0]?.type === "action" ? rootIfWithChildren.thenActions[0] : null
+      const clonedThenAction = cloned.thenActions[0]?.type === "action" ? cloned.thenActions[0] : null
+      expect(clonedThenAction?.id).not.toBe(originalThenAction?.id)
+      expect(clonedThenAction?.action.id).not.toBe(originalThenAction?.action.id)
+
+      const originalNestedIf = rootIfWithChildren.elseActions[0]?.type === "if" ? rootIfWithChildren.elseActions[0] : null
+      const clonedNestedIf = cloned.elseActions[0]?.type === "if" ? cloned.elseActions[0] : null
+      expect(clonedNestedIf?.id).not.toBe(originalNestedIf?.id)
+      expect(clonedNestedIf?.condition).toEqual(originalNestedIf?.condition)
+    }
+  })
+
+  it("inserts a cloned item after a nested action id", () => {
+    const initial = createEmptyProjectV1("Insert cloned event item")
+    const objectResult = quickCreateObject(initial, { name: "Player" })
+    const withEvent = addObjectEvent(objectResult.project, { objectId: objectResult.objectId, type: "Step" })
+    const eventId = withEvent.objects[0]?.events[0]?.id
+    if (!eventId) {
+      throw new Error("Expected event to be created")
+    }
+
+    const withIf = addObjectEventIfBlock(withEvent, {
+      objectId: objectResult.objectId,
+      eventId,
+      condition: {
+        left: { scope: "global", variableId: "gv-test" },
+        operator: "==",
+        right: 1
+      }
+    })
+    const rootIf = withIf.objects[0]?.events[0]?.items.find((entry) => entry.type === "if")
+    if (rootIf?.type !== "if") {
+      throw new Error("Expected root if block")
+    }
+
+    const withFirstNestedAction = addObjectEventIfAction(withIf, {
+      objectId: objectResult.objectId,
+      eventId,
+      ifBlockId: rootIf.id,
+      branch: "then",
+      action: { type: "changeScore", delta: 1 }
+    })
+    const withSecondNestedAction = addObjectEventIfAction(withFirstNestedAction, {
+      objectId: objectResult.objectId,
+      eventId,
+      ifBlockId: rootIf.id,
+      branch: "then",
+      action: { type: "changeScore", delta: 2 }
+    })
+
+    const beforeInsertRoot = withSecondNestedAction.objects[0]?.events[0]?.items.find(
+      (entry) => entry.type === "if" && entry.id === rootIf.id
+    )
+    if (
+      beforeInsertRoot?.type !== "if" ||
+      beforeInsertRoot.thenActions[0]?.type !== "action" ||
+      beforeInsertRoot.thenActions[1]?.type !== "action"
+    ) {
+      throw new Error("Expected nested actions inside then branch")
+    }
+
+    const copiedItem = cloneObjectEventItemForPaste(beforeInsertRoot.thenActions[0])
+    const afterInsert = insertObjectEventItem(withSecondNestedAction, {
+      objectId: objectResult.objectId,
+      eventId,
+      afterItemId: beforeInsertRoot.thenActions[1].action.id,
+      item: copiedItem
+    })
+
+    const afterInsertRoot = afterInsert.objects[0]?.events[0]?.items.find((entry) => entry.type === "if" && entry.id === rootIf.id)
+    expect(afterInsertRoot?.type).toBe("if")
+    if (afterInsertRoot?.type === "if") {
+      expect(afterInsertRoot.thenActions).toHaveLength(3)
+      expect(afterInsertRoot.thenActions[2]?.type).toBe("action")
+      if (
+        afterInsertRoot.thenActions[2]?.type === "action" &&
+        beforeInsertRoot.thenActions[0]?.type === "action"
+      ) {
+        expect(afterInsertRoot.thenActions[2].action.id).not.toBe(beforeInsertRoot.thenActions[0].action.id)
+        expect(afterInsertRoot.thenActions[2].action.type).toBe(beforeInsertRoot.thenActions[0].action.type)
+      }
+    }
+  })
+
+  it("inserts a cloned if block after another if block", () => {
+    const initial = createEmptyProjectV1("Insert after if block")
+    const objectResult = quickCreateObject(initial, { name: "Player" })
+    const withEvent = addObjectEvent(objectResult.project, { objectId: objectResult.objectId, type: "Step" })
+    const eventId = withEvent.objects[0]?.events[0]?.id
+    if (!eventId) {
+      throw new Error("Expected event to be created")
+    }
+
+    const withFirstIf = addObjectEventIfBlock(withEvent, {
+      objectId: objectResult.objectId,
+      eventId,
+      condition: {
+        left: { scope: "global", variableId: "gv-first" },
+        operator: "==",
+        right: 1
+      }
+    })
+    const withSecondIf = addObjectEventIfBlock(withFirstIf, {
+      objectId: objectResult.objectId,
+      eventId,
+      condition: {
+        left: { scope: "global", variableId: "gv-second" },
+        operator: "==",
+        right: 2
+      }
+    })
+    const topLevelIfItems = withSecondIf.objects[0]?.events[0]?.items.filter((entry) => entry.type === "if") ?? []
+    const firstIf = topLevelIfItems[0]
+    if (firstIf?.type !== "if") {
+      throw new Error("Expected first if block")
+    }
+
+    const copiedIfItem = cloneObjectEventItemForPaste(firstIf)
+    const afterInsert = insertObjectEventItem(withSecondIf, {
+      objectId: objectResult.objectId,
+      eventId,
+      afterItemId: firstIf.id,
+      item: copiedIfItem
+    })
+    const updatedIfItems = afterInsert.objects[0]?.events[0]?.items.filter((entry) => entry.type === "if") ?? []
+    expect(updatedIfItems).toHaveLength(3)
+    expect(updatedIfItems[1]?.id).not.toBe(firstIf.id)
+    if (updatedIfItems[1]?.type === "if") {
+      expect(updatedIfItems[1].condition).toEqual(firstIf.condition)
     }
   })
 

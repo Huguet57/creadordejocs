@@ -110,6 +110,13 @@ export type MoveObjectEventActionInput = {
   direction: "up" | "down"
 }
 
+export type InsertObjectEventItemInput = {
+  objectId: string
+  eventId: string
+  item: ObjectEventItem
+  afterItemId?: string
+}
+
 export type AddObjectEventIfBlockInput = {
   objectId: string
   eventId: string
@@ -340,6 +347,56 @@ function moveActionInItems(
     }
   })
   return { items: nextItems, updated }
+}
+
+function cloneIfCondition(condition: IfCondition): IfCondition {
+  if ("left" in condition) {
+    return {
+      left: { ...condition.left },
+      operator: condition.operator,
+      right: JSON.parse(JSON.stringify(condition.right)) as ValueExpression
+    }
+  }
+  return {
+    logic: condition.logic,
+    conditions: condition.conditions.map((nestedCondition) => cloneIfCondition(nestedCondition))
+  }
+}
+
+function insertEventItemAfterItemInItems(
+  items: ObjectEventItem[],
+  anchorItemId: string,
+  item: ObjectEventItem
+): { items: ObjectEventItem[]; inserted: boolean } {
+  const directActionIndex = items.findIndex(
+    (entry) =>
+      entry.id === anchorItemId ||
+      (entry.type === "action" && entry.action.id === anchorItemId)
+  )
+  if (directActionIndex >= 0) {
+    const nextItems = [...items]
+    nextItems.splice(directActionIndex + 1, 0, item)
+    return { items: nextItems, inserted: true }
+  }
+
+  let inserted = false
+  const nextItems = items.map((entry) => {
+    if (entry.type !== "if" || inserted) {
+      return entry
+    }
+    const thenResult = insertEventItemAfterItemInItems(entry.thenActions, anchorItemId, item)
+    if (thenResult.inserted) {
+      inserted = true
+      return { ...entry, thenActions: thenResult.items }
+    }
+    const elseResult = insertEventItemAfterItemInItems(entry.elseActions, anchorItemId, item)
+    if (!elseResult.inserted) {
+      return entry
+    }
+    inserted = true
+    return { ...entry, elseActions: elseResult.items }
+  })
+  return { items: nextItems, inserted }
 }
 
 function normalizeVariableName(name: string): string {
@@ -1003,6 +1060,63 @@ export function moveObjectEventAction(project: ProjectV1, input: MoveObjectEvent
           return {
             ...eventEntry,
             items: moveResult.items
+          }
+        })
+      }
+    })
+  }
+}
+
+export function cloneObjectEventItemForPaste(item: ObjectEventItem): ObjectEventItem {
+  if (item.type === "action") {
+    const clonedAction = JSON.parse(JSON.stringify(item.action)) as ObjectAction
+    return {
+      id: makeId("item"),
+      type: "action",
+      action: {
+        ...clonedAction,
+        id: makeId("action")
+      }
+    }
+  }
+  return {
+    id: makeId("if"),
+    type: "if",
+    condition: cloneIfCondition(item.condition),
+    thenActions: item.thenActions.map((entry) => cloneObjectEventItemForPaste(entry)),
+    elseActions: item.elseActions.map((entry) => cloneObjectEventItemForPaste(entry))
+  }
+}
+
+export function insertObjectEventItem(project: ProjectV1, input: InsertObjectEventItemInput): ProjectV1 {
+  return {
+    ...project,
+    objects: project.objects.map((objectEntry) => {
+      if (objectEntry.id !== input.objectId) {
+        return objectEntry
+      }
+      return {
+        ...objectEntry,
+        events: objectEntry.events.map((eventEntry) => {
+          if (eventEntry.id !== input.eventId) {
+            return eventEntry
+          }
+          if (!input.afterItemId) {
+            return {
+              ...eventEntry,
+              items: [...eventEntry.items, input.item]
+            }
+          }
+          const insertResult = insertEventItemAfterItemInItems(eventEntry.items, input.afterItemId, input.item)
+          if (insertResult.inserted) {
+            return {
+              ...eventEntry,
+              items: insertResult.items
+            }
+          }
+          return {
+            ...eventEntry,
+            items: [...eventEntry.items, input.item]
           }
         })
       }

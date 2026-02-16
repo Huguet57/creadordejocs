@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useState } from "react"
-import type { ObjectActionDraft } from "@creadordejocs/project-format"
+import {
+  cloneObjectEventItemForPaste,
+  type ObjectActionDraft,
+  type ObjectEventItem
+} from "@creadordejocs/project-format"
 import { isSpriteCompatibleWithObjectSize, type EditorController } from "../editor-state/use-editor-controller.js"
 import { SYSTEM_MOUSE_GLOBALS, type IfCondition, type ObjectActionType } from "../editor-state/types.js"
 import { ObjectListPanel } from "./ObjectListPanel.js"
@@ -15,11 +19,50 @@ type ObjectEditorSectionProps = {
   controller: EditorController
 }
 
+function findEventItemByActionId(items: ObjectEventItem[], actionId: string): ObjectEventItem | null {
+  for (const item of items) {
+    if (item.type === "action" && item.action.id === actionId) {
+      return item
+    }
+    if (item.type === "if") {
+      const foundInThen = findEventItemByActionId(item.thenActions, actionId)
+      if (foundInThen) {
+        return foundInThen
+      }
+      const foundInElse = findEventItemByActionId(item.elseActions, actionId)
+      if (foundInElse) {
+        return foundInElse
+      }
+    }
+  }
+  return null
+}
+
+function findEventItemById(items: ObjectEventItem[], itemId: string): ObjectEventItem | null {
+  for (const item of items) {
+    if (item.id === itemId) {
+      return item
+    }
+    if (item.type === "if") {
+      const foundInThen = findEventItemById(item.thenActions, itemId)
+      if (foundInThen) {
+        return foundInThen
+      }
+      const foundInElse = findEventItemById(item.elseActions, itemId)
+      if (foundInElse) {
+        return foundInElse
+      }
+    }
+  }
+  return null
+}
+
 export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
   const [activeEventIdByObjectId, setActiveEventIdByObjectId] = useState<Record<string, string | null>>({})
   const [selectNewestForObjectId, setSelectNewestForObjectId] = useState<string | null>(null)
   const [resolvedSpriteSources, setResolvedSpriteSources] = useState<Record<string, string>>({})
   const [isSpritePickerOpen, setIsSpritePickerOpen] = useState(false)
+  const [eventItemClipboard, setEventItemClipboard] = useState<ObjectEventItem | null>(null)
 
   const sprites = controller.project.resources.sprites
 
@@ -301,6 +344,39 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
               if (activeEvent) {
                 controller.removeObjectEventAction(activeEvent.id, actionId)
               }
+            }}
+            onCopyAction={(actionId) => {
+              if (!activeEvent) {
+                return
+              }
+              const itemToCopy = findEventItemByActionId(activeEvent.items, actionId)
+              if (!itemToCopy) {
+                return
+              }
+              setEventItemClipboard(itemToCopy)
+            }}
+            onPasteAfterAction={(actionId) => {
+              if (!activeEvent || !eventItemClipboard) {
+                return
+              }
+              controller.insertObjectEventItem(activeEvent.id, cloneObjectEventItemForPaste(eventItemClipboard), actionId)
+            }}
+            canPasteAction={eventItemClipboard !== null}
+            onCopyIfBlock={(ifBlockId) => {
+              if (!activeEvent) {
+                return
+              }
+              const ifBlockToCopy = findEventItemById(activeEvent.items, ifBlockId)
+              if (ifBlockToCopy?.type !== "if") {
+                return
+              }
+              setEventItemClipboard(ifBlockToCopy)
+            }}
+            onPasteAfterIfBlock={(ifBlockId) => {
+              if (!activeEvent || !eventItemClipboard) {
+                return
+              }
+              controller.insertObjectEventItem(activeEvent.id, cloneObjectEventItemForPaste(eventItemClipboard), ifBlockId)
             }}
             onAddIfBlock={(condition, parentIfBlockId, parentBranch) => {
               if (activeEvent) {

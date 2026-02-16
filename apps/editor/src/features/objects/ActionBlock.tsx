@@ -18,6 +18,7 @@ import {
   Hourglass,
   MessageSquare
 } from "lucide-react"
+import { useEffect, useState } from "react"
 import { Button } from "../../components/ui/button.js"
 import type { ObjectActionDraft, ProjectV1, ValueExpression, VariableValue } from "@creadordejocs/project-format"
 import { VariablePicker } from "./VariablePicker.js"
@@ -33,6 +34,9 @@ type ActionBlockProps = {
   onMoveUp: () => void
   onMoveDown: () => void
   onRemove: () => void
+  onCopy: () => void
+  onPaste: () => void
+  canPaste: boolean
   selectableObjects: { id: string; name: string }[]
   globalVariables: ProjectV1["variables"]["global"]
   objectVariablesByObjectId: ProjectV1["variables"]["objectByObjectId"]
@@ -43,6 +47,11 @@ type ActionBlockProps = {
   eventType: ObjectEventType
   collisionTargetName?: string | null | undefined
 }
+
+type ActionContextMenuState = {
+  x: number
+  y: number
+} | null
 
 const ACTION_ICONS: Partial<Record<ObjectActionDraft["type"], React.ElementType>> = {
   move: Move,
@@ -116,6 +125,9 @@ export function ActionBlock({
   onMoveUp,
   onMoveDown,
   onRemove,
+  onCopy,
+  onPaste,
+  canPaste,
   selectableObjects,
   globalVariables,
   objectVariablesByObjectId,
@@ -160,9 +172,28 @@ export function ActionBlock({
       : null
   const changeVariableExpectedType =
     selectedGlobalVariableForChange?.type ?? selectedObjectVariableForChange?.type ?? "number"
+  const [contextMenu, setContextMenu] = useState<ActionContextMenuState>(null)
+
+  useEffect(() => {
+    if (!contextMenu) {
+      return
+    }
+    const closeContextMenu = () => setContextMenu(null)
+    window.addEventListener("mousedown", closeContextMenu)
+    return () => window.removeEventListener("mousedown", closeContextMenu)
+  }, [contextMenu])
 
   return (
-    <div className="action-block-container group flex items-center gap-3 py-2 px-3 bg-slate-50 hover:bg-slate-100/60 transition-colors">
+    <div
+      className="action-block-container group relative flex items-center gap-3 py-2 px-3 bg-slate-50 hover:bg-slate-100/60 transition-colors"
+      onContextMenu={(event) => {
+        event.preventDefault()
+        setContextMenu({
+          x: event.clientX,
+          y: event.clientY
+        })
+      }}
+    >
       <div className="action-block-label flex items-center gap-1.5 min-w-[90px] shrink-0">
         <Icon className="h-3.5 w-3.5 text-slate-400 shrink-0" />
         <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 leading-tight">
@@ -715,6 +746,45 @@ export function ActionBlock({
           <X className="h-3.5 w-3.5" />
         </Button>
       </div>
+      {contextMenu && (
+        <div
+          className="mvp17-action-context-menu fixed z-30 min-w-[180px] overflow-hidden rounded-md border border-slate-200 bg-white shadow-xl"
+          style={{ left: `${contextMenu.x}px`, top: `${contextMenu.y}px` }}
+          onMouseDown={(event) => event.stopPropagation()}
+        >
+          <button
+            type="button"
+            className="mvp17-action-context-menu-item-copy flex w-full items-center justify-start px-3 py-2 text-xs text-slate-700 hover:bg-slate-50"
+            onClick={() => {
+              onCopy()
+              setContextMenu(null)
+            }}
+          >
+            Copy action
+          </button>
+          <button
+            type="button"
+            className="mvp17-action-context-menu-item-paste flex w-full items-center justify-start border-t border-slate-100 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-white"
+            onClick={() => {
+              onPaste()
+              setContextMenu(null)
+            }}
+            disabled={!canPaste}
+          >
+            Paste after
+          </button>
+          <button
+            type="button"
+            className="mvp17-action-context-menu-item-delete flex w-full items-center justify-start border-t border-slate-100 px-3 py-2 text-xs text-red-500 hover:bg-red-50"
+            onClick={() => {
+              onRemove()
+              setContextMenu(null)
+            }}
+          >
+            Delete action
+          </button>
+        </div>
+      )}
     </div>
   )
 }

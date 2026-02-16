@@ -39,6 +39,11 @@ type ActionEditorPanelProps = {
   onUpdateAction: (actionId: string, action: ObjectActionDraft) => void
   onMoveAction: (actionId: string, direction: "up" | "down") => void
   onRemoveAction: (actionId: string) => void
+  onCopyAction: (actionId: string) => void
+  onPasteAfterAction: (actionId: string) => void
+  canPasteAction: boolean
+  onCopyIfBlock: (ifBlockId: string) => void
+  onPasteAfterIfBlock: (ifBlockId: string) => void
   onAddIfBlock: (condition: IfCondition, parentIfBlockId?: string, parentBranch?: "then" | "else") => void
   onUpdateIfCondition: (ifBlockId: string, condition: IfCondition) => void
   onRemoveIfBlock: (ifBlockId: string) => void
@@ -62,6 +67,11 @@ export function ActionEditorPanel({
   onUpdateAction,
   onMoveAction,
   onRemoveAction,
+  onCopyAction,
+  onPasteAfterAction,
+  canPasteAction,
+  onCopyIfBlock,
+  onPasteAfterIfBlock,
   onAddIfBlock,
   onUpdateIfCondition,
   onRemoveIfBlock,
@@ -210,6 +220,9 @@ export function ActionEditorPanel({
                       onMoveUp={() => onMoveAction(item.action.id, "up")}
                       onMoveDown={() => onMoveAction(item.action.id, "down")}
                       onRemove={() => onRemoveAction(item.action.id)}
+                      onCopy={() => onCopyAction(item.action.id)}
+                      onPaste={() => onPasteAfterAction(item.action.id)}
+                      canPaste={canPasteAction}
                       selectableObjects={selectableTargetObjects}
                       globalVariables={globalVariables}
                       objectVariablesByObjectId={objectVariablesByObjectId}
@@ -241,6 +254,11 @@ export function ActionEditorPanel({
                     onAddIfBlock={onAddIfBlock}
                     onAddIfAction={onAddIfAction}
                     onMoveAction={onMoveAction}
+                    onCopyAction={onCopyAction}
+                    onPasteAfterAction={onPasteAfterAction}
+                    canPasteAction={canPasteAction}
+                    onCopyIfBlock={onCopyIfBlock}
+                    onPasteAfterIfBlock={onPasteAfterIfBlock}
                     onUpdateIfAction={onUpdateIfAction}
                     onRemoveIfAction={onRemoveIfAction}
                   />

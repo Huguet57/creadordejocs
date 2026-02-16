@@ -1,5 +1,5 @@
 import { Plus, Trash } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "../../components/ui/button.js"
 import {
   type IfCondition,
@@ -32,9 +32,19 @@ type IfBlockProps = {
   onAddIfBlock: (condition: IfCondition, parentIfBlockId?: string, parentBranch?: "then" | "else") => void
   onAddIfAction: (ifBlockId: string, type: ObjectActionType, branch: "then" | "else") => void
   onMoveAction: (actionId: string, direction: "up" | "down") => void
+  onCopyAction: (actionId: string) => void
+  onPasteAfterAction: (actionId: string) => void
+  canPasteAction: boolean
+  onCopyIfBlock: (ifBlockId: string) => void
+  onPasteAfterIfBlock: (ifBlockId: string) => void
   onUpdateIfAction: (ifBlockId: string, actionId: string, action: ObjectActionDraft, branch: "then" | "else") => void
   onRemoveIfAction: (ifBlockId: string, actionId: string, branch: "then" | "else") => void
 }
+
+type IfContextMenuState = {
+  x: number
+  y: number
+} | null
 
 type ComparisonIfCondition = Extract<IfCondition, { left: { scope: "global" | "object"; variableId: string } }>
 type CompoundIfCondition = { logic: "AND" | "OR"; conditions: IfCondition[] }
@@ -117,6 +127,11 @@ export function IfBlock({
   onAddIfBlock,
   onAddIfAction,
   onMoveAction,
+  onCopyAction,
+  onPasteAfterAction,
+  canPasteAction,
+  onCopyIfBlock,
+  onPasteAfterIfBlock,
   onUpdateIfAction,
   onRemoveIfAction
 }: IfBlockProps) {
@@ -127,6 +142,16 @@ export function IfBlock({
   const currentPrimaryCondition = isComparisonIfCondition(item.condition)
     ? item.condition
     : ensureComparisonIfCondition(item.condition.conditions[0], fallbackComparisonCondition)
+  const [contextMenu, setContextMenu] = useState<IfContextMenuState>(null)
+
+  useEffect(() => {
+    if (!contextMenu) {
+      return
+    }
+    const closeContextMenu = () => setContextMenu(null)
+    window.addEventListener("mousedown", closeContextMenu)
+    return () => window.removeEventListener("mousedown", closeContextMenu)
+  }, [contextMenu])
 
   const objectVarOptionsForPicker: ObjectVariableOption[] = selectedObjectVariables.map((v) => ({
     id: v.id,
@@ -149,6 +174,9 @@ export function IfBlock({
             onMoveUp={() => onMoveAction(branchItem.action.id, "up")}
             onMoveDown={() => onMoveAction(branchItem.action.id, "down")}
             onRemove={() => onRemoveIfAction(item.id, branchItem.action.id, branch)}
+            onCopy={() => onCopyAction(branchItem.action.id)}
+            onPaste={() => onPasteAfterAction(branchItem.action.id)}
+            canPaste={canPasteAction}
             selectableObjects={selectableTargetObjects}
             globalVariables={globalVariables}
             objectVariablesByObjectId={objectVariablesByObjectId}
@@ -179,6 +207,11 @@ export function IfBlock({
           onAddIfBlock={onAddIfBlock}
           onAddIfAction={onAddIfAction}
           onMoveAction={onMoveAction}
+          onCopyAction={onCopyAction}
+          onPasteAfterAction={onPasteAfterAction}
+          canPasteAction={canPasteAction}
+          onCopyIfBlock={onCopyIfBlock}
+          onPasteAfterIfBlock={onPasteAfterIfBlock}
           onUpdateIfAction={onUpdateIfAction}
           onRemoveIfAction={onRemoveIfAction}
         />
@@ -265,9 +298,18 @@ export function IfBlock({
   }
 
   return (
-    <div className="if-block-container bg-white">
+    <div className="if-block-container relative bg-white">
       {/* First condition row: IF [...condition...] [+] [trash] */}
-      <div className="if-block-header group flex items-center gap-2 py-2 px-3 bg-blue-100 border-b border-blue-200">
+      <div
+        className="if-block-header group flex items-center gap-2 py-2 px-3 bg-blue-100 border-b border-blue-200"
+        onContextMenu={(event) => {
+          event.preventDefault()
+          setContextMenu({
+            x: event.clientX,
+            y: event.clientY
+          })
+        }}
+      >
         <span className="text-[11px] font-bold text-blue-700 uppercase tracking-wider shrink-0">IF</span>
 
         {renderComparisonConditionEditor(currentPrimaryCondition, (nextCondition) => {
@@ -302,6 +344,45 @@ export function IfBlock({
           <Trash className="h-3.5 w-3.5" />
         </Button>
       </div>
+      {contextMenu && (
+        <div
+          className="mvp17-if-context-menu fixed z-30 min-w-[180px] overflow-hidden rounded-md border border-slate-200 bg-white shadow-xl"
+          style={{ left: `${contextMenu.x}px`, top: `${contextMenu.y}px` }}
+          onMouseDown={(event) => event.stopPropagation()}
+        >
+          <button
+            type="button"
+            className="mvp17-if-context-menu-item-copy flex w-full items-center justify-start px-3 py-2 text-xs text-slate-700 hover:bg-slate-50"
+            onClick={() => {
+              onCopyIfBlock(item.id)
+              setContextMenu(null)
+            }}
+          >
+            Copy if block
+          </button>
+          <button
+            type="button"
+            className="mvp17-if-context-menu-item-paste flex w-full items-center justify-start border-t border-slate-100 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-white"
+            onClick={() => {
+              onPasteAfterIfBlock(item.id)
+              setContextMenu(null)
+            }}
+            disabled={!canPasteAction}
+          >
+            Paste after
+          </button>
+          <button
+            type="button"
+            className="mvp17-if-context-menu-item-delete flex w-full items-center justify-start border-t border-slate-100 px-3 py-2 text-xs text-red-500 hover:bg-red-50"
+            onClick={() => {
+              onRemoveIfBlock(item.id)
+              setContextMenu(null)
+            }}
+          >
+            Delete if block
+          </button>
+        </div>
+      )}
 
       {/* AND/OR row + second condition (only when compound) */}
       {compoundCondition && (
