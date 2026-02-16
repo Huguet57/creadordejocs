@@ -60,8 +60,8 @@ export function SpriteToolbar({
         Zoom
         <input
           type="range"
-          min={8}
-          max={36}
+          min={4}
+          max={24}
           value={zoom}
           onChange={(event: ChangeEvent<HTMLInputElement>) => onZoomChange(Number(event.target.value))}
         />
