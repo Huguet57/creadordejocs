@@ -2378,7 +2378,7 @@ describe("runtime regressions", () => {
     expect(seeker?.y).toBe(6)
   })
 
-  it("blocks move when target position collides with a solid object", () => {
+  it("clamps move to the solid border when target position collides", () => {
     const project: ProjectV1 = {
       version: 1,
       metadata: {
@@ -2406,7 +2406,7 @@ describe("runtime regressions", () => {
               keyboardMode: null,
               targetObjectId: null,
               intervalMs: null,
-              items: [{ id: "item-move", type: "action", action: { id: "action-move", type: "move", dx: 4, dy: 0 } }]
+              items: [{ id: "item-move", type: "action", action: { id: "action-move", type: "move", dx: 7, dy: 0 } }]
             }
           ]
         },
@@ -2428,7 +2428,7 @@ describe("runtime regressions", () => {
           name: "Main",
           instances: [
             { id: "instance-mover", objectId: "object-mover", x: 0, y: 0 },
-            { id: "instance-wall", objectId: "object-wall", x: 32, y: 0 }
+            { id: "instance-wall", objectId: "object-wall", x: 37, y: 0 }
           ]
         }
       ],
@@ -2445,7 +2445,7 @@ describe("runtime regressions", () => {
 
     const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
     const mover = result.project.rooms[0]?.instances.find((entry) => entry.id === "instance-mover")
-    expect(mover?.x).toBe(0)
+    expect(mover?.x).toBe(5)
     expect(mover?.y).toBe(0)
   })
 
@@ -2520,7 +2520,7 @@ describe("runtime regressions", () => {
     expect(mover?.y).toBe(0)
   })
 
-  it("blocks setVelocity when motion would collide with a solid object", () => {
+  it("clamps setVelocity to the solid border when motion would collide", () => {
     const project: ProjectV1 = {
       version: 1,
       metadata: {
@@ -2552,7 +2552,7 @@ describe("runtime regressions", () => {
                 {
                   id: "item-velocity",
                   type: "action",
-                  action: { id: "action-velocity", type: "setVelocity", speed: 4, direction: 0 }
+                  action: { id: "action-velocity", type: "setVelocity", speed: 7, direction: 0 }
                 }
               ]
             }
@@ -2576,7 +2576,7 @@ describe("runtime regressions", () => {
           name: "Main",
           instances: [
             { id: "instance-mover", objectId: "object-mover", x: 0, y: 0 },
-            { id: "instance-wall", objectId: "object-wall", x: 32, y: 0 }
+            { id: "instance-wall", objectId: "object-wall", x: 37, y: 0 }
           ]
         }
       ],
@@ -2593,11 +2593,11 @@ describe("runtime regressions", () => {
 
     const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
     const mover = result.project.rooms[0]?.instances.find((entry) => entry.id === "instance-mover")
-    expect(mover?.x).toBe(0)
+    expect(mover?.x).toBe(5)
     expect(mover?.y).toBe(0)
   })
 
-  it("blocks moveToward when motion would collide with a solid object", () => {
+  it("clamps moveToward to the solid border when motion would collide", () => {
     const project: ProjectV1 = {
       version: 1,
       metadata: {
@@ -2634,7 +2634,7 @@ describe("runtime regressions", () => {
                     type: "moveToward",
                     targetType: "object",
                     targetObjectId: "object-wall",
-                    speed: 10
+                    speed: 7
                   }
                 }
               ]
@@ -2659,7 +2659,7 @@ describe("runtime regressions", () => {
           name: "Main",
           instances: [
             { id: "instance-seeker", objectId: "object-seeker", x: 0, y: 0 },
-            { id: "instance-wall", objectId: "object-wall", x: 30, y: 0 }
+            { id: "instance-wall", objectId: "object-wall", x: 37, y: 0 }
           ]
         }
       ],
@@ -2676,7 +2676,7 @@ describe("runtime regressions", () => {
 
     const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
     const seeker = result.project.rooms[0]?.instances.find((entry) => entry.id === "instance-seeker")
-    expect(seeker?.x).toBe(0)
+    expect(seeker?.x).toBe(5)
     expect(seeker?.y).toBe(0)
   })
 

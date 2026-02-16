@@ -173,6 +173,62 @@ function wouldCollideWithSolid(
   return false
 }
 
+function resolveSolidLimitedPosition(
+  project: ProjectV1,
+  roomInstances: ProjectV1["rooms"][number]["instances"],
+  movingInstanceId: string,
+  startX: number,
+  startY: number,
+  targetX: number,
+  targetY: number
+): { x: number; y: number } {
+  if (!wouldCollideWithSolid(project, roomInstances, movingInstanceId, targetX, targetY)) {
+    return { x: targetX, y: targetY }
+  }
+
+  if (wouldCollideWithSolid(project, roomInstances, movingInstanceId, startX, startY)) {
+    return { x: startX, y: startY }
+  }
+
+  const deltaX = targetX - startX
+  const deltaY = targetY - startY
+  const distance = Math.hypot(deltaX, deltaY)
+  if (distance === 0) {
+    return { x: startX, y: startY }
+  }
+
+  const positionAt = (t: number): { x: number; y: number } => ({
+    x: startX + deltaX * t,
+    y: startY + deltaY * t
+  })
+
+  const steps = Math.max(1, Math.ceil(distance))
+  let previousT = 0
+  for (let step = 1; step <= steps; step += 1) {
+    const currentT = step / steps
+    const candidate = positionAt(currentT)
+    if (!wouldCollideWithSolid(project, roomInstances, movingInstanceId, candidate.x, candidate.y)) {
+      previousT = currentT
+      continue
+    }
+
+    let low = previousT
+    let high = currentT
+    for (let iteration = 0; iteration < 12; iteration += 1) {
+      const mid = (low + high) / 2
+      const midPosition = positionAt(mid)
+      if (wouldCollideWithSolid(project, roomInstances, movingInstanceId, midPosition.x, midPosition.y)) {
+        high = mid
+      } else {
+        low = mid
+      }
+    }
+    return positionAt(low)
+  }
+
+  return { x: startX, y: startY }
+}
+
 export function executeAction(
   action: RuntimeAction,
   result: RuntimeActionResult,
@@ -181,18 +237,22 @@ export function executeAction(
   if (action.type === "move") {
     const dx = resolveNumberValue(action.dx, result, ctx) ?? 0
     const dy = resolveNumberValue(action.dy, result, ctx) ?? 0
-    const nextX = result.instance.x + dx
-    const nextY = result.instance.y + dy
-    if (wouldCollideWithSolid(ctx.project, ctx.roomInstances, result.instance.id, nextX, nextY)) {
-      return { result }
-    }
+    const nextPosition = resolveSolidLimitedPosition(
+      ctx.project,
+      ctx.roomInstances,
+      result.instance.id,
+      result.instance.x,
+      result.instance.y,
+      result.instance.x + dx,
+      result.instance.y + dy
+    )
     return {
       result: {
         ...result,
         instance: {
           ...result.instance,
-          x: nextX,
-          y: nextY
+          x: nextPosition.x,
+          y: nextPosition.y
         }
       }
     }
@@ -201,18 +261,22 @@ export function executeAction(
     const speed = resolveNumberValue(action.speed, result, ctx) ?? 0
     const direction = resolveNumberValue(action.direction, result, ctx) ?? 0
     const radians = (direction * Math.PI) / 180
-    const nextX = result.instance.x + Math.cos(radians) * speed
-    const nextY = result.instance.y + Math.sin(radians) * speed
-    if (wouldCollideWithSolid(ctx.project, ctx.roomInstances, result.instance.id, nextX, nextY)) {
-      return { result }
-    }
+    const nextPosition = resolveSolidLimitedPosition(
+      ctx.project,
+      ctx.roomInstances,
+      result.instance.id,
+      result.instance.x,
+      result.instance.y,
+      result.instance.x + Math.cos(radians) * speed,
+      result.instance.y + Math.sin(radians) * speed
+    )
     return {
       result: {
         ...result,
         instance: {
           ...result.instance,
-          x: nextX,
-          y: nextY
+          x: nextPosition.x,
+          y: nextPosition.y
         }
       }
     }
@@ -276,18 +340,22 @@ export function executeAction(
     }
 
     const radians = Math.atan2(deltaY, deltaX)
-    const nextX = result.instance.x + Math.cos(radians) * speed
-    const nextY = result.instance.y + Math.sin(radians) * speed
-    if (wouldCollideWithSolid(ctx.project, ctx.roomInstances, result.instance.id, nextX, nextY)) {
-      return { result }
-    }
+    const nextPosition = resolveSolidLimitedPosition(
+      ctx.project,
+      ctx.roomInstances,
+      result.instance.id,
+      result.instance.x,
+      result.instance.y,
+      result.instance.x + Math.cos(radians) * speed,
+      result.instance.y + Math.sin(radians) * speed
+    )
     return {
       result: {
         ...result,
         instance: {
           ...result.instance,
-          x: nextX,
-          y: nextY
+          x: nextPosition.x,
+          y: nextPosition.y
         }
       }
     }
