@@ -1,7 +1,7 @@
 import {
   Plus,
 } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "../../components/ui/button.js"
 import { Label } from "../../components/ui/label.js"
 import {
@@ -41,6 +41,7 @@ type ActionEditorPanelProps = {
   onRemoveAction: (actionId: string) => void
   onCopyAction: (actionId: string) => void
   onPasteAfterAction: (actionId: string) => void
+  onPasteAtEventEnd: () => void
   canPasteAction: boolean
   onCopyIfBlock: (ifBlockId: string) => void
   onPasteAfterIfBlock: (ifBlockId: string) => void
@@ -69,6 +70,7 @@ export function ActionEditorPanel({
   onRemoveAction,
   onCopyAction,
   onPasteAfterAction,
+  onPasteAtEventEnd,
   canPasteAction,
   onCopyIfBlock,
   onPasteAfterIfBlock,
@@ -80,9 +82,19 @@ export function ActionEditorPanel({
   onRemoveIfAction
 }: ActionEditorPanelProps) {
   const [isActionPickerOpen, setIsActionPickerOpen] = useState(false)
+  const [backgroundContextMenu, setBackgroundContextMenu] = useState<{ x: number; y: number } | null>(null)
   const collisionTargetName = activeEvent?.type === "Collision" && activeEvent.targetObjectId
     ? selectableTargetObjects.find((obj) => obj.id === activeEvent.targetObjectId)?.name ?? null
     : null
+
+  useEffect(() => {
+    if (!backgroundContextMenu) {
+      return
+    }
+    const closeContextMenu = () => setBackgroundContextMenu(null)
+    window.addEventListener("mousedown", closeContextMenu)
+    return () => window.removeEventListener("mousedown", closeContextMenu)
+  }, [backgroundContextMenu])
 
   if (!selectedObject) {
     return (
@@ -198,7 +210,20 @@ export function ActionEditorPanel({
 
       {!isActionPickerOpen ? (
         <>
-          <div className="flex-1 overflow-y-auto p-4">
+          <div
+            className="flex-1 overflow-y-auto p-4"
+            onContextMenu={(event) => {
+              const target = event.target as HTMLElement
+              if (target.closest(".action-block-container, .if-block-header")) {
+                return
+              }
+              event.preventDefault()
+              setBackgroundContextMenu({
+                x: event.clientX,
+                y: event.clientY
+              })
+            }}
+          >
             <div className={`mx-auto max-w-3xl flex flex-col ${activeEvent.items.length > 0 ? "gap-px bg-slate-200" : ""}`}>
               {activeEvent.items.length === 0 && (
                 <div className="py-6 text-center">
@@ -265,6 +290,25 @@ export function ActionEditorPanel({
                 )
               })}
             </div>
+            {backgroundContextMenu && (
+              <div
+                className="mvp17-actions-background-context-menu fixed z-30 min-w-[180px] overflow-hidden rounded-md border border-slate-200 bg-white shadow-xl"
+                style={{ left: `${backgroundContextMenu.x}px`, top: `${backgroundContextMenu.y}px` }}
+                onMouseDown={(event) => event.stopPropagation()}
+              >
+                <button
+                  type="button"
+                  className="mvp17-actions-background-context-menu-item-paste flex w-full items-center justify-start px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-white"
+                  onClick={() => {
+                    onPasteAtEventEnd()
+                    setBackgroundContextMenu(null)
+                  }}
+                  disabled={!canPasteAction}
+                >
+                  Paste
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="mvp3-action-picker border-t border-slate-200 p-3">

@@ -361,6 +361,12 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
               }
               controller.insertObjectEventItem(activeEvent.id, cloneObjectEventItemForPaste(eventItemClipboard), actionId)
             }}
+            onPasteAtEventEnd={() => {
+              if (!activeEvent || !eventItemClipboard) {
+                return
+              }
+              controller.insertObjectEventItem(activeEvent.id, cloneObjectEventItemForPaste(eventItemClipboard))
+            }}
             canPasteAction={eventItemClipboard !== null}
             onCopyIfBlock={(ifBlockId) => {
               if (!activeEvent) {
