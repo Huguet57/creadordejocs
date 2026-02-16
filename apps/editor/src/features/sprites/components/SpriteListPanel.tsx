@@ -64,7 +64,7 @@ export function SpriteListPanel({
   onMoveFolderToParent
 }: SpriteListPanelProps) {
   const [isAdding, setIsAdding] = useState(false)
-  const [newName, setNewName] = useState("Sprite nou")
+  const [newName, setNewName] = useState("")
   const [newWidth, setNewWidth] = useState(String(DEFAULT_SPRITE_DIMENSION))
   const [newHeight, setNewHeight] = useState(String(DEFAULT_SPRITE_DIMENSION))
   const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null)
@@ -198,7 +198,7 @@ export function SpriteListPanel({
     if (!newName.trim()) return
     const targetFolderId = selectedNode?.type === "folder" ? selectedNode.id : null
     onAddSprite(newName.trim(), parseDimensionValue(newWidth), parseDimensionValue(newHeight), targetFolderId)
-    setNewName("Sprite nou")
+    setNewName("")
     setNewWidth(String(DEFAULT_SPRITE_DIMENSION))
     setNewHeight(String(DEFAULT_SPRITE_DIMENSION))
     setIsAdding(false)
@@ -680,6 +680,7 @@ export function SpriteListPanel({
             <input
               value={newName}
               onChange={(event: ChangeEvent<HTMLInputElement>) => setNewName(event.target.value)}
+              placeholder="Sprite nou"
               onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
                 if (event.key === "Enter") handleAdd()
                 if (event.key === "Escape") setIsAdding(false)
