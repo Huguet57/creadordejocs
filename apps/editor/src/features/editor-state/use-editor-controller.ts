@@ -576,17 +576,18 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       pushProjectChange(next, `Create sound: ${name.trim()}`)
     },
     addObject(name: string) {
-      if (!name.trim()) return
-      const spriteId = project.resources.sprites[0]?.id ?? null
-      const result = quickCreateObject(project, {
-        name: name.trim(),
-        spriteId,
+      const trimmedName = name.trim()
+      if (!trimmedName) return
+      const createdSprite = quickCreateSpriteWithSize(project, `${trimmedName} Sprite`, 32, 32)
+      const result = quickCreateObject(createdSprite.project, {
+        name: trimmedName,
+        spriteId: createdSprite.spriteId,
         x: 64,
         y: 64,
         speed: 1,
         direction: 0
       })
-      pushProjectChange(result.project, `Create object: ${name.trim()}`)
+      pushProjectChange(result.project, `Create object: ${trimmedName}`)
       setActiveObjectId(result.objectId)
     },
     addGlobalVariable(name: string, type: VariableType, initialValue: VariableValue) {

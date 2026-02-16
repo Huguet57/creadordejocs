@@ -32,6 +32,7 @@ type SpritePickerModalProps = {
   onClose: () => void
   onSelectExisting: (spriteId: string) => void
   onEditSprite: (spriteId: string) => void
+  onCreateNewSprite: () => void
 }
 
 export function SpritePickerModal({
@@ -44,7 +45,8 @@ export function SpritePickerModal({
   spriteFolders,
   onClose,
   onSelectExisting,
-  onEditSprite
+  onEditSprite,
+  onCreateNewSprite
 }: SpritePickerModalProps) {
   const [highlightedSpriteId, setHighlightedSpriteId] = useState<string | null>(null)
   const [expandedFolderIds, setExpandedFolderIds] = useState<Set<string>>(new Set())
@@ -278,6 +280,9 @@ export function SpritePickerModal({
             Tancar
           </Button>
           <div className="mvp16-sprite-picker-footer-actions flex items-center gap-2">
+            <Button variant="outline" size="sm" className="mvp16-sprite-picker-new-button h-8" onClick={onCreateNewSprite}>
+              + Nou Sprite
+            </Button>
             <Button
               variant="outline"
               size="sm"

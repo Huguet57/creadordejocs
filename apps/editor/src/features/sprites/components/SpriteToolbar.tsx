@@ -70,7 +70,7 @@ export function SpriteToolbar({
   const spriteColors = useMemo(() => extractDominantColors(spritePixels, 20), [spritePixels])
 
   return (
-    <aside className="mvp16-sprite-tool-sidebar flex w-[120px] shrink-0 flex-col border-r border-slate-200 bg-slate-50">
+    <aside className="mvp16-sprite-tool-sidebar flex w-[144px] shrink-0 flex-col border-r border-slate-200 bg-slate-50">
       <div className="mvp16-sprite-tool-list-section flex flex-col gap-1 border-b border-slate-200 p-2">
         <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-400">Tools</p>
         <div className="mvp16-sprite-tool-list-grid grid grid-cols-2 gap-1">
