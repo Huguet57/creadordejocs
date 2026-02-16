@@ -2,6 +2,8 @@ import { useState } from "react"
 import { hexRgbaToCss } from "../utils/pixel-rgba.js"
 import { normalizePixelGrid } from "../utils/sprite-grid.js"
 import type { SpriteEditorTool } from "../types/sprite-editor.js"
+import type { SpritePointerActionPhase } from "../hooks/use-sprite-pixel-actions.js"
+import { SPRITE_TOOL_BY_ID } from "../utils/sprite-tools/tool-registry.js"
 
 type SpriteCanvasGridProps = {
   width: number
@@ -10,12 +12,7 @@ type SpriteCanvasGridProps = {
   zoom: number
   showGrid: boolean
   activeTool: SpriteEditorTool
-  onPaint: (x: number, y: number, tool: SpriteEditorTool) => void
-}
-
-const TOOL_CURSOR: Record<SpriteEditorTool, string> = {
-  pencil: "crosshair",
-  eraser: "cell"
+  onPaint: (x: number, y: number, tool: SpriteEditorTool, phase: SpritePointerActionPhase) => void
 }
 
 export function SpriteCanvasGrid({ width, height, pixelsRgba, zoom, showGrid, activeTool, onPaint }: SpriteCanvasGridProps) {
@@ -29,7 +26,7 @@ export function SpriteCanvasGrid({ width, height, pixelsRgba, zoom, showGrid, ac
         style={{
           gridTemplateColumns: `repeat(${width}, ${zoom}px)`,
           gridTemplateRows: `repeat(${height}, ${zoom}px)`,
-          cursor: TOOL_CURSOR[activeTool] ?? "default"
+          cursor: SPRITE_TOOL_BY_ID[activeTool]?.cursor ?? "default"
         }}
         onMouseLeave={() => setIsPointerDown(false)}
       >
@@ -49,12 +46,12 @@ export function SpriteCanvasGrid({ width, height, pixelsRgba, zoom, showGrid, ac
               }}
               onMouseDown={() => {
                 setIsPointerDown(true)
-                onPaint(x, y, activeTool)
+                onPaint(x, y, activeTool, "pointerDown")
               }}
               onMouseUp={() => setIsPointerDown(false)}
               onMouseEnter={() => {
                 if (isPointerDown) {
-                  onPaint(x, y, activeTool)
+                  onPaint(x, y, activeTool, "pointerDrag")
                 }
               }}
               aria-label={`Pixel ${x},${y}`}

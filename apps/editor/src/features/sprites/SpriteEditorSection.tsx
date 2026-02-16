@@ -1,4 +1,4 @@
-import { useEffect, type ChangeEvent } from "react"
+import { useEffect, useState, type ChangeEvent } from "react"
 import type { EditorController } from "../editor-state/use-editor-controller.js"
 import { SpriteCanvasGrid } from "./components/SpriteCanvasGrid.js"
 import { SpriteImportButton } from "./components/SpriteImportButton.js"
@@ -26,9 +26,12 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
     zoom,
     setZoom,
     showGrid,
-    setShowGrid
+    setShowGrid,
+    toolOptions,
+    updateToolOptions
   } = spriteEditorState
   const activeSpriteId = controller.activeSpriteId
+  const [, setMagicWandSelection] = useState<Set<number>>(new Set())
 
   useEffect(() => {
     if (!activeSpriteId && spriteIds[0]) {
@@ -67,10 +70,13 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
     height: selectedSprite?.height ?? 1,
     pixelsRgba: selectedSpritePixels,
     activeColor,
+    toolOptions,
     onPixelsChange: (nextPixelsRgba) => {
       if (!selectedSprite) return
       controller.updateSpritePixels(selectedSprite.id, nextPixelsRgba)
-    }
+    },
+    onActiveColorChange: setActiveColor,
+    onSelectionChange: setMagicWandSelection
   })
 
   return (
@@ -104,8 +110,10 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
         activeTool={activeTool}
         activeColor={activeColor}
         spritePixels={selectedSpritePixels}
+        toolOptions={toolOptions}
         onToolChange={setActiveTool}
         onColorChange={setActiveColor}
+        onUpdateToolOptions={updateToolOptions}
       />
 
       <div className="mvp16-sprite-editor-main flex flex-1 flex-col">

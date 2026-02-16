@@ -1,7 +1,9 @@
-import { Eraser, Pencil } from "lucide-react"
+import { Eraser, PaintBucket, Pencil, Pipette, WandSparkles } from "lucide-react"
 import { useMemo, type ChangeEvent } from "react"
-import type { SpriteEditorTool } from "../types/sprite-editor.js"
+import { ToolOptionsPanel } from "./tool-options/ToolOptionsPanel.js"
+import type { SpriteEditorTool, SpriteToolOptionsMap, SpriteToolOptionsState } from "../types/sprite-editor.js"
 import { normalizeHexRgba, TRANSPARENT_RGBA } from "../utils/pixel-rgba.js"
+import { SPRITE_TOOL_REGISTRY } from "../utils/sprite-tools/tool-registry.js"
 
 const DEFAULT_PALETTE = [
   "#000000FF", "#FFFFFFFF", "#FF0000FF", "#00FF00FF", "#0000FFFF",
@@ -40,54 +42,70 @@ function extractDominantColors(pixels: string[], maxColors: number): string[] {
     .map((entry) => entry.color)
 }
 
-const TOOLS_USING_COLOR: SpriteEditorTool[] = ["pencil"]
-
 type SpriteToolbarProps = {
   activeTool: SpriteEditorTool
   activeColor: string
   spritePixels: string[]
+  toolOptions: SpriteToolOptionsState
   onToolChange: (tool: SpriteEditorTool) => void
   onColorChange: (color: string) => void
+  onUpdateToolOptions: <ToolName extends SpriteEditorTool>(
+    tool: ToolName,
+    options: Partial<SpriteToolOptionsMap[ToolName]>
+  ) => void
+}
+
+const TOOL_ICONS: Record<SpriteEditorTool, typeof Pencil> = {
+  pencil: Pencil,
+  eraser: Eraser,
+  bucket_fill: PaintBucket,
+  magic_wand: WandSparkles,
+  color_picker: Pipette
 }
 
 export function SpriteToolbar({
   activeTool,
   activeColor,
   spritePixels,
+  toolOptions,
   onToolChange,
-  onColorChange
+  onColorChange,
+  onUpdateToolOptions
 }: SpriteToolbarProps) {
   const spriteColors = useMemo(() => extractDominantColors(spritePixels, 20), [spritePixels])
 
   const normalizedActive = normalizeHexRgba(activeColor)
-  const colorEnabled = TOOLS_USING_COLOR.includes(activeTool)
+  const activeDefinition = SPRITE_TOOL_REGISTRY.find((entry) => entry.id === activeTool)
+  const colorEnabled = activeDefinition?.usesColor ?? false
 
   return (
     <aside className="mvp16-sprite-tool-sidebar flex w-[120px] shrink-0 flex-col border-r border-slate-200 bg-slate-50">
-      <div className="mvp16-sprite-tool-section flex flex-col gap-1 border-b border-slate-200 p-2">
-        <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-400">Eines</p>
-        <div className="flex gap-1">
-          <button
-            type="button"
-            className={`mvp16-sprite-tool-btn flex flex-1 flex-col items-center gap-0.5 rounded px-1 py-1.5 text-[9px] ${
-              activeTool === "pencil" ? "bg-indigo-100 text-indigo-700" : "text-slate-500 hover:bg-slate-100"
-            }`}
-            onClick={() => onToolChange("pencil")}
-          >
-            <Pencil className="h-4 w-4" />
-            Pencil
-          </button>
-          <button
-            type="button"
-            className={`mvp16-sprite-tool-btn flex flex-1 flex-col items-center gap-0.5 rounded px-1 py-1.5 text-[9px] ${
-              activeTool === "eraser" ? "bg-indigo-100 text-indigo-700" : "text-slate-500 hover:bg-slate-100"
-            }`}
-            onClick={() => onToolChange("eraser")}
-          >
-            <Eraser className="h-4 w-4" />
-            Eraser
-          </button>
+      <div className="mvp16-sprite-tool-list-section flex flex-col gap-1 border-b border-slate-200 p-2">
+        <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-400">Tools</p>
+        <div className="mvp16-sprite-tool-list-grid grid grid-cols-2 gap-1">
+          {SPRITE_TOOL_REGISTRY.map((toolEntry) => {
+            const Icon = TOOL_ICONS[toolEntry.id]
+            return (
+              <button
+                key={toolEntry.id}
+                type="button"
+                className={`mvp16-sprite-tool-list-btn flex flex-col items-center gap-0.5 rounded px-1 py-1.5 text-[9px] ${
+                  activeTool === toolEntry.id ? "bg-indigo-100 text-indigo-700" : "text-slate-500 hover:bg-slate-100"
+                }`}
+                onClick={() => onToolChange(toolEntry.id)}
+                title={toolEntry.label}
+              >
+                <Icon className="h-4 w-4" />
+                {toolEntry.label}
+              </button>
+            )
+          })}
         </div>
+      </div>
+
+      <div className="mvp16-sprite-tool-options-section flex flex-col gap-1 border-b border-slate-200 p-2">
+        <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-400">Tool options</p>
+        <ToolOptionsPanel activeTool={activeTool} toolOptions={toolOptions} onUpdateToolOptions={onUpdateToolOptions} />
       </div>
 
       <div className={`mvp16-sprite-color-section flex flex-col gap-2 border-b border-slate-200 p-2 transition-opacity ${colorEnabled ? "" : "pointer-events-none opacity-30"}`}>
