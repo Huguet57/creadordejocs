@@ -6,6 +6,46 @@ import { resolveAssetSource } from "../assets/asset-source-resolver.js"
 
 const ROOM_WIDTH = 840
 const ROOM_HEIGHT = 480
+const ROOM_GRID_SIZE = 32
+const DRAG_SNAP_SIZE = 4
+const DEFAULT_INSTANCE_SIZE = 32
+
+type RoomDragPreview = {
+  instanceId: string
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+export function snapToGrid(value: number, gridSize: number): number {
+  return Math.round(value / gridSize) * gridSize
+}
+
+export function calculateRoomDragPosition(params: {
+  clientX: number
+  clientY: number
+  rectLeft: number
+  rectTop: number
+  roomWidth: number
+  roomHeight: number
+  instanceWidth: number
+  instanceHeight: number
+  snapSize: number
+}): { x: number; y: number } {
+  const rawX = params.clientX - params.rectLeft - params.instanceWidth / 2
+  const rawY = params.clientY - params.rectTop - params.instanceHeight / 2
+  const maxX = params.roomWidth - params.instanceWidth
+  const maxY = params.roomHeight - params.instanceHeight
+  const clampedX = Math.max(0, Math.min(maxX, rawX))
+  const clampedY = Math.max(0, Math.min(maxY, rawY))
+  const snappedX = snapToGrid(clampedX, params.snapSize)
+  const snappedY = snapToGrid(clampedY, params.snapSize)
+  return {
+    x: Math.max(0, Math.min(maxX, snappedX)),
+    y: Math.max(0, Math.min(maxY, snappedY))
+  }
+}
 
 type RoomEditorSectionProps = {
   controller: EditorController
@@ -15,6 +55,9 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
   const [isAddingRoom, setIsAddingRoom] = useState(false)
   const [roomName, setRoomName] = useState("Sala nova")
   const [resolvedSpriteSources, setResolvedSpriteSources] = useState<Record<string, string>>({})
+  const [dragPreview, setDragPreview] = useState<RoomDragPreview | null>(null)
+  const [draggingInstanceId, setDraggingInstanceId] = useState<string | null>(null)
+  const transparentDragImageRef = useRef<HTMLDivElement | null>(null)
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const sprites = controller.project.resources.sprites
   const spriteById = useMemo(
@@ -26,6 +69,15 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
     if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
     idleTimerRef.current = setTimeout(() => setIsAddingRoom(false), 5000)
   }
+
+  useEffect(() => {
+    return () => {
+      if (transparentDragImageRef.current) {
+        transparentDragImageRef.current.remove()
+        transparentDragImageRef.current = null
+      }
+    }
+  }, [])
 
   useEffect(() => {
     if (isAddingRoom) {
@@ -204,37 +256,102 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                   height: ROOM_HEIGHT,
                   backgroundImage:
                     "linear-gradient(to right, rgb(226 232 240 / 0.8) 1px, transparent 1px), linear-gradient(to bottom, rgb(226 232 240 / 0.8) 1px, transparent 1px)",
-                  backgroundSize: "32px 32px"
+                  backgroundSize: `${ROOM_GRID_SIZE}px ${ROOM_GRID_SIZE}px`
                 }}
-                onDragOver={(event) => event.preventDefault()}
+                onDragOver={(event) => {
+                  event.preventDefault()
+                  if (!controller.activeRoom || !draggingInstanceId) return
+                  const instanceEntry = controller.activeRoom.instances.find((candidate) => candidate.id === draggingInstanceId)
+                  const objectEntry = instanceEntry
+                    ? controller.project.objects.find((candidate) => candidate.id === instanceEntry.objectId)
+                    : null
+                  const instanceWidth = objectEntry?.width ?? DEFAULT_INSTANCE_SIZE
+                  const instanceHeight = objectEntry?.height ?? DEFAULT_INSTANCE_SIZE
+                  const rect = event.currentTarget.getBoundingClientRect()
+                  const position = calculateRoomDragPosition({
+                    clientX: event.clientX,
+                    clientY: event.clientY,
+                    rectLeft: rect.left,
+                    rectTop: rect.top,
+                    roomWidth: ROOM_WIDTH,
+                    roomHeight: ROOM_HEIGHT,
+                    instanceWidth,
+                    instanceHeight,
+                    snapSize: DRAG_SNAP_SIZE
+                  })
+                  setDragPreview({
+                    instanceId: draggingInstanceId,
+                    x: position.x,
+                    y: position.y,
+                    width: instanceWidth,
+                    height: instanceHeight
+                  })
+                }}
+                onDragLeave={(event) => {
+                  if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                    setDragPreview(null)
+                  }
+                }}
                 onDrop={(event) => {
+                  event.preventDefault()
                   if (!controller.activeRoom) return
                   const instanceId = event.dataTransfer.getData("text/plain")
                   const instanceEntry = controller.activeRoom.instances.find((candidate) => candidate.id === instanceId)
                   const objectEntry = instanceEntry
                     ? controller.project.objects.find((candidate) => candidate.id === instanceEntry.objectId)
                     : null
-                  const instanceWidth = objectEntry?.width ?? 32
-                  const instanceHeight = objectEntry?.height ?? 32
+                  const instanceWidth = objectEntry?.width ?? DEFAULT_INSTANCE_SIZE
+                  const instanceHeight = objectEntry?.height ?? DEFAULT_INSTANCE_SIZE
                   const rect = event.currentTarget.getBoundingClientRect()
-                  const x = Math.max(0, Math.min(ROOM_WIDTH - instanceWidth, event.clientX - rect.left - instanceWidth / 2))
-                  const y = Math.max(0, Math.min(ROOM_HEIGHT - instanceHeight, event.clientY - rect.top - instanceHeight / 2))
-                  controller.moveInstance(instanceId, x, y)
+                  const position = calculateRoomDragPosition({
+                    clientX: event.clientX,
+                    clientY: event.clientY,
+                    rectLeft: rect.left,
+                    rectTop: rect.top,
+                    roomWidth: ROOM_WIDTH,
+                    roomHeight: ROOM_HEIGHT,
+                    instanceWidth,
+                    instanceHeight,
+                    snapSize: DRAG_SNAP_SIZE
+                  })
+                  controller.moveInstance(instanceId, position.x, position.y)
+                  setDragPreview(null)
+                  setDraggingInstanceId(null)
                 }}
               >
                 {controller.activeRoom.instances.map((instanceEntry) => {
                   const objectEntry = controller.project.objects.find((entry) => entry.id === instanceEntry.objectId)
                   const spriteEntry = objectEntry?.spriteId ? spriteById[objectEntry.spriteId] : undefined
                   const spriteSource = spriteEntry ? resolvedSpriteSources[spriteEntry.id] : undefined
-                  const instanceWidth = objectEntry?.width ?? 32
-                  const instanceHeight = objectEntry?.height ?? 32
+                  const instanceWidth = objectEntry?.width ?? DEFAULT_INSTANCE_SIZE
+                  const instanceHeight = objectEntry?.height ?? DEFAULT_INSTANCE_SIZE
                   return (
                     <div
                       key={instanceEntry.id}
-                      className={`mvp15-room-instance group absolute flex cursor-move items-center justify-center overflow-hidden rounded text-[10px] ${spriteSource ? "" : "bg-blue-500 text-white"}`}
+                      className={`mvp15-room-instance group absolute flex cursor-move items-center justify-center overflow-hidden rounded text-[10px] ${spriteSource ? "" : "bg-blue-500 text-white"} ${draggingInstanceId === instanceEntry.id ? "opacity-30" : ""}`}
                       style={{ left: instanceEntry.x, top: instanceEntry.y, width: instanceWidth, height: instanceHeight }}
                       draggable
-                      onDragStart={(event) => event.dataTransfer.setData("text/plain", instanceEntry.id)}
+                      onDragStart={(event) => {
+                        event.dataTransfer.setData("text/plain", instanceEntry.id)
+                        event.dataTransfer.effectAllowed = "move"
+                        if (!transparentDragImageRef.current) {
+                          const element = document.createElement("div")
+                          element.style.width = "1px"
+                          element.style.height = "1px"
+                          element.style.position = "fixed"
+                          element.style.top = "-1000px"
+                          element.style.left = "-1000px"
+                          element.style.opacity = "0.01"
+                          document.body.appendChild(element)
+                          transparentDragImageRef.current = element
+                        }
+                        event.dataTransfer.setDragImage(transparentDragImageRef.current, 0, 0)
+                        setDraggingInstanceId(instanceEntry.id)
+                      }}
+                      onDragEnd={() => {
+                        setDragPreview(null)
+                        setDraggingInstanceId(null)
+                      }}
                       title={
                         objectEntry
                           ? `${objectEntry.name} (${Math.round(instanceEntry.x)}, ${Math.round(instanceEntry.y)})`
@@ -252,7 +369,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                       )}
                       <button
                         type="button"
-                        className="absolute -right-1.5 -top-1.5 hidden h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white group-hover:flex"
+                        className={`absolute -right-1.5 -top-1.5 h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white ${draggingInstanceId ? "hidden" : "hidden group-hover:flex"}`}
                         onClick={(e) => {
                           e.stopPropagation()
                           controller.removeInstance(instanceEntry.id)
@@ -264,6 +381,18 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                     </div>
                   )
                 })}
+                {dragPreview && (
+                  <div
+                    className="mvp19-room-drag-ghost pointer-events-none absolute z-10 rounded border-2 border-blue-400 bg-blue-400/20"
+                    style={{
+                      left: dragPreview.x,
+                      top: dragPreview.y,
+                      width: dragPreview.width,
+                      height: dragPreview.height
+                    }}
+                    aria-hidden
+                  />
+                )}
               </div>
             </div>
           )}
