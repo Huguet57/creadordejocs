@@ -21,6 +21,7 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
   const {
     activeTool,
     setActiveTool,
+    lastPaintTool,
     activeColor,
     setActiveColor,
     zoom,
@@ -32,6 +33,7 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
   } = spriteEditorState
   const activeSpriteId = controller.activeSpriteId
   const [, setMagicWandSelection] = useState<Set<number>>(new Set())
+  const [pickerPreviewColor, setPickerPreviewColor] = useState<string | null>(null)
 
   useEffect(() => {
     if (!activeSpriteId && spriteIds[0]) {
@@ -42,6 +44,12 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
       controller.setActiveSpriteId(spriteIds[0] ?? null)
     }
   }, [activeSpriteId, controller, spriteIds])
+
+  useEffect(() => {
+    if (activeTool !== "color_picker") {
+      setPickerPreviewColor(null)
+    }
+  }, [activeTool])
 
   const selectedSprite =
     sprites.find((spriteEntry) => spriteEntry.id === activeSpriteId) ??
@@ -109,6 +117,7 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
       <SpriteToolbar
         activeTool={activeTool}
         activeColor={activeColor}
+        pickerPreviewColor={pickerPreviewColor}
         spritePixels={selectedSpritePixels}
         toolOptions={toolOptions}
         onToolChange={setActiveTool}
@@ -170,7 +179,17 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
             zoom={zoom}
             showGrid={showGrid}
             activeTool={activeTool}
-            onPaint={pixelActions.paintAt}
+            onPaint={(x, y, tool, phase) => {
+              pixelActions.paintAt(x, y, tool, phase)
+              if (tool === "color_picker" && phase === "pointerDown") {
+                setActiveTool(lastPaintTool)
+              }
+            }}
+            onHoverColorChange={(nextColor) => {
+              if (activeTool === "color_picker") {
+                setPickerPreviewColor(nextColor)
+              }
+            }}
           />
         ) : (
           <div className="flex flex-1 items-center justify-center bg-slate-50 text-sm text-slate-400">

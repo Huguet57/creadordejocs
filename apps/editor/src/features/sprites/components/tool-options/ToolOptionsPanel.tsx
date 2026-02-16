@@ -13,6 +13,7 @@ type ToolOptionsPanelProps = {
   activeTool: SpriteEditorTool
   toolOptions: SpriteToolOptionsState
   activeColor: string
+  pickerPreviewColor: string | null
   spriteColors: string[]
   onColorChange: (color: string) => void
   onUpdateToolOptions: <ToolName extends SpriteEditorTool>(
@@ -59,11 +60,13 @@ export function ToolOptionsPanel({
   activeTool,
   toolOptions,
   activeColor,
+  pickerPreviewColor,
   spriteColors,
   onColorChange,
   onUpdateToolOptions
 }: ToolOptionsPanelProps) {
   const normalizedActive = normalizeHexRgba(activeColor)
+  const normalizedPreview = normalizeHexRgba(pickerPreviewColor ?? activeColor)
 
   if (activeTool === "pencil") {
     return (
@@ -157,6 +160,26 @@ export function ToolOptionsPanel({
             onChange={(event) => onUpdateToolOptions("magic_wand", { tolerance: Number(event.target.value) })}
           />
         </label>
+      </div>
+    )
+  }
+
+  if (activeTool === "color_picker") {
+    return (
+      <div className="mvp16-sprite-tool-options-picker flex flex-col gap-2">
+        <p className="text-[10px] font-medium text-slate-600">Hover preview</p>
+        <div className="mvp16-sprite-tool-options-picker-preview flex items-center gap-2 rounded border border-slate-200 bg-white p-2">
+          <div
+            className="mvp16-sprite-tool-options-picker-preview-swatch h-7 w-7 shrink-0 rounded border border-slate-300"
+            style={{ backgroundColor: normalizedPreview.slice(0, 7) }}
+          />
+          <div className="mvp16-sprite-tool-options-picker-preview-meta flex min-w-0 flex-col">
+            <span className="truncate text-[10px] font-medium text-slate-700">{normalizedPreview}</span>
+            <span className="text-[10px] text-slate-500">
+              {pickerPreviewColor ? "Color sota cursor" : "Mou el cursor per previsualitzar"}
+            </span>
+          </div>
+        </div>
       </div>
     )
   }

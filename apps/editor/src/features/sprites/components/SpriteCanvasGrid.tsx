@@ -13,9 +13,19 @@ type SpriteCanvasGridProps = {
   showGrid: boolean
   activeTool: SpriteEditorTool
   onPaint: (x: number, y: number, tool: SpriteEditorTool, phase: SpritePointerActionPhase) => void
+  onHoverColorChange?: (color: string | null) => void
 }
 
-export function SpriteCanvasGrid({ width, height, pixelsRgba, zoom, showGrid, activeTool, onPaint }: SpriteCanvasGridProps) {
+export function SpriteCanvasGrid({
+  width,
+  height,
+  pixelsRgba,
+  zoom,
+  showGrid,
+  activeTool,
+  onPaint,
+  onHoverColorChange
+}: SpriteCanvasGridProps) {
   const [isPointerDown, setIsPointerDown] = useState(false)
   const safePixels = normalizePixelGrid(pixelsRgba, width, height)
 
@@ -28,7 +38,10 @@ export function SpriteCanvasGrid({ width, height, pixelsRgba, zoom, showGrid, ac
           gridTemplateRows: `repeat(${height}, ${zoom}px)`,
           cursor: SPRITE_TOOL_BY_ID[activeTool]?.cursor ?? "default"
         }}
-        onMouseLeave={() => setIsPointerDown(false)}
+        onMouseLeave={() => {
+          setIsPointerDown(false)
+          onHoverColorChange?.(null)
+        }}
       >
         {safePixels.map((pixelEntry, index) => {
           const x = index % width
@@ -50,6 +63,7 @@ export function SpriteCanvasGrid({ width, height, pixelsRgba, zoom, showGrid, ac
               }}
               onMouseUp={() => setIsPointerDown(false)}
               onMouseEnter={() => {
+                onHoverColorChange?.(pixelEntry)
                 if (isPointerDown) {
                   onPaint(x, y, activeTool, "pointerDrag")
                 }

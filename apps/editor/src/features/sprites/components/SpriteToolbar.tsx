@@ -38,6 +38,7 @@ function extractDominantColors(pixels: string[], maxColors: number): string[] {
 type SpriteToolbarProps = {
   activeTool: SpriteEditorTool
   activeColor: string
+  pickerPreviewColor: string | null
   spritePixels: string[]
   toolOptions: SpriteToolOptionsState
   onToolChange: (tool: SpriteEditorTool) => void
@@ -59,6 +60,7 @@ const TOOL_ICONS: Record<SpriteEditorTool, typeof Pencil> = {
 export function SpriteToolbar({
   activeTool,
   activeColor,
+  pickerPreviewColor,
   spritePixels,
   toolOptions,
   onToolChange,
@@ -98,6 +100,7 @@ export function SpriteToolbar({
           activeTool={activeTool}
           toolOptions={toolOptions}
           activeColor={activeColor}
+          pickerPreviewColor={pickerPreviewColor}
           spriteColors={spriteColors}
           onColorChange={onColorChange}
           onUpdateToolOptions={onUpdateToolOptions}
