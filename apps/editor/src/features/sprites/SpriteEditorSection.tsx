@@ -16,10 +16,8 @@ type SpriteEditorSectionProps = {
 export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
   const sprites = controller.project.resources.sprites
   const spriteIds = sprites.map((spriteEntry) => spriteEntry.id)
-  const spriteEditorState = useSpriteEditorState(spriteIds, controller.activeSpriteId)
+  const spriteEditorState = useSpriteEditorState()
   const {
-    activeSpriteId,
-    setActiveSpriteId,
     activeTool,
     setActiveTool,
     activeColor,
@@ -27,29 +25,17 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
     zoom,
     setZoom
   } = spriteEditorState
+  const activeSpriteId = controller.activeSpriteId
 
   useEffect(() => {
     if (!activeSpriteId && spriteIds[0]) {
-      setActiveSpriteId(spriteIds[0])
+      controller.setActiveSpriteId(spriteIds[0])
       return
     }
     if (activeSpriteId && !spriteIds.includes(activeSpriteId)) {
-      setActiveSpriteId(spriteIds[0] ?? null)
+      controller.setActiveSpriteId(spriteIds[0] ?? null)
     }
-  }, [activeSpriteId, setActiveSpriteId, spriteIds])
-
-  useEffect(() => {
-    const nextActiveId = controller.activeSpriteId
-    if (nextActiveId && activeSpriteId !== nextActiveId) {
-      setActiveSpriteId(nextActiveId)
-    }
-  }, [activeSpriteId, controller.activeSpriteId, setActiveSpriteId])
-
-  useEffect(() => {
-    if (activeSpriteId !== controller.activeSpriteId) {
-      controller.setActiveSpriteId(activeSpriteId)
-    }
-  }, [activeSpriteId, controller])
+  }, [activeSpriteId, controller, spriteIds])
 
   const selectedSprite =
     sprites.find((spriteEntry) => spriteEntry.id === activeSpriteId) ??
@@ -94,7 +80,7 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
           height: spriteEntry.height
         }))}
         activeSpriteId={selectedSprite?.id ?? null}
-        onSelectSprite={(spriteId) => setActiveSpriteId(spriteId)}
+        onSelectSprite={(spriteId) => controller.setActiveSpriteId(spriteId)}
         onAddSprite={(name) => controller.addSprite(name)}
       />
 
