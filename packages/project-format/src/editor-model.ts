@@ -67,6 +67,8 @@ export type VariableDefinition = ProjectV1["variables"]["global"][number]
 export type VariableType = VariableDefinition["type"]
 export type VariableValue = VariableDefinition["initialValue"]
 export type ValueExpression = ValueExpressionOutput
+export type SpriteFolder = NonNullable<ProjectV1["resources"]["spriteFolders"]>[number]
+export type SpriteResource = ProjectV1["resources"]["sprites"][number]
 
 export type AddObjectEventInput = {
   objectId: string
@@ -344,6 +346,44 @@ function normalizeVariableName(name: string): string {
   return name.trim().toLocaleLowerCase()
 }
 
+function normalizeSpriteName(name: string): string {
+  return name.trim().toLocaleLowerCase()
+}
+
+function hasSpriteNameConflict(
+  sprites: SpriteResource[],
+  folderId: string | null,
+  candidateName: string,
+  ignoreSpriteId?: string
+): boolean {
+  const normalizedCandidate = normalizeSpriteName(candidateName)
+  return sprites.some(
+    (spriteEntry) =>
+      spriteEntry.id !== ignoreSpriteId &&
+      (spriteEntry.folderId ?? null) === folderId &&
+      normalizeSpriteName(spriteEntry.name) === normalizedCandidate
+  )
+}
+
+function hasFolderNameConflict(
+  folders: SpriteFolder[],
+  parentId: string | null,
+  candidateName: string,
+  ignoreFolderId?: string
+): boolean {
+  const normalizedCandidate = normalizeSpriteName(candidateName)
+  return folders.some(
+    (folderEntry) =>
+      folderEntry.id !== ignoreFolderId &&
+      (folderEntry.parentId ?? null) === parentId &&
+      normalizeSpriteName(folderEntry.name) === normalizedCandidate
+  )
+}
+
+function getSpriteFolders(project: ProjectV1): SpriteFolder[] {
+  return project.resources.spriteFolders ?? []
+}
+
 function hasVariableNameConflict(definitions: VariableDefinition[], candidateName: string, ignoreId?: string): boolean {
   const normalizedCandidate = normalizeVariableName(candidateName)
   return definitions.some(
@@ -407,6 +447,7 @@ export function quickCreateSpriteWithSize(
           {
             id: spriteId,
             name,
+            folderId: null,
             imagePath: "",
             assetSource: "",
             uploadStatus: "notConnected",
@@ -545,6 +586,193 @@ export function updateSpriteAssetSource(project: ProjectV1, spriteId: string, as
           : spriteEntry
       )
     }
+  }
+}
+
+export function createSpriteFolder(
+  project: ProjectV1,
+  name: string,
+  parentId: string | null = null
+): { project: ProjectV1; folderId: string | null } {
+  const trimmedName = name.trim()
+  if (!trimmedName) {
+    return { project, folderId: null }
+  }
+  const normalizedParentId = parentId ?? null
+  const spriteFolders = getSpriteFolders(project)
+  if (normalizedParentId && !spriteFolders.some((entry) => entry.id === normalizedParentId)) {
+    return { project, folderId: null }
+  }
+  if (hasFolderNameConflict(spriteFolders, normalizedParentId, trimmedName)) {
+    return { project, folderId: null }
+  }
+  const folderId = makeId("sprite-folder")
+  return {
+    project: {
+      ...project,
+      resources: {
+        ...project.resources,
+        spriteFolders: [
+          ...spriteFolders,
+          {
+            id: folderId,
+            name: trimmedName,
+            parentId: normalizedParentId
+          }
+        ]
+      }
+    },
+    folderId
+  }
+}
+
+export function renameSpriteFolder(project: ProjectV1, folderId: string, name: string): ProjectV1 {
+  const trimmedName = name.trim()
+  if (!trimmedName) {
+    return project
+  }
+  const spriteFolders = getSpriteFolders(project)
+  const folderEntry = spriteFolders.find((entry) => entry.id === folderId)
+  if (!folderEntry) {
+    return project
+  }
+  const parentId = folderEntry.parentId ?? null
+  if (hasFolderNameConflict(spriteFolders, parentId, trimmedName, folderId)) {
+    return project
+  }
+  return {
+    ...project,
+    resources: {
+      ...project.resources,
+      spriteFolders: spriteFolders.map((entry) =>
+        entry.id === folderId
+          ? {
+              ...entry,
+              name: trimmedName
+            }
+          : entry
+      )
+    }
+  }
+}
+
+export function deleteSpriteFolder(project: ProjectV1, folderId: string): ProjectV1 {
+  const folders = getSpriteFolders(project)
+  const hasFolder = folders.some((entry) => entry.id === folderId)
+  if (!hasFolder) {
+    return project
+  }
+  const deletedBranchIds = new Set<string>([folderId])
+  let hasNewDescendants = true
+  while (hasNewDescendants) {
+    hasNewDescendants = false
+    for (const folderEntry of folders) {
+      if (folderEntry.parentId && deletedBranchIds.has(folderEntry.parentId) && !deletedBranchIds.has(folderEntry.id)) {
+        deletedBranchIds.add(folderEntry.id)
+        hasNewDescendants = true
+      }
+    }
+  }
+  return {
+    ...project,
+    resources: {
+      ...project.resources,
+      spriteFolders: folders
+        .filter((entry) => entry.id !== folderId)
+        .map((entry) =>
+          entry.parentId === folderId
+            ? {
+                ...entry,
+                parentId: null
+              }
+            : entry
+        ),
+      sprites: project.resources.sprites.map((entry) =>
+        entry.folderId && deletedBranchIds.has(entry.folderId)
+          ? {
+              ...entry,
+              folderId: null
+            }
+          : entry
+      )
+    }
+  }
+}
+
+export function renameSprite(project: ProjectV1, spriteId: string, name: string): ProjectV1 {
+  const trimmedName = name.trim()
+  if (!trimmedName) {
+    return project
+  }
+  const currentSprite = project.resources.sprites.find((entry) => entry.id === spriteId)
+  if (!currentSprite) {
+    return project
+  }
+  const folderId = currentSprite.folderId ?? null
+  if (hasSpriteNameConflict(project.resources.sprites, folderId, trimmedName, spriteId)) {
+    return project
+  }
+  return {
+    ...project,
+    resources: {
+      ...project.resources,
+      sprites: project.resources.sprites.map((entry) =>
+        entry.id === spriteId
+          ? {
+              ...entry,
+              name: trimmedName
+            }
+          : entry
+      )
+    }
+  }
+}
+
+export function moveSpriteToFolder(project: ProjectV1, spriteId: string, folderId: string | null): ProjectV1 {
+  const normalizedFolderId = folderId ?? null
+  const hasSprite = project.resources.sprites.some((entry) => entry.id === spriteId)
+  if (!hasSprite) {
+    return project
+  }
+  const spriteFolders = getSpriteFolders(project)
+  if (normalizedFolderId && !spriteFolders.some((entry) => entry.id === normalizedFolderId)) {
+    return project
+  }
+  return {
+    ...project,
+    resources: {
+      ...project.resources,
+      sprites: project.resources.sprites.map((entry) =>
+        entry.id === spriteId
+          ? {
+              ...entry,
+              folderId: normalizedFolderId
+            }
+          : entry
+      )
+    }
+  }
+}
+
+export function deleteSprite(project: ProjectV1, spriteId: string): ProjectV1 {
+  const hasSprite = project.resources.sprites.some((entry) => entry.id === spriteId)
+  if (!hasSprite) {
+    return project
+  }
+  return {
+    ...project,
+    resources: {
+      ...project.resources,
+      sprites: project.resources.sprites.filter((entry) => entry.id !== spriteId)
+    },
+    objects: project.objects.map((objectEntry) =>
+      objectEntry.spriteId === spriteId
+        ? {
+            ...objectEntry,
+            spriteId: null
+          }
+        : objectEntry
+    )
   }
 }
 

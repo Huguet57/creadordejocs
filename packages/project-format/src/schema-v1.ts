@@ -17,12 +17,19 @@ const SceneSchema = z.object({
 const SpriteResourceSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
+  folderId: z.string().nullable().optional(),
   imagePath: z.string(),
   assetSource: z.string().default(""),
   uploadStatus: z.enum(["notConnected", "ready"]).default("notConnected"),
   width: z.number().int().min(1).default(32),
   height: z.number().int().min(1).default(32),
   pixelsRgba: z.array(z.string()).default([])
+})
+
+const SpriteFolderSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  parentId: z.string().nullable().optional()
 })
 
 const SoundResourceSchema = z.object({
@@ -34,6 +41,7 @@ const SoundResourceSchema = z.object({
 })
 
 const ProjectResourcesSchema = z.object({
+  spriteFolders: z.array(SpriteFolderSchema).optional(),
   sprites: z.array(SpriteResourceSchema),
   sounds: z.array(SoundResourceSchema)
 })
@@ -416,6 +424,7 @@ export function createEmptyProjectV1(name: string): ProjectV1 {
       createdAtIso: new Date().toISOString()
     },
     resources: {
+      spriteFolders: [],
       sprites: [],
       sounds: []
     },

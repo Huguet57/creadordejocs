@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest"
 import {
   getRuntimeKeyFromKeyboardEvent,
   isSpriteCompatibleWithObjectSize,
+  resolveNextActiveSpriteIdAfterDelete,
+  countSpriteAssignments,
   resolveInitialSection,
   resolveResetState,
   shouldResetWhenSwitchingSection
@@ -122,5 +124,40 @@ describe("isSpriteCompatibleWithObjectSize", () => {
   it("returns false when width or height differ", () => {
     expect(isSpriteCompatibleWithObjectSize(32, 16, 16, 16)).toBe(false)
     expect(isSpriteCompatibleWithObjectSize(16, 32, 16, 16)).toBe(false)
+  })
+})
+
+describe("resolveNextActiveSpriteIdAfterDelete", () => {
+  it("keeps current active sprite when deleting a non-active sprite", () => {
+    const activeId = "sprite-2"
+    const result = resolveNextActiveSpriteIdAfterDelete(["sprite-1", "sprite-2", "sprite-3"], activeId, "sprite-1")
+    expect(result).toBe(activeId)
+  })
+
+  it("selects next sprite when deleting the active sprite", () => {
+    const result = resolveNextActiveSpriteIdAfterDelete(["sprite-1", "sprite-2", "sprite-3"], "sprite-2", "sprite-2")
+    expect(result).toBe("sprite-3")
+  })
+
+  it("falls back to previous sprite when deleting the last active sprite", () => {
+    const result = resolveNextActiveSpriteIdAfterDelete(["sprite-1", "sprite-2"], "sprite-2", "sprite-2")
+    expect(result).toBe("sprite-1")
+  })
+
+  it("returns null when no sprites remain after deletion", () => {
+    const result = resolveNextActiveSpriteIdAfterDelete(["sprite-1"], "sprite-1", "sprite-1")
+    expect(result).toBeNull()
+  })
+})
+
+describe("countSpriteAssignments", () => {
+  it("counts how many objects reference a sprite", () => {
+    const base = createEmptyProjectV1("sprite assignments")
+    const spriteResult = quickCreateSprite(base, "Hero")
+    const objectOne = quickCreateObject(spriteResult.project, { name: "Obj1", spriteId: spriteResult.spriteId })
+    const objectTwo = quickCreateObject(objectOne.project, { name: "Obj2", spriteId: spriteResult.spriteId })
+    const objectThree = quickCreateObject(objectTwo.project, { name: "Obj3", spriteId: null })
+
+    expect(countSpriteAssignments(objectThree.project, spriteResult.spriteId)).toBe(2)
   })
 })

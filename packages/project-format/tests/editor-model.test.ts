@@ -5,10 +5,16 @@ import {
   addObjectEventAction,
   addObjectEventIfAction,
   addObjectEventIfBlock,
+  createSpriteFolder,
   createEmptyProjectV1,
   createRoom,
+  deleteSprite,
+  deleteSpriteFolder,
   moveObjectEventAction,
+  moveSpriteToFolder,
   moveRoomInstance,
+  renameSprite,
+  renameSpriteFolder,
   removeObjectEventIfAction,
   removeObjectEventIfBlock,
   removeObjectEventAction,
@@ -23,11 +29,11 @@ import {
   quickCreateSound,
   quickCreateSprite,
   quickCreateSpriteWithSize,
+  updateObjectSpriteId,
   updateObjectEventIfAction,
   updateObjectEventIfBlockCondition,
   updateObjectEventAction,
   updateObjectEventConfig,
-  updateObjectSpriteId,
   updateSoundAssetSource,
   updateSpritePixelsRgba,
   updateSpriteAssetSource,
@@ -131,6 +137,94 @@ describe("editor model helpers", () => {
     const assigned = updateObjectSpriteId(objectResult.project, objectResult.objectId, spriteResult.spriteId)
 
     expect(assigned.objects[0]?.spriteId).toBe(spriteResult.spriteId)
+  })
+
+  it("creates and renames sprite folders with sibling uniqueness", () => {
+    const initial = createEmptyProjectV1("Sprite folders")
+    const withRootFolder = createSpriteFolder(initial, "Characters")
+    const rootFolderId = withRootFolder.folderId
+    if (!rootFolderId) {
+      throw new Error("Expected root sprite folder to be created")
+    }
+    const withChildFolder = createSpriteFolder(withRootFolder.project, "Enemies", rootFolderId)
+    const childFolderId = withChildFolder.folderId
+    if (!childFolderId) {
+      throw new Error("Expected nested sprite folder to be created")
+    }
+
+    const duplicateInSameParent = createSpriteFolder(withChildFolder.project, "characters")
+    expect(duplicateInSameParent.folderId).toBeNull()
+
+    const withSiblingFolder = createSpriteFolder(withChildFolder.project, "Pickups")
+    const siblingFolderId = withSiblingFolder.folderId
+    if (!siblingFolderId) {
+      throw new Error("Expected sibling sprite folder to be created")
+    }
+    const renamed = renameSpriteFolder(withSiblingFolder.project, siblingFolderId, "Collectibles")
+    expect((renamed.resources.spriteFolders ?? []).find((folder) => folder.id === siblingFolderId)?.name).toBe("Collectibles")
+
+    const conflictingRename = renameSpriteFolder(renamed, siblingFolderId, "Characters")
+    expect((conflictingRename.resources.spriteFolders ?? []).find((folder) => folder.id === siblingFolderId)?.name).toBe(
+      "Collectibles"
+    )
+  })
+
+  it("moves sprites into folders and validates rename collisions per folder", () => {
+    const initial = createEmptyProjectV1("Sprite organization")
+    const folderResult = createSpriteFolder(initial, "Player")
+    const folderId = folderResult.folderId
+    if (!folderId) {
+      throw new Error("Expected sprite folder")
+    }
+    const firstSpriteResult = quickCreateSprite(folderResult.project, "Idle")
+    const secondSpriteResult = quickCreateSprite(firstSpriteResult.project, "Run")
+    const movedSpriteProject = moveSpriteToFolder(secondSpriteResult.project, secondSpriteResult.spriteId, folderId)
+    expect(
+      movedSpriteProject.resources.sprites.find((spriteEntry) => spriteEntry.id === secondSpriteResult.spriteId)?.folderId
+    ).toBe(folderId)
+
+    const movedFirstSprite = moveSpriteToFolder(movedSpriteProject, firstSpriteResult.spriteId, folderId)
+    const conflictingRename = renameSprite(movedFirstSprite, secondSpriteResult.spriteId, "idle")
+    expect(conflictingRename.resources.sprites.find((spriteEntry) => spriteEntry.id === secondSpriteResult.spriteId)?.name).toBe(
+      "Run"
+    )
+
+    const successfulRename = renameSprite(movedFirstSprite, secondSpriteResult.spriteId, "Jump")
+    expect(successfulRename.resources.sprites.find((spriteEntry) => spriteEntry.id === secondSpriteResult.spriteId)?.name).toBe(
+      "Jump"
+    )
+  })
+
+  it("deletes folders and rehomes child sprites and nested folders to root", () => {
+    const initial = createEmptyProjectV1("Folder delete")
+    const rootFolderResult = createSpriteFolder(initial, "Characters")
+    const rootFolderId = rootFolderResult.folderId
+    if (!rootFolderId) {
+      throw new Error("Expected root sprite folder")
+    }
+    const childFolderResult = createSpriteFolder(rootFolderResult.project, "Enemies", rootFolderId)
+    const childFolderId = childFolderResult.folderId
+    if (!childFolderId) {
+      throw new Error("Expected child sprite folder")
+    }
+    const spriteResult = quickCreateSprite(childFolderResult.project, "Bat")
+    const spriteInChildFolder = moveSpriteToFolder(spriteResult.project, spriteResult.spriteId, childFolderId)
+    const afterDelete = deleteSpriteFolder(spriteInChildFolder, rootFolderId)
+
+    expect((afterDelete.resources.spriteFolders ?? []).find((entry) => entry.id === rootFolderId)).toBeUndefined()
+    expect((afterDelete.resources.spriteFolders ?? []).find((entry) => entry.id === childFolderId)?.parentId).toBeNull()
+    expect(afterDelete.resources.sprites.find((entry) => entry.id === spriteResult.spriteId)?.folderId).toBeNull()
+  })
+
+  it("deletes a sprite and clears object sprite references", () => {
+    const initial = createEmptyProjectV1("Sprite delete")
+    const spriteResult = quickCreateSprite(initial, "Coin")
+    const objectResult = quickCreateObject(spriteResult.project, { name: "Pickup", spriteId: spriteResult.spriteId })
+    const verifiedAssignment = updateObjectSpriteId(objectResult.project, objectResult.objectId, spriteResult.spriteId)
+    const afterDelete = deleteSprite(verifiedAssignment, spriteResult.spriteId)
+
+    expect(afterDelete.resources.sprites).toHaveLength(0)
+    expect(afterDelete.objects.find((entry) => entry.id === objectResult.objectId)?.spriteId).toBeNull()
   })
 
   it("adds and edits object events", () => {

@@ -76,12 +76,24 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
         sprites={sprites.map((spriteEntry) => ({
           id: spriteEntry.id,
           name: spriteEntry.name,
+          folderId: spriteEntry.folderId ?? null,
           width: spriteEntry.width,
           height: spriteEntry.height
         }))}
+        spriteFolders={(controller.project.resources.spriteFolders ?? []).map((folderEntry) => ({
+          id: folderEntry.id,
+          name: folderEntry.name,
+          parentId: folderEntry.parentId ?? null
+        }))}
         activeSpriteId={selectedSprite?.id ?? null}
         onSelectSprite={(spriteId) => controller.setActiveSpriteId(spriteId)}
-        onAddSprite={(name, width, height) => controller.addSprite(name, width, height)}
+        onAddSprite={(name, width, height, folderId) => controller.addSprite(name, width, height, folderId)}
+        onCreateFolder={(name, parentId) => controller.createSpriteFolder(name, parentId)}
+        onRenameSprite={(spriteId, name) => controller.renameSprite(spriteId, name)}
+        onDeleteSprite={(spriteId) => controller.deleteSprite(spriteId)}
+        onMoveSpriteToFolder={(spriteId, folderId) => controller.moveSpriteToFolder(spriteId, folderId)}
+        onRenameFolder={(folderId, name) => controller.renameSpriteFolder(folderId, name)}
+        onDeleteFolder={(folderId) => controller.deleteSpriteFolder(folderId)}
       />
 
       <div className="mvp16-sprite-editor-main flex flex-1 flex-col">

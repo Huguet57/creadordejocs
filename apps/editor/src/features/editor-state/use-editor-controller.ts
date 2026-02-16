@@ -6,12 +6,18 @@ import {
   addObjectEventIfBlock as addObjectEventIfBlockModel,
   addGlobalVariable as addGlobalVariableModel,
   addObjectVariable as addObjectVariableModel,
+  createSpriteFolder as createSpriteFolderModel,
+  deleteSprite as deleteSpriteModel,
+  deleteSpriteFolder as deleteSpriteFolderModel,
   addRoomInstance,
   createEmptyProjectV1,
   createRoom,
   incrementMetric,
   moveObjectEventAction as moveObjectEventActionModel,
+  moveSpriteToFolder as moveSpriteToFolderModel,
   moveRoomInstance,
+  renameSprite as renameSpriteModel,
+  renameSpriteFolder as renameSpriteFolderModel,
   removeRoomInstance,
   quickCreateObject,
   quickCreateSound,
@@ -130,6 +136,34 @@ export function isSpriteCompatibleWithObjectSize(
 ): boolean {
   return getNormalizedObjectSize(objectWidth) === getNormalizedObjectSize(spriteWidth) &&
     getNormalizedObjectSize(objectHeight) === getNormalizedObjectSize(spriteHeight)
+}
+
+export function resolveNextActiveSpriteIdAfterDelete(
+  spriteIds: string[],
+  activeSpriteId: string | null,
+  deletedSpriteId: string
+): string | null {
+  const deletedIndex = spriteIds.indexOf(deletedSpriteId)
+  if (deletedIndex < 0) {
+    return activeSpriteId
+  }
+  if (activeSpriteId !== deletedSpriteId) {
+    return activeSpriteId
+  }
+  const remainingIds = spriteIds.filter((spriteId) => spriteId !== deletedSpriteId)
+  if (!remainingIds.length) {
+    return null
+  }
+  const nextCandidate = spriteIds[deletedIndex + 1]
+  if (nextCandidate && nextCandidate !== deletedSpriteId) {
+    return nextCandidate
+  }
+  const previousCandidate = spriteIds[deletedIndex - 1]
+  return previousCandidate ?? remainingIds[0] ?? null
+}
+
+export function countSpriteAssignments(project: ProjectV1, spriteId: string): number {
+  return project.objects.reduce((count, objectEntry) => count + (objectEntry.spriteId === spriteId ? 1 : 0), 0)
 }
 
 function createInitialEditorState(): { project: ProjectV1; roomId: string } {
@@ -427,13 +461,81 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
     runtimeState,
     undoAvailable: past.length > 0,
     redoAvailable: future.length > 0,
-    addSprite(name: string, width = 32, height = 32) {
+    addSprite(name: string, width = 32, height = 32, folderId: string | null = null) {
       if (!name.trim()) return null
       const result = quickCreateSpriteWithSize(project, name.trim(), width, height)
-      const next = result.project
+      const next = folderId ? moveSpriteToFolderModel(result.project, result.spriteId, folderId) : result.project
       pushProjectChange(next, `Create sprite: ${name.trim()}`)
       setActiveSpriteId(result.spriteId)
       return result.spriteId
+    },
+    createSpriteFolder(name: string, parentId: string | null = null) {
+      const result = createSpriteFolderModel(project, name, parentId)
+      if (!result.folderId) {
+        return null
+      }
+      pushProjectChange(result.project, `Create sprite folder: ${name.trim()}`)
+      return result.folderId
+    },
+    renameSpriteFolder(folderId: string, name: string) {
+      const next = renameSpriteFolderModel(project, folderId, name)
+      if (next === project) {
+        return false
+      }
+      pushProjectChange(next, "Rename sprite folder")
+      return true
+    },
+    deleteSpriteFolder(folderId: string) {
+      const folderEntry = (project.resources.spriteFolders ?? []).find((entry) => entry.id === folderId)
+      if (!folderEntry) {
+        return false
+      }
+      const confirmed = window.confirm(`Vols eliminar la carpeta "${folderEntry.name}"?`)
+      if (!confirmed) {
+        return false
+      }
+      const next = deleteSpriteFolderModel(project, folderId)
+      if (next === project) {
+        return false
+      }
+      pushProjectChange(next, `Delete sprite folder: ${folderEntry.name}`)
+      return true
+    },
+    renameSprite(spriteId: string, name: string) {
+      const next = renameSpriteModel(project, spriteId, name)
+      if (next === project) {
+        return false
+      }
+      pushProjectChange(next, "Rename sprite")
+      return true
+    },
+    moveSpriteToFolder(spriteId: string, folderId: string | null) {
+      const next = moveSpriteToFolderModel(project, spriteId, folderId)
+      if (next === project) {
+        return false
+      }
+      pushProjectChange(next, "Move sprite")
+      return true
+    },
+    deleteSprite(spriteId: string) {
+      const spriteEntry = project.resources.sprites.find((entry) => entry.id === spriteId)
+      if (!spriteEntry) {
+        return false
+      }
+      const assignmentCount = countSpriteAssignments(project, spriteId)
+      const warningText =
+        assignmentCount > 0
+          ? ` Aquest sprite s'utilitza en ${assignmentCount} objecte(s) i es desassignarà automàticament.`
+          : ""
+      const confirmed = window.confirm(`Vols eliminar el sprite "${spriteEntry.name}"?${warningText}`)
+      if (!confirmed) {
+        return false
+      }
+      const spriteIds = project.resources.sprites.map((entry) => entry.id)
+      const next = deleteSpriteModel(project, spriteId)
+      pushProjectChange(next, `Delete sprite: ${spriteEntry.name}`)
+      setActiveSpriteId(resolveNextActiveSpriteIdAfterDelete(spriteIds, activeSpriteId, spriteId))
+      return true
     },
     createSpriteForSelectedObject(name: string) {
       if (!selectedObject || !name.trim()) {
