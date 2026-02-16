@@ -81,19 +81,35 @@ export function RightValuePicker({
     const viewportWidth = document.documentElement.clientWidth
     const margin = 8
 
-    // Start aligned to container left edge, then shift if it overflows
+    // Preference 1: Align Left (default)
     let leftOffset = 0
-    if (containerRect.left + naturalWidth > viewportWidth - margin) {
-      leftOffset = viewportWidth - margin - naturalWidth - containerRect.left
-    }
+    const absRight = containerRect.left + naturalWidth
 
-    // Never push past the left viewport edge
-    if (containerRect.left + leftOffset < margin) {
-      leftOffset = margin - containerRect.left
+    if (absRight > viewportWidth - margin) {
+      // Preference 2: Align Right (flush with container right edge)
+      // This is often preferred for dropdowns near the right edge
+      const alignRightOffset = containerRect.width - naturalWidth
+      const absLeftAlignRight = containerRect.left + alignRightOffset
+
+      if (absLeftAlignRight >= margin) {
+        leftOffset = alignRightOffset
+      } else {
+        // Preference 3: Flush with Viewport Right
+        leftOffset = viewportWidth - margin - naturalWidth - containerRect.left
+
+        // Preference 4: Flush with Viewport Left (clamp)
+        if (containerRect.left + leftOffset < margin) {
+          leftOffset = margin - containerRect.left
+        }
+      }
     }
 
     popover.style.left = `${leftOffset}px`
-    popover.style.maxWidth = `${viewportWidth - margin * 2}px`
+    
+    // Ensure max-width prevents overflow to the right from the calculated position
+    const absoluteLeft = containerRect.left + leftOffset
+    const availableWidth = viewportWidth - margin - absoluteLeft
+    popover.style.maxWidth = `${availableWidth}px`
   }, [isOpen])
 
   // Sync local literal state with external value
