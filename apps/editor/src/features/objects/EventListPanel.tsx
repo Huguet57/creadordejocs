@@ -113,7 +113,7 @@ export function EventListPanel({
                     )}
                     {event.type === "Keyboard" && event.key && (
                       <span className="truncate text-[10px] text-slate-400">
-                        Key: {event.key} ({event.keyboardMode ?? "down"})
+                        {event.keyboardMode === "press" ? "KeyPress" : "KeyDown"}: {event.key}
                       </span>
                     )}
                     {event.type === "Timer" && (
