@@ -74,7 +74,7 @@ export function SpriteToolbar({
       <div className="mvp16-sprite-tool-list-section flex flex-col gap-1 border-b border-slate-200 p-2">
         <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-400">Tools</p>
         <div className="mvp16-sprite-tool-list-grid grid grid-cols-2 gap-1">
-          {SPRITE_TOOL_REGISTRY.map((toolEntry) => {
+          {SPRITE_TOOL_REGISTRY.filter((toolEntry) => !toolEntry.hidden).map((toolEntry) => {
             const Icon = TOOL_ICONS[toolEntry.id]
             return (
               <button

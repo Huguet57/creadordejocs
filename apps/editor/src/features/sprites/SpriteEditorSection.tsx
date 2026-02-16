@@ -32,7 +32,7 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
     updateToolOptions
   } = spriteEditorState
   const activeSpriteId = controller.activeSpriteId
-  const [, setMagicWandSelection] = useState<Set<number>>(new Set())
+  const [magicWandSelection, setMagicWandSelection] = useState<Set<number>>(new Set())
   const [pickerPreviewColor, setPickerPreviewColor] = useState<string | null>(null)
 
   useEffect(() => {
@@ -48,6 +48,9 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
   useEffect(() => {
     if (activeTool !== "color_picker") {
       setPickerPreviewColor(null)
+    }
+    if (activeTool !== "magic_wand") {
+      setMagicWandSelection(new Set())
     }
   }, [activeTool])
 
@@ -180,6 +183,7 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
             showGrid={showGrid}
             activeTool={activeTool}
             eraserRadius={toolOptions.eraser.radius}
+            selectedIndices={magicWandSelection}
             onPaint={(x, y, tool, phase) => {
               pixelActions.paintAt(x, y, tool, phase)
               if (tool === "color_picker" && phase === "pointerDown") {

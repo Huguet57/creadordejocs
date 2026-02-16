@@ -5,13 +5,14 @@ export type SpriteToolDefinition = {
   label: string
   usesColor: boolean
   cursor: string
+  hidden?: boolean
 }
 
 export const SPRITE_TOOL_REGISTRY: SpriteToolDefinition[] = [
   { id: "pencil", label: "Pencil", usesColor: true, cursor: "crosshair" },
   { id: "eraser", label: "Eraser", usesColor: false, cursor: "cell" },
   { id: "bucket_fill", label: "Bucket", usesColor: true, cursor: "copy" },
-  { id: "magic_wand", label: "Wand", usesColor: false, cursor: "pointer" },
+  { id: "magic_wand", label: "Wand", usesColor: false, cursor: "pointer", hidden: true },
   { id: "color_picker", label: "Picker", usesColor: false, cursor: "grab" }
 ]
 

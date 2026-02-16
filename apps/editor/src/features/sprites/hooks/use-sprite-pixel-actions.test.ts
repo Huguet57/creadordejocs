@@ -21,8 +21,7 @@ describe("use-sprite-pixel-actions helpers", () => {
       pixelsRgba: pixels,
       x: 0,
       y: 0,
-      targetColor: "#FF0000FF",
-      connectivity: 4
+      targetColor: "#FF0000FF"
     })
 
     expect(next).toEqual([
@@ -40,8 +39,7 @@ describe("use-sprite-pixel-actions helpers", () => {
       pixelsRgba: pixels,
       x: 0,
       y: 0,
-      targetColor: "#AA00AAFF",
-      connectivity: 4
+      targetColor: "#AA00AAFF"
     })
     expect(next).toEqual(pixels)
   })
@@ -56,8 +54,7 @@ describe("use-sprite-pixel-actions helpers", () => {
         "#A0A0A0FF", "#A0A0A0FF", "#A0A0A0FF"
       ],
       x: 2,
-      y: 0,
-      connectivity: 4
+      y: 0
     })
     expect(selected).toEqual(new Set([2, 4, 5]))
   })

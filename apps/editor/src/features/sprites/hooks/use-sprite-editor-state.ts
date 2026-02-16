@@ -4,11 +4,8 @@ import type { SpriteEditorTool, SpriteToolOptionsMap, SpriteToolOptionsState } f
 const DEFAULT_TOOL_OPTIONS: SpriteToolOptionsState = {
   pencil: {},
   eraser: { radius: 1 },
-  bucket_fill: {
-    connectivity: 4
-  },
+  bucket_fill: {},
   magic_wand: {
-    connectivity: 4,
     tolerance: 0
   },
   color_picker: {}
@@ -28,7 +25,7 @@ export function useSpriteEditorState() {
   const [lastPaintTool, setLastPaintTool] = useState<SpritePaintTool>("pencil")
   const [activeColor, setActiveColor] = useState("#4F46E5FF")
   const [zoom, setZoom] = useState(12)
-  const [showGrid, setShowGrid] = useState(true)
+  const [showGrid, setShowGrid] = useState(false)
   const [toolOptions, setToolOptions] = useState<SpriteToolOptionsState>(DEFAULT_TOOL_OPTIONS)
 
   const setActiveTool = useCallback((nextTool: SpriteEditorTool) => {

@@ -22,33 +22,69 @@ type ToolOptionsPanelProps = {
   ) => void
 }
 
-type ConnectivitySelectorProps = {
-  selectedConnectivity: 4 | 8
-  onSelect: (connectivity: 4 | 8) => void
+type ColorSectionProps = {
+  normalizedActive: string
+  spriteColors: string[]
+  onColorChange: (color: string) => void
 }
 
-function ConnectivitySelector({ selectedConnectivity, onSelect }: ConnectivitySelectorProps) {
+function ColorSection({ normalizedActive, spriteColors, onColorChange }: ColorSectionProps) {
   return (
-    <div className="mvp16-sprite-tool-options-connectivity flex items-center gap-1">
-      <button
-        type="button"
-        className={`mvp16-sprite-tool-options-connectivity-btn h-6 rounded px-2 text-[10px] ${
-          selectedConnectivity === 4 ? "bg-indigo-100 text-indigo-700" : "bg-white text-slate-600 hover:bg-slate-100"
-        }`}
-        onClick={() => onSelect(4)}
-      >
-        4-way
-      </button>
-      <button
-        type="button"
-        className={`mvp16-sprite-tool-options-connectivity-btn h-6 rounded px-2 text-[10px] ${
-          selectedConnectivity === 8 ? "bg-indigo-100 text-indigo-700" : "bg-white text-slate-600 hover:bg-slate-100"
-        }`}
-        onClick={() => onSelect(8)}
-      >
-        8-way
-      </button>
-    </div>
+    <>
+      <div className="mvp16-sprite-tool-options-color flex flex-col gap-1.5">
+        <p className="text-[10px] font-medium text-slate-600">Color</p>
+        <div className="flex items-center gap-2">
+          <div
+            className="mvp16-sprite-tool-options-color-preview h-7 w-7 shrink-0 rounded border border-slate-300"
+            style={{ backgroundColor: normalizedActive.slice(0, 7) }}
+          />
+          <input
+            type="color"
+            value={normalizedActive.slice(0, 7)}
+            className="mvp16-sprite-tool-options-color-picker h-7 w-full cursor-pointer rounded border border-slate-300 bg-white p-0"
+            onChange={(event: ChangeEvent<HTMLInputElement>) => onColorChange(`${event.target.value.toUpperCase()}FF`)}
+          />
+        </div>
+      </div>
+
+      <div className="mvp16-sprite-tool-options-palette flex flex-col gap-1.5">
+        <p className="text-[10px] font-medium text-slate-600">Paleta</p>
+        <div className="mvp16-sprite-tool-options-palette-grid grid grid-cols-5 gap-0.5">
+          {DEFAULT_PALETTE.map((color) => (
+            <button
+              key={color}
+              type="button"
+              className={`mvp16-sprite-tool-options-palette-swatch h-5 w-full rounded-sm border ${
+                normalizedActive === color ? "border-indigo-500 ring-1 ring-indigo-300" : "border-slate-300"
+              }`}
+              style={{ backgroundColor: color.slice(0, 7) }}
+              onClick={() => onColorChange(color)}
+              title={color}
+            />
+          ))}
+        </div>
+      </div>
+
+      {spriteColors.length > 0 && (
+        <div className="mvp16-sprite-tool-options-image-colors flex flex-col gap-1.5">
+          <p className="text-[10px] font-medium text-slate-600">De la imatge</p>
+          <div className="mvp16-sprite-tool-options-image-colors-grid grid grid-cols-5 gap-0.5">
+            {spriteColors.map((color) => (
+              <button
+                key={color}
+                type="button"
+                className={`mvp16-sprite-tool-options-image-color-swatch h-5 w-full rounded-sm border ${
+                  normalizedActive === color ? "border-indigo-500 ring-1 ring-indigo-300" : "border-slate-300"
+                }`}
+                style={{ backgroundColor: color.slice(0, 7) }}
+                onClick={() => onColorChange(color)}
+                title={color}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </>
   )
 }
 
@@ -71,87 +107,24 @@ export function ToolOptionsPanel({
   if (activeTool === "pencil") {
     return (
       <div className="mvp16-sprite-tool-options-pencil flex flex-col gap-2">
-        <div className="mvp16-sprite-tool-options-color flex flex-col gap-1.5">
-          <p className="text-[10px] font-medium text-slate-600">Color</p>
-          <div className="flex items-center gap-2">
-            <div
-              className="mvp16-sprite-tool-options-color-preview h-7 w-7 shrink-0 rounded border border-slate-300"
-              style={{ backgroundColor: normalizedActive.slice(0, 7) }}
-            />
-            <input
-              type="color"
-              value={normalizedActive.slice(0, 7)}
-              className="mvp16-sprite-tool-options-color-picker h-7 w-full cursor-pointer rounded border border-slate-300 bg-white p-0"
-              onChange={(event: ChangeEvent<HTMLInputElement>) => onColorChange(`${event.target.value.toUpperCase()}FF`)}
-            />
-          </div>
-        </div>
-
-        <div className="mvp16-sprite-tool-options-palette flex flex-col gap-1.5">
-          <p className="text-[10px] font-medium text-slate-600">Paleta</p>
-          <div className="mvp16-sprite-tool-options-palette-grid grid grid-cols-5 gap-0.5">
-            {DEFAULT_PALETTE.map((color) => (
-              <button
-                key={color}
-                type="button"
-                className={`mvp16-sprite-tool-options-palette-swatch h-5 w-full rounded-sm border ${
-                  normalizedActive === color ? "border-indigo-500 ring-1 ring-indigo-300" : "border-slate-300"
-                }`}
-                style={{ backgroundColor: color.slice(0, 7) }}
-                onClick={() => onColorChange(color)}
-                title={color}
-              />
-            ))}
-          </div>
-        </div>
-
-        {spriteColors.length > 0 && (
-          <div className="mvp16-sprite-tool-options-image-colors flex flex-col gap-1.5">
-            <p className="text-[10px] font-medium text-slate-600">De la imatge</p>
-            <div className="mvp16-sprite-tool-options-image-colors-grid grid grid-cols-5 gap-0.5">
-              {spriteColors.map((color) => (
-                <button
-                  key={color}
-                  type="button"
-                  className={`mvp16-sprite-tool-options-image-color-swatch h-5 w-full rounded-sm border ${
-                    normalizedActive === color ? "border-indigo-500 ring-1 ring-indigo-300" : "border-slate-300"
-                  }`}
-                  style={{ backgroundColor: color.slice(0, 7) }}
-                  onClick={() => onColorChange(color)}
-                  title={color}
-                />
-              ))}
-            </div>
-          </div>
-        )}
+        <ColorSection normalizedActive={normalizedActive} spriteColors={spriteColors} onColorChange={onColorChange} />
       </div>
     )
   }
 
   if (activeTool === "bucket_fill") {
     return (
-      <div className="mvp16-sprite-tool-options-content flex flex-col gap-2">
-        <p className="text-[10px] font-medium text-slate-600">Connectivitat</p>
-        <ConnectivitySelector
-          selectedConnectivity={toolOptions.bucket_fill.connectivity}
-          onSelect={(connectivity) => onUpdateToolOptions("bucket_fill", { connectivity })}
-        />
+      <div className="mvp16-sprite-tool-options-bucket flex flex-col gap-2">
+        <ColorSection normalizedActive={normalizedActive} spriteColors={spriteColors} onColorChange={onColorChange} />
       </div>
     )
   }
 
   if (activeTool === "magic_wand") {
     return (
-      <div className="mvp16-sprite-tool-options-content flex flex-col gap-2">
-        <div className="space-y-1">
-          <p className="text-[10px] font-medium text-slate-600">Connectivitat</p>
-          <ConnectivitySelector
-            selectedConnectivity={toolOptions.magic_wand.connectivity}
-            onSelect={(connectivity) => onUpdateToolOptions("magic_wand", { connectivity })}
-          />
-        </div>
+      <div className="mvp16-sprite-tool-options-wand flex flex-col gap-2">
         <label className="mvp16-sprite-tool-options-tolerance flex flex-col gap-1 text-[10px] text-slate-600">
-          Tolerancia: {toolOptions.magic_wand.tolerance}
+          <span className="font-medium">Tolerància: {toolOptions.magic_wand.tolerance}</span>
           <input
             type="range"
             min={0}

@@ -7,11 +7,8 @@ export type SpriteToolOptionsMap = {
   eraser: {
     radius: number
   }
-  bucket_fill: {
-    connectivity: SpriteToolConnectivity
-  }
+  bucket_fill: Record<string, never>
   magic_wand: {
-    connectivity: SpriteToolConnectivity
     tolerance: number
   }
   color_picker: Record<string, never>

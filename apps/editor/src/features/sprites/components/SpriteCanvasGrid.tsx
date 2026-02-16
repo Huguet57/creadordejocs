@@ -13,6 +13,7 @@ type SpriteCanvasGridProps = {
   showGrid: boolean
   activeTool: SpriteEditorTool
   eraserRadius: number
+  selectedIndices: Set<number>
   onPaint: (x: number, y: number, tool: SpriteEditorTool, phase: SpritePointerActionPhase) => void
   onHoverColorChange?: (color: string | null) => void
 }
@@ -25,6 +26,7 @@ export function SpriteCanvasGrid({
   showGrid,
   activeTool,
   eraserRadius,
+  selectedIndices,
   onPaint,
   onHoverColorChange
 }: SpriteCanvasGridProps) {
@@ -62,6 +64,7 @@ export function SpriteCanvasGrid({
           const x = index % width
           const y = Math.floor(index / width)
           const isEraserPreview = eraserPreviewSet.has(index)
+          const isSelected = selectedIndices.has(index)
           return (
             <button
               key={`${x}-${y}`}
@@ -74,6 +77,9 @@ export function SpriteCanvasGrid({
                 cursor: "inherit",
                 ...(isEraserPreview
                   ? { boxShadow: "inset 0 0 0 100px rgba(239, 68, 68, 0.35)" }
+                  : {}),
+                ...(isSelected
+                  ? { boxShadow: "inset 0 0 0 100px rgba(99, 102, 241, 0.3)", outline: "1px dashed rgba(99, 102, 241, 0.7)" }
                   : {})
               }}
               onMouseDown={() => {

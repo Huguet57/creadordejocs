@@ -15,7 +15,6 @@ type BucketFillInput = {
   x: number
   y: number
   targetColor: string
-  connectivity: 4 | 8
 }
 
 type SelectContiguousInput = {
@@ -24,7 +23,6 @@ type SelectContiguousInput = {
   pixelsRgba: string[]
   x: number
   y: number
-  connectivity: 4 | 8
   tolerance?: number
 }
 
@@ -36,12 +34,14 @@ type ReadPixelColorInput = {
   y: number
 }
 
+const DEFAULT_CONNECTIVITY = 8 as const
+
 export function applyBucketFillTool(input: BucketFillInput): string[] {
-  return floodFillPixels(input)
+  return floodFillPixels({ ...input, connectivity: DEFAULT_CONNECTIVITY })
 }
 
 export function selectContiguousPixels(input: SelectContiguousInput): Set<number> {
-  return selectContiguousByColor(input)
+  return selectContiguousByColor({ ...input, connectivity: DEFAULT_CONNECTIVITY })
 }
 
 export function readPixelColorAt(input: ReadPixelColorInput): string {
@@ -107,8 +107,7 @@ export function useSpritePixelActions({
           pixelsRgba: safePixels,
           x,
           y,
-          targetColor: activeColor,
-          connectivity: toolOptions.bucket_fill.connectivity
+          targetColor: activeColor
         })
         onPixelsChange(next)
         return
@@ -121,7 +120,6 @@ export function useSpritePixelActions({
           pixelsRgba: safePixels,
           x,
           y,
-          connectivity: toolOptions.magic_wand.connectivity,
           tolerance: toolOptions.magic_wand.tolerance
         })
         onSelectionChange(selectedIndexes)
