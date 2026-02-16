@@ -1,6 +1,7 @@
 import { useEffect } from "react"
 import type { EditorController } from "../editor-state/use-editor-controller.js"
 import { SpriteCanvasGrid } from "./components/SpriteCanvasGrid.js"
+import { SpriteImportCropModal } from "./components/SpriteImportCropModal.js"
 import { SpriteListPanel } from "./components/SpriteListPanel.js"
 import { SpriteToolbar } from "./components/SpriteToolbar.js"
 import { useSpriteEditorState } from "./hooks/use-sprite-editor-state.js"
@@ -108,12 +109,20 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
           onZoomChange={setZoom}
           onImportFile={(selectedFile) => {
             if (!selectedSprite) return
-            void spriteImport.importFile(selectedFile)
+            void spriteImport.openCropModal(selectedFile)
           }}
         />
         {spriteImport.message && (
           <p className="mx-4 mt-3 rounded border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600">{spriteImport.message}</p>
         )}
+        <SpriteImportCropModal
+          isOpen={spriteImport.isCropOpen}
+          imageElement={spriteImport.pendingImage}
+          targetWidth={selectedSprite?.width ?? 32}
+          targetHeight={selectedSprite?.height ?? 32}
+          onConfirm={(cropRect) => void spriteImport.confirmCrop(cropRect)}
+          onCancel={spriteImport.cancelCrop}
+        />
 
         {selectedSprite ? (
           <>
