@@ -189,103 +189,113 @@ export function IfBlock({
   }
 
   const renderBranchItems = (branch: "then" | "else", items: ObjectEventItem[]) => {
+    let hasDestroySelfBefore = false
     return items.map((branchItem, branchIndex) => {
+      const isVisuallyUnreachable = hasDestroySelfBefore
+      if (branchItem.type === "action" && branchItem.action.type === "destroySelf") {
+        hasDestroySelfBefore = true
+      }
+
+      const branchItemClassName = isVisuallyUnreachable ? "mvp21-unreachable-action opacity-40" : ""
+
       if (branchItem.type === "action") {
         return (
-          <ActionBlock
-            key={`${branch}-${branchItem.id}`}
-            action={branchItem.action}
-            index={branchIndex}
-            isFirst={branchIndex === 0}
-            isLast={branchIndex === items.length - 1}
-            onUpdate={(updatedAction) => onUpdateIfAction(item.id, branchItem.action.id, updatedAction, branch)}
-            onMoveUp={() => onMoveAction(branchItem.action.id, "up")}
-            onMoveDown={() => onMoveAction(branchItem.action.id, "down")}
-            onRemove={() => onRemoveIfAction(item.id, branchItem.action.id, branch)}
-            onCopy={() => onCopyAction(branchItem.action.id)}
-            onPaste={() => onPasteAfterAction(branchItem.action.id)}
-            canPaste={canPasteAction}
-            selectableObjects={selectableTargetObjects}
+          <div key={`${branch}-${branchItem.id}`} className={branchItemClassName}>
+            <ActionBlock
+              action={branchItem.action}
+              index={branchIndex}
+              isFirst={branchIndex === 0}
+              isLast={branchIndex === items.length - 1}
+              onUpdate={(updatedAction) => onUpdateIfAction(item.id, branchItem.action.id, updatedAction, branch)}
+              onMoveUp={() => onMoveAction(branchItem.action.id, "up")}
+              onMoveDown={() => onMoveAction(branchItem.action.id, "down")}
+              onRemove={() => onRemoveIfAction(item.id, branchItem.action.id, branch)}
+              onCopy={() => onCopyAction(branchItem.action.id)}
+              onPaste={() => onPasteAfterAction(branchItem.action.id)}
+              canPaste={canPasteAction}
+              selectableObjects={selectableTargetObjects}
+              globalVariables={globalVariables}
+              objectVariablesByObjectId={objectVariablesByObjectId}
+              roomInstances={roomInstances}
+              allObjects={allObjects}
+              rooms={rooms}
+              selectedObjectVariables={selectedObjectVariables}
+              eventType={eventType}
+              collisionTargetName={collisionTargetName}
+              isDragging={draggedAction?.actionId === branchItem.action.id}
+              dropIndicator={dropTarget?.actionId === branchItem.action.id ? dropTarget.position : null}
+              onDragStartAction={(actionId) => {
+                setDraggedAction({ actionId, branch })
+                setDropTarget(null)
+              }}
+              onDragOverAction={(actionId, position) => {
+                if (!draggedAction || draggedAction.actionId === actionId || draggedAction.branch !== branch) {
+                  return
+                }
+                setDropTarget(getCanonicalBranchDropTarget(items, actionId, position))
+              }}
+              onDropOnAction={(targetActionId, position) => {
+                if (draggedAction?.branch !== branch) {
+                  return
+                }
+                const canonicalDropTarget = getCanonicalBranchDropTarget(items, targetActionId, position)
+                const sourceIndex = items.findIndex(
+                  (itemEntry) => itemEntry.type === "action" && itemEntry.action.id === draggedAction.actionId
+                )
+                const targetIndex = items.findIndex(
+                  (itemEntry) => itemEntry.type === "action" && itemEntry.action.id === canonicalDropTarget.actionId
+                )
+                if (sourceIndex >= 0 && targetIndex >= 0) {
+                  const desiredIndexBeforeRemoval = canonicalDropTarget.position === "top" ? targetIndex : targetIndex + 1
+                  const desiredIndexAfterRemoval =
+                    sourceIndex < desiredIndexBeforeRemoval ? desiredIndexBeforeRemoval - 1 : desiredIndexBeforeRemoval
+                  const steps = Math.abs(sourceIndex - desiredIndexAfterRemoval)
+                  if (steps > 0) {
+                    moveActionBySteps(
+                      draggedAction.actionId,
+                      sourceIndex < desiredIndexAfterRemoval ? "down" : "up",
+                      steps
+                    )
+                  }
+                }
+                setDraggedAction(null)
+                setDropTarget(null)
+              }}
+              onDragEndAction={() => {
+                setDraggedAction(null)
+                setDropTarget(null)
+              }}
+            />
+          </div>
+        )
+      }
+      return (
+        <div key={`${branch}-${branchItem.id}`} className={branchItemClassName}>
+          <IfBlock
+            item={branchItem}
+            selectableTargetObjects={selectableTargetObjects}
             globalVariables={globalVariables}
+            selectedObjectVariables={selectedObjectVariables}
             objectVariablesByObjectId={objectVariablesByObjectId}
             roomInstances={roomInstances}
             allObjects={allObjects}
             rooms={rooms}
-            selectedObjectVariables={selectedObjectVariables}
             eventType={eventType}
             collisionTargetName={collisionTargetName}
-            isDragging={draggedAction?.actionId === branchItem.action.id}
-            dropIndicator={dropTarget?.actionId === branchItem.action.id ? dropTarget.position : null}
-            onDragStartAction={(actionId) => {
-              setDraggedAction({ actionId, branch })
-              setDropTarget(null)
-            }}
-            onDragOverAction={(actionId, position) => {
-              if (!draggedAction || draggedAction.actionId === actionId || draggedAction.branch !== branch) {
-                return
-              }
-              setDropTarget(getCanonicalBranchDropTarget(items, actionId, position))
-            }}
-            onDropOnAction={(targetActionId, position) => {
-              if (draggedAction?.branch !== branch) {
-                return
-              }
-              const canonicalDropTarget = getCanonicalBranchDropTarget(items, targetActionId, position)
-              const sourceIndex = items.findIndex(
-                (itemEntry) => itemEntry.type === "action" && itemEntry.action.id === draggedAction.actionId
-              )
-              const targetIndex = items.findIndex(
-                (itemEntry) => itemEntry.type === "action" && itemEntry.action.id === canonicalDropTarget.actionId
-              )
-              if (sourceIndex >= 0 && targetIndex >= 0) {
-                const desiredIndexBeforeRemoval = canonicalDropTarget.position === "top" ? targetIndex : targetIndex + 1
-                const desiredIndexAfterRemoval =
-                  sourceIndex < desiredIndexBeforeRemoval ? desiredIndexBeforeRemoval - 1 : desiredIndexBeforeRemoval
-                const steps = Math.abs(sourceIndex - desiredIndexAfterRemoval)
-                if (steps > 0) {
-                  moveActionBySteps(
-                    draggedAction.actionId,
-                    sourceIndex < desiredIndexAfterRemoval ? "down" : "up",
-                    steps
-                  )
-                }
-              }
-              setDraggedAction(null)
-              setDropTarget(null)
-            }}
-            onDragEndAction={() => {
-              setDraggedAction(null)
-              setDropTarget(null)
-            }}
+            onUpdateIfCondition={onUpdateIfCondition}
+            onRemoveIfBlock={onRemoveIfBlock}
+            onAddIfBlock={onAddIfBlock}
+            onAddIfAction={onAddIfAction}
+            onMoveAction={onMoveAction}
+            onCopyAction={onCopyAction}
+            onPasteAfterAction={onPasteAfterAction}
+            canPasteAction={canPasteAction}
+            onCopyIfBlock={onCopyIfBlock}
+            onPasteAfterIfBlock={onPasteAfterIfBlock}
+            onUpdateIfAction={onUpdateIfAction}
+            onRemoveIfAction={onRemoveIfAction}
           />
-        )
-      }
-      return (
-        <IfBlock
-          key={`${branch}-${branchItem.id}`}
-          item={branchItem}
-          selectableTargetObjects={selectableTargetObjects}
-          globalVariables={globalVariables}
-          selectedObjectVariables={selectedObjectVariables}
-          objectVariablesByObjectId={objectVariablesByObjectId}
-          roomInstances={roomInstances}
-          allObjects={allObjects}
-          rooms={rooms}
-          eventType={eventType}
-          collisionTargetName={collisionTargetName}
-          onUpdateIfCondition={onUpdateIfCondition}
-          onRemoveIfBlock={onRemoveIfBlock}
-          onAddIfBlock={onAddIfBlock}
-          onAddIfAction={onAddIfAction}
-          onMoveAction={onMoveAction}
-          onCopyAction={onCopyAction}
-          onPasteAfterAction={onPasteAfterAction}
-          canPasteAction={canPasteAction}
-          onCopyIfBlock={onCopyIfBlock}
-          onPasteAfterIfBlock={onPasteAfterIfBlock}
-          onUpdateIfAction={onUpdateIfAction}
-          onRemoveIfAction={onRemoveIfAction}
-        />
+        </div>
       )
     })
   }

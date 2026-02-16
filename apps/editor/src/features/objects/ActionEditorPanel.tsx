@@ -247,7 +247,7 @@ export function ActionEditorPanel({
 
         {activeEvent.type === "Collision" && (
           <div className="mvp20-collision-target-config-row flex items-center gap-2">
-            <Label className="text-xs text-slate-400">Target</Label>
+            <Label className="text-xs text-slate-400">with</Label>
             <div ref={collisionTargetSelectorRef} className="mvp20-collision-target-selector relative">
               <button
                 type="button"
@@ -372,91 +372,103 @@ export function ActionEditorPanel({
                 </div>
               )}
 
-              {activeEvent.items.map((item, index) => {
-                if (item.type === "action") {
-                  return (
-                    <ActionBlock
-                      key={item.id}
-                      action={item.action}
-                      index={index}
-                      isFirst={index === 0}
-                      isLast={index === activeEvent.items.length - 1}
-                      onUpdate={(updatedAction) => onUpdateAction(item.action.id, updatedAction)}
-                      onMoveUp={() => onMoveAction(item.action.id, "up")}
-                      onMoveDown={() => onMoveAction(item.action.id, "down")}
-                      onRemove={() => onRemoveAction(item.action.id)}
-                      onCopy={() => onCopyAction(item.action.id)}
-                      onPaste={() => onPasteAfterAction(item.action.id)}
-                      canPaste={canPasteAction}
-                      selectableObjects={selectableTargetObjects}
-                      globalVariables={globalVariables}
-                      objectVariablesByObjectId={objectVariablesByObjectId}
-                      roomInstances={roomInstances}
-                      allObjects={allObjects}
-                      rooms={rooms}
-                      selectedObjectVariables={selectedObjectVariables}
-                      eventType={activeEvent.type}
-                      collisionTargetName={collisionTargetName}
-                      isDragging={draggedActionId === item.action.id}
-                      dropIndicator={dropTarget?.actionId === item.action.id ? dropTarget.position : null}
-                      onDragStartAction={(actionId) => {
-                        setDraggedActionId(actionId)
-                        setDropTarget(null)
-                      }}
-                      onDragOverAction={(actionId, position) => {
-                        if (draggedActionId && draggedActionId !== actionId) {
-                          setDropTarget(getCanonicalDropTarget(actionId, position))
-                        }
-                      }}
-                      onDropOnAction={(targetActionId, position) => {
-                        if (!draggedActionId) {
-                          return
-                        }
-                        const canonicalDropTarget = getCanonicalDropTarget(targetActionId, position)
-                        reorderActionByDrop(
-                          draggedActionId,
-                          canonicalDropTarget.actionId,
-                          canonicalDropTarget.position
-                        )
-                        setDraggedActionId(null)
-                        setDropTarget(null)
-                      }}
-                      onDragEndAction={() => {
-                        setDraggedActionId(null)
-                        setDropTarget(null)
-                      }}
-                    />
-                  )
-                }
+              {(() => {
+                let hasDestroySelfBefore = false
+                return activeEvent.items.map((item, index) => {
+                  const isVisuallyUnreachable = hasDestroySelfBefore
+                  if (item.type === "action" && item.action.type === "destroySelf") {
+                    hasDestroySelfBefore = true
+                  }
 
-                return (
-                  <IfBlock
-                    key={item.id}
-                    item={item}
-                    selectableTargetObjects={selectableTargetObjects}
-                    globalVariables={globalVariables}
-                    selectedObjectVariables={selectedObjectVariables}
-                    objectVariablesByObjectId={objectVariablesByObjectId}
-                    roomInstances={roomInstances}
-                    allObjects={allObjects}
-                    rooms={rooms}
-                    eventType={activeEvent.type}
-                    collisionTargetName={collisionTargetName}
-                    onUpdateIfCondition={onUpdateIfCondition}
-                    onRemoveIfBlock={onRemoveIfBlock}
-                    onAddIfBlock={onAddIfBlock}
-                    onAddIfAction={onAddIfAction}
-                    onMoveAction={onMoveAction}
-                    onCopyAction={onCopyAction}
-                    onPasteAfterAction={onPasteAfterAction}
-                    canPasteAction={canPasteAction}
-                    onCopyIfBlock={onCopyIfBlock}
-                    onPasteAfterIfBlock={onPasteAfterIfBlock}
-                    onUpdateIfAction={onUpdateIfAction}
-                    onRemoveIfAction={onRemoveIfAction}
-                  />
-                )
-              })}
+                  const itemContainerClassName = isVisuallyUnreachable ? "mvp21-unreachable-action opacity-40" : ""
+
+                  if (item.type === "action") {
+                    return (
+                      <div key={item.id} className={itemContainerClassName}>
+                        <ActionBlock
+                          action={item.action}
+                          index={index}
+                          isFirst={index === 0}
+                          isLast={index === activeEvent.items.length - 1}
+                          onUpdate={(updatedAction) => onUpdateAction(item.action.id, updatedAction)}
+                          onMoveUp={() => onMoveAction(item.action.id, "up")}
+                          onMoveDown={() => onMoveAction(item.action.id, "down")}
+                          onRemove={() => onRemoveAction(item.action.id)}
+                          onCopy={() => onCopyAction(item.action.id)}
+                          onPaste={() => onPasteAfterAction(item.action.id)}
+                          canPaste={canPasteAction}
+                          selectableObjects={selectableTargetObjects}
+                          globalVariables={globalVariables}
+                          objectVariablesByObjectId={objectVariablesByObjectId}
+                          roomInstances={roomInstances}
+                          allObjects={allObjects}
+                          rooms={rooms}
+                          selectedObjectVariables={selectedObjectVariables}
+                          eventType={activeEvent.type}
+                          collisionTargetName={collisionTargetName}
+                          isDragging={draggedActionId === item.action.id}
+                          dropIndicator={dropTarget?.actionId === item.action.id ? dropTarget.position : null}
+                          onDragStartAction={(actionId) => {
+                            setDraggedActionId(actionId)
+                            setDropTarget(null)
+                          }}
+                          onDragOverAction={(actionId, position) => {
+                            if (draggedActionId && draggedActionId !== actionId) {
+                              setDropTarget(getCanonicalDropTarget(actionId, position))
+                            }
+                          }}
+                          onDropOnAction={(targetActionId, position) => {
+                            if (!draggedActionId) {
+                              return
+                            }
+                            const canonicalDropTarget = getCanonicalDropTarget(targetActionId, position)
+                            reorderActionByDrop(
+                              draggedActionId,
+                              canonicalDropTarget.actionId,
+                              canonicalDropTarget.position
+                            )
+                            setDraggedActionId(null)
+                            setDropTarget(null)
+                          }}
+                          onDragEndAction={() => {
+                            setDraggedActionId(null)
+                            setDropTarget(null)
+                          }}
+                        />
+                      </div>
+                    )
+                  }
+
+                  return (
+                    <div key={item.id} className={itemContainerClassName}>
+                      <IfBlock
+                        item={item}
+                        selectableTargetObjects={selectableTargetObjects}
+                        globalVariables={globalVariables}
+                        selectedObjectVariables={selectedObjectVariables}
+                        objectVariablesByObjectId={objectVariablesByObjectId}
+                        roomInstances={roomInstances}
+                        allObjects={allObjects}
+                        rooms={rooms}
+                        eventType={activeEvent.type}
+                        collisionTargetName={collisionTargetName}
+                        onUpdateIfCondition={onUpdateIfCondition}
+                        onRemoveIfBlock={onRemoveIfBlock}
+                        onAddIfBlock={onAddIfBlock}
+                        onAddIfAction={onAddIfAction}
+                        onMoveAction={onMoveAction}
+                        onCopyAction={onCopyAction}
+                        onPasteAfterAction={onPasteAfterAction}
+                        canPasteAction={canPasteAction}
+                        onCopyIfBlock={onCopyIfBlock}
+                        onPasteAfterIfBlock={onPasteAfterIfBlock}
+                        onUpdateIfAction={onUpdateIfAction}
+                        onRemoveIfAction={onRemoveIfAction}
+                      />
+                    </div>
+                  )
+                })
+              })()}
             </div>
             {backgroundContextMenu && (
               <div

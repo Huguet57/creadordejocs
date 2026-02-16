@@ -146,6 +146,7 @@ export function ActionBlock({
   onDragEndAction
 }: ActionBlockProps) {
   const Icon = ACTION_ICONS[action.type] ?? Move
+  const isDestroySelfAction = action.type === "destroySelf"
   const objectVariableOptions = allObjects.flatMap((objectEntry) =>
     (objectVariablesByObjectId[objectEntry.id] ?? []).map((definition) => ({
       id: definition.id,
@@ -244,8 +245,14 @@ export function ActionBlock({
         <GripVertical className="h-3.5 w-3.5" />
       </button>
       <div className="action-block-label flex items-center gap-1.5 min-w-[90px] shrink-0">
-        <Icon className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 leading-tight">
+        <Icon
+          className={`h-3.5 w-3.5 shrink-0 ${isDestroySelfAction ? "text-red-500" : "text-slate-400"}`}
+        />
+        <span
+          className={`text-[10px] font-semibold uppercase tracking-wide leading-tight ${
+            isDestroySelfAction ? "text-red-600" : "text-slate-500"
+          }`}
+        >
           {ACTION_LABELS[action.type]}
         </span>
       </div>
