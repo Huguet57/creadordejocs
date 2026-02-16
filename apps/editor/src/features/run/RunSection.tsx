@@ -7,7 +7,6 @@ import type { RuntimeMouseButton, RuntimeState } from "../editor-state/runtime.j
 
 const ROOM_WIDTH = 840
 const ROOM_HEIGHT = 480
-const INSTANCE_SIZE = 32
 
 type RunSectionProps = {
   controller: RunSectionController
@@ -227,7 +226,7 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
           </div>
         )}
 
-        <div className={`flex-1 overflow-auto p-4 ${isPlayMode ? "bg-slate-50" : "bg-slate-50/50"}`}>
+        <div className={`flex-1 overflow-auto ${isPlayMode ? "bg-slate-50" : "bg-slate-50/50"}`}>
           {isPlayMode && (
             <div className="mb-3 flex items-center justify-end">
               <Button
@@ -260,15 +259,17 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
                 style={{ width: ROOM_WIDTH, height: ROOM_HEIGHT }}
               >
                 {controller.activeRoom.instances.map((instanceEntry) => {
+                  const objectEntry = controller.project.objects.find((entry) => entry.id === instanceEntry.objectId)
+                  const instanceWidth = objectEntry?.width ?? 32
+                  const instanceHeight = objectEntry?.height ?? 32
                   const isOutsideRoom =
                     instanceEntry.x < 0 ||
                     instanceEntry.y < 0 ||
-                    instanceEntry.x > ROOM_WIDTH - INSTANCE_SIZE ||
-                    instanceEntry.y > ROOM_HEIGHT - INSTANCE_SIZE
+                    instanceEntry.x > ROOM_WIDTH - instanceWidth ||
+                    instanceEntry.y > ROOM_HEIGHT - instanceHeight
                   if (isOutsideRoom) {
                     return null
                   }
-                  const objectEntry = controller.project.objects.find((entry) => entry.id === instanceEntry.objectId)
                   if (objectEntry?.visible === false) {
                     return null
                   }
@@ -277,10 +278,12 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
                   return (
                     <div
                       key={instanceEntry.id}
-                      className={`mvp15-run-instance absolute flex h-8 w-8 items-center justify-center overflow-hidden rounded text-[10px] ${spriteSource ? "" : "bg-indigo-500 text-white"}`}
+                      className={`mvp15-run-instance absolute flex items-center justify-center overflow-hidden rounded text-[10px] ${spriteSource ? "" : "bg-indigo-500 text-white"}`}
                       style={{
                         left: instanceEntry.x,
                         top: instanceEntry.y,
+                        width: instanceWidth,
+                        height: instanceHeight,
                         transform: `rotate(${instanceEntry.rotation ?? 0}deg)`
                       }}
                     >

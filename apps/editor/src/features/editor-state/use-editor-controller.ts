@@ -569,15 +569,17 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       )
     },
     updateSelectedObjectProperty(
-      key: "x" | "y" | "speed" | "direction" | "visible" | "solid",
+      key: "x" | "y" | "speed" | "direction" | "width" | "height" | "visible" | "solid",
       value: number | boolean
     ) {
       if (!selectedObject) return
       const normalizedValue =
         typeof value === "number"
-          ? Number.isFinite(value)
-            ? value
-            : 0
+          ? key === "width" || key === "height"
+            ? Math.max(1, Math.round(Number.isFinite(value) ? value : 1))
+            : Number.isFinite(value)
+              ? value
+              : 0
           : value
       const nextObject = { ...selectedObject, [key]: normalizedValue }
       pushProjectChange(
@@ -587,6 +589,8 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
           y: nextObject.y,
           speed: nextObject.speed,
           direction: nextObject.direction,
+          width: nextObject.width ?? 32,
+          height: nextObject.height ?? 32,
           visible: nextObject.visible ?? true,
           solid: nextObject.solid ?? false
         })

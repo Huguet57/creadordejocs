@@ -54,15 +54,46 @@ export function clampValue(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value))
 }
 
+export function getObjectWidth(project: ProjectV1, objectId: string): number {
+  const objectEntry = project.objects.find((candidate) => candidate.id === objectId)
+  const width = objectEntry?.width
+  return typeof width === "number" && Number.isFinite(width) && width >= 1 ? width : INSTANCE_SIZE
+}
+
+export function getObjectHeight(project: ProjectV1, objectId: string): number {
+  const objectEntry = project.objects.find((candidate) => candidate.id === objectId)
+  const height = objectEntry?.height
+  return typeof height === "number" && Number.isFinite(height) && height >= 1 ? height : INSTANCE_SIZE
+}
+
+export function getInstanceWidth(
+  project: ProjectV1,
+  instance: ProjectV1["rooms"][number]["instances"][number]
+): number {
+  return getObjectWidth(project, instance.objectId)
+}
+
+export function getInstanceHeight(
+  project: ProjectV1,
+  instance: ProjectV1["rooms"][number]["instances"][number]
+): number {
+  return getObjectHeight(project, instance.objectId)
+}
+
 export function intersectsInstances(
+  project: ProjectV1,
   first: ProjectV1["rooms"][number]["instances"][number],
   second: ProjectV1["rooms"][number]["instances"][number]
 ): boolean {
+  const firstWidth = getInstanceWidth(project, first)
+  const firstHeight = getInstanceHeight(project, first)
+  const secondWidth = getInstanceWidth(project, second)
+  const secondHeight = getInstanceHeight(project, second)
   return (
-    first.x < second.x + INSTANCE_SIZE &&
-    first.x + INSTANCE_SIZE > second.x &&
-    first.y < second.y + INSTANCE_SIZE &&
-    first.y + INSTANCE_SIZE > second.y
+    first.x < second.x + secondWidth &&
+    first.x + firstWidth > second.x &&
+    first.y < second.y + secondHeight &&
+    first.y + firstHeight > second.y
   )
 }
 

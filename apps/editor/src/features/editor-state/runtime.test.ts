@@ -4573,3 +4573,140 @@ describe("runtime tick idempotency (guards against StrictMode double-invoke)", (
     expect(secondResult.runtime.globalVariables[livesId ?? ""]).toBe(2)
   })
 })
+
+describe("runtime object dimensions", () => {
+  it("uses object width/height for collision checks", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-object-dimensions-collision",
+        name: "Object dimensions collision test",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: { sprites: [], sounds: [] },
+      variables: { global: [], objectByObjectId: {} },
+      objects: [
+        {
+          id: "object-large",
+          name: "Large collider",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          width: 64,
+          height: 32,
+          events: [
+            {
+              id: "event-collision-score",
+              type: "Collision",
+              key: null,
+              keyboardMode: null,
+              targetObjectId: "object-small",
+              intervalMs: null,
+              items: [
+                {
+                  id: "item-score",
+                  type: "action",
+                  action: { id: "action-score", type: "changeScore", delta: 1 }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          id: "object-small",
+          name: "Small collider",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          width: 32,
+          height: 32,
+          events: []
+        }
+      ],
+      rooms: [
+        {
+          id: "room-main",
+          name: "Main",
+          instances: [
+            { id: "instance-large", objectId: "object-large", x: 0, y: 0 },
+            { id: "instance-small", objectId: "object-small", x: 50, y: 0 }
+          ]
+        }
+      ],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    expect(result.runtime.score).toBe(1)
+  })
+
+  it("uses object width/height for outside-room checks", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-object-dimensions-outside",
+        name: "Object dimensions outside room test",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: { sprites: [], sounds: [] },
+      variables: { global: [], objectByObjectId: {} },
+      objects: [
+        {
+          id: "object-wide",
+          name: "Wide object",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          width: 100,
+          height: 20,
+          events: [
+            {
+              id: "event-outside",
+              type: "OutsideRoom",
+              key: null,
+              keyboardMode: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [
+                {
+                  id: "item-score-outside",
+                  type: "action",
+                  action: { id: "action-score-outside", type: "changeScore", delta: 1 }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      rooms: [{ id: "room-main", name: "Main", instances: [{ id: "instance-wide", objectId: "object-wide", x: 750, y: 10 }] }],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    expect(result.runtime.score).toBe(1)
+  })
+})

@@ -4,13 +4,14 @@ import { enqueueRuntimeToast, type RuntimeToastState } from "./message-toast-uti
 import {
   BUILTIN_MOUSE_X_VARIABLE_ID,
   BUILTIN_MOUSE_Y_VARIABLE_ID,
-  INSTANCE_SIZE,
   ROOM_HEIGHT,
   ROOM_WIDTH,
   RUNTIME_TICK_MS,
   applyGlobalNumericOperation,
   applyObjectNumericOperation,
   clampValue,
+  getInstanceHeight,
+  getInstanceWidth,
   intersectsInstances,
   isReadonlyGlobalVariableId,
   isSameVariableValueType,
@@ -165,7 +166,7 @@ function wouldCollideWithSolid(
     if (!otherObject?.solid) {
       continue
     }
-    if (intersectsInstances(nextInstance, otherInstance)) {
+    if (intersectsInstances(project, nextInstance, otherInstance)) {
       return true
     }
   }
@@ -292,13 +293,15 @@ export function executeAction(
     }
   }
   if (action.type === "clampToRoom") {
+    const maxX = ROOM_WIDTH - getInstanceWidth(ctx.project, result.instance)
+    const maxY = ROOM_HEIGHT - getInstanceHeight(ctx.project, result.instance)
     return {
       result: {
         ...result,
         instance: {
           ...result.instance,
-          x: clampValue(result.instance.x, 0, ROOM_WIDTH - INSTANCE_SIZE),
-          y: clampValue(result.instance.y, 0, ROOM_HEIGHT - INSTANCE_SIZE)
+          x: clampValue(result.instance.x, 0, maxX),
+          y: clampValue(result.instance.y, 0, maxY)
         }
       }
     }

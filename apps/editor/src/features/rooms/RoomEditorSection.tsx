@@ -190,7 +190,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
           )}
         </div>
 
-        <div className="flex-1 overflow-auto p-4 bg-slate-50/50">
+        <div className="flex-1 overflow-auto bg-slate-50/50">
           {!controller.activeRoom ? (
             <div className="flex h-full items-center justify-center text-slate-400">
               <p>Select or create a room</p>
@@ -198,15 +198,27 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
           ) : (
             <div className="space-y-3">
               <div
-                className="mvp15-room-canvas relative rounded-md border border-dashed border-slate-300 bg-white"
-                style={{ width: ROOM_WIDTH, height: ROOM_HEIGHT }}
+                className="mvp15-room-canvas mvp18-room-grid-canvas relative rounded-md border border-dashed border-slate-300 bg-white"
+                style={{
+                  width: ROOM_WIDTH,
+                  height: ROOM_HEIGHT,
+                  backgroundImage:
+                    "linear-gradient(to right, rgb(226 232 240 / 0.8) 1px, transparent 1px), linear-gradient(to bottom, rgb(226 232 240 / 0.8) 1px, transparent 1px)",
+                  backgroundSize: "32px 32px"
+                }}
                 onDragOver={(event) => event.preventDefault()}
                 onDrop={(event) => {
                   if (!controller.activeRoom) return
                   const instanceId = event.dataTransfer.getData("text/plain")
+                  const instanceEntry = controller.activeRoom.instances.find((candidate) => candidate.id === instanceId)
+                  const objectEntry = instanceEntry
+                    ? controller.project.objects.find((candidate) => candidate.id === instanceEntry.objectId)
+                    : null
+                  const instanceWidth = objectEntry?.width ?? 32
+                  const instanceHeight = objectEntry?.height ?? 32
                   const rect = event.currentTarget.getBoundingClientRect()
-                  const x = Math.max(0, Math.min(ROOM_WIDTH - 32, event.clientX - rect.left - 16))
-                  const y = Math.max(0, Math.min(ROOM_HEIGHT - 32, event.clientY - rect.top - 16))
+                  const x = Math.max(0, Math.min(ROOM_WIDTH - instanceWidth, event.clientX - rect.left - instanceWidth / 2))
+                  const y = Math.max(0, Math.min(ROOM_HEIGHT - instanceHeight, event.clientY - rect.top - instanceHeight / 2))
                   controller.moveInstance(instanceId, x, y)
                 }}
               >
@@ -214,11 +226,13 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                   const objectEntry = controller.project.objects.find((entry) => entry.id === instanceEntry.objectId)
                   const spriteEntry = objectEntry?.spriteId ? spriteById[objectEntry.spriteId] : undefined
                   const spriteSource = spriteEntry ? resolvedSpriteSources[spriteEntry.id] : undefined
+                  const instanceWidth = objectEntry?.width ?? 32
+                  const instanceHeight = objectEntry?.height ?? 32
                   return (
                     <div
                       key={instanceEntry.id}
-                      className={`mvp15-room-instance group absolute flex h-8 w-8 cursor-move items-center justify-center overflow-hidden rounded text-[10px] ${spriteSource ? "" : "bg-blue-500 text-white"}`}
-                      style={{ left: instanceEntry.x, top: instanceEntry.y }}
+                      className={`mvp15-room-instance group absolute flex cursor-move items-center justify-center overflow-hidden rounded text-[10px] ${spriteSource ? "" : "bg-blue-500 text-white"}`}
+                      style={{ left: instanceEntry.x, top: instanceEntry.y, width: instanceWidth, height: instanceHeight }}
                       draggable
                       onDragStart={(event) => event.dataTransfer.setData("text/plain", instanceEntry.id)}
                       title={

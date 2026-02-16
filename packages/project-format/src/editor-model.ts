@@ -8,6 +8,8 @@ export type CreateObjectInput = {
   y?: number
   speed?: number
   direction?: number
+  width?: number
+  height?: number
   visible?: boolean
   solid?: boolean
 }
@@ -32,6 +34,8 @@ export type UpdateObjectPropertiesInput = {
   y: number
   speed: number
   direction: number
+  width: number
+  height: number
   visible: boolean
   solid: boolean
 }
@@ -409,6 +413,8 @@ export function quickCreateObject(
           y: input.y ?? 0,
           speed: input.speed ?? 0,
           direction: input.direction ?? 0,
+          width: input.width ?? 32,
+          height: input.height ?? 32,
           visible: input.visible ?? true,
           solid: input.solid ?? false,
           events: []
@@ -444,6 +450,8 @@ export function updateObjectProperties(
             y: input.y,
             speed: input.speed,
             direction: input.direction,
+            width: input.width,
+            height: input.height,
             visible: input.visible,
             solid: input.solid
           }

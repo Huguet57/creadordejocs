@@ -8,6 +8,12 @@ type ObjectVariablesPanelProps = {
   objectId: string
   objectName: string
   spriteSrc: string | null
+  x: number
+  y: number
+  speed: number
+  direction: number
+  width: number
+  height: number
   visible: boolean
   solid: boolean
   variables: {
@@ -19,6 +25,7 @@ type ObjectVariablesPanelProps = {
   onAddVariable: (objectId: string, name: string, type: VariableType, initialValue: VariableValue) => void
   onUpdateVariable: (objectId: string, variableId: string, name: string, initialValue: VariableValue) => void
   onRemoveVariable: (objectId: string, variableId: string) => void
+  onUpdateObjectNumber: (key: "x" | "y" | "speed" | "direction" | "width" | "height", value: number) => void
   onUpdateObjectFlag: (key: "visible" | "solid", value: boolean) => void
 }
 
@@ -44,12 +51,19 @@ export function ObjectVariablesPanel({
   objectId,
   objectName,
   spriteSrc,
+  x,
+  y,
+  speed,
+  direction,
+  width,
+  height,
   visible,
   solid,
   variables,
   onAddVariable,
   onUpdateVariable,
   onRemoveVariable,
+  onUpdateObjectNumber,
   onUpdateObjectFlag
 }: ObjectVariablesPanelProps) {
   const [isAdding, setIsAdding] = useState(false)
@@ -93,6 +107,42 @@ export function ObjectVariablesPanel({
         onToggleVisible={(nextValue) => onUpdateObjectFlag("visible", nextValue)}
         onToggleSolid={(nextValue) => onUpdateObjectFlag("solid", nextValue)}
       />
+
+      <div className="mvpv2-object-attrs-header flex items-center justify-between border-b border-slate-200 p-3">
+        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Attributes</span>
+      </div>
+      <div className="mvpv2-object-attrs-grid border-b border-slate-200 bg-white p-2">
+        <div className="grid grid-cols-2 gap-1.5">
+          {([
+            { key: "x", label: "x", value: x, min: undefined },
+            { key: "y", label: "y", value: y, min: undefined },
+            { key: "speed", label: "speed", value: speed, min: undefined },
+            { key: "direction", label: "direction", value: direction, min: undefined },
+            { key: "width", label: "width", value: width, min: 1 },
+            { key: "height", label: "height", value: height, min: 1 }
+          ] as const).map((attributeEntry) => (
+            <label
+              key={attributeEntry.key}
+              className="mvpv2-object-attr-field flex items-center gap-1 rounded border border-slate-200 bg-slate-50 px-1.5 py-1"
+            >
+              <span className="mvpv2-object-attr-label w-12 text-[10px] text-slate-500">{attributeEntry.label}</span>
+              <input
+                className="mvpv2-object-attr-input h-6 w-full rounded border border-slate-300 bg-white px-1.5 text-[11px] text-slate-700 focus:outline-none"
+                type="number"
+                min={attributeEntry.min}
+                value={attributeEntry.value}
+                onChange={(event) => {
+                  const parsed = Number(event.target.value)
+                  if (Number.isNaN(parsed)) {
+                    return
+                  }
+                  onUpdateObjectNumber(attributeEntry.key, parsed)
+                }}
+              />
+            </label>
+          ))}
+        </div>
+      </div>
 
       <div className="flex items-center justify-between border-b border-slate-200 p-3">
         <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Variables</span>

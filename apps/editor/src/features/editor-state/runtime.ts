@@ -14,11 +14,12 @@ import { executeAction, type ActionContext } from "./action-handlers.js"
 import {
   BUILTIN_MOUSE_X_VARIABLE_ID,
   BUILTIN_MOUSE_Y_VARIABLE_ID,
-  INSTANCE_SIZE,
   ROOM_HEIGHT,
   ROOM_WIDTH,
   RUNTIME_TICK_MS,
   getDefaultRuntimeActionResult,
+  getInstanceHeight,
+  getInstanceWidth,
   intersectsInstances,
   isSameVariableValueType,
   resolveTargetInstanceId,
@@ -71,12 +72,17 @@ function clearRuntimeStateForRemovedInstances(runtime: RuntimeState, removedInst
   }
 }
 
-function isOutsideRoom(instance: ProjectV1["rooms"][number]["instances"][number]): boolean {
+function isOutsideRoom(
+  project: ProjectV1,
+  instance: ProjectV1["rooms"][number]["instances"][number]
+): boolean {
+  const width = getInstanceWidth(project, instance)
+  const height = getInstanceHeight(project, instance)
   return (
     instance.x < 0 ||
     instance.y < 0 ||
-    instance.x > ROOM_WIDTH - INSTANCE_SIZE ||
-    instance.y > ROOM_HEIGHT - INSTANCE_SIZE
+    instance.x > ROOM_WIDTH - width ||
+    instance.y > ROOM_HEIGHT - height
   )
 }
 
@@ -558,7 +564,7 @@ function applyCollisionEvents(
     for (let j = i + 1; j < mutableInstances.length; j += 1) {
       const first = mutableInstances[i]
       const second = mutableInstances[j]
-      if (!first || !second || !intersectsInstances(first, second)) {
+      if (!first || !second || !intersectsInstances(project, first, second)) {
         continue
       }
 
@@ -858,7 +864,7 @@ export function runRuntimeTick(
       for (const eventEntry of outsideEvents) {
         const eventLockTargetId = null
         const isLocked = hasEventLock(nextRuntime.eventLocksByKey, nextInstance.id, eventEntry.id, eventLockTargetId)
-        if (!isLocked && !isOutsideRoom(nextInstance)) {
+        if (!isLocked && !isOutsideRoom(project, nextInstance)) {
           continue
         }
         const eventResult = runEventItems(
