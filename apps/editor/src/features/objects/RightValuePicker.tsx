@@ -266,47 +266,51 @@ export function RightValuePicker({
               <div className="right-value-picker-section-header px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-50 border-b border-slate-100 border-t">
                 Random
               </div>
-              <div className="right-value-picker-random-row px-3 py-2">
-                <form
-                  className="flex items-center gap-1"
-                  onSubmit={(event) => {
-                    event.preventDefault()
-                    commitRandom()
-                  }}
-                >
+              <form
+                className="right-value-picker-random-row px-3 py-2 flex items-end gap-1.5"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  commitRandom()
+                }}
+              >
+                <div className="right-value-picker-random-field flex flex-col gap-0.5">
+                  <label className="text-[9px] font-medium text-slate-400 uppercase tracking-wider">min</label>
                   <input
                     ref={randomMinInputRef}
-                    className="right-value-picker-random-input-min h-7 w-16 rounded border border-slate-200 bg-white px-2 text-xs focus:border-blue-400 focus:outline-none"
+                    className="right-value-picker-random-input-min h-7 w-14 rounded border border-slate-200 bg-white px-2 text-xs focus:border-blue-400 focus:outline-none"
                     type="text"
                     inputMode="numeric"
                     value={randomMin}
                     onChange={(event) => setRandomMin(event.target.value)}
-                    placeholder="min"
                   />
+                </div>
+                <div className="right-value-picker-random-field flex flex-col gap-0.5">
+                  <label className="text-[9px] font-medium text-slate-400 uppercase tracking-wider">max</label>
                   <input
-                    className="right-value-picker-random-input-max h-7 w-16 rounded border border-slate-200 bg-white px-2 text-xs focus:border-blue-400 focus:outline-none"
+                    className="right-value-picker-random-input-max h-7 w-14 rounded border border-slate-200 bg-white px-2 text-xs focus:border-blue-400 focus:outline-none"
                     type="text"
                     inputMode="numeric"
                     value={randomMax}
                     onChange={(event) => setRandomMax(event.target.value)}
-                    placeholder="max"
                   />
+                </div>
+                <div className="right-value-picker-random-field flex flex-col gap-0.5">
+                  <label className="text-[9px] font-medium text-slate-400 uppercase tracking-wider">step</label>
                   <input
                     className="right-value-picker-random-input-step h-7 w-14 rounded border border-slate-200 bg-white px-2 text-xs focus:border-blue-400 focus:outline-none"
                     type="text"
                     inputMode="numeric"
                     value={randomStep}
                     onChange={(event) => setRandomStep(event.target.value)}
-                    placeholder="step"
                   />
-                  <button
-                    type="submit"
-                    className="right-value-picker-random-confirm h-7 px-2 rounded bg-blue-500 text-white text-xs hover:bg-blue-600 transition-colors shrink-0"
-                  >
-                    OK
-                  </button>
-                </form>
-              </div>
+                </div>
+                <button
+                  type="submit"
+                  className="right-value-picker-random-confirm h-7 px-2 rounded bg-blue-500 text-white text-xs hover:bg-blue-600 transition-colors shrink-0"
+                >
+                  OK
+                </button>
+              </form>
             </div>
           )}
 
