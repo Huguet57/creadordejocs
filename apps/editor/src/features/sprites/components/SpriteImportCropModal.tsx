@@ -100,6 +100,7 @@ export function SpriteImportCropModal({
   const previewInitRef = useRef(false)
 
   const [crop, setCrop] = useState<CropRect>({ x: 0, y: 0, width: 1, height: 1 })
+  const initialCropRef = useRef<CropRect>({ x: 0, y: 0, width: 1, height: 1 })
   const [dragMode, setDragMode] = useState<DragMode>(null)
   const [dragOrigin, setDragOrigin] = useState<{ mx: number; my: number; crop: CropRect } | null>(null)
   const [hoverMode, setHoverMode] = useState<DragMode>(null)
@@ -124,9 +125,20 @@ export function SpriteImportCropModal({
 
   useEffect(() => {
     if (!imageElement || !isOpen) return
-    setCrop(fitAspectCrop(imageElement.naturalWidth, imageElement.naturalHeight, targetWidth, targetHeight))
+    const initial = fitAspectCrop(imageElement.naturalWidth, imageElement.naturalHeight, targetWidth, targetHeight)
+    initialCropRef.current = initial
+    setCrop(initial)
     previewInitRef.current = false
   }, [imageElement, isOpen, targetWidth, targetHeight])
+
+  const isInitialCrop = crop.x === initialCropRef.current.x
+    && crop.y === initialCropRef.current.y
+    && crop.width === initialCropRef.current.width
+    && crop.height === initialCropRef.current.height
+
+  const resetCrop = () => {
+    setCrop(initialCropRef.current)
+  }
 
   const drawSource = useCallback(() => {
     const canvas = sourceCanvasRef.current
@@ -373,9 +385,12 @@ export function SpriteImportCropModal({
           </div>
         </div>
 
-        <div className="mvp16-import-crop-footer flex justify-end gap-2 border-t border-slate-200 px-4 py-3">
-          <Button variant="outline" size="sm" className="h-8" onClick={onCancel}>Cancel·lar</Button>
-          <Button size="sm" className="h-8" onClick={() => onConfirm(crop)}>Confirmar i importar</Button>
+        <div className="mvp16-import-crop-footer flex items-center justify-between border-t border-slate-200 px-4 py-3">
+          <Button variant="outline" size="sm" className="h-8" disabled={isInitialCrop} onClick={resetCrop}>Reset crop</Button>
+          <div className="mvp16-import-crop-footer-actions flex gap-2">
+            <Button variant="outline" size="sm" className="h-8" onClick={onCancel}>Cancel·lar</Button>
+            <Button size="sm" className="h-8" onClick={() => onConfirm(crop)}>Confirmar i importar</Button>
+          </div>
         </div>
       </div>
     </div>
