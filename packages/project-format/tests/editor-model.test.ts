@@ -11,6 +11,7 @@ import {
   deleteSprite,
   deleteSpriteFolder,
   moveObjectEventAction,
+  moveObjectEventItem,
   cloneObjectEventItemForPaste,
   insertObjectEventItem,
   moveSpriteFolder,
@@ -660,6 +661,156 @@ describe("editor model helpers", () => {
         expect(nestedAfterMove.thenActions[1].action.id).toBe(firstNestedActionId)
       }
     }
+  })
+
+  it("moves actions across top-level and nested if branches", () => {
+    const initial = createEmptyProjectV1("Move actions across containers")
+    const objectResult = quickCreateObject(initial, { name: "Player" })
+    const withEvent = addObjectEvent(objectResult.project, { objectId: objectResult.objectId, type: "Step" })
+    const eventId = withEvent.objects[0]?.events[0]?.id
+    if (!eventId) {
+      throw new Error("Expected event to be created")
+    }
+
+    const withRootAction = addObjectEventAction(withEvent, {
+      objectId: objectResult.objectId,
+      eventId,
+      action: { type: "changeScore", delta: 10 }
+    })
+    const withSecondRootAction = addObjectEventAction(withRootAction, {
+      objectId: objectResult.objectId,
+      eventId,
+      action: { type: "wait", durationMs: 100 }
+    })
+    const withIfA = addObjectEventIfBlock(withSecondRootAction, {
+      objectId: objectResult.objectId,
+      eventId,
+      condition: {
+        left: { scope: "global", variableId: "gv-a" },
+        operator: ">",
+        right: 0
+      }
+    })
+    const withIfB = addObjectEventIfBlock(withIfA, {
+      objectId: objectResult.objectId,
+      eventId,
+      condition: {
+        left: { scope: "global", variableId: "gv-b" },
+        operator: "==",
+        right: true
+      }
+    })
+
+    const topLevelItems = withIfB.objects[0]?.events[0]?.items ?? []
+    const rootAction = topLevelItems.find((item) => item.type === "action")
+    const secondRootAction = topLevelItems.filter((item) => item.type === "action")[1]
+    const ifBlocks = topLevelItems.filter((item) => item.type === "if")
+    const ifA = ifBlocks[0]
+    const ifB = ifBlocks[1]
+    if (
+      rootAction?.type !== "action" ||
+      secondRootAction?.type !== "action" ||
+      ifA?.type !== "if" ||
+      ifB?.type !== "if"
+    ) {
+      throw new Error("Expected two top-level actions and two if blocks")
+    }
+
+    const movedRootToThen = moveObjectEventItem(withIfB, {
+      objectId: objectResult.objectId,
+      eventId,
+      actionId: rootAction.action.id,
+      targetIfBlockId: ifA.id,
+      targetBranch: "then"
+    })
+    const ifAAfterRootMove = movedRootToThen.objects[0]?.events[0]?.items.find((item) => item.type === "if" && item.id === ifA.id)
+    expect(ifAAfterRootMove?.type).toBe("if")
+    if (ifAAfterRootMove?.type === "if") {
+      expect(ifAAfterRootMove.thenActions).toHaveLength(1)
+      expect(ifAAfterRootMove.thenActions[0]?.type).toBe("action")
+      if (ifAAfterRootMove.thenActions[0]?.type === "action") {
+        expect(ifAAfterRootMove.thenActions[0].action.id).toBe(rootAction.action.id)
+      }
+    }
+
+    const movedThenToElse = moveObjectEventItem(movedRootToThen, {
+      objectId: objectResult.objectId,
+      eventId,
+      actionId: rootAction.action.id,
+      targetIfBlockId: ifA.id,
+      targetBranch: "else"
+    })
+    const ifAAfterElseMove = movedThenToElse.objects[0]?.events[0]?.items.find((item) => item.type === "if" && item.id === ifA.id)
+    expect(ifAAfterElseMove?.type).toBe("if")
+    if (ifAAfterElseMove?.type === "if") {
+      expect(ifAAfterElseMove.thenActions).toHaveLength(0)
+      expect(ifAAfterElseMove.elseActions).toHaveLength(1)
+      expect(ifAAfterElseMove.elseActions[0]?.type).toBe("action")
+    }
+
+    const withNestedIf = addObjectEventIfBlock(movedThenToElse, {
+      objectId: objectResult.objectId,
+      eventId,
+      condition: {
+        left: { scope: "global", variableId: "gv-nested" },
+        operator: ">=",
+        right: 1
+      },
+      parentIfBlockId: ifB.id,
+      parentBranch: "then"
+    })
+    const ifBAfterNested = withNestedIf.objects[0]?.events[0]?.items.find((item) => item.type === "if" && item.id === ifB.id)
+    const nestedIf = ifBAfterNested?.type === "if" ? ifBAfterNested.thenActions.find((item) => item.type === "if") : null
+    if (nestedIf?.type !== "if") {
+      throw new Error("Expected nested if block under ifB.then")
+    }
+
+    const movedElseToNestedThen = moveObjectEventItem(withNestedIf, {
+      objectId: objectResult.objectId,
+      eventId,
+      actionId: rootAction.action.id,
+      targetIfBlockId: nestedIf.id,
+      targetBranch: "then"
+    })
+    const nestedAfterMoveRoot = movedElseToNestedThen.objects[0]?.events[0]?.items.find(
+      (item) => item.type === "if" && item.id === ifB.id
+    )
+    const nestedAfterMove =
+      nestedAfterMoveRoot?.type === "if"
+        ? nestedAfterMoveRoot.thenActions.find((item) => item.type === "if" && item.id === nestedIf.id)
+        : null
+    expect(nestedAfterMove?.type).toBe("if")
+    if (nestedAfterMove?.type === "if") {
+      expect(nestedAfterMove.thenActions).toHaveLength(1)
+      expect(nestedAfterMove.thenActions[0]?.type).toBe("action")
+      if (nestedAfterMove.thenActions[0]?.type === "action") {
+        expect(nestedAfterMove.thenActions[0].action.id).toBe(rootAction.action.id)
+      }
+    }
+
+    const movedNestedToRootBefore = moveObjectEventItem(movedElseToNestedThen, {
+      objectId: objectResult.objectId,
+      eventId,
+      actionId: rootAction.action.id,
+      targetActionId: secondRootAction.action.id,
+      position: "top"
+    })
+    const rootActionsAfterReturn = movedNestedToRootBefore.objects[0]?.events[0]?.items.filter((item) => item.type === "action") ?? []
+    expect(rootActionsAfterReturn[0]?.type).toBe("action")
+    expect(rootActionsAfterReturn[1]?.type).toBe("action")
+    if (rootActionsAfterReturn[0]?.type === "action" && rootActionsAfterReturn[1]?.type === "action") {
+      expect(rootActionsAfterReturn[0].action.id).toBe(rootAction.action.id)
+      expect(rootActionsAfterReturn[1].action.id).toBe(secondRootAction.action.id)
+    }
+
+    const noOpInvalidTarget = moveObjectEventItem(movedNestedToRootBefore, {
+      objectId: objectResult.objectId,
+      eventId,
+      actionId: rootAction.action.id,
+      targetIfBlockId: "if-missing",
+      targetBranch: "then"
+    })
+    expect(noOpInvalidTarget).toEqual(movedNestedToRootBefore)
   })
 
   it("clones event items deeply with regenerated ids", () => {

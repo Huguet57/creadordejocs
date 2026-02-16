@@ -109,6 +109,16 @@ export type MoveObjectEventActionInput = {
   direction: "up" | "down"
 }
 
+export type MoveObjectEventItemInput = {
+  objectId: string
+  eventId: string
+  actionId: string
+  targetIfBlockId?: string
+  targetBranch?: "then" | "else"
+  targetActionId?: string
+  position?: "top" | "bottom"
+}
+
 export type InsertObjectEventItemInput = {
   objectId: string
   eventId: string
@@ -346,6 +356,125 @@ function moveActionInItems(
     }
   })
   return { items: nextItems, updated }
+}
+
+function removeActionItemFromItems(
+  items: ObjectEventItem[],
+  actionId: string
+): {
+  items: ObjectEventItem[]
+  removedItem: Extract<ObjectEventItem, { type: "action" }> | null
+  removed: boolean
+} {
+  let removedItem: Extract<ObjectEventItem, { type: "action" }> | null = null
+  const nextItems: ObjectEventItem[] = []
+  for (const itemEntry of items) {
+    if (!removedItem && itemEntry.type === "action" && itemEntry.action.id === actionId) {
+      removedItem = itemEntry
+      continue
+    }
+    if (!removedItem && itemEntry.type === "if") {
+      const thenResult = removeActionItemFromItems(itemEntry.thenActions, actionId)
+      if (thenResult.removed) {
+        removedItem = thenResult.removedItem
+        nextItems.push({
+          ...itemEntry,
+          thenActions: thenResult.items
+        })
+        continue
+      }
+      const elseResult = removeActionItemFromItems(itemEntry.elseActions, actionId)
+      if (elseResult.removed) {
+        removedItem = elseResult.removedItem
+        nextItems.push({
+          ...itemEntry,
+          elseActions: elseResult.items
+        })
+        continue
+      }
+    }
+    nextItems.push(itemEntry)
+  }
+  return {
+    items: removedItem ? nextItems : items,
+    removedItem,
+    removed: removedItem !== null
+  }
+}
+
+function insertActionItemInContainer(
+  items: ObjectEventItem[],
+  item: Extract<ObjectEventItem, { type: "action" }>,
+  targetActionId?: string,
+  position: "top" | "bottom" = "bottom"
+): { items: ObjectEventItem[]; inserted: boolean } {
+  if (!targetActionId) {
+    return {
+      items: [...items, item],
+      inserted: true
+    }
+  }
+  const targetIndex = items.findIndex((entry) => entry.type === "action" && entry.action.id === targetActionId)
+  if (targetIndex < 0) {
+    return { items, inserted: false }
+  }
+  const insertIndex = position === "top" ? targetIndex : targetIndex + 1
+  const nextItems = [...items]
+  nextItems.splice(insertIndex, 0, item)
+  return {
+    items: nextItems,
+    inserted: true
+  }
+}
+
+function insertActionItemIntoItems(
+  items: ObjectEventItem[],
+  input: {
+    item: Extract<ObjectEventItem, { type: "action" }>
+    targetIfBlockId?: string
+    targetBranch: "then" | "else"
+    targetActionId?: string
+    position: "top" | "bottom"
+  }
+): { items: ObjectEventItem[]; inserted: boolean } {
+  if (!input.targetIfBlockId) {
+    return insertActionItemInContainer(items, input.item, input.targetActionId, input.position)
+  }
+  let inserted = false
+  const nextItems = items.map((itemEntry) => {
+    if (itemEntry.type !== "if" || inserted) {
+      return itemEntry
+    }
+    if (itemEntry.id === input.targetIfBlockId) {
+      const targetContainer = input.targetBranch === "then" ? itemEntry.thenActions : itemEntry.elseActions
+      const insertionResult = insertActionItemInContainer(targetContainer, input.item, input.targetActionId, input.position)
+      if (!insertionResult.inserted) {
+        return itemEntry
+      }
+      inserted = true
+      return input.targetBranch === "then"
+        ? { ...itemEntry, thenActions: insertionResult.items }
+        : { ...itemEntry, elseActions: insertionResult.items }
+    }
+    const thenResult = insertActionItemIntoItems(itemEntry.thenActions, input)
+    if (thenResult.inserted) {
+      inserted = true
+      return {
+        ...itemEntry,
+        thenActions: thenResult.items
+      }
+    }
+    const elseResult = insertActionItemIntoItems(itemEntry.elseActions, input)
+    if (elseResult.inserted) {
+      inserted = true
+      return {
+        ...itemEntry,
+        elseActions: elseResult.items
+      }
+    }
+    return itemEntry
+  })
+  return { items: inserted ? nextItems : items, inserted }
 }
 
 function cloneIfCondition(condition: IfCondition): IfCondition {
@@ -1059,6 +1188,45 @@ export function moveObjectEventAction(project: ProjectV1, input: MoveObjectEvent
           return {
             ...eventEntry,
             items: moveResult.items
+          }
+        })
+      }
+    })
+  }
+}
+
+export function moveObjectEventItem(project: ProjectV1, input: MoveObjectEventItemInput): ProjectV1 {
+  const targetBranch = input.targetBranch ?? "then"
+  const targetPosition = input.position ?? "bottom"
+  return {
+    ...project,
+    objects: project.objects.map((objectEntry) => {
+      if (objectEntry.id !== input.objectId) {
+        return objectEntry
+      }
+      return {
+        ...objectEntry,
+        events: objectEntry.events.map((eventEntry) => {
+          if (eventEntry.id !== input.eventId) {
+            return eventEntry
+          }
+          const removalResult = removeActionItemFromItems(eventEntry.items, input.actionId)
+          if (!removalResult.removed || !removalResult.removedItem) {
+            return eventEntry
+          }
+          const insertionResult = insertActionItemIntoItems(removalResult.items, {
+            item: removalResult.removedItem,
+            targetBranch,
+            position: targetPosition,
+            ...(input.targetIfBlockId ? { targetIfBlockId: input.targetIfBlockId } : {}),
+            ...(input.targetActionId ? { targetActionId: input.targetActionId } : {})
+          })
+          if (!insertionResult.inserted) {
+            return eventEntry
+          }
+          return {
+            ...eventEntry,
+            items: insertionResult.items
           }
         })
       }

@@ -13,6 +13,7 @@ import type { ProjectV1, ValueExpression } from "@creadordejocs/project-format"
 import { buildDefaultIfCondition } from "./if-condition-utils.js"
 import { type ObjectVariableOption } from "./VariablePicker.js"
 import { RightValuePicker } from "./RightValuePicker.js"
+import type { ActionDropTarget } from "./action-dnd.js"
 
 type IfBlockProps = {
   item: ObjectIfBlockItem
@@ -37,6 +38,12 @@ type IfBlockProps = {
   onPasteAfterIfBlock: (ifBlockId: string) => void
   onUpdateIfAction: (ifBlockId: string, actionId: string, action: ObjectActionDraft, branch: "then" | "else") => void
   onRemoveIfAction: (ifBlockId: string, actionId: string, branch: "then" | "else") => void
+  draggedActionId: string | null
+  dropTarget: ActionDropTarget | null
+  onDragStartAction: (actionId: string) => void
+  onDragOverAction: (target: ActionDropTarget) => void
+  onDropOnAction: (target: ActionDropTarget) => void
+  onDragEndAction: () => void
 }
 
 type IfContextMenuState = {
@@ -160,7 +167,13 @@ export function IfBlock({
   onCopyIfBlock,
   onPasteAfterIfBlock,
   onUpdateIfAction,
-  onRemoveIfAction
+  onRemoveIfAction,
+  draggedActionId,
+  dropTarget,
+  onDragStartAction,
+  onDragOverAction,
+  onDropOnAction,
+  onDragEndAction
 }: IfBlockProps) {
   const defaultIfCondition = buildDefaultIfCondition(globalVariables, selectedObjectVariables)
   const fallbackComparisonCondition = getFallbackComparisonCondition(defaultIfCondition)
@@ -170,8 +183,6 @@ export function IfBlock({
     ? item.condition
     : ensureComparisonIfCondition(item.condition.conditions[0], fallbackComparisonCondition)
   const [contextMenu, setContextMenu] = useState<IfContextMenuState>(null)
-  const [draggedAction, setDraggedAction] = useState<{ actionId: string; branch: "then" | "else" } | null>(null)
-  const [dropTarget, setDropTarget] = useState<{ actionId: string; position: "top" | "bottom" } | null>(null)
   const hasElseContent = item.elseActions.length > 0
   const [showElseManually, setShowElseManually] = useState(false)
   const elseVisible = hasElseContent || showElseManually
@@ -191,11 +202,6 @@ export function IfBlock({
     type: v.type,
     objectName: ""
   }))
-  const moveActionBySteps = (actionId: string, direction: "up" | "down", steps: number) => {
-    for (let index = 0; index < steps; index += 1) {
-      onMoveAction(actionId, direction)
-    }
-  }
   const getCanonicalBranchDropTarget = (
     items: ObjectEventItem[],
     hoveredActionId: string,
@@ -252,49 +258,40 @@ export function IfBlock({
               selectedObjectVariables={selectedObjectVariables}
               eventType={eventType}
               collisionTargetName={collisionTargetName}
-              isDragging={draggedAction?.actionId === branchItem.action.id}
-              dropIndicator={dropTarget?.actionId === branchItem.action.id ? dropTarget.position : null}
-              onDragStartAction={(actionId) => {
-                setDraggedAction({ actionId, branch })
-                setDropTarget(null)
-              }}
+              isDragging={draggedActionId === branchItem.action.id}
+              dropIndicator={
+                dropTarget?.targetIfBlockId === item.id &&
+                dropTarget?.targetBranch === branch &&
+                dropTarget?.targetActionId === branchItem.action.id
+                  ? (dropTarget.position ?? null)
+                  : null
+              }
+              onDragStartAction={onDragStartAction}
               onDragOverAction={(actionId, position) => {
-                if (!draggedAction || draggedAction.actionId === actionId || draggedAction.branch !== branch) {
+                if (!draggedActionId || draggedActionId === actionId) {
                   return
                 }
-                setDropTarget(getCanonicalBranchDropTarget(items, actionId, position))
+                const canonicalDropTarget = getCanonicalBranchDropTarget(items, actionId, position)
+                onDragOverAction({
+                  targetIfBlockId: item.id,
+                  targetBranch: branch,
+                  targetActionId: canonicalDropTarget.actionId,
+                  position: canonicalDropTarget.position
+                })
               }}
               onDropOnAction={(targetActionId, position) => {
-                if (draggedAction?.branch !== branch) {
+                if (!draggedActionId) {
                   return
                 }
                 const canonicalDropTarget = getCanonicalBranchDropTarget(items, targetActionId, position)
-                const sourceIndex = items.findIndex(
-                  (itemEntry) => itemEntry.type === "action" && itemEntry.action.id === draggedAction.actionId
-                )
-                const targetIndex = items.findIndex(
-                  (itemEntry) => itemEntry.type === "action" && itemEntry.action.id === canonicalDropTarget.actionId
-                )
-                if (sourceIndex >= 0 && targetIndex >= 0) {
-                  const desiredIndexBeforeRemoval = canonicalDropTarget.position === "top" ? targetIndex : targetIndex + 1
-                  const desiredIndexAfterRemoval =
-                    sourceIndex < desiredIndexBeforeRemoval ? desiredIndexBeforeRemoval - 1 : desiredIndexBeforeRemoval
-                  const steps = Math.abs(sourceIndex - desiredIndexAfterRemoval)
-                  if (steps > 0) {
-                    moveActionBySteps(
-                      draggedAction.actionId,
-                      sourceIndex < desiredIndexAfterRemoval ? "down" : "up",
-                      steps
-                    )
-                  }
-                }
-                setDraggedAction(null)
-                setDropTarget(null)
+                onDropOnAction({
+                  targetIfBlockId: item.id,
+                  targetBranch: branch,
+                  targetActionId: canonicalDropTarget.actionId,
+                  position: canonicalDropTarget.position
+                })
               }}
-              onDragEndAction={() => {
-                setDraggedAction(null)
-                setDropTarget(null)
-              }}
+              onDragEndAction={onDragEndAction}
             />
           </div>
         )
@@ -324,11 +321,22 @@ export function IfBlock({
             onPasteAfterIfBlock={onPasteAfterIfBlock}
             onUpdateIfAction={onUpdateIfAction}
             onRemoveIfAction={onRemoveIfAction}
+            draggedActionId={draggedActionId}
+            dropTarget={dropTarget}
+            onDragStartAction={onDragStartAction}
+            onDragOverAction={onDragOverAction}
+            onDropOnAction={onDropOnAction}
+            onDragEndAction={onDragEndAction}
           />
         </div>
       )
     })
   }
+
+  const isBranchEndDropTarget = (branch: "then" | "else"): boolean =>
+    dropTarget?.targetIfBlockId === item.id &&
+    dropTarget?.targetBranch === branch &&
+    dropTarget?.targetActionId === undefined
 
   const renderComparisonConditionEditor = (
     condition: ComparisonIfCondition,
@@ -542,7 +550,31 @@ export function IfBlock({
       <div className="if-block-then-branch border-l-2 border-blue-200 ml-3 pl-3">
         <div className="flex flex-col gap-px bg-slate-200">
           {item.thenActions.length === 0 ? (
-            <div className="if-block-ghost-action px-3 py-2 bg-white">
+            <div
+              className={`if-block-ghost-action mvp22-if-branch-empty-dropzone px-3 py-2 bg-white ${
+                isBranchEndDropTarget("then") ? "ring-1 ring-blue-300 bg-blue-50/40" : ""
+              }`}
+              onDragOver={(event) => {
+                if (!draggedActionId) {
+                  return
+                }
+                event.preventDefault()
+                onDragOverAction({
+                  targetIfBlockId: item.id,
+                  targetBranch: "then"
+                })
+              }}
+              onDrop={(event) => {
+                if (!draggedActionId) {
+                  return
+                }
+                event.preventDefault()
+                onDropOnAction({
+                  targetIfBlockId: item.id,
+                  targetBranch: "then"
+                })
+              }}
+            >
               <span className="text-[11px] italic text-slate-300">Cap acció definida</span>
             </div>
           ) : (
@@ -591,7 +623,31 @@ export function IfBlock({
           <div className="if-block-else-branch border-l-2 border-blue-200 ml-3 pl-3">
             <div className="flex flex-col gap-px bg-slate-200">
               {item.elseActions.length === 0 ? (
-                <div className="if-block-ghost-action px-3 py-2 bg-white">
+                <div
+                  className={`if-block-ghost-action mvp22-if-branch-empty-dropzone px-3 py-2 bg-white ${
+                    isBranchEndDropTarget("else") ? "ring-1 ring-blue-300 bg-blue-50/40" : ""
+                  }`}
+                  onDragOver={(event) => {
+                    if (!draggedActionId) {
+                      return
+                    }
+                    event.preventDefault()
+                    onDragOverAction({
+                      targetIfBlockId: item.id,
+                      targetBranch: "else"
+                    })
+                  }}
+                  onDrop={(event) => {
+                    if (!draggedActionId) {
+                      return
+                    }
+                    event.preventDefault()
+                    onDropOnAction({
+                      targetIfBlockId: item.id,
+                      targetBranch: "else"
+                    })
+                  }}
+                >
                   <span className="text-[11px] italic text-slate-300">Cap acció definida</span>
                 </div>
               ) : (

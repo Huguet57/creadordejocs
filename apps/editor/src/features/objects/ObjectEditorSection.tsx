@@ -348,6 +348,11 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
                 controller.moveObjectEventAction(activeEvent.id, actionId, direction)
               }
             }}
+            onMoveActionByDrop={(actionId, target) => {
+              if (activeEvent) {
+                controller.moveObjectEventItem(activeEvent.id, actionId, target)
+              }
+            }}
             onRemoveAction={(actionId) => {
               if (activeEvent) {
                 controller.removeObjectEventAction(activeEvent.id, actionId)

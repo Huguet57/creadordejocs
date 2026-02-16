@@ -14,6 +14,7 @@ import {
   createRoom,
   incrementMetric,
   insertObjectEventItem as insertObjectEventItemModel,
+  moveObjectEventItem as moveObjectEventItemModel,
   moveObjectEventAction as moveObjectEventActionModel,
   moveSpriteFolder as moveSpriteFolderModel,
   moveSpriteToFolder as moveSpriteToFolderModel,
@@ -721,6 +722,30 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       pushProjectChange(
         moveObjectEventActionModel(project, { objectId: selectedObject.id, eventId, actionId, direction }),
         "Reorder event action"
+      )
+    },
+    moveObjectEventItem(
+      eventId: string,
+      actionId: string,
+      target: {
+        targetIfBlockId?: string
+        targetBranch?: "then" | "else"
+        targetActionId?: string
+        position?: "top" | "bottom"
+      }
+    ) {
+      if (!selectedObject) return
+      pushProjectChange(
+        moveObjectEventItemModel(project, {
+          objectId: selectedObject.id,
+          eventId,
+          actionId,
+          ...(target.targetIfBlockId ? { targetIfBlockId: target.targetIfBlockId } : {}),
+          ...(target.targetBranch ? { targetBranch: target.targetBranch } : {}),
+          ...(target.targetActionId ? { targetActionId: target.targetActionId } : {}),
+          ...(target.position ? { position: target.position } : {})
+        }),
+        "Move event action"
       )
     },
     insertObjectEventItem(eventId: string, item: ObjectEventItem, afterItemId?: string) {
