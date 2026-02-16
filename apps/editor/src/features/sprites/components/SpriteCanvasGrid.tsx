@@ -13,6 +13,11 @@ type SpriteCanvasGridProps = {
   onPaint: (x: number, y: number, tool: SpriteEditorTool) => void
 }
 
+const TOOL_CURSOR: Record<SpriteEditorTool, string> = {
+  pencil: "crosshair",
+  eraser: "cell"
+}
+
 export function SpriteCanvasGrid({ width, height, pixelsRgba, zoom, showGrid, activeTool, onPaint }: SpriteCanvasGridProps) {
   const [isPointerDown, setIsPointerDown] = useState(false)
   const safePixels = normalizePixelGrid(pixelsRgba, width, height)
@@ -23,7 +28,8 @@ export function SpriteCanvasGrid({ width, height, pixelsRgba, zoom, showGrid, ac
         className="mvp16-sprite-grid inline-grid border border-slate-300 bg-white shadow-sm"
         style={{
           gridTemplateColumns: `repeat(${width}, ${zoom}px)`,
-          gridTemplateRows: `repeat(${height}, ${zoom}px)`
+          gridTemplateRows: `repeat(${height}, ${zoom}px)`,
+          cursor: TOOL_CURSOR[activeTool] ?? "default"
         }}
         onMouseLeave={() => setIsPointerDown(false)}
       >
