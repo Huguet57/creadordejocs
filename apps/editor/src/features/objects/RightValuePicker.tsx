@@ -64,11 +64,19 @@ export function RightValuePicker({
     const container = containerRef.current
     if (!isOpen || !popover || !container) return
 
-    // Reset to natural position so we can measure true content width
+    // Temporarily remove all constraints so we can measure true content width.
+    // overflow-y:auto implicitly forces overflow-x:auto, clamping scrollWidth.
     popover.style.left = "0px"
     popover.style.maxWidth = "none"
+    popover.style.width = "max-content"
+    popover.style.overflow = "visible"
 
-    const naturalWidth = popover.scrollWidth
+    const naturalWidth = popover.getBoundingClientRect().width
+
+    // Restore
+    popover.style.width = ""
+    popover.style.overflow = ""
+
     const containerRect = container.getBoundingClientRect()
     const viewportWidth = document.documentElement.clientWidth
     const margin = 8
