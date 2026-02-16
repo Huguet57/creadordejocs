@@ -346,6 +346,8 @@ const ObjectSchema = z.object({
   y: z.number(),
   speed: z.number(),
   direction: z.number(),
+  visible: z.boolean().optional(),
+  solid: z.boolean().optional(),
   events: z.array(ObjectEventSchema).default([])
 })
 

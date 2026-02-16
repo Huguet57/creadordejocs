@@ -11,6 +11,7 @@ import {
   applyGlobalNumericOperation,
   applyObjectNumericOperation,
   clampValue,
+  intersectsInstances,
   isReadonlyGlobalVariableId,
   isSameVariableValueType,
   mergeDestroyedIds,
@@ -144,6 +145,33 @@ function resolveStringValue(expression: ValueExpressionOutput, result: RuntimeAc
   return typeof resolved === "string" ? resolved : undefined
 }
 
+function wouldCollideWithSolid(
+  project: ProjectV1,
+  roomInstances: ProjectV1["rooms"][number]["instances"],
+  movingInstanceId: string,
+  nextX: number,
+  nextY: number
+): boolean {
+  const movingInstance = roomInstances.find((instanceEntry) => instanceEntry.id === movingInstanceId)
+  if (!movingInstance) {
+    return false
+  }
+  const nextInstance = { ...movingInstance, x: nextX, y: nextY }
+  for (const otherInstance of roomInstances) {
+    if (otherInstance.id === movingInstanceId) {
+      continue
+    }
+    const otherObject = project.objects.find((objectEntry) => objectEntry.id === otherInstance.objectId)
+    if (!otherObject?.solid) {
+      continue
+    }
+    if (intersectsInstances(nextInstance, otherInstance)) {
+      return true
+    }
+  }
+  return false
+}
+
 export function executeAction(
   action: RuntimeAction,
   result: RuntimeActionResult,
@@ -152,13 +180,18 @@ export function executeAction(
   if (action.type === "move") {
     const dx = resolveNumberValue(action.dx, result, ctx) ?? 0
     const dy = resolveNumberValue(action.dy, result, ctx) ?? 0
+    const nextX = result.instance.x + dx
+    const nextY = result.instance.y + dy
+    if (wouldCollideWithSolid(ctx.project, ctx.roomInstances, result.instance.id, nextX, nextY)) {
+      return { result }
+    }
     return {
       result: {
         ...result,
         instance: {
           ...result.instance,
-          x: result.instance.x + dx,
-          y: result.instance.y + dy
+          x: nextX,
+          y: nextY
         }
       }
     }
@@ -167,13 +200,18 @@ export function executeAction(
     const speed = resolveNumberValue(action.speed, result, ctx) ?? 0
     const direction = resolveNumberValue(action.direction, result, ctx) ?? 0
     const radians = (direction * Math.PI) / 180
+    const nextX = result.instance.x + Math.cos(radians) * speed
+    const nextY = result.instance.y + Math.sin(radians) * speed
+    if (wouldCollideWithSolid(ctx.project, ctx.roomInstances, result.instance.id, nextX, nextY)) {
+      return { result }
+    }
     return {
       result: {
         ...result,
         instance: {
           ...result.instance,
-          x: result.instance.x + Math.cos(radians) * speed,
-          y: result.instance.y + Math.sin(radians) * speed
+          x: nextX,
+          y: nextY
         }
       }
     }
@@ -237,13 +275,18 @@ export function executeAction(
     }
 
     const radians = Math.atan2(deltaY, deltaX)
+    const nextX = result.instance.x + Math.cos(radians) * speed
+    const nextY = result.instance.y + Math.sin(radians) * speed
+    if (wouldCollideWithSolid(ctx.project, ctx.roomInstances, result.instance.id, nextX, nextY)) {
+      return { result }
+    }
     return {
       result: {
         ...result,
         instance: {
           ...result.instance,
-          x: result.instance.x + Math.cos(radians) * speed,
-          y: result.instance.y + Math.sin(radians) * speed
+          x: nextX,
+          y: nextY
         }
       }
     }

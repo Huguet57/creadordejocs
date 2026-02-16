@@ -198,6 +198,8 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
             objectId={selectedObject.id}
             objectName={selectedObject.name}
             spriteSrc={selectedObject.spriteId ? (resolvedSpriteSources[selectedObject.spriteId] ?? null) : null}
+            visible={selectedObject.visible ?? true}
+            solid={selectedObject.solid ?? false}
             variables={selectedObjectVariableDefinitions}
             onAddVariable={(objectId, name, type, initialValue) =>
               controller.addObjectVariable(objectId, name, type, initialValue)
@@ -206,6 +208,7 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
               controller.updateObjectVariable(objectId, variableId, name, initialValue)
             }
             onRemoveVariable={(objectId, variableId) => controller.removeObjectVariable(objectId, variableId)}
+            onUpdateObjectFlag={(key, value) => controller.updateSelectedObjectProperty(key, value)}
           />
           <EventListPanel
             events={selectedObject.events}

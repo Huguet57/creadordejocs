@@ -54,6 +54,18 @@ export function clampValue(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value))
 }
 
+export function intersectsInstances(
+  first: ProjectV1["rooms"][number]["instances"][number],
+  second: ProjectV1["rooms"][number]["instances"][number]
+): boolean {
+  return (
+    first.x < second.x + INSTANCE_SIZE &&
+    first.x + INSTANCE_SIZE > second.x &&
+    first.y < second.y + INSTANCE_SIZE &&
+    first.y + INSTANCE_SIZE > second.y
+  )
+}
+
 export function getDefaultRuntimeActionResult(
   instance: ProjectV1["rooms"][number]["instances"][number],
   runtime: RuntimeState

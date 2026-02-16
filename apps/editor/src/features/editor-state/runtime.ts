@@ -19,6 +19,7 @@ import {
   ROOM_WIDTH,
   RUNTIME_TICK_MS,
   getDefaultRuntimeActionResult,
+  intersectsInstances,
   isSameVariableValueType,
   resolveTargetInstanceId,
   type RuntimeAction,
@@ -477,18 +478,6 @@ function runEventItems(
   return result
 }
 
-function intersects(
-  first: ProjectV1["rooms"][number]["instances"][number],
-  second: ProjectV1["rooms"][number]["instances"][number]
-): boolean {
-  return (
-    first.x < second.x + INSTANCE_SIZE &&
-    first.x + INSTANCE_SIZE > second.x &&
-    first.y < second.y + INSTANCE_SIZE &&
-    first.y + INSTANCE_SIZE > second.y
-  )
-}
-
 function applyCollisionEvents(
   project: ProjectV1,
   instances: ProjectV1["rooms"][number]["instances"],
@@ -569,7 +558,7 @@ function applyCollisionEvents(
     for (let j = i + 1; j < mutableInstances.length; j += 1) {
       const first = mutableInstances[i]
       const second = mutableInstances[j]
-      if (!first || !second || !intersects(first, second)) {
+      if (!first || !second || !intersectsInstances(first, second)) {
         continue
       }
 

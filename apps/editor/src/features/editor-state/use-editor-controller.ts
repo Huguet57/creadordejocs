@@ -568,17 +568,27 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
         "Remove if block action"
       )
     },
-    updateSelectedObjectProperty(key: "x" | "y" | "speed" | "direction", value: number) {
+    updateSelectedObjectProperty(
+      key: "x" | "y" | "speed" | "direction" | "visible" | "solid",
+      value: number | boolean
+    ) {
       if (!selectedObject) return
-      const numeric = Number.isFinite(value) ? value : 0
-      const nextObject = { ...selectedObject, [key]: numeric }
+      const normalizedValue =
+        typeof value === "number"
+          ? Number.isFinite(value)
+            ? value
+            : 0
+          : value
+      const nextObject = { ...selectedObject, [key]: normalizedValue }
       pushProjectChange(
         updateObjectProperties(project, {
           objectId: selectedObject.id,
           x: nextObject.x,
           y: nextObject.y,
           speed: nextObject.speed,
-          direction: nextObject.direction
+          direction: nextObject.direction,
+          visible: nextObject.visible ?? true,
+          solid: nextObject.solid ?? false
         })
       )
     },

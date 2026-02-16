@@ -269,6 +269,9 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
                     return null
                   }
                   const objectEntry = controller.project.objects.find((entry) => entry.id === instanceEntry.objectId)
+                  if (objectEntry?.visible === false) {
+                    return null
+                  }
                   const spriteEntry = objectEntry?.spriteId ? spriteById[objectEntry.spriteId] : undefined
                   const spriteSource = spriteEntry ? resolvedSpriteSources[spriteEntry.id] : undefined
                   return (

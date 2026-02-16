@@ -8,6 +8,8 @@ type ObjectVariablesPanelProps = {
   objectId: string
   objectName: string
   spriteSrc: string | null
+  visible: boolean
+  solid: boolean
   variables: {
     id: string
     name: string
@@ -17,6 +19,7 @@ type ObjectVariablesPanelProps = {
   onAddVariable: (objectId: string, name: string, type: VariableType, initialValue: VariableValue) => void
   onUpdateVariable: (objectId: string, variableId: string, name: string, initialValue: VariableValue) => void
   onRemoveVariable: (objectId: string, variableId: string) => void
+  onUpdateObjectFlag: (key: "visible" | "solid", value: boolean) => void
 }
 
 function parseInitialValue(type: VariableType, rawValue: string): VariableValue {
@@ -41,10 +44,13 @@ export function ObjectVariablesPanel({
   objectId,
   objectName,
   spriteSrc,
+  visible,
+  solid,
   variables,
   onAddVariable,
   onUpdateVariable,
-  onRemoveVariable
+  onRemoveVariable,
+  onUpdateObjectFlag
 }: ObjectVariablesPanelProps) {
   const [isAdding, setIsAdding] = useState(false)
   const [newVariableName, setNewVariableName] = useState("")
@@ -79,7 +85,14 @@ export function ObjectVariablesPanel({
 
   return (
     <aside className="mvpv1-object-vars-panel flex w-[220px] flex-col border-r border-slate-200 bg-slate-50">
-      <ObjectCard objectName={objectName} spriteSrc={spriteSrc} />
+      <ObjectCard
+        objectName={objectName}
+        spriteSrc={spriteSrc}
+        visible={visible}
+        solid={solid}
+        onToggleVisible={(nextValue) => onUpdateObjectFlag("visible", nextValue)}
+        onToggleSolid={(nextValue) => onUpdateObjectFlag("solid", nextValue)}
+      />
 
       <div className="flex items-center justify-between border-b border-slate-200 p-3">
         <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Variables</span>

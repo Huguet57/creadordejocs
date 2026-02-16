@@ -44,6 +44,8 @@ describe("editor model helpers", () => {
     expect(objectResult.project.objects[0]?.spriteId).toBe(spriteResult.spriteId)
     expect(objectResult.project.resources.sprites[0]?.uploadStatus).toBe("notConnected")
     expect(objectResult.project.objects[0]?.events).toEqual([])
+    expect((objectResult.project.objects[0] as { visible?: boolean } | undefined)?.visible).toBe(true)
+    expect((objectResult.project.objects[0] as { solid?: boolean } | undefined)?.solid).toBe(false)
   })
 
   it("creates a room and moves an instance inside it", () => {
@@ -67,7 +69,9 @@ describe("editor model helpers", () => {
       x: 5,
       y: 6,
       speed: 7,
-      direction: 180
+      direction: 180,
+      visible: false,
+      solid: true
     })
 
     expect(updated.rooms[0]?.instances[0]?.x).toBe(40)
@@ -75,6 +79,8 @@ describe("editor model helpers", () => {
     expect(updated.objects[0]?.x).toBe(5)
     expect(updated.objects[0]?.speed).toBe(7)
     expect(updated.objects[0]?.direction).toBe(180)
+    expect((updated.objects[0] as { visible?: boolean } | undefined)?.visible).toBe(false)
+    expect((updated.objects[0] as { solid?: boolean } | undefined)?.solid).toBe(true)
   })
 
   it("updates upload-ready asset source metadata", () => {

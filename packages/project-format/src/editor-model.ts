@@ -8,6 +8,8 @@ export type CreateObjectInput = {
   y?: number
   speed?: number
   direction?: number
+  visible?: boolean
+  solid?: boolean
 }
 
 export type AddRoomInstanceInput = {
@@ -30,6 +32,8 @@ export type UpdateObjectPropertiesInput = {
   y: number
   speed: number
   direction: number
+  visible: boolean
+  solid: boolean
 }
 
 export type ObjectEventType =
@@ -405,6 +409,8 @@ export function quickCreateObject(
           y: input.y ?? 0,
           speed: input.speed ?? 0,
           direction: input.direction ?? 0,
+          visible: input.visible ?? true,
+          solid: input.solid ?? false,
           events: []
         }
       ]
@@ -437,7 +443,9 @@ export function updateObjectProperties(
             x: input.x,
             y: input.y,
             speed: input.speed,
-            direction: input.direction
+            direction: input.direction,
+            visible: input.visible,
+            solid: input.solid
           }
         : objectEntry
     )

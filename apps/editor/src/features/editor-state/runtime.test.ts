@@ -2378,6 +2378,308 @@ describe("runtime regressions", () => {
     expect(seeker?.y).toBe(6)
   })
 
+  it("blocks move when target position collides with a solid object", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-solid-blocks-move",
+        name: "Solid blocks move",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: { sprites: [], sounds: [] },
+      variables: { global: [], objectByObjectId: {} },
+      objects: [
+        {
+          id: "object-mover",
+          name: "Mover",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step",
+              type: "Step",
+              key: null,
+              keyboardMode: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [{ id: "item-move", type: "action", action: { id: "action-move", type: "move", dx: 4, dy: 0 } }]
+            }
+          ]
+        },
+        {
+          id: "object-wall",
+          name: "Wall",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          solid: true,
+          events: []
+        }
+      ],
+      rooms: [
+        {
+          id: "room-main",
+          name: "Main",
+          instances: [
+            { id: "instance-mover", objectId: "object-mover", x: 0, y: 0 },
+            { id: "instance-wall", objectId: "object-wall", x: 32, y: 0 }
+          ]
+        }
+      ],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    const mover = result.project.rooms[0]?.instances.find((entry) => entry.id === "instance-mover")
+    expect(mover?.x).toBe(0)
+    expect(mover?.y).toBe(0)
+  })
+
+  it("allows move through non-solid objects", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-nonsolid-allows-move",
+        name: "Non solid allows move",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: { sprites: [], sounds: [] },
+      variables: { global: [], objectByObjectId: {} },
+      objects: [
+        {
+          id: "object-mover",
+          name: "Mover",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step",
+              type: "Step",
+              key: null,
+              keyboardMode: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [{ id: "item-move", type: "action", action: { id: "action-move", type: "move", dx: 4, dy: 0 } }]
+            }
+          ]
+        },
+        {
+          id: "object-ghost",
+          name: "Ghost",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          solid: false,
+          events: []
+        }
+      ],
+      rooms: [
+        {
+          id: "room-main",
+          name: "Main",
+          instances: [
+            { id: "instance-mover", objectId: "object-mover", x: 0, y: 0 },
+            { id: "instance-ghost", objectId: "object-ghost", x: 32, y: 0 }
+          ]
+        }
+      ],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    const mover = result.project.rooms[0]?.instances.find((entry) => entry.id === "instance-mover")
+    expect(mover?.x).toBe(4)
+    expect(mover?.y).toBe(0)
+  })
+
+  it("blocks setVelocity when motion would collide with a solid object", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-solid-blocks-set-velocity",
+        name: "Solid blocks set velocity",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: { sprites: [], sounds: [] },
+      variables: { global: [], objectByObjectId: {} },
+      objects: [
+        {
+          id: "object-mover",
+          name: "Mover",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step",
+              type: "Step",
+              key: null,
+              keyboardMode: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [
+                {
+                  id: "item-velocity",
+                  type: "action",
+                  action: { id: "action-velocity", type: "setVelocity", speed: 4, direction: 0 }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          id: "object-wall",
+          name: "Wall",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          solid: true,
+          events: []
+        }
+      ],
+      rooms: [
+        {
+          id: "room-main",
+          name: "Main",
+          instances: [
+            { id: "instance-mover", objectId: "object-mover", x: 0, y: 0 },
+            { id: "instance-wall", objectId: "object-wall", x: 32, y: 0 }
+          ]
+        }
+      ],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    const mover = result.project.rooms[0]?.instances.find((entry) => entry.id === "instance-mover")
+    expect(mover?.x).toBe(0)
+    expect(mover?.y).toBe(0)
+  })
+
+  it("blocks moveToward when motion would collide with a solid object", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-solid-blocks-move-toward",
+        name: "Solid blocks move toward",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: { sprites: [], sounds: [] },
+      variables: { global: [], objectByObjectId: {} },
+      objects: [
+        {
+          id: "object-seeker",
+          name: "Seeker",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step",
+              type: "Step",
+              key: null,
+              keyboardMode: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [
+                {
+                  id: "item-move-toward",
+                  type: "action",
+                  action: {
+                    id: "action-move-toward",
+                    type: "moveToward",
+                    targetType: "object",
+                    targetObjectId: "object-wall",
+                    speed: 10
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          id: "object-wall",
+          name: "Wall",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          solid: true,
+          events: []
+        }
+      ],
+      rooms: [
+        {
+          id: "room-main",
+          name: "Main",
+          instances: [
+            { id: "instance-seeker", objectId: "object-seeker", x: 0, y: 0 },
+            { id: "instance-wall", objectId: "object-wall", x: 30, y: 0 }
+          ]
+        }
+      ],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    const seeker = result.project.rooms[0]?.instances.find((entry) => entry.id === "instance-seeker")
+    expect(seeker?.x).toBe(0)
+    expect(seeker?.y).toBe(0)
+  })
+
   it("rotate/set assigns an absolute rotation value", () => {
     const project: ProjectV1 = {
       version: 1,
