@@ -115,15 +115,15 @@ export function ObjectVariablesPanel({
             >
               <span className="mvpv2-object-attr-label w-12 text-[10px] text-slate-500">{attributeEntry.label}</span>
               <input
-                className="mvpv2-object-attr-input h-6 w-full rounded border border-slate-300 bg-white px-1.5 text-[11px] text-slate-700 focus:outline-none"
-                type="number"
-                min={attributeEntry.min}
+                className="mvpv2-object-attr-input h-6 w-full appearance-none rounded border border-slate-300 bg-white px-1.5 text-[11px] text-slate-700 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield] focus:outline-none"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={attributeEntry.value}
+                onWheel={(event) => event.currentTarget.blur()}
                 onChange={(event) => {
-                  const parsed = Number(event.target.value)
-                  if (Number.isNaN(parsed)) {
-                    return
-                  }
+                  const raw = event.target.value.replace(/[^0-9]/g, "")
+                  const parsed = raw === "" ? 1 : Math.max(1, Number(raw))
                   onUpdateObjectNumber(attributeEntry.key, parsed)
                 }}
               />
