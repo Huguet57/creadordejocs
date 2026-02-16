@@ -146,12 +146,7 @@ export function ToolOptionsPanel({
             className="mvp16-sprite-tool-options-picker-preview-swatch h-7 w-7 shrink-0 rounded border border-slate-300"
             style={{ backgroundColor: normalizedPreview.slice(0, 7) }}
           />
-          <div className="mvp16-sprite-tool-options-picker-preview-meta flex min-w-0 flex-col">
-            <span className="truncate text-[10px] font-medium text-slate-700">{normalizedPreview}</span>
-            <span className="text-[10px] text-slate-500">
-              {pickerPreviewColor ? "Color sota cursor" : "Mou el cursor per previsualitzar"}
-            </span>
-          </div>
+          <span className="truncate text-[10px] font-medium text-slate-700">{normalizedPreview}</span>
         </div>
       </div>
     )

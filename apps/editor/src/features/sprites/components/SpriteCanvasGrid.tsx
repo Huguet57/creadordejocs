@@ -65,6 +65,7 @@ export function SpriteCanvasGrid({
           const y = Math.floor(index / width)
           const isEraserPreview = eraserPreviewSet.has(index)
           const isSelected = selectedIndices.has(index)
+          const isPickerHover = activeTool === "color_picker" && hoveredCell?.x === x && hoveredCell?.y === y
           return (
             <button
               key={`${x}-${y}`}
@@ -80,6 +81,9 @@ export function SpriteCanvasGrid({
                   : {}),
                 ...(isSelected
                   ? { boxShadow: "inset 0 0 0 100px rgba(99, 102, 241, 0.3)", outline: "1px dashed rgba(99, 102, 241, 0.7)" }
+                  : {}),
+                ...(isPickerHover
+                  ? { outline: "2px solid rgba(99, 102, 241, 0.9)", outlineOffset: "-2px", zIndex: 1 }
                   : {})
               }}
               onMouseDown={() => {
