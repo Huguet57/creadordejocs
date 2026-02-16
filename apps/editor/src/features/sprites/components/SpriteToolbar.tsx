@@ -1,16 +1,9 @@
 import { Eraser, PaintBucket, Pencil, Pipette, WandSparkles } from "lucide-react"
-import { useMemo, type ChangeEvent } from "react"
+import { useMemo } from "react"
 import { ToolOptionsPanel } from "./tool-options/ToolOptionsPanel.js"
 import type { SpriteEditorTool, SpriteToolOptionsMap, SpriteToolOptionsState } from "../types/sprite-editor.js"
 import { normalizeHexRgba, TRANSPARENT_RGBA } from "../utils/pixel-rgba.js"
 import { SPRITE_TOOL_REGISTRY } from "../utils/sprite-tools/tool-registry.js"
-
-const DEFAULT_PALETTE = [
-  "#000000FF", "#FFFFFFFF", "#FF0000FF", "#00FF00FF", "#0000FFFF",
-  "#FFFF00FF", "#FF00FFFF", "#00FFFFFF", "#FF8800FF", "#8800FFFF",
-  "#888888FF", "#FF5555FF", "#55FF55FF", "#5555FFFF", "#FFAA00FF",
-  "#AA5500FF", "#005500FF", "#550000FF", "#000055FF", "#555555FF"
-]
 
 const COLOR_BUCKET_SHIFT = 5
 
@@ -74,10 +67,6 @@ export function SpriteToolbar({
 }: SpriteToolbarProps) {
   const spriteColors = useMemo(() => extractDominantColors(spritePixels, 20), [spritePixels])
 
-  const normalizedActive = normalizeHexRgba(activeColor)
-  const activeDefinition = SPRITE_TOOL_REGISTRY.find((entry) => entry.id === activeTool)
-  const colorEnabled = activeDefinition?.usesColor ?? false
-
   return (
     <aside className="mvp16-sprite-tool-sidebar flex w-[120px] shrink-0 flex-col border-r border-slate-200 bg-slate-50">
       <div className="mvp16-sprite-tool-list-section flex flex-col gap-1 border-b border-slate-200 p-2">
@@ -105,65 +94,15 @@ export function SpriteToolbar({
 
       <div className="mvp16-sprite-tool-options-section flex flex-col gap-1 border-b border-slate-200 p-2">
         <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-400">Tool options</p>
-        <ToolOptionsPanel activeTool={activeTool} toolOptions={toolOptions} onUpdateToolOptions={onUpdateToolOptions} />
+        <ToolOptionsPanel
+          activeTool={activeTool}
+          toolOptions={toolOptions}
+          activeColor={activeColor}
+          spriteColors={spriteColors}
+          onColorChange={onColorChange}
+          onUpdateToolOptions={onUpdateToolOptions}
+        />
       </div>
-
-      <div className={`mvp16-sprite-color-section flex flex-col gap-2 border-b border-slate-200 p-2 transition-opacity ${colorEnabled ? "" : "pointer-events-none opacity-30"}`}>
-        <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-400">Color</p>
-        <div className="flex items-center gap-2">
-          <div
-            className="mvp16-sprite-color-preview h-7 w-7 shrink-0 rounded border border-slate-300"
-            style={{ backgroundColor: normalizedActive.slice(0, 7) }}
-          />
-          <input
-            type="color"
-            value={normalizedActive.slice(0, 7)}
-            className="mvp16-sprite-color-picker h-7 w-full cursor-pointer rounded border border-slate-300 bg-white p-0"
-            onChange={(event: ChangeEvent<HTMLInputElement>) => onColorChange(`${event.target.value.toUpperCase()}FF`)}
-            disabled={!colorEnabled}
-          />
-        </div>
-      </div>
-
-      <div className={`mvp16-sprite-palette-section flex flex-col gap-1.5 border-b border-slate-200 p-2 transition-opacity ${colorEnabled ? "" : "pointer-events-none opacity-30"}`}>
-        <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-400">Paleta</p>
-        <div className="mvp16-sprite-palette-grid grid grid-cols-5 gap-0.5">
-          {DEFAULT_PALETTE.map((color) => (
-            <button
-              key={color}
-              type="button"
-              disabled={!colorEnabled}
-              className={`mvp16-sprite-palette-swatch h-5 w-full rounded-sm border ${
-                normalizedActive === color ? "border-indigo-500 ring-1 ring-indigo-300" : "border-slate-300"
-              }`}
-              style={{ backgroundColor: color.slice(0, 7) }}
-              onClick={() => onColorChange(color)}
-              title={color}
-            />
-          ))}
-        </div>
-      </div>
-
-      {spriteColors.length > 0 && (
-        <div className={`mvp16-sprite-image-colors-section flex flex-1 flex-col gap-1.5 overflow-y-auto p-2 transition-opacity ${colorEnabled ? "" : "pointer-events-none opacity-30"}`}>
-          <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-400">De la imatge</p>
-          <div className="mvp16-sprite-image-colors-grid grid grid-cols-5 gap-0.5">
-            {spriteColors.map((color) => (
-              <button
-                key={color}
-                type="button"
-                disabled={!colorEnabled}
-                className={`mvp16-sprite-image-color-swatch h-5 w-full rounded-sm border ${
-                  normalizedActive === color ? "border-indigo-500 ring-1 ring-indigo-300" : "border-slate-300"
-                }`}
-                style={{ backgroundColor: color.slice(0, 7) }}
-                onClick={() => onColorChange(color)}
-                title={color}
-              />
-            ))}
-          </div>
-        </div>
-      )}
     </aside>
   )
 }

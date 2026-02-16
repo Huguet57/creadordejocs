@@ -1,28 +1,10 @@
 import {
-  CopyPlus,
-  Flag,
-  Maximize,
-  Move,
-  FastForward,
-  Trash,
-  Trophy,
   Plus,
-  Locate,
-  X,
-  Variable,
-  Dices,
-  ArrowLeftRight,
-  DoorOpen,
-  RotateCcw,
-  Hourglass,
-  MessageSquare
 } from "lucide-react"
 import { useState } from "react"
 import { Button } from "../../components/ui/button.js"
 import { Label } from "../../components/ui/label.js"
 import {
-  ACTION_CATEGORIES,
-  ACTION_DISPLAY_NAMES,
   OBJECT_EVENT_KEYS,
   type IfCondition,
   type ObjectActionDraft,
@@ -33,6 +15,7 @@ import {
 } from "../editor-state/types.js"
 import { ActionBlock } from "./ActionBlock.js"
 import { IfBlock } from "./IfBlock.js"
+import { ActionSelectorPanel } from "./ActionSelectorPanel.js"
 import type { ProjectV1 } from "@creadordejocs/project-format"
 import { buildDefaultIfCondition } from "./if-condition-utils.js"
 
@@ -62,27 +45,6 @@ type ActionEditorPanelProps = {
   onAddIfAction: (ifBlockId: string, type: ObjectActionType, branch: "then" | "else") => void
   onUpdateIfAction: (ifBlockId: string, actionId: string, action: ObjectActionDraft, branch: "then" | "else") => void
   onRemoveIfAction: (ifBlockId: string, actionId: string, branch: "then" | "else") => void
-}
-
-const ACTION_ICONS: Record<ObjectActionType, React.ElementType> = {
-  move: Move,
-  setVelocity: FastForward,
-  rotate: RotateCcw,
-  moveToward: Move,
-  clampToRoom: Maximize,
-  teleport: Locate,
-  destroySelf: Trash,
-  destroyOther: X,
-  spawnObject: CopyPlus,
-  changeScore: Trophy,
-  endGame: Flag,
-  message: MessageSquare,
-  changeVariable: Variable,
-  randomizeVariable: Dices,
-  copyVariable: ArrowLeftRight,
-  goToRoom: DoorOpen,
-  restartRoom: RotateCcw,
-  wait: Hourglass
 }
 
 export function ActionEditorPanel({
@@ -318,46 +280,11 @@ export function ActionEditorPanel({
           </div>
         </>
       ) : (
-        <div className="mvp3-action-picker-panel flex flex-1 flex-col overflow-hidden bg-slate-50/50">
-          <div className="mvp3-action-picker-panel-header flex items-center justify-between border-b border-slate-200 px-4 py-2">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Afegir acció</p>
-            <button
-              type="button"
-              className="mvp3-action-picker-close inline-flex h-6 w-6 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
-              onClick={() => setIsActionPickerOpen(false)}
-              title="Cancel"
-              aria-label="Cancel add action"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          </div>
-
-          <div className="mvp3-action-picker-grid flex-1 overflow-y-auto p-4 space-y-4">
-            {ACTION_CATEGORIES.map((category) => (
-              <div key={category.id} className="mvp3-action-category">
-                <p className="mvp3-action-category-label mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                  {category.label}
-                </p>
-                <div className="grid grid-cols-4 gap-2">
-                  {category.types.map((type) => {
-                    const Icon = ACTION_ICONS[type] ?? Plus
-                    return (
-                      <button
-                        key={type}
-                        type="button"
-                        className="mvp3-action-picker-item flex flex-col items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-3 text-slate-600 transition-colors hover:border-slate-400 hover:bg-slate-100 hover:text-slate-900"
-                        onClick={() => handleAddAction(type)}
-                      >
-                        <Icon className="h-5 w-5" />
-                        <span className="text-[10px] font-medium leading-tight text-center">{ACTION_DISPLAY_NAMES[type]}</span>
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <ActionSelectorPanel
+          classNamePrefix="mvp3-action-picker"
+          onSelectAction={handleAddAction}
+          onClose={() => setIsActionPickerOpen(false)}
+        />
       )}
     </div>
   )

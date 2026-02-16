@@ -2,8 +2,6 @@ import { Plus, Trash } from "lucide-react"
 import { useState } from "react"
 import { Button } from "../../components/ui/button.js"
 import {
-  ACTION_DISPLAY_NAMES,
-  OBJECT_ACTION_TYPES,
   type IfCondition,
   type ObjectEventItem,
   type ObjectActionDraft,
@@ -12,6 +10,7 @@ import {
   type ObjectEventType
 } from "../editor-state/types.js"
 import { ActionBlock } from "./ActionBlock.js"
+import { ActionSelectorPanel } from "./ActionSelectorPanel.js"
 import type { ProjectV1 } from "@creadordejocs/project-format"
 import { buildDefaultIfCondition } from "./if-condition-utils.js"
 import { VariablePicker, type ObjectVariableOption } from "./VariablePicker.js"
@@ -69,14 +68,11 @@ function ensureComparisonIfCondition(
 }
 
 function BranchAddButton({
-  branch,
   onAdd
 }: {
-  branch: "then" | "else"
   onAdd: (type: ObjectActionType) => void
 }) {
   const [isOpen, setIsOpen] = useState(false)
-  const [selectedType, setSelectedType] = useState<ObjectActionType>(OBJECT_ACTION_TYPES[0] ?? "move")
 
   if (!isOpen) {
     return (
@@ -92,38 +88,15 @@ function BranchAddButton({
   }
 
   return (
-    <div className="if-block-branch-add-picker flex items-center gap-2">
-      <select
-        className="if-block-branch-add-select h-7 flex-1 rounded border border-slate-200 bg-white px-2 text-xs text-slate-600 focus:border-blue-400 focus:outline-none"
-        value={selectedType}
-        onChange={(event) => setSelectedType(event.target.value as ObjectActionType)}
-        autoFocus
-      >
-        {OBJECT_ACTION_TYPES.map((type) => (
-          <option key={`${branch}-${type}`} value={type}>
-            {ACTION_DISPLAY_NAMES[type]}
-          </option>
-        ))}
-      </select>
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className="if-block-branch-add-confirm h-7 px-3 text-xs border-slate-200 text-slate-600 hover:bg-slate-50"
-        onClick={() => {
-          onAdd(selectedType)
+    <div className="if-action-selector-container min-h-[260px] w-full rounded-md border border-slate-200 bg-white">
+      <ActionSelectorPanel
+        classNamePrefix="if-action-selector"
+        onSelectAction={(type) => {
+          onAdd(type)
           setIsOpen(false)
         }}
-      >
-        Add
-      </Button>
-      <button
-        type="button"
-        className="if-block-branch-add-cancel text-[10px] text-slate-400 hover:text-slate-600 px-1"
-        onClick={() => setIsOpen(false)}
-      >
-        Cancel
-      </button>
+        onClose={() => setIsOpen(false)}
+      />
     </div>
   )
 }
@@ -383,7 +356,6 @@ export function IfBlock({
         </div>
         <div className="if-block-then-add-row flex items-center gap-2 px-3 py-1.5">
           <BranchAddButton
-            branch="then"
             onAdd={(type) => onAddIfAction(item.id, type, "then")}
           />
           <button
@@ -420,7 +392,6 @@ export function IfBlock({
         </div>
         <div className="if-block-else-add-row flex items-center gap-2 px-3 py-1.5">
           <BranchAddButton
-            branch="else"
             onAdd={(type) => onAddIfAction(item.id, type, "else")}
           />
           <button
