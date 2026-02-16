@@ -146,6 +146,8 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
             <div className="space-y-2">
               <Button
                 className="w-full h-9 text-xs"
+                tabIndex={-1}
+                onKeyDown={(e) => e.preventDefault()}
                 onClick={() => controller.isRunning ? controller.reset() : controller.run()}
               >
                 {controller.isRunning ? (
@@ -231,6 +233,8 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
             <div className="mb-3 flex items-center justify-end">
               <Button
                 className="h-9 text-xs"
+                tabIndex={-1}
+                onKeyDown={(e) => e.preventDefault()}
                 onClick={() => controller.isRunning ? controller.reset() : controller.run()}
               >
                 {controller.isRunning ? (
