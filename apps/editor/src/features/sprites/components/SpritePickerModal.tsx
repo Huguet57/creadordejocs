@@ -250,8 +250,8 @@ export function SpritePickerModal({
                     className="mvp16-sprite-picker-preview-img"
                     style={{
                       imageRendering: "pixelated",
-                      width: `${Math.min(220, 220 * (selectedSpriteEntry.width / Math.max(selectedSpriteEntry.width, selectedSpriteEntry.height)))}px`,
-                      height: `${Math.min(220, 220 * (selectedSpriteEntry.height / Math.max(selectedSpriteEntry.width, selectedSpriteEntry.height)))}px`
+                      width: `${Math.min(240, 240 * (selectedSpriteEntry.width / Math.max(selectedSpriteEntry.width, selectedSpriteEntry.height)))}px`,
+                      height: `${Math.min(240, 240 * (selectedSpriteEntry.height / Math.max(selectedSpriteEntry.width, selectedSpriteEntry.height)))}px`
                     }}
                   />
                 ) : (
