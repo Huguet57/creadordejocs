@@ -69,7 +69,7 @@ const ACTION_LABELS: Partial<Record<ObjectActionDraft["type"], string>> = {
   setVelocity: "Velocitat",
   rotate: "Rotar",
   moveToward: "Anar cap a",
-  clampToRoom: "Limitar",
+  clampToRoom: "Limitar a la pantalla",
   teleport: "Teleport",
   destroySelf: "Destruir-se",
   destroyOther: "Destruir altre",
