@@ -69,7 +69,7 @@ export function ShareSection({ controller }: ShareSectionProps) {
   }
 
   return (
-    <section className="mvp-share-section flex min-h-[700px] w-full flex-col gap-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+    <section className="mvp-share-section flex h-[600px] w-full flex-col gap-4 overflow-y-auto rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
       <header className="mvp-share-header space-y-2">
         <div className="mvp-share-title-row flex items-center gap-2">
           <h2 className="mvp-share-title text-xl font-semibold text-slate-900">Compartir</h2>

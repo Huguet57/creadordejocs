@@ -57,6 +57,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
   const [resolvedSpriteSources, setResolvedSpriteSources] = useState<Record<string, string>>({})
   const [dragPreview, setDragPreview] = useState<RoomDragPreview | null>(null)
   const [draggingInstanceId, setDraggingInstanceId] = useState<string | null>(null)
+  const [showGrid, setShowGrid] = useState(true)
   const transparentDragImageRef = useRef<HTMLDivElement | null>(null)
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const sprites = controller.project.resources.sprites
@@ -128,7 +129,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
   }
 
   return (
-    <div className="mvp15-room-editor-container flex h-[700px] w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+    <div className="mvp15-room-editor-container flex h-[600px] w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
       {/* Left panel: Rooms list */}
       <aside className="mvp3-room-list-panel flex w-[200px] flex-col border-r border-slate-200 bg-slate-50">
         <div className="flex items-center justify-between border-b border-slate-200 p-3">
@@ -200,7 +201,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
         </div>
       </aside>
 
-      {/* Middle panel: Object picker */}
+      {/* Middle panel: Object picker + Options */}
       <aside className="mvp3-room-object-picker flex w-[180px] flex-col border-r border-slate-200 bg-slate-50">
         <div className="flex items-center justify-between border-b border-slate-200 p-3">
           <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Objects</span>
@@ -225,6 +226,23 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                 <Plus className="ml-auto h-3 w-3 text-slate-300" />
               </button>
             ))}
+          </div>
+        </div>
+
+        <div className="mvp19-room-options border-t border-slate-200">
+          <div className="flex items-center justify-between border-b border-slate-200 p-3">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Options</span>
+          </div>
+          <div className="p-3">
+            <label className="mvp19-room-grid-toggle flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showGrid}
+                onChange={(e) => setShowGrid(e.target.checked)}
+                className="h-3.5 w-3.5 rounded border-slate-300 text-blue-500 focus:ring-blue-400"
+              />
+              <span className="text-xs text-slate-600">Show grid</span>
+            </label>
           </div>
         </div>
       </aside>
@@ -254,9 +272,13 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                 style={{
                   width: ROOM_WIDTH,
                   height: ROOM_HEIGHT,
-                  backgroundImage:
-                    "linear-gradient(to right, rgb(226 232 240 / 0.8) 1px, transparent 1px), linear-gradient(to bottom, rgb(226 232 240 / 0.8) 1px, transparent 1px)",
-                  backgroundSize: `${ROOM_GRID_SIZE}px ${ROOM_GRID_SIZE}px`
+                  ...(showGrid
+                    ? {
+                        backgroundImage:
+                          "linear-gradient(to right, rgb(226 232 240 / 0.8) 1px, transparent 1px), linear-gradient(to bottom, rgb(226 232 240 / 0.8) 1px, transparent 1px)",
+                        backgroundSize: `${ROOM_GRID_SIZE}px ${ROOM_GRID_SIZE}px`
+                      }
+                    : {})
                 }}
                 onDragOver={(event) => {
                   event.preventDefault()

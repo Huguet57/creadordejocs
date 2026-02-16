@@ -68,7 +68,7 @@ function renderTemplateCards(controller: EditorController, entries: TemplateCard
 
 export function TemplatesSection({ controller }: TemplatesSectionProps) {
   return (
-    <div className="mvp15-templates-panel flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+    <div className="mvp15-templates-panel flex h-[600px] flex-col gap-4 overflow-y-auto rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
       <div>
         <h2 className="text-sm font-semibold text-slate-800">Templates</h2>
         <p className="mt-1 text-xs text-slate-400">Load a pre-built game to learn or remix.</p>
