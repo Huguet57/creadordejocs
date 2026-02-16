@@ -53,9 +53,18 @@ export function RightValuePicker({
   const [randomMin, setRandomMin] = useState("0")
   const [randomMax, setRandomMax] = useState("10")
   const [randomStep, setRandomStep] = useState("1")
+  const [alignRight, setAlignRight] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const randomMinInputRef = useRef<HTMLInputElement>(null)
+  const popoverRef = useRef<HTMLDivElement>(null)
+
+  // Detect overflow and align popover to the right when it would clip
+  useEffect(() => {
+    if (!isOpen || !popoverRef.current) return
+    const rect = popoverRef.current.getBoundingClientRect()
+    setAlignRight(rect.right > window.innerWidth - 8)
+  }, [isOpen])
 
   // Sync local literal state with external value
   useEffect(() => {
@@ -191,7 +200,10 @@ export function RightValuePicker({
       </button>
 
       {isOpen && (
-        <div className="right-value-picker-popover absolute top-full left-0 z-50 mt-1 min-w-[220px] max-h-[300px] overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+        <div
+          ref={popoverRef}
+          className={`right-value-picker-popover absolute top-full z-50 mt-1 min-w-[220px] max-h-[300px] overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg ${alignRight ? "right-0" : "left-0"}`}
+        >
           <div className="right-value-picker-literal-section">
             <div className="right-value-picker-section-header px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-50 border-b border-slate-100">
               Valor
