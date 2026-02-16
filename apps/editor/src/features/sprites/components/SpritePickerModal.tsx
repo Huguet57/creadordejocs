@@ -1,6 +1,7 @@
 import { Box, ChevronRight, Folder, FolderOpen, Image as ImageIcon } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { Button } from "../../../components/ui/button.js"
+import { normalizePixelGrid } from "../utils/sprite-grid.js"
 
 type SpriteOption = {
   id: string
@@ -8,6 +9,7 @@ type SpriteOption = {
   folderId: string | null
   width: number
   height: number
+  pixelsRgba: string[]
   previewSrc: string | null
   isCompatible: boolean
   isExactSize: boolean
@@ -29,7 +31,6 @@ type SpritePickerModalProps = {
   spriteFolders: SpriteFolderOption[]
   onClose: () => void
   onSelectExisting: (spriteId: string) => void
-  onCreateNew: (name: string) => void
   onEditSprite: (spriteId: string) => void
 }
 
@@ -43,10 +44,8 @@ export function SpritePickerModal({
   spriteFolders,
   onClose,
   onSelectExisting,
-  onCreateNew,
   onEditSprite
 }: SpritePickerModalProps) {
-  const [newSpriteName, setNewSpriteName] = useState("Sprite objecte")
   const [highlightedSpriteId, setHighlightedSpriteId] = useState<string | null>(null)
   const [expandedFolderIds, setExpandedFolderIds] = useState<Set<string>>(new Set())
 
@@ -99,6 +98,33 @@ export function SpritePickerModal({
     if (!selectedObjectSpriteId) return null
     return availableSprites.find((spriteEntry) => spriteEntry.id === selectedObjectSpriteId) ?? null
   }, [availableSprites, highlightedSpriteId, selectedObjectSpriteId])
+
+  const selectedPreviewSrc = useMemo(() => {
+    if (!selectedSpriteEntry) return null
+    if (selectedSpriteEntry.previewSrc) return selectedSpriteEntry.previewSrc
+
+    const normalizedPixels = normalizePixelGrid(
+      selectedSpriteEntry.pixelsRgba,
+      selectedSpriteEntry.width,
+      selectedSpriteEntry.height
+    )
+    const canvas = document.createElement("canvas")
+    canvas.width = selectedSpriteEntry.width
+    canvas.height = selectedSpriteEntry.height
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return null
+    const imageData = ctx.createImageData(selectedSpriteEntry.width, selectedSpriteEntry.height)
+    for (let index = 0; index < normalizedPixels.length; index += 1) {
+      const color = normalizedPixels[index] ?? "#00000000"
+      const pixelOffset = index * 4
+      imageData.data[pixelOffset] = parseInt(color.slice(1, 3), 16)
+      imageData.data[pixelOffset + 1] = parseInt(color.slice(3, 5), 16)
+      imageData.data[pixelOffset + 2] = parseInt(color.slice(5, 7), 16)
+      imageData.data[pixelOffset + 3] = parseInt(color.slice(7, 9), 16)
+    }
+    ctx.putImageData(imageData, 0, 0)
+    return canvas.toDataURL("image/png")
+  }, [selectedSpriteEntry])
 
   const backgroundCheckerStyle = {
     backgroundImage:
@@ -216,14 +242,19 @@ export function SpritePickerModal({
             </div>
             <div className="flex flex-1 flex-col gap-4 p-4">
               <div
-                className="mvp16-sprite-picker-preview-box flex h-[240px] items-center justify-center border border-slate-200"
-                style={backgroundCheckerStyle}
+                className="mvp16-sprite-picker-preview-box flex items-center justify-center self-center border border-slate-200"
+                style={{ ...backgroundCheckerStyle, width: 240, height: 240 }}
               >
-                {selectedSpriteEntry?.previewSrc ? (
+                {selectedPreviewSrc && selectedSpriteEntry ? (
                   <img
-                    src={selectedSpriteEntry.previewSrc}
+                    src={selectedPreviewSrc}
                     alt={selectedSpriteEntry.name}
-                    className="mvp16-sprite-picker-preview-img max-h-[220px] max-w-[220px] object-contain"
+                    className="mvp16-sprite-picker-preview-img"
+                    style={{
+                      imageRendering: "pixelated",
+                      width: `${Math.min(220, 220 * (selectedSpriteEntry.width / Math.max(selectedSpriteEntry.width, selectedSpriteEntry.height)))}px`,
+                      height: `${Math.min(220, 220 * (selectedSpriteEntry.height / Math.max(selectedSpriteEntry.width, selectedSpriteEntry.height)))}px`
+                    }}
                   />
                 ) : (
                   <Box className="h-7 w-7 text-slate-400" />
@@ -247,19 +278,6 @@ export function SpritePickerModal({
                 <p className="text-xs text-slate-500">Selecciona un sprite per veure'n el preview.</p>
               )}
 
-              <section className="space-y-2 border-t border-slate-200 pt-3">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">Crear nou</h3>
-                <div className="flex gap-2">
-                  <input
-                    value={newSpriteName}
-                    onChange={(event) => setNewSpriteName(event.target.value)}
-                    className="mvp16-sprite-picker-create-input h-8 flex-1 border border-slate-300 bg-white px-3 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                  />
-                  <Button size="sm" className="h-8" onClick={() => onCreateNew(newSpriteName.trim())} disabled={!newSpriteName.trim()}>
-                    Crear i editar
-                  </Button>
-                </div>
-              </section>
             </div>
           </section>
         </div>
