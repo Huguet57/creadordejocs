@@ -162,6 +162,8 @@ export function RightValuePicker({
 
   const borderColor = variant === "blue" ? "border-blue-200" : "border-slate-300"
   const hoverBg = variant === "blue" ? "hover:bg-blue-50" : "hover:bg-slate-50"
+  const triggerWidthClass =
+    expectedType === "string" ? "min-w-[120px] max-w-[240px]" : "max-w-[160px]"
 
   // Display text for the trigger button
   const displayText = (() => {
@@ -238,7 +240,7 @@ export function RightValuePicker({
     <div className="right-value-picker-container relative" ref={containerRef}>
       <button
         type="button"
-        className={`right-value-picker-trigger flex items-center gap-1.5 h-7 rounded border ${borderColor} bg-white px-2 text-xs ${hoverBg} focus:outline-none transition-colors max-w-[160px]`}
+        className={`right-value-picker-trigger flex items-center gap-1.5 h-7 rounded border ${borderColor} bg-white px-2 text-xs ${hoverBg} focus:outline-none transition-colors ${triggerWidthClass}`}
         onClick={() => setIsOpen(!isOpen)}
       >
         <ScopeIcon className="h-3 w-3 shrink-0 text-slate-400" />
