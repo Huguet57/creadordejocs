@@ -4,7 +4,9 @@ export type SpriteToolConnectivity = 4 | 8
 
 export type SpriteToolOptionsMap = {
   pencil: Record<string, never>
-  eraser: Record<string, never>
+  eraser: {
+    radius: number
+  }
   bucket_fill: {
     connectivity: SpriteToolConnectivity
   }

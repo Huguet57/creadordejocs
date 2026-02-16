@@ -1,7 +1,7 @@
 import { useCallback } from "react"
 import type { SpriteEditorTool, SpriteToolOptionsState } from "../types/sprite-editor.js"
 import { normalizeHexRgba, TRANSPARENT_RGBA } from "../utils/pixel-rgba.js"
-import { getSpritePixelIndex, normalizePixelGrid } from "../utils/sprite-grid.js"
+import { getPixelIndicesInRadius, getSpritePixelIndex, normalizePixelGrid } from "../utils/sprite-grid.js"
 import { readPixelColor } from "../utils/sprite-tools/color-picker.js"
 import { floodFillPixels } from "../utils/sprite-tools/flood-fill.js"
 import { selectContiguousByColor } from "../utils/sprite-tools/magic-wand.js"
@@ -78,10 +78,20 @@ export function useSpritePixelActions({
       const safePixels = normalizePixelGrid(pixelsRgba, width, height)
       const pixelIndex = getSpritePixelIndex(x, y, width)
 
-      if (tool === "pencil" || tool === "eraser") {
+      if (tool === "pencil") {
         const next = [...safePixels]
-        const targetColor = tool === "eraser" ? TRANSPARENT_RGBA : normalizeHexRgba(activeColor)
-        next[pixelIndex] = targetColor
+        next[pixelIndex] = normalizeHexRgba(activeColor)
+        onPixelsChange(next)
+        return
+      }
+
+      if (tool === "eraser") {
+        const next = [...safePixels]
+        const eraserRadius = toolOptions.eraser.radius
+        const indicesToErase = getPixelIndicesInRadius(x, y, eraserRadius, width, height)
+        for (const idx of indicesToErase) {
+          next[idx] = TRANSPARENT_RGBA
+        }
         onPixelsChange(next)
         return
       }

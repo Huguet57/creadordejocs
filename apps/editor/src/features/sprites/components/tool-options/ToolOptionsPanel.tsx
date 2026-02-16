@@ -184,5 +184,27 @@ export function ToolOptionsPanel({
     )
   }
 
+  if (activeTool === "eraser") {
+    return (
+      <div className="mvp16-sprite-tool-options-eraser flex flex-col gap-2">
+        <label className="mvp16-sprite-tool-options-eraser-radius flex flex-col gap-1 text-[10px] text-slate-600">
+          <span className="font-medium">Radi: {toolOptions.eraser.radius}</span>
+          <input
+            type="range"
+            min={1}
+            max={5}
+            value={toolOptions.eraser.radius}
+            onChange={(event) => onUpdateToolOptions("eraser", { radius: Number(event.target.value) })}
+          />
+        </label>
+        <p className="text-[10px] text-slate-400">
+          {toolOptions.eraser.radius === 1
+            ? "1 píxel"
+            : `${toolOptions.eraser.radius * 2 - 1}×${toolOptions.eraser.radius * 2 - 1} píxels`}
+        </p>
+      </div>
+    )
+  }
+
   return <EmptyOptions />
 }

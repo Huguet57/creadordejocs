@@ -3,7 +3,7 @@ import type { SpriteEditorTool, SpriteToolOptionsMap, SpriteToolOptionsState } f
 
 const DEFAULT_TOOL_OPTIONS: SpriteToolOptionsState = {
   pencil: {},
-  eraser: {},
+  eraser: { radius: 1 },
   bucket_fill: {
     connectivity: 4
   },

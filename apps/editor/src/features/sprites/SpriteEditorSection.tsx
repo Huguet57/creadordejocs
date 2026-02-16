@@ -179,6 +179,7 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
             zoom={zoom}
             showGrid={showGrid}
             activeTool={activeTool}
+            eraserRadius={toolOptions.eraser.radius}
             onPaint={(x, y, tool, phase) => {
               pixelActions.paintAt(x, y, tool, phase)
               if (tool === "color_picker" && phase === "pointerDown") {

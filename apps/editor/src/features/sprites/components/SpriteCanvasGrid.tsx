@@ -1,6 +1,6 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { hexRgbaToCss } from "../utils/pixel-rgba.js"
-import { normalizePixelGrid } from "../utils/sprite-grid.js"
+import { getPixelIndicesInRadius, normalizePixelGrid } from "../utils/sprite-grid.js"
 import type { SpriteEditorTool } from "../types/sprite-editor.js"
 import type { SpritePointerActionPhase } from "../hooks/use-sprite-pixel-actions.js"
 import { SPRITE_TOOL_BY_ID } from "../utils/sprite-tools/tool-registry.js"
@@ -12,6 +12,7 @@ type SpriteCanvasGridProps = {
   zoom: number
   showGrid: boolean
   activeTool: SpriteEditorTool
+  eraserRadius: number
   onPaint: (x: number, y: number, tool: SpriteEditorTool, phase: SpritePointerActionPhase) => void
   onHoverColorChange?: (color: string | null) => void
 }
@@ -23,11 +24,18 @@ export function SpriteCanvasGrid({
   zoom,
   showGrid,
   activeTool,
+  eraserRadius,
   onPaint,
   onHoverColorChange
 }: SpriteCanvasGridProps) {
   const [isPointerDown, setIsPointerDown] = useState(false)
+  const [hoveredCell, setHoveredCell] = useState<{ x: number; y: number } | null>(null)
   const safePixels = normalizePixelGrid(pixelsRgba, width, height)
+
+  const eraserPreviewSet = useMemo(() => {
+    if (activeTool !== "eraser" || !hoveredCell) return new Set<number>()
+    return new Set(getPixelIndicesInRadius(hoveredCell.x, hoveredCell.y, eraserRadius, width, height))
+  }, [activeTool, hoveredCell, eraserRadius, width, height])
 
   return (
     <div className="mvp16-sprite-grid-wrapper flex-1 overflow-auto bg-slate-50 p-4">
@@ -46,12 +54,14 @@ export function SpriteCanvasGrid({
         }}
         onMouseLeave={() => {
           setIsPointerDown(false)
+          setHoveredCell(null)
           onHoverColorChange?.(null)
         }}
       >
         {safePixels.map((pixelEntry, index) => {
           const x = index % width
           const y = Math.floor(index / width)
+          const isEraserPreview = eraserPreviewSet.has(index)
           return (
             <button
               key={`${x}-${y}`}
@@ -61,7 +71,10 @@ export function SpriteCanvasGrid({
                 width: `${zoom}px`,
                 height: `${zoom}px`,
                 backgroundColor: hexRgbaToCss(pixelEntry),
-                cursor: "inherit"
+                cursor: "inherit",
+                ...(isEraserPreview
+                  ? { boxShadow: "inset 0 0 0 100px rgba(239, 68, 68, 0.35)" }
+                  : {})
               }}
               onMouseDown={() => {
                 setIsPointerDown(true)
@@ -69,6 +82,7 @@ export function SpriteCanvasGrid({
               }}
               onMouseUp={() => setIsPointerDown(false)}
               onMouseEnter={() => {
+                setHoveredCell({ x, y })
                 onHoverColorChange?.(pixelEntry)
                 if (isPointerDown) {
                   onPaint(x, y, activeTool, "pointerDrag")
