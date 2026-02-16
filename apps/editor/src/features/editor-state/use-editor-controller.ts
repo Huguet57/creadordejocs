@@ -15,7 +15,7 @@ import {
   removeRoomInstance,
   quickCreateObject,
   quickCreateSound,
-  quickCreateSprite,
+  quickCreateSpriteWithSize,
   removeObjectEvent,
   removeObjectEventAction as removeObjectEventActionModel,
   removeObjectEventIfAction as removeObjectEventIfActionModel,
@@ -30,8 +30,10 @@ import {
   updateGlobalVariable as updateGlobalVariableModel,
   updateObjectVariable as updateObjectVariableModel,
   updateObjectProperties,
+  updateObjectSpriteId,
   updateSoundAssetSource,
   updateSpriteAssetSource,
+  updateSpritePixelsRgba,
   type ObjectActionDraft,
   type IfCondition,
   type VariableType,
@@ -113,6 +115,23 @@ export function resolveInitialSection(project: ProjectV1): EditorSection {
   return hasContent ? "objects" : "templates"
 }
 
+function getNormalizedObjectSize(value: number | undefined): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return 32
+  }
+  return Math.max(1, Math.round(value))
+}
+
+export function isSpriteCompatibleWithObjectSize(
+  objectWidth: number | undefined,
+  objectHeight: number | undefined,
+  spriteWidth: number,
+  spriteHeight: number
+): boolean {
+  return getNormalizedObjectSize(objectWidth) === getNormalizedObjectSize(spriteWidth) &&
+    getNormalizedObjectSize(objectHeight) === getNormalizedObjectSize(spriteHeight)
+}
+
 function createInitialEditorState(): { project: ProjectV1; roomId: string } {
   const loaded = loadProjectFromLocalStorage()
   if (loaded) {
@@ -152,6 +171,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
   )
   const [activeRoomId, setActiveRoomId] = useState<string>(initial.roomId)
   const [activeObjectId, setActiveObjectId] = useState<string | null>(null)
+  const [activeSpriteId, setActiveSpriteId] = useState<string | null>(null)
   const [isRunning, setIsRunning] = useState(false)
   const [runSnapshot, setRunSnapshot] = useState<ProjectV1 | null>(null)
   const [runtimeState, setRuntimeState] = useState<RuntimeState>(() => createInitialRuntimeState(initial.project))
@@ -397,6 +417,8 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
     setActiveRoomId,
     activeObjectId,
     setActiveObjectId,
+    activeSpriteId,
+    setActiveSpriteId,
     activeRoom,
     selectedObject,
     isRunning,
@@ -405,10 +427,28 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
     runtimeState,
     undoAvailable: past.length > 0,
     redoAvailable: future.length > 0,
-    addSprite(name: string) {
-      if (!name.trim()) return
-      const next = quickCreateSprite(project, name.trim()).project
+    addSprite(name: string, width = 32, height = 32) {
+      if (!name.trim()) return null
+      const result = quickCreateSpriteWithSize(project, name.trim(), width, height)
+      const next = result.project
       pushProjectChange(next, `Create sprite: ${name.trim()}`)
+      setActiveSpriteId(result.spriteId)
+      return result.spriteId
+    },
+    createSpriteForSelectedObject(name: string) {
+      if (!selectedObject || !name.trim()) {
+        return null
+      }
+      const result = quickCreateSpriteWithSize(
+        project,
+        name.trim(),
+        getNormalizedObjectSize(selectedObject.width),
+        getNormalizedObjectSize(selectedObject.height)
+      )
+      const withAssignment = updateObjectSpriteId(result.project, selectedObject.id, result.spriteId)
+      pushProjectChange(withAssignment, `Create sprite: ${name.trim()}`)
+      setActiveSpriteId(result.spriteId)
+      return result.spriteId
     },
     addSound(name: string) {
       if (!name.trim()) return
@@ -466,6 +506,31 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
     },
     updateSpriteSource(spriteId: string, source: string) {
       pushProjectChange(updateSpriteAssetSource(project, spriteId, source))
+    },
+    updateSpritePixels(spriteId: string, pixelsRgba: string[]) {
+      pushProjectChange(updateSpritePixelsRgba(project, spriteId, pixelsRgba))
+    },
+    assignSelectedObjectSprite(spriteId: string | null) {
+      if (!selectedObject) return false
+      if (spriteId === null) {
+        pushProjectChange(updateObjectSpriteId(project, selectedObject.id, null))
+        return true
+      }
+      const spriteEntry = project.resources.sprites.find((entry) => entry.id === spriteId)
+      if (!spriteEntry) {
+        return false
+      }
+      if (!isSpriteCompatibleWithObjectSize(selectedObject.width, selectedObject.height, spriteEntry.width, spriteEntry.height)) {
+        return false
+      }
+      pushProjectChange(updateObjectSpriteId(project, selectedObject.id, spriteId))
+      return true
+    },
+    openSpriteEditor(spriteId: string | null) {
+      if (spriteId) {
+        setActiveSpriteId(spriteId)
+      }
+      setActiveSection("sprites")
     },
     updateSoundSource(soundId: string, source: string) {
       pushProjectChange(updateSoundAssetSource(project, soundId, source))

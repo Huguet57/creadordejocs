@@ -14,6 +14,9 @@ export type CreateObjectInput = {
   solid?: boolean
 }
 
+const DEFAULT_SPRITE_SIZE = 32
+const TRANSPARENT_RGBA = "#00000000"
+
 export type AddRoomInstanceInput = {
   roomId: string
   objectId: string
@@ -199,6 +202,29 @@ function makeId(prefix: string): string {
   return `${prefix}-${generateUUID()}`
 }
 
+function normalizeSpriteDimension(value: number): number {
+  if (!Number.isFinite(value)) {
+    return DEFAULT_SPRITE_SIZE
+  }
+  return Math.max(1, Math.round(value))
+}
+
+function createTransparentPixels(width: number, height: number): string[] {
+  return Array.from({ length: width * height }, () => TRANSPARENT_RGBA)
+}
+
+function normalizeSpritePixels(width: number, height: number, pixels: string[]): string[] {
+  const total = width * height
+  if (pixels.length === total) {
+    return [...pixels]
+  }
+  const next = pixels.slice(0, total)
+  while (next.length < total) {
+    next.push(TRANSPARENT_RGBA)
+  }
+  return next
+}
+
 function toActionItem(action: ObjectActionDraft): Extract<ObjectEventItem, { type: "action" }> {
   const actionId = makeId("action")
   return {
@@ -359,7 +385,18 @@ export function quickCreateSprite(
   project: ProjectV1,
   name: string
 ): { project: ProjectV1; spriteId: string } {
+  return quickCreateSpriteWithSize(project, name, DEFAULT_SPRITE_SIZE, DEFAULT_SPRITE_SIZE)
+}
+
+export function quickCreateSpriteWithSize(
+  project: ProjectV1,
+  name: string,
+  width: number,
+  height: number
+): { project: ProjectV1; spriteId: string } {
   const spriteId = makeId("sprite")
+  const normalizedWidth = normalizeSpriteDimension(width)
+  const normalizedHeight = normalizeSpriteDimension(height)
   return {
     project: {
       ...project,
@@ -367,7 +404,16 @@ export function quickCreateSprite(
         ...project.resources,
         sprites: [
           ...project.resources.sprites,
-          { id: spriteId, name, imagePath: "", assetSource: "", uploadStatus: "notConnected" }
+          {
+            id: spriteId,
+            name,
+            imagePath: "",
+            assetSource: "",
+            uploadStatus: "notConnected",
+            width: normalizedWidth,
+            height: normalizedHeight,
+            pixelsRgba: createTransparentPixels(normalizedWidth, normalizedHeight)
+          }
         ]
       }
     },
@@ -499,6 +545,42 @@ export function updateSpriteAssetSource(project: ProjectV1, spriteId: string, as
           : spriteEntry
       )
     }
+  }
+}
+
+export function updateSpritePixelsRgba(project: ProjectV1, spriteId: string, pixelsRgba: string[]): ProjectV1 {
+  return {
+    ...project,
+    resources: {
+      ...project.resources,
+      sprites: project.resources.sprites.map((spriteEntry) => {
+        if (spriteEntry.id !== spriteId) {
+          return spriteEntry
+        }
+        const width = normalizeSpriteDimension(spriteEntry.width)
+        const height = normalizeSpriteDimension(spriteEntry.height)
+        return {
+          ...spriteEntry,
+          width,
+          height,
+          pixelsRgba: normalizeSpritePixels(width, height, pixelsRgba)
+        }
+      })
+    }
+  }
+}
+
+export function updateObjectSpriteId(project: ProjectV1, objectId: string, spriteId: string | null): ProjectV1 {
+  return {
+    ...project,
+    objects: project.objects.map((objectEntry) =>
+      objectEntry.id === objectId
+        ? {
+            ...objectEntry,
+            spriteId
+          }
+        : objectEntry
+    )
   }
 }
 

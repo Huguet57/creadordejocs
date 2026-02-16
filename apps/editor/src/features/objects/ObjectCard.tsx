@@ -7,13 +7,19 @@ type ObjectCardProps = {
   solid: boolean
   onToggleVisible: (nextValue: boolean) => void
   onToggleSolid: (nextValue: boolean) => void
+  onSpriteClick: () => void
 }
 
-export function ObjectCard({ objectName, spriteSrc, visible, solid, onToggleVisible, onToggleSolid }: ObjectCardProps) {
+export function ObjectCard({ objectName, spriteSrc, visible, solid, onToggleVisible, onToggleSolid, onSpriteClick }: ObjectCardProps) {
   return (
     <div className="objcard-container border-b border-slate-200 bg-white p-3">
       <div className="objcard-preview flex items-center gap-3">
-        <div className="objcard-sprite-thumb flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-md border border-slate-200 bg-slate-100">
+        <button
+          type="button"
+          className="objcard-sprite-thumb flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-md border border-slate-200 bg-slate-100 transition-colors hover:border-indigo-300 hover:bg-indigo-50"
+          onClick={onSpriteClick}
+          title="Select or edit sprite"
+        >
           {spriteSrc ? (
             <img
               src={spriteSrc}
@@ -23,7 +29,7 @@ export function ObjectCard({ objectName, spriteSrc, visible, solid, onToggleVisi
           ) : (
             <Box className="h-5 w-5 text-slate-400" />
           )}
-        </div>
+        </button>
         <div className="objcard-info flex min-w-0 flex-1 flex-col gap-1">
           <span className="objcard-name truncate text-sm font-semibold text-slate-900">
             {objectName}

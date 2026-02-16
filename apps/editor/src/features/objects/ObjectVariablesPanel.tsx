@@ -23,6 +23,7 @@ type ObjectVariablesPanelProps = {
   onRemoveVariable: (objectId: string, variableId: string) => void
   onUpdateObjectNumber: (key: "width" | "height", value: number) => void
   onUpdateObjectFlag: (key: "visible" | "solid", value: boolean) => void
+  onSpriteClick: () => void
 }
 
 function parseInitialValue(type: VariableType, rawValue: string): VariableValue {
@@ -56,7 +57,8 @@ export function ObjectVariablesPanel({
   onUpdateVariable,
   onRemoveVariable,
   onUpdateObjectNumber,
-  onUpdateObjectFlag
+  onUpdateObjectFlag,
+  onSpriteClick
 }: ObjectVariablesPanelProps) {
   const [isAdding, setIsAdding] = useState(false)
   const [newVariableName, setNewVariableName] = useState("")
@@ -98,6 +100,7 @@ export function ObjectVariablesPanel({
         solid={solid}
         onToggleVisible={(nextValue) => onUpdateObjectFlag("visible", nextValue)}
         onToggleSolid={(nextValue) => onUpdateObjectFlag("solid", nextValue)}
+        onSpriteClick={onSpriteClick}
       />
 
       <div className="mvpv2-object-attrs-header flex items-center justify-between border-b border-slate-200 p-3">

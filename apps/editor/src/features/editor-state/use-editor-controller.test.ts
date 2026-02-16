@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   getRuntimeKeyFromKeyboardEvent,
+  isSpriteCompatibleWithObjectSize,
   resolveInitialSection,
   resolveResetState,
   shouldResetWhenSwitchingSection
@@ -110,5 +111,16 @@ describe("shouldResetWhenSwitchingSection", () => {
 
   it("returns false when staying in run", () => {
     expect(shouldResetWhenSwitchingSection("run", "run", true)).toBe(false)
+  })
+})
+
+describe("isSpriteCompatibleWithObjectSize", () => {
+  it("returns true when sizes are equal", () => {
+    expect(isSpriteCompatibleWithObjectSize(32, 32, 32, 32)).toBe(true)
+  })
+
+  it("returns false when width or height differ", () => {
+    expect(isSpriteCompatibleWithObjectSize(32, 16, 16, 16)).toBe(false)
+    expect(isSpriteCompatibleWithObjectSize(16, 32, 16, 16)).toBe(false)
   })
 })

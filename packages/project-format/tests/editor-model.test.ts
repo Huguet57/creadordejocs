@@ -22,11 +22,14 @@ import {
   quickCreateObject,
   quickCreateSound,
   quickCreateSprite,
+  quickCreateSpriteWithSize,
   updateObjectEventIfAction,
   updateObjectEventIfBlockCondition,
   updateObjectEventAction,
   updateObjectEventConfig,
+  updateObjectSpriteId,
   updateSoundAssetSource,
+  updateSpritePixelsRgba,
   updateSpriteAssetSource,
   updateObjectProperties
 } from "../src/index.js"
@@ -43,6 +46,9 @@ describe("editor model helpers", () => {
     expect(objectResult.project.objects[0]?.name).toBe("Player")
     expect(objectResult.project.objects[0]?.spriteId).toBe(spriteResult.spriteId)
     expect(objectResult.project.resources.sprites[0]?.uploadStatus).toBe("notConnected")
+    expect(objectResult.project.resources.sprites[0]?.width).toBe(32)
+    expect(objectResult.project.resources.sprites[0]?.height).toBe(32)
+    expect(objectResult.project.resources.sprites[0]?.pixelsRgba).toHaveLength(32 * 32)
     expect(objectResult.project.objects[0]?.events).toEqual([])
     expect(objectResult.project.objects[0]?.width).toBe(32)
     expect(objectResult.project.objects[0]?.height).toBe(32)
@@ -100,6 +106,31 @@ describe("editor model helpers", () => {
     expect(withSoundSource.resources.sprites[0]?.uploadStatus).toBe("ready")
     expect(withSoundSource.resources.sounds[0]?.assetSource).toBe("/assets/coin.wav")
     expect(withSoundSource.resources.sounds[0]?.uploadStatus).toBe("ready")
+  })
+
+  it("creates sized sprites and updates sprite pixel map", () => {
+    const initial = createEmptyProjectV1("Sized sprites")
+    const spriteResult = quickCreateSpriteWithSize(initial, "Hero 16", 16, 16)
+
+    expect(spriteResult.project.resources.sprites[0]?.width).toBe(16)
+    expect(spriteResult.project.resources.sprites[0]?.height).toBe(16)
+    expect(spriteResult.project.resources.sprites[0]?.pixelsRgba).toHaveLength(16 * 16)
+    expect(spriteResult.project.resources.sprites[0]?.pixelsRgba[0]).toBe("#00000000")
+
+    const customPixels = Array.from({ length: 16 * 16 }, (_, index) => (index === 0 ? "#FF0000FF" : "#00000000"))
+    const withPixels = updateSpritePixelsRgba(spriteResult.project, spriteResult.spriteId, customPixels)
+
+    expect(withPixels.resources.sprites[0]?.pixelsRgba[0]).toBe("#FF0000FF")
+    expect(withPixels.resources.sprites[0]?.pixelsRgba).toHaveLength(16 * 16)
+  })
+
+  it("assigns sprite id to existing object", () => {
+    const initial = createEmptyProjectV1("Object sprite assignment")
+    const spriteResult = quickCreateSpriteWithSize(initial, "Coin", 8, 8)
+    const objectResult = quickCreateObject(spriteResult.project, { name: "Pickup", spriteId: null })
+    const assigned = updateObjectSpriteId(objectResult.project, objectResult.objectId, spriteResult.spriteId)
+
+    expect(assigned.objects[0]?.spriteId).toBe(spriteResult.spriteId)
   })
 
   it("adds and edits object events", () => {

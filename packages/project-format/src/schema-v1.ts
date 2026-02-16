@@ -19,7 +19,10 @@ const SpriteResourceSchema = z.object({
   name: z.string().min(1),
   imagePath: z.string(),
   assetSource: z.string().default(""),
-  uploadStatus: z.enum(["notConnected", "ready"]).default("notConnected")
+  uploadStatus: z.enum(["notConnected", "ready"]).default("notConnected"),
+  width: z.number().int().min(1).default(32),
+  height: z.number().int().min(1).default(32),
+  pixelsRgba: z.array(z.string()).default([])
 })
 
 const SoundResourceSchema = z.object({

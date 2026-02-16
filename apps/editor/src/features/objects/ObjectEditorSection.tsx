@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import type { ObjectActionDraft } from "@creadordejocs/project-format"
-import type { EditorController } from "../editor-state/use-editor-controller.js"
+import { isSpriteCompatibleWithObjectSize, type EditorController } from "../editor-state/use-editor-controller.js"
 import { SYSTEM_MOUSE_GLOBALS, type IfCondition, type ObjectActionType } from "../editor-state/types.js"
 import { resolveAssetSource } from "../assets/asset-source-resolver.js"
 import { ObjectListPanel } from "./ObjectListPanel.js"
@@ -8,6 +8,7 @@ import { ObjectVariablesPanel } from "./ObjectVariablesPanel.js"
 import { EventListPanel } from "./EventListPanel.js"
 import { ActionEditorPanel } from "./ActionEditorPanel.js"
 import { buildDefaultIfCondition } from "./if-condition-utils.js"
+import { SpritePickerModal } from "../sprites/components/SpritePickerModal.js"
 
 type ObjectEditorSectionProps = {
   controller: EditorController
@@ -17,6 +18,7 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
   const [activeEventId, setActiveEventId] = useState<string | null>(null)
   const [selectNewestListener, setSelectNewestListener] = useState(false)
   const [resolvedSpriteSources, setResolvedSpriteSources] = useState<Record<string, string>>({})
+  const [isSpritePickerOpen, setIsSpritePickerOpen] = useState(false)
 
   const sprites = controller.project.resources.sprites
 
@@ -50,6 +52,12 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
   const selectedObjectVariableDefinitions = selectedObject
     ? controller.project.variables.objectByObjectId[selectedObject.id] ?? []
     : []
+  const compatibleSprites = useMemo(() => {
+    if (!selectedObject) return []
+    return sprites.filter((spriteEntry) =>
+      isSpriteCompatibleWithObjectSize(selectedObject.width, selectedObject.height, spriteEntry.width, spriteEntry.height)
+    )
+  }, [selectedObject, sprites])
   const globalVariablesWithSystem = [...controller.project.variables.global, ...SYSTEM_MOUSE_GLOBALS]
 
   const defaultActionFromType = (type: ObjectActionType): ObjectActionDraft | null => {
@@ -212,6 +220,7 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
             onRemoveVariable={(objectId, variableId) => controller.removeObjectVariable(objectId, variableId)}
             onUpdateObjectNumber={(key, value) => controller.updateSelectedObjectProperty(key, value)}
             onUpdateObjectFlag={(key, value) => controller.updateSelectedObjectProperty(key, value)}
+            onSpriteClick={() => setIsSpritePickerOpen(true)}
           />
           <EventListPanel
             events={selectedObject.events}
@@ -296,6 +305,39 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
         <div className="flex flex-1 items-center justify-center bg-slate-50 text-slate-400">
           <p>Select an object to start editing</p>
         </div>
+      )}
+      {selectedObject && (
+        <SpritePickerModal
+          isOpen={isSpritePickerOpen}
+          objectName={selectedObject.name}
+          objectWidth={selectedObject.width ?? 32}
+          objectHeight={selectedObject.height ?? 32}
+          selectedObjectSpriteId={selectedObject.spriteId}
+          availableSprites={compatibleSprites.map((spriteEntry) => ({
+            id: spriteEntry.id,
+            name: spriteEntry.name,
+            width: spriteEntry.width,
+            height: spriteEntry.height
+          }))}
+          onClose={() => setIsSpritePickerOpen(false)}
+          onSelectExisting={(spriteId) => {
+            const assigned = controller.assignSelectedObjectSprite(spriteId)
+            if (assigned) {
+              controller.openSpriteEditor(spriteId)
+              setIsSpritePickerOpen(false)
+            }
+          }}
+          onCreateNew={(name) => {
+            const spriteId = controller.createSpriteForSelectedObject(name)
+            if (!spriteId) return
+            controller.openSpriteEditor(spriteId)
+            setIsSpritePickerOpen(false)
+          }}
+          onEditSprite={(spriteId) => {
+            controller.openSpriteEditor(spriteId)
+            setIsSpritePickerOpen(false)
+          }}
+        />
       )}
     </div>
   )
