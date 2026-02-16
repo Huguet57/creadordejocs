@@ -401,19 +401,24 @@ export function SpriteListPanel({
 
   return (
     <aside className="mvp16-sprite-tree-panel flex w-[280px] flex-col border-r border-slate-200 bg-slate-50">
-      <div className="mvp16-sprite-list-header flex items-center justify-between border-b border-slate-200 p-3">
-        <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Sprites</span>
+      <div className="mvp16-sprite-list-header flex items-center justify-between border-b border-slate-200 bg-white px-3 py-2.5">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Sprites</span>
         <div className="flex items-center gap-1">
           <Button
             variant="ghost"
             size="sm"
-            className="mvp16-sprite-tree-header-action h-7 px-2 text-[11px]"
+            className="mvp16-sprite-tree-header-action h-7 rounded-md border border-transparent px-2 text-[11px] hover:border-slate-200 hover:bg-slate-100"
             onClick={() => setCreatingFolderParentId(selectedNode?.type === "folder" ? selectedNode.id : null)}
           >
             <Folder className="mr-1 h-3.5 w-3.5" />
             Folder
           </Button>
-          <Button variant="ghost" size="sm" className="mvp16-sprite-tree-header-action h-7 px-2 text-[11px]" onClick={() => setIsAdding(true)}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mvp16-sprite-tree-header-action h-7 rounded-md border border-transparent px-2 text-[11px] hover:border-slate-200 hover:bg-slate-100"
+            onClick={() => setIsAdding(true)}
+          >
             <Plus className="mr-1 h-3.5 w-3.5" />
             Sprite
           </Button>
@@ -421,7 +426,7 @@ export function SpriteListPanel({
       </div>
 
       <div
-        className="mvp16-sprite-tree-items flex-1 overflow-y-auto p-2"
+        className="mvp16-sprite-tree-items flex-1 overflow-y-auto bg-slate-50 p-2"
         tabIndex={0}
         onKeyDown={(event) => {
           if (renamingNode || creatingFolderParentId !== undefined) {
@@ -463,10 +468,13 @@ export function SpriteListPanel({
         }}
       >
         {creatingFolderParentId !== undefined && (
-          <div className="mvp16-sprite-tree-folder-create mb-2 rounded border border-slate-200 bg-white p-2">
-            <span className="mb-1 block text-[10px] uppercase tracking-wide text-slate-500">
-              New folder {creatingFolderParentId ? "inside selected folder" : "at root"}
-            </span>
+          <div className="mvp16-sprite-tree-folder-create mb-2 rounded-lg border border-slate-200 bg-white p-2.5 shadow-sm">
+            <div className="mb-2 flex items-center gap-1.5">
+              <Folder className="h-3.5 w-3.5 text-amber-500" />
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                New folder {creatingFolderParentId ? "inside selected folder" : "at root"}
+              </span>
+            </div>
             <input
               value={newFolderName}
               onChange={(event: ChangeEvent<HTMLInputElement>) => setNewFolderName(event.target.value)}
@@ -481,13 +489,18 @@ export function SpriteListPanel({
                   setCreatingFolderParentId(undefined)
                 }
               }}
-              className="mvp16-sprite-tree-folder-create-input h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs"
+              className="mvp16-sprite-tree-folder-create-input h-8 w-full rounded-md border border-slate-300 bg-white px-2.5 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
             />
-            <div className="mt-2 flex items-center justify-end gap-1">
-              <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px]" onClick={() => setCreatingFolderParentId(undefined)}>
+            <div className="mt-2 flex items-center justify-end gap-1.5">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 rounded-md px-2 text-[11px] text-slate-600 hover:bg-slate-100"
+                onClick={() => setCreatingFolderParentId(undefined)}
+              >
                 Cancel
               </Button>
-              <Button size="sm" className="h-7 px-2 text-[11px]" onClick={handleCreateFolder}>
+              <Button size="sm" className="h-7 rounded-md px-2 text-[11px]" onClick={handleCreateFolder}>
                 Create
               </Button>
             </div>
@@ -504,7 +517,7 @@ export function SpriteListPanel({
 
       {contextMenu && (
         <div
-          className="mvp16-sprite-tree-context-menu fixed z-30 min-w-[180px] rounded border border-slate-200 bg-white p-1 shadow-lg"
+          className="mvp16-sprite-tree-context-menu fixed z-30 max-h-[280px] min-w-[190px] overflow-y-auto rounded-md border border-slate-200 bg-white p-1 shadow-lg"
           style={{ left: `${contextMenu.x}px`, top: `${contextMenu.y}px` }}
           onMouseDown={(event) => event.stopPropagation()}
         >
@@ -593,13 +606,15 @@ export function SpriteListPanel({
         </div>
       )}
 
-      <div className="mvp16-sprite-list-footer border-t border-slate-200 bg-white p-3">
-        {isAdding ? (
+      {isAdding && (
+        <div className="mvp16-sprite-list-footer border-t border-slate-200 bg-white p-3">
           <div className="mvp16-sprite-list-add-form flex flex-col gap-2">
-            <span className="text-xs font-semibold text-slate-700">Add Sprite</span>
-            <span className="text-[10px] uppercase tracking-wide text-slate-500">
-              Target: {selectedNode?.type === "folder" ? foldersById.get(selectedNode.id)?.name ?? "Root" : "Root"}
-            </span>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-700">Add Sprite</span>
+              <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">
+                {selectedNode?.type === "folder" ? foldersById.get(selectedNode.id)?.name ?? "Root" : "Root"}
+              </span>
+            </div>
             <input
               value={newName}
               onChange={(event: ChangeEvent<HTMLInputElement>) => setNewName(event.target.value)}
@@ -644,14 +659,22 @@ export function SpriteListPanel({
                 <Plus className="h-4 w-4" />
               </Button>
             </div>
+            <div className="flex items-center justify-end gap-1.5">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 rounded-md px-2 text-[11px] text-slate-600 hover:bg-slate-100"
+                onClick={() => setIsAdding(false)}
+              >
+                Cancel
+              </Button>
+              <Button size="sm" className="h-7 rounded-md px-2 text-[11px]" onClick={handleAdd}>
+                Create
+              </Button>
+            </div>
           </div>
-        ) : (
-          <Button variant="outline" size="sm" className="h-8 w-full text-xs" onClick={() => setIsAdding(true)}>
-            <Plus className="mr-2 h-3.5 w-3.5" />
-            Add Sprite
-          </Button>
-        )}
-      </div>
+        </div>
+      )}
     </aside>
   )
 }
