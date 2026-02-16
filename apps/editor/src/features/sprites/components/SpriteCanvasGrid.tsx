@@ -8,11 +8,12 @@ type SpriteCanvasGridProps = {
   height: number
   pixelsRgba: string[]
   zoom: number
+  showGrid: boolean
   activeTool: SpriteEditorTool
   onPaint: (x: number, y: number, tool: SpriteEditorTool) => void
 }
 
-export function SpriteCanvasGrid({ width, height, pixelsRgba, zoom, activeTool, onPaint }: SpriteCanvasGridProps) {
+export function SpriteCanvasGrid({ width, height, pixelsRgba, zoom, showGrid, activeTool, onPaint }: SpriteCanvasGridProps) {
   const [isPointerDown, setIsPointerDown] = useState(false)
   const safePixels = normalizePixelGrid(pixelsRgba, width, height)
 
@@ -33,7 +34,7 @@ export function SpriteCanvasGrid({ width, height, pixelsRgba, zoom, activeTool, 
             <button
               key={`${x}-${y}`}
               type="button"
-              className="mvp16-sprite-cell border border-slate-200 p-0"
+              className={`mvp16-sprite-cell p-0 ${showGrid ? "border border-slate-200" : "border-0"}`}
               style={{
                 width: `${zoom}px`,
                 height: `${zoom}px`,

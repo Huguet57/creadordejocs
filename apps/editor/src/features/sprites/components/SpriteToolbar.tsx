@@ -2,72 +2,52 @@ import { Eraser, Pencil } from "lucide-react"
 import type { ChangeEvent } from "react"
 import { Button } from "../../../components/ui/button.js"
 import type { SpriteEditorTool } from "../types/sprite-editor.js"
-import { SpriteImportButton } from "./SpriteImportButton.js"
 
 type SpriteToolbarProps = {
   activeTool: SpriteEditorTool
   activeColor: string
-  zoom: number
-  isImporting: boolean
   onToolChange: (tool: SpriteEditorTool) => void
   onColorChange: (color: string) => void
-  onZoomChange: (zoom: number) => void
-  onImportFile: (file: File) => void
 }
 
 export function SpriteToolbar({
   activeTool,
   activeColor,
-  zoom,
-  isImporting,
   onToolChange,
-  onColorChange,
-  onZoomChange,
-  onImportFile
+  onColorChange
 }: SpriteToolbarProps) {
   return (
-    <div className="mvp16-sprite-toolbar flex items-center gap-2 border-b border-slate-200 bg-white px-4 py-2">
+    <aside className="mvp16-sprite-tool-sidebar flex w-[56px] flex-col items-center gap-1 border-r border-slate-200 bg-slate-50 py-3">
       <Button
-        variant={activeTool === "pencil" ? "default" : "outline"}
+        variant={activeTool === "pencil" ? "default" : "ghost"}
         size="sm"
-        className="h-8"
+        className="mvp16-sprite-tool-btn h-9 w-9 p-0"
         onClick={() => onToolChange("pencil")}
+        title="Pencil"
       >
-        <Pencil className="mr-1.5 h-3.5 w-3.5" />
-        Pencil
+        <Pencil className="h-4 w-4" />
       </Button>
       <Button
-        variant={activeTool === "eraser" ? "default" : "outline"}
+        variant={activeTool === "eraser" ? "default" : "ghost"}
         size="sm"
-        className="h-8"
+        className="mvp16-sprite-tool-btn h-9 w-9 p-0"
         onClick={() => onToolChange("eraser")}
+        title="Eraser"
       >
-        <Eraser className="mr-1.5 h-3.5 w-3.5" />
-        Eraser
+        <Eraser className="h-4 w-4" />
       </Button>
 
-      <label className="mvp16-sprite-color flex items-center gap-2 rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-600">
-        Color
+      <div className="mvp16-sprite-tool-divider my-1 h-px w-8 bg-slate-200" />
+
+      <label className="mvp16-sprite-tool-color flex flex-col items-center gap-1" title="Color">
         <input
           type="color"
           value={activeColor.slice(0, 7)}
-          className="h-6 w-8 cursor-pointer rounded border border-slate-300 bg-white p-0"
+          className="h-8 w-8 cursor-pointer rounded border border-slate-300 bg-white p-0"
           onChange={(event: ChangeEvent<HTMLInputElement>) => onColorChange(`${event.target.value.toUpperCase()}FF`)}
         />
+        <span className="text-[9px] text-slate-400">Color</span>
       </label>
-
-      <label className="mvp16-sprite-zoom ml-auto flex items-center gap-2 text-xs text-slate-600">
-        Zoom
-        <input
-          type="range"
-          min={4}
-          max={24}
-          value={zoom}
-          onChange={(event: ChangeEvent<HTMLInputElement>) => onZoomChange(Number(event.target.value))}
-        />
-      </label>
-
-      <SpriteImportButton isImporting={isImporting} onImportFile={onImportFile} />
-    </div>
+    </aside>
   )
 }

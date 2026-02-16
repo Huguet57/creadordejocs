@@ -1,6 +1,7 @@
-import { useEffect } from "react"
+import { useEffect, type ChangeEvent } from "react"
 import type { EditorController } from "../editor-state/use-editor-controller.js"
 import { SpriteCanvasGrid } from "./components/SpriteCanvasGrid.js"
+import { SpriteImportButton } from "./components/SpriteImportButton.js"
 import { SpriteImportCropModal } from "./components/SpriteImportCropModal.js"
 import { SpriteListPanel } from "./components/SpriteListPanel.js"
 import { SpriteToolbar } from "./components/SpriteToolbar.js"
@@ -23,7 +24,9 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
     activeColor,
     setActiveColor,
     zoom,
-    setZoom
+    setZoom,
+    showGrid,
+    setShowGrid
   } = spriteEditorState
   const activeSpriteId = controller.activeSpriteId
 
@@ -97,20 +100,47 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
         onMoveFolderToParent={(folderId, newParentId) => controller.moveSpriteFolder(folderId, newParentId)}
       />
 
+      <SpriteToolbar
+        activeTool={activeTool}
+        activeColor={activeColor}
+        onToolChange={setActiveTool}
+        onColorChange={setActiveColor}
+      />
+
       <div className="mvp16-sprite-editor-main flex flex-1 flex-col">
-        <SpriteToolbar
-          activeTool={activeTool}
-          activeColor={activeColor}
-          zoom={zoom}
-          isImporting={spriteImport.isImporting}
-          onToolChange={setActiveTool}
-          onColorChange={setActiveColor}
-          onZoomChange={setZoom}
-          onImportFile={(selectedFile) => {
-            if (!selectedSprite) return
-            void spriteImport.openCropModal(selectedFile)
-          }}
-        />
+        <div className="mvp16-sprite-canvas-bar flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-2">
+          <label className="mvp16-sprite-grid-toggle flex items-center gap-1.5 text-xs text-slate-600">
+            <input
+              type="checkbox"
+              checked={showGrid}
+              onChange={(event) => setShowGrid(event.target.checked)}
+              className="h-3.5 w-3.5 rounded border-slate-300"
+            />
+            Grid
+          </label>
+
+          <label className="mvp16-sprite-zoom flex items-center gap-2 text-xs text-slate-600">
+            Zoom
+            <input
+              type="range"
+              min={4}
+              max={24}
+              value={zoom}
+              onChange={(event: ChangeEvent<HTMLInputElement>) => setZoom(Number(event.target.value))}
+            />
+          </label>
+
+          <div className="ml-auto">
+            <SpriteImportButton
+              isImporting={spriteImport.isImporting}
+              onImportFile={(selectedFile) => {
+                if (!selectedSprite) return
+                void spriteImport.openCropModal(selectedFile)
+              }}
+            />
+          </div>
+        </div>
+
         {spriteImport.message && (
           <p className="mx-4 mt-3 rounded border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600">{spriteImport.message}</p>
         )}
@@ -124,25 +154,15 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
         />
 
         {selectedSprite ? (
-          <>
-            <div className="mvp16-sprite-source-row flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-4 py-2">
-              <span className="text-xs font-semibold text-slate-500">Source</span>
-              <input
-                value={selectedSprite.assetSource}
-                placeholder="/assets/player.png"
-                onChange={(event) => controller.updateSpriteSource(selectedSprite.id, event.target.value)}
-                className="h-7 flex-1 rounded border border-slate-300 bg-white px-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-              />
-            </div>
-            <SpriteCanvasGrid
-              width={selectedSprite.width}
-              height={selectedSprite.height}
-              pixelsRgba={selectedSpritePixels}
-              zoom={zoom}
-              activeTool={activeTool}
-              onPaint={pixelActions.paintAt}
-            />
-          </>
+          <SpriteCanvasGrid
+            width={selectedSprite.width}
+            height={selectedSprite.height}
+            pixelsRgba={selectedSpritePixels}
+            zoom={zoom}
+            showGrid={showGrid}
+            activeTool={activeTool}
+            onPaint={pixelActions.paintAt}
+          />
         ) : (
           <div className="flex flex-1 items-center justify-center bg-slate-50 text-sm text-slate-400">
             Add a sprite to start painting pixels.

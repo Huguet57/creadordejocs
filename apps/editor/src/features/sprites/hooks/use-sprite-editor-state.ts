@@ -5,6 +5,7 @@ export function useSpriteEditorState() {
   const [activeTool, setActiveTool] = useState<SpriteEditorTool>("pencil")
   const [activeColor, setActiveColor] = useState("#4F46E5FF")
   const [zoom, setZoom] = useState(12)
+  const [showGrid, setShowGrid] = useState(true)
 
   return {
     activeTool,
@@ -12,6 +13,8 @@ export function useSpriteEditorState() {
     activeColor,
     setActiveColor,
     zoom,
-    setZoom
+    setZoom,
+    showGrid,
+    setShowGrid
   }
 }
