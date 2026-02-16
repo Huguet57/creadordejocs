@@ -1,7 +1,10 @@
 import {
+  Box,
+  Check,
+  ChevronDown,
   Plus,
 } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Button } from "../../components/ui/button.js"
 import { Label } from "../../components/ui/label.js"
 import {
@@ -22,7 +25,7 @@ import { buildDefaultIfCondition } from "./if-condition-utils.js"
 type ActionEditorPanelProps = {
   selectedObject: ProjectV1["objects"][0] | null
   activeEvent: ObjectEventEntry | null
-  selectableTargetObjects: { id: string; name: string }[]
+  selectableTargetObjects: { id: string; name: string; spriteSrc: string | null }[]
   globalVariables: ProjectV1["variables"]["global"]
   selectedObjectVariables: ProjectV1["variables"]["global"]
   objectVariablesByObjectId: ProjectV1["variables"]["objectByObjectId"]
@@ -83,8 +86,15 @@ export function ActionEditorPanel({
 }: ActionEditorPanelProps) {
   const [isActionPickerOpen, setIsActionPickerOpen] = useState(false)
   const [backgroundContextMenu, setBackgroundContextMenu] = useState<{ x: number; y: number } | null>(null)
+  const [isCollisionTargetMenuOpen, setIsCollisionTargetMenuOpen] = useState(false)
+  const [draggedActionId, setDraggedActionId] = useState<string | null>(null)
+  const [dropTarget, setDropTarget] = useState<{ actionId: string; position: "top" | "bottom" } | null>(null)
+  const collisionTargetSelectorRef = useRef<HTMLDivElement | null>(null)
   const collisionTargetName = activeEvent?.type === "Collision" && activeEvent.targetObjectId
     ? selectableTargetObjects.find((obj) => obj.id === activeEvent.targetObjectId)?.name ?? null
+    : null
+  const collisionTargetSelection = activeEvent?.type === "Collision" && activeEvent.targetObjectId
+    ? selectableTargetObjects.find((obj) => obj.id === activeEvent.targetObjectId) ?? null
     : null
 
   useEffect(() => {
@@ -95,6 +105,26 @@ export function ActionEditorPanel({
     window.addEventListener("mousedown", closeContextMenu)
     return () => window.removeEventListener("mousedown", closeContextMenu)
   }, [backgroundContextMenu])
+
+  useEffect(() => {
+    if (!isCollisionTargetMenuOpen) {
+      return
+    }
+    const closeCollisionTargetMenu = (event: MouseEvent) => {
+      const clickedNode = event.target as Node | null
+      if (collisionTargetSelectorRef.current && clickedNode && !collisionTargetSelectorRef.current.contains(clickedNode)) {
+        setIsCollisionTargetMenuOpen(false)
+      }
+    }
+    window.addEventListener("mousedown", closeCollisionTargetMenu)
+    return () => window.removeEventListener("mousedown", closeCollisionTargetMenu)
+  }, [isCollisionTargetMenuOpen])
+
+  useEffect(() => {
+    if (activeEvent?.type !== "Collision") {
+      setIsCollisionTargetMenuOpen(false)
+    }
+  }, [activeEvent?.type])
 
   if (!selectedObject) {
     return (
@@ -118,6 +148,57 @@ export function ActionEditorPanel({
   }
 
   const defaultIfCondition = buildDefaultIfCondition(globalVariables, selectedObjectVariables)
+  const moveActionBySteps = (actionId: string, direction: "up" | "down", steps: number) => {
+    for (let index = 0; index < steps; index += 1) {
+      onMoveAction(actionId, direction)
+    }
+  }
+  const getCanonicalDropTarget = (
+    hoveredActionId: string,
+    hoveredPosition: "top" | "bottom"
+  ): { actionId: string; position: "top" | "bottom" } => {
+    const actionIds = activeEvent.items
+      .filter((itemEntry) => itemEntry.type === "action")
+      .map((itemEntry) => itemEntry.action.id)
+    const hoveredIndex = actionIds.findIndex((actionId) => actionId === hoveredActionId)
+    if (hoveredIndex < 0) {
+      return { actionId: hoveredActionId, position: hoveredPosition }
+    }
+    if (hoveredPosition === "bottom") {
+      const nextActionId = actionIds[hoveredIndex + 1]
+      if (nextActionId) {
+        // Normalize "between two actions" to one visual target: top of the next action.
+        return { actionId: nextActionId, position: "top" }
+      }
+    }
+    return { actionId: hoveredActionId, position: hoveredPosition }
+  }
+  const reorderActionByDrop = (
+    sourceActionId: string,
+    targetActionId: string,
+    position: "top" | "bottom"
+  ) => {
+    if (!activeEvent || sourceActionId === targetActionId) {
+      return
+    }
+    const sourceIndex = activeEvent.items.findIndex(
+      (itemEntry) => itemEntry.type === "action" && itemEntry.action.id === sourceActionId
+    )
+    const targetIndex = activeEvent.items.findIndex(
+      (itemEntry) => itemEntry.type === "action" && itemEntry.action.id === targetActionId
+    )
+    if (sourceIndex < 0 || targetIndex < 0) {
+      return
+    }
+    const desiredIndexBeforeRemoval = position === "top" ? targetIndex : targetIndex + 1
+    const desiredIndexAfterRemoval =
+      sourceIndex < desiredIndexBeforeRemoval ? desiredIndexBeforeRemoval - 1 : desiredIndexBeforeRemoval
+    const steps = Math.abs(sourceIndex - desiredIndexAfterRemoval)
+    if (steps === 0) {
+      return
+    }
+    moveActionBySteps(sourceActionId, sourceIndex < desiredIndexAfterRemoval ? "down" : "up", steps)
+  }
 
   return (
     <div className="mvp3-action-editor-panel flex flex-1 flex-col bg-white">
@@ -165,25 +246,84 @@ export function ActionEditorPanel({
         )}
 
         {activeEvent.type === "Collision" && (
-          <div className="flex items-center gap-2">
+          <div className="mvp20-collision-target-config-row flex items-center gap-2">
             <Label className="text-xs text-slate-400">Target</Label>
-            <select
-              className="h-7 rounded border border-slate-200 bg-slate-50 px-2 text-xs text-slate-700 focus:border-slate-400 focus:outline-none"
-              value={activeEvent.targetObjectId ?? "any"}
-              onChange={(e) =>
-                onUpdateEventConfig(
-                  activeEvent.key,
-                  activeEvent.keyboardMode ?? null,
-                  e.target.value === "any" ? null : e.target.value,
-                  activeEvent.intervalMs
-                )
-              }
-            >
-              <option value="any">Any object</option>
-              {selectableTargetObjects.map((obj) => (
-                <option key={obj.id} value={obj.id}>{obj.name}</option>
-              ))}
-            </select>
+            <div ref={collisionTargetSelectorRef} className="mvp20-collision-target-selector relative">
+              <button
+                type="button"
+                className="mvp20-collision-target-selector-trigger inline-flex h-7 min-w-[170px] items-center gap-1.5 rounded border border-slate-200 bg-slate-50 px-2 text-xs text-slate-700 focus:border-slate-400 focus:outline-none"
+                onClick={() => setIsCollisionTargetMenuOpen((previousOpenState) => !previousOpenState)}
+                aria-expanded={isCollisionTargetMenuOpen}
+                aria-haspopup="listbox"
+              >
+                {collisionTargetSelection?.spriteSrc ? (
+                  <img
+                    src={collisionTargetSelection.spriteSrc}
+                    alt=""
+                    className="mvp20-collision-target-selector-trigger-icon h-3.5 w-3.5 object-contain"
+                    style={{ imageRendering: "pixelated" }}
+                  />
+                ) : (
+                  <Box className="mvp20-collision-target-selector-trigger-fallback h-3 w-3 text-slate-400" />
+                )}
+                <span className="truncate">{collisionTargetSelection?.name ?? "Any object"}</span>
+                <ChevronDown className="mvp20-collision-target-selector-trigger-chevron ml-auto h-3 w-3 text-slate-400" />
+              </button>
+              {isCollisionTargetMenuOpen && (
+                <div className="mvp20-collision-target-selector-menu absolute top-[calc(100%+4px)] right-0 z-30 min-w-[190px] overflow-hidden rounded border border-slate-200 bg-white shadow-lg">
+                  <button
+                    type="button"
+                    className="mvp20-collision-target-selector-option flex w-full items-center gap-1.5 px-2 py-1.5 text-left text-xs text-slate-700 hover:bg-slate-50"
+                    onClick={() => {
+                      onUpdateEventConfig(
+                        activeEvent.key,
+                        activeEvent.keyboardMode ?? null,
+                        null,
+                        activeEvent.intervalMs
+                      )
+                      setIsCollisionTargetMenuOpen(false)
+                    }}
+                  >
+                    <Box className="h-3 w-3 text-slate-400" />
+                    <span className="truncate">Any object</span>
+                    {!activeEvent.targetObjectId && (
+                      <Check className="ml-auto h-3 w-3 text-slate-400" />
+                    )}
+                  </button>
+                  {selectableTargetObjects.map((targetObject) => (
+                    <button
+                      key={targetObject.id}
+                      type="button"
+                      className="mvp20-collision-target-selector-option flex w-full items-center gap-1.5 px-2 py-1.5 text-left text-xs text-slate-700 hover:bg-slate-50"
+                      onClick={() => {
+                        onUpdateEventConfig(
+                          activeEvent.key,
+                          activeEvent.keyboardMode ?? null,
+                          targetObject.id,
+                          activeEvent.intervalMs
+                        )
+                        setIsCollisionTargetMenuOpen(false)
+                      }}
+                    >
+                      {targetObject.spriteSrc ? (
+                        <img
+                          src={targetObject.spriteSrc}
+                          alt=""
+                          className="mvp20-collision-target-selector-option-icon h-3.5 w-3.5 object-contain"
+                          style={{ imageRendering: "pixelated" }}
+                        />
+                      ) : (
+                        <Box className="mvp20-collision-target-selector-option-fallback h-3 w-3 text-slate-400" />
+                      )}
+                      <span className="truncate">{targetObject.name}</span>
+                      {targetObject.id === activeEvent.targetObjectId && (
+                        <Check className="ml-auto h-3 w-3 text-slate-400" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -257,6 +397,34 @@ export function ActionEditorPanel({
                       selectedObjectVariables={selectedObjectVariables}
                       eventType={activeEvent.type}
                       collisionTargetName={collisionTargetName}
+                      isDragging={draggedActionId === item.action.id}
+                      dropIndicator={dropTarget?.actionId === item.action.id ? dropTarget.position : null}
+                      onDragStartAction={(actionId) => {
+                        setDraggedActionId(actionId)
+                        setDropTarget(null)
+                      }}
+                      onDragOverAction={(actionId, position) => {
+                        if (draggedActionId && draggedActionId !== actionId) {
+                          setDropTarget(getCanonicalDropTarget(actionId, position))
+                        }
+                      }}
+                      onDropOnAction={(targetActionId, position) => {
+                        if (!draggedActionId) {
+                          return
+                        }
+                        const canonicalDropTarget = getCanonicalDropTarget(targetActionId, position)
+                        reorderActionByDrop(
+                          draggedActionId,
+                          canonicalDropTarget.actionId,
+                          canonicalDropTarget.position
+                        )
+                        setDraggedActionId(null)
+                        setDropTarget(null)
+                      }}
+                      onDragEndAction={() => {
+                        setDraggedActionId(null)
+                        setDropTarget(null)
+                      }}
                     />
                   )
                 }

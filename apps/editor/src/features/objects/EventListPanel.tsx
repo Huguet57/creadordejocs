@@ -1,4 +1,4 @@
-import { Activity, Keyboard, Mouse, MousePointer2, MousePointerClick, Play, Zap, Plus, X, Scan, Timer } from "lucide-react"
+import { Activity, Box, Keyboard, Mouse, MousePointer2, MousePointerClick, Play, Plus, Swords, X, Scan, Timer } from "lucide-react"
 import { useState } from "react"
 import { Button } from "../../components/ui/button.js"
 import {
@@ -13,6 +13,7 @@ import {
 type EventListPanelProps = {
   events: ObjectEventEntry[]
   activeEventId: string | null
+  collisionTargets: { id: string; name: string; spriteSrc: string | null }[]
   onSelectEvent: (id: string) => void
   onAddEvent: (
     type: ObjectEventType,
@@ -27,7 +28,7 @@ const EVENT_ICONS: Record<ObjectEventType, React.ElementType> = {
   Create: Play,
   Step: Activity,
   Draw: MousePointerClick, // Placeholder
-  Collision: Zap,
+  Collision: Swords,
   Keyboard: Keyboard,
   OnDestroy: X,
   OutsideRoom: Scan,
@@ -40,6 +41,7 @@ const EVENT_ICONS: Record<ObjectEventType, React.ElementType> = {
 export function EventListPanel({
   events,
   activeEventId,
+  collisionTargets,
   onSelectEvent,
   onAddEvent,
   onRemoveEvent
@@ -73,6 +75,9 @@ export function EventListPanel({
           )}
           {events.map((event) => {
             const Icon = EVENT_ICONS[event.type] ?? Activity
+            const collisionTarget = event.type === "Collision" && event.targetObjectId
+              ? collisionTargets.find((targetObject) => targetObject.id === event.targetObjectId) ?? null
+              : null
             return (
               <div
                 key={event.id}
@@ -92,6 +97,21 @@ export function EventListPanel({
                     <span className={`truncate text-sm ${activeEventId === event.id ? "font-medium text-slate-900" : "text-slate-600"}`}>
                       {event.type}
                     </span>
+                    {event.type === "Collision" && collisionTarget && (
+                      <span className="mvp20-event-collision-target-row inline-flex items-center gap-1 text-[10px] text-slate-400">
+                        {collisionTarget.spriteSrc ? (
+                          <img
+                            src={collisionTarget.spriteSrc}
+                            alt=""
+                            className="mvp20-event-collision-target-icon h-3.5 w-3.5 object-contain"
+                            style={{ imageRendering: "pixelated" }}
+                          />
+                        ) : (
+                          <Box className="mvp20-event-collision-target-fallback h-2.5 w-2.5 text-slate-400" />
+                        )}
+                        <span className="truncate">{collisionTarget.name}</span>
+                      </span>
+                    )}
                     {event.type === "Keyboard" && event.key && (
                       <span className="truncate text-[10px] text-slate-400">
                         Key: {event.key} ({event.keyboardMode ?? "down"})

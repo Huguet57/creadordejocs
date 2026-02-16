@@ -90,8 +90,15 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
 
   const selectedObject = controller.selectedObject
   const selectableTargetObjects = useMemo(
-    () => controller.project.objects.filter((objectEntry) => objectEntry.id !== selectedObject?.id),
-    [controller.project.objects, selectedObject?.id]
+    () =>
+      controller.project.objects
+        .filter((objectEntry) => objectEntry.id !== selectedObject?.id)
+        .map((objectEntry) => ({
+          id: objectEntry.id,
+          name: objectEntry.name,
+          spriteSrc: objectEntry.spriteId ? (resolvedSpriteSources[objectEntry.spriteId] ?? null) : null
+        })),
+    [controller.project.objects, resolvedSpriteSources, selectedObject?.id]
   )
   const selectedObjectVariableDefinitions = selectedObject
     ? controller.project.variables.objectByObjectId[selectedObject.id] ?? []
@@ -293,6 +300,7 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
           <EventListPanel
             events={selectedObject.events}
             activeEventId={activeEventId}
+            collisionTargets={selectableTargetObjects}
             onSelectEvent={(id) => {
               setActiveEventIdByObjectId((previous) => ({
                 ...previous,
