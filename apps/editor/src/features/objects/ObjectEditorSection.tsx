@@ -9,14 +9,15 @@ import { ActionEditorPanel } from "./ActionEditorPanel.js"
 import { buildDefaultIfCondition } from "./if-condition-utils.js"
 import { SpritePickerModal } from "../sprites/components/SpritePickerModal.js"
 import { resolveSpritePreviewSource } from "../sprites/utils/sprite-preview-source.js"
+import { resolveActiveEventMemoryForObject } from "./object-event-selection.js"
 
 type ObjectEditorSectionProps = {
   controller: EditorController
 }
 
 export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
-  const [activeEventId, setActiveEventId] = useState<string | null>(null)
-  const [selectNewestListener, setSelectNewestListener] = useState(false)
+  const [activeEventIdByObjectId, setActiveEventIdByObjectId] = useState<Record<string, string | null>>({})
+  const [selectNewestForObjectId, setSelectNewestForObjectId] = useState<string | null>(null)
   const [resolvedSpriteSources, setResolvedSpriteSources] = useState<Record<string, string>>({})
   const [isSpritePickerOpen, setIsSpritePickerOpen] = useState(false)
 
@@ -179,21 +180,20 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
 
   useEffect(() => {
     if (!selectedObject) {
-      setActiveEventId(null)
       return
     }
-
-    if (selectNewestListener) {
-      setActiveEventId(selectedObject.events[selectedObject.events.length - 1]?.id ?? null)
-      setSelectNewestListener(false)
-      return
+    const objectId = selectedObject.id
+    setActiveEventIdByObjectId((previous) => {
+      return resolveActiveEventMemoryForObject(previous, objectId, selectedObject.events, {
+        preferNewest: selectNewestForObjectId === objectId
+      })
+    })
+    if (selectNewestForObjectId === objectId) {
+      setSelectNewestForObjectId(null)
     }
+  }, [selectedObject, selectNewestForObjectId])
 
-    if (!activeEventId || !selectedObject.events.some((eventEntry) => eventEntry.id === activeEventId)) {
-      setActiveEventId(selectedObject.events[0]?.id ?? null)
-    }
-  }, [selectedObject, activeEventId, selectNewestListener])
-
+  const activeEventId = selectedObject ? (activeEventIdByObjectId[selectedObject.id] ?? null) : null
   const activeEvent = selectedObject?.events.find((eventEntry) => eventEntry.id === activeEventId) ?? null
 
   const handleAddAction = (type: ObjectActionType) => {
@@ -250,14 +250,24 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
           <EventListPanel
             events={selectedObject.events}
             activeEventId={activeEventId}
-            onSelectEvent={setActiveEventId}
+            onSelectEvent={(id) => {
+              setActiveEventIdByObjectId((previous) => ({
+                ...previous,
+                [selectedObject.id]: id
+              }))
+            }}
             onAddEvent={(type, key, keyboardMode, intervalMs) => {
               controller.addObjectEvent(type, key ?? null, keyboardMode ?? null, null, intervalMs ?? null)
-              setSelectNewestListener(true)
+              setSelectNewestForObjectId(selectedObject.id)
             }}
             onRemoveEvent={(id) => {
               controller.removeObjectEvent(id)
-              if (activeEventId === id) setActiveEventId(null)
+              if (activeEventId === id) {
+                setActiveEventIdByObjectId((previous) => ({
+                  ...previous,
+                  [selectedObject.id]: null
+                }))
+              }
             }}
           />
           
