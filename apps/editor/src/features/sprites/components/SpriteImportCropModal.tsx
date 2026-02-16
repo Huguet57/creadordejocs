@@ -17,6 +17,7 @@ const PREVIEW_CELL = 6
 const MIN_CROP_PX = 4
 const HANDLE_RADIUS = 7
 const CANVAS_PAD = 80
+const SQUARE_IMAGE_INITIAL_MARGIN_RATIO = 0.1
 
 type DragMode = "move" | "nw" | "ne" | "sw" | "se" | null
 
@@ -37,6 +38,7 @@ function fitAspectCrop(
     cropH = imgHeight
     cropW = cropH * ratio
   }
+  
   return {
     x: Math.round((imgWidth - cropW) / 2),
     y: Math.round((imgHeight - cropH) / 2),
@@ -105,7 +107,10 @@ export function SpriteImportCropModal({
   const imgW = imageElement?.naturalWidth ?? 1
   const imgH = imageElement?.naturalHeight ?? 1
 
-  const displayScale = Math.min(SOURCE_BOX_W / imgW, SOURCE_BOX_H / imgH, 1)
+  const isSquareImg = imgW === imgH
+  const effectiveW = isSquareImg ? imgW * (1 + 2 * SQUARE_IMAGE_INITIAL_MARGIN_RATIO) : imgW
+  const effectiveH = isSquareImg ? imgH * (1 + 2 * SQUARE_IMAGE_INITIAL_MARGIN_RATIO) : imgH
+  const displayScale = Math.min(SOURCE_BOX_W / effectiveW, SOURCE_BOX_H / effectiveH, 1)
   const imgDisplayW = Math.round(imgW * displayScale)
   const imgDisplayH = Math.round(imgH * displayScale)
   const canvasW = imgDisplayW + CANVAS_PAD * 2
@@ -348,7 +353,7 @@ export function SpriteImportCropModal({
                 }}
               />
             </div>
-            <p className="text-[10px] text-slate-400">{targetWidth} x {targetHeight} px (nearest-neighbor)</p>
+            <p className="text-[10px] text-slate-400">{targetWidth} x {targetHeight} px</p>
           </div>
         </div>
 
