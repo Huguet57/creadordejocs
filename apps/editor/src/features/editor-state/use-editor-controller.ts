@@ -56,6 +56,7 @@ import {
   type LocalSnapshot,
   type SaveStatus
 } from "../project-storage.js"
+import { importProjectFromFile } from "../templates/import-project.js"
 import { selectActiveRoom, selectObject } from "./selectors.js"
 import { createTemplateProject, type GameTemplateId } from "./game-templates.js"
 import {
@@ -211,6 +212,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
   const [runSnapshot, setRunSnapshot] = useState<ProjectV1 | null>(null)
   const [runtimeState, setRuntimeState] = useState<RuntimeState>(() => createInitialRuntimeState(initial.project))
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("saved")
+  const [importStatus, setImportStatus] = useState<"idle" | "importing" | "imported" | "error">("idle")
   const [isDirty, setIsDirty] = useState(false)
   const [past, setPast] = useState<ProjectV1[]>([])
   const [future, setFuture] = useState<ProjectV1[]>([])
@@ -459,6 +461,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
     isRunning,
     snapshots,
     saveStatus,
+    importStatus,
     runtimeState,
     undoAvailable: past.length > 0,
     redoAvailable: future.length > 0,
@@ -950,6 +953,36 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       } catch {
         setSaveStatus("error")
       }
+    },
+    async importProjectFromJsonFile(file: File) {
+      const confirmed = window.confirm("Aixo sobreescriura el joc actual. Vols continuar?")
+      if (!confirmed) {
+        setImportStatus("idle")
+        return false
+      }
+      try {
+        setImportStatus("importing")
+        const loaded = await importProjectFromFile(file)
+        const normalized = ensureProjectHasRoom(loaded)
+        setPast((value) => [...value.slice(-39), project])
+        setFuture([])
+        setProject(normalized.project)
+        setActiveRoomId(normalized.roomId)
+        setActiveObjectId(null)
+        setActiveSpriteId(null)
+        setActiveSection("objects")
+        setIsRunning(false)
+        setRunSnapshot(null)
+        setIsDirty(true)
+        setImportStatus("imported")
+        return true
+      } catch {
+        setImportStatus("error")
+        return false
+      }
+    },
+    resetImportStatus() {
+      setImportStatus("idle")
     },
     restoreSnapshot(snapshotId: string) {
       const restored = loadSnapshotProject(snapshotId)
