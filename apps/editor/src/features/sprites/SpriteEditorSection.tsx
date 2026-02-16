@@ -103,6 +103,7 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
       <SpriteToolbar
         activeTool={activeTool}
         activeColor={activeColor}
+        spritePixels={selectedSpritePixels}
         onToolChange={setActiveTool}
         onColorChange={setActiveColor}
       />

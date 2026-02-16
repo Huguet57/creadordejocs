@@ -44,7 +44,8 @@ export function SpriteCanvasGrid({ width, height, pixelsRgba, zoom, showGrid, ac
               style={{
                 width: `${zoom}px`,
                 height: `${zoom}px`,
-                backgroundColor: hexRgbaToCss(pixelEntry)
+                backgroundColor: hexRgbaToCss(pixelEntry),
+                cursor: "inherit"
               }}
               onMouseDown={() => {
                 setIsPointerDown(true)
