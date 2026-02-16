@@ -1,8 +1,18 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent } from "react"
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent
+} from "react"
 import { Box, Grid3X3, Plus, X } from "lucide-react"
 import type { EditorController } from "../editor-state/use-editor-controller.js"
 import { Button } from "../../components/ui/button.js"
 import { resolveAssetSource } from "../assets/asset-source-resolver.js"
+import { getPositionCountsByCoordinate, getPositionKey, wouldOverlapSolid } from "./room-placement-utils.js"
 
 const ROOM_WIDTH = 832
 const ROOM_HEIGHT = 480
@@ -12,10 +22,21 @@ const DEFAULT_INSTANCE_SIZE = 32
 
 type RoomDragPreview = {
   instanceId: string
+  objectId: string
   x: number
   y: number
   width: number
   height: number
+  isBlocked: boolean
+}
+
+type RoomPlacementGhost = {
+  objectId: string
+  x: number
+  y: number
+  width: number
+  height: number
+  isBlocked: boolean
 }
 
 export function snapToGrid(value: number, gridSize: number): number {
@@ -57,6 +78,8 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
   const [resolvedSpriteSources, setResolvedSpriteSources] = useState<Record<string, string>>({})
   const [dragPreview, setDragPreview] = useState<RoomDragPreview | null>(null)
   const [draggingInstanceId, setDraggingInstanceId] = useState<string | null>(null)
+  const [placingObjectId, setPlacingObjectId] = useState<string | null>(null)
+  const [placementGhost, setPlacementGhost] = useState<RoomPlacementGhost | null>(null)
   const [showGrid, setShowGrid] = useState(true)
   const transparentDragImageRef = useRef<HTMLDivElement | null>(null)
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -64,6 +87,14 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
   const spriteById = useMemo(
     () => Object.fromEntries(sprites.map((spriteEntry) => [spriteEntry.id, spriteEntry])),
     [sprites]
+  )
+  const objectById = useMemo(
+    () => Object.fromEntries(controller.project.objects.map((objectEntry) => [objectEntry.id, objectEntry])),
+    [controller.project.objects]
+  )
+  const activeRoomPositionCounts = useMemo(
+    () => getPositionCountsByCoordinate(controller.activeRoom?.instances ?? []),
+    [controller.activeRoom]
   )
 
   const resetIdleTimer = () => {
@@ -111,11 +142,35 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
     }
   }, [sprites])
 
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") {
+        return
+      }
+      setPlacingObjectId(null)
+      setPlacementGhost(null)
+    }
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [])
+
+  useEffect(() => {
+    if (!controller.activeRoom) {
+      setPlacingObjectId(null)
+      setPlacementGhost(null)
+      return
+    }
+    if (placingObjectId && !objectById[placingObjectId]) {
+      setPlacingObjectId(null)
+      setPlacementGhost(null)
+    }
+  }, [controller.activeRoom, objectById, placingObjectId])
+
   const inputCallbackRef = useCallback((node: HTMLInputElement | null) => {
     if (node) node.select()
   }, [])
 
-  const blockUndoShortcuts = (event: KeyboardEvent<HTMLInputElement>): void => {
+  const blockUndoShortcuts = (event: ReactKeyboardEvent<HTMLInputElement>): void => {
     if ((event.metaKey || event.ctrlKey) && (event.key.toLowerCase() === "z" || event.key.toLowerCase() === "y")) {
       event.preventDefault()
     }
@@ -126,6 +181,61 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
     controller.addRoom(roomName)
     setRoomName("Sala nova")
     setIsAddingRoom(false)
+  }
+
+  const updatePlacementGhost = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (!controller.activeRoom || !placingObjectId) {
+      setPlacementGhost(null)
+      return
+    }
+    const objectEntry = objectById[placingObjectId]
+    if (!objectEntry) {
+      setPlacementGhost(null)
+      return
+    }
+    const instanceWidth = objectEntry.width ?? DEFAULT_INSTANCE_SIZE
+    const instanceHeight = objectEntry.height ?? DEFAULT_INSTANCE_SIZE
+    const rect = event.currentTarget.getBoundingClientRect()
+    const position = calculateRoomDragPosition({
+      clientX: event.clientX,
+      clientY: event.clientY,
+      rectLeft: rect.left,
+      rectTop: rect.top,
+      roomWidth: ROOM_WIDTH,
+      roomHeight: ROOM_HEIGHT,
+      instanceWidth,
+      instanceHeight,
+      snapSize: DRAG_SNAP_SIZE
+    })
+    const isBlocked = wouldOverlapSolid({
+      project: controller.project,
+      roomInstances: controller.activeRoom.instances,
+      objectId: placingObjectId,
+      x: position.x,
+      y: position.y
+    })
+    setPlacementGhost({
+      objectId: placingObjectId,
+      x: position.x,
+      y: position.y,
+      width: instanceWidth,
+      height: instanceHeight,
+      isBlocked
+    })
+  }
+
+  const handleRoomCanvasClick = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (!placingObjectId || !controller.activeRoom) {
+      return
+    }
+    if (placementGhost?.objectId !== placingObjectId) {
+      updatePlacementGhost(event)
+      return
+    }
+    if (placementGhost.isBlocked) {
+      return
+    }
+    controller.addInstanceToActiveRoom(placingObjectId, placementGhost.x, placementGhost.y)
   }
 
   return (
@@ -169,7 +279,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                   setRoomName(e.target.value)
                   resetIdleTimer()
                 }}
-                onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
+                onKeyDown={(e: ReactKeyboardEvent<HTMLInputElement>) => {
                   blockUndoShortcuts(e)
                   resetIdleTimer()
                   if (e.key === "Enter") handleAddRoom()
@@ -216,14 +326,21 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
               <button
                 key={obj.id}
                 type="button"
-                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-slate-600 transition-colors hover:bg-slate-100"
-                onClick={() => controller.addInstanceToActiveRoom(obj.id)}
+                className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm transition-colors ${
+                  placingObjectId === obj.id
+                    ? "bg-white font-medium text-slate-900 ring-1 ring-slate-300"
+                    : "text-slate-600 hover:bg-slate-100"
+                }`}
+                onClick={() => {
+                  setPlacingObjectId((current) => (current === obj.id ? null : obj.id))
+                  setPlacementGhost(null)
+                }}
                 title={`Add ${obj.name} to room`}
                 disabled={!controller.activeRoom}
               >
-                <Box className="h-3.5 w-3.5 text-slate-400" />
+                <Box className={`h-3.5 w-3.5 ${placingObjectId === obj.id ? "text-blue-500" : "text-slate-400"}`} />
                 <span className="truncate">{obj.name}</span>
-                <Plus className="ml-auto h-3 w-3 text-slate-300" />
+                <Plus className={`ml-auto h-3 w-3 ${placingObjectId === obj.id ? "text-blue-500" : "text-slate-300"}`} />
               </button>
             ))}
           </div>
@@ -268,7 +385,9 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
           ) : (
             <div className="space-y-3">
               <div
-                className="mvp15-room-canvas mvp18-room-grid-canvas relative border-b border-slate-200 bg-white"
+                className={`mvp15-room-canvas mvp18-room-grid-canvas relative border-b border-slate-200 bg-white ${
+                  placingObjectId ? "cursor-crosshair" : ""
+                }`}
                 style={{
                   width: ROOM_WIDTH,
                   height: ROOM_HEIGHT,
@@ -280,10 +399,21 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                       }
                     : {})
                 }}
+                onMouseMove={(event) => {
+                  if (!placingObjectId) {
+                    return
+                  }
+                  updatePlacementGhost(event)
+                }}
+                onMouseLeave={() => {
+                  setPlacementGhost(null)
+                }}
+                onClick={handleRoomCanvasClick}
                 onDragOver={(event) => {
                   event.preventDefault()
                   if (!controller.activeRoom || !draggingInstanceId) return
                   const instanceEntry = controller.activeRoom.instances.find((candidate) => candidate.id === draggingInstanceId)
+                  if (!instanceEntry) return
                   const objectEntry = instanceEntry
                     ? controller.project.objects.find((candidate) => candidate.id === instanceEntry.objectId)
                     : null
@@ -303,10 +433,19 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                   })
                   setDragPreview({
                     instanceId: draggingInstanceId,
+                    objectId: instanceEntry.objectId,
                     x: position.x,
                     y: position.y,
                     width: instanceWidth,
-                    height: instanceHeight
+                    height: instanceHeight,
+                    isBlocked: wouldOverlapSolid({
+                      project: controller.project,
+                      roomInstances: controller.activeRoom.instances,
+                      objectId: instanceEntry.objectId,
+                      x: position.x,
+                      y: position.y,
+                      excludeInstanceId: draggingInstanceId
+                    })
                   })
                 }}
                 onDragLeave={(event) => {
@@ -319,6 +458,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                   if (!controller.activeRoom) return
                   const instanceId = event.dataTransfer.getData("text/plain")
                   const instanceEntry = controller.activeRoom.instances.find((candidate) => candidate.id === instanceId)
+                  if (!instanceEntry) return
                   const objectEntry = instanceEntry
                     ? controller.project.objects.find((candidate) => candidate.id === instanceEntry.objectId)
                     : null
@@ -336,17 +476,38 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                     instanceHeight,
                     snapSize: DRAG_SNAP_SIZE
                   })
+                  const isBlocked = wouldOverlapSolid({
+                    project: controller.project,
+                    roomInstances: controller.activeRoom.instances,
+                    objectId: instanceEntry.objectId,
+                    x: position.x,
+                    y: position.y,
+                    excludeInstanceId: instanceId
+                  })
+                  if (isBlocked) {
+                    setDragPreview({
+                      instanceId,
+                      objectId: instanceEntry.objectId,
+                      x: position.x,
+                      y: position.y,
+                      width: instanceWidth,
+                      height: instanceHeight,
+                      isBlocked: true
+                    })
+                    return
+                  }
                   controller.moveInstance(instanceId, position.x, position.y)
                   setDragPreview(null)
                   setDraggingInstanceId(null)
                 }}
               >
                 {controller.activeRoom.instances.map((instanceEntry) => {
-                  const objectEntry = controller.project.objects.find((entry) => entry.id === instanceEntry.objectId)
+                  const objectEntry = objectById[instanceEntry.objectId]
                   const spriteEntry = objectEntry?.spriteId ? spriteById[objectEntry.spriteId] : undefined
                   const spriteSource = spriteEntry ? resolvedSpriteSources[spriteEntry.id] : undefined
                   const instanceWidth = objectEntry?.width ?? DEFAULT_INSTANCE_SIZE
                   const instanceHeight = objectEntry?.height ?? DEFAULT_INSTANCE_SIZE
+                  const stackedCount = activeRoomPositionCounts.get(getPositionKey(instanceEntry.x, instanceEntry.y)) ?? 1
                   return (
                     <div
                       key={instanceEntry.id}
@@ -389,6 +550,11 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                       ) : (
                         objectEntry?.name.slice(0, 2).toUpperCase() ?? "??"
                       )}
+                      {stackedCount > 1 && (
+                        <span className="mvp20-room-instance-stack-badge pointer-events-none absolute -right-1 -top-1 z-20 flex h-4 min-w-4 items-center justify-center rounded-full bg-slate-800 px-1 text-[9px] font-semibold leading-none text-white">
+                          {stackedCount}
+                        </span>
+                      )}
                       <button
                         type="button"
                         className={`absolute -right-1.5 -top-1.5 h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white ${draggingInstanceId ? "hidden" : "hidden group-hover:flex"}`}
@@ -403,9 +569,27 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                     </div>
                   )
                 })}
+                {placementGhost && (
+                  <div
+                    className={`mvp20-room-placement-ghost pointer-events-none absolute z-10 rounded border-2 ${
+                      placementGhost.isBlocked
+                        ? "border-red-400 bg-red-400/20"
+                        : "border-blue-400 bg-blue-400/20"
+                    }`}
+                    style={{
+                      left: placementGhost.x,
+                      top: placementGhost.y,
+                      width: placementGhost.width,
+                      height: placementGhost.height
+                    }}
+                    aria-hidden
+                  />
+                )}
                 {dragPreview && (
                   <div
-                    className="mvp19-room-drag-ghost pointer-events-none absolute z-10 rounded border-2 border-blue-400 bg-blue-400/20"
+                    className={`mvp19-room-drag-ghost pointer-events-none absolute z-10 rounded border-2 ${
+                      dragPreview.isBlocked ? "border-red-400 bg-red-400/20" : "border-blue-400 bg-blue-400/20"
+                    }`}
                     style={{
                       left: dragPreview.x,
                       top: dragPreview.y,

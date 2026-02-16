@@ -56,10 +56,44 @@ import {
   type RuntimeMouseInput,
   type RuntimeState
 } from "./runtime.js"
+import { intersectsInstances } from "./runtime-types.js"
 import type { EditorSection, ObjectEventKey, ObjectEventType, ObjectKeyboardMode } from "./types.js"
 import { resolveAssetSource } from "../assets/asset-source-resolver.js"
 
 const AUTOSAVE_MS = 4000
+
+function wouldOverlapSolidInRoom(
+  project: ProjectV1,
+  roomInstances: ProjectV1["rooms"][number]["instances"],
+  objectId: string,
+  x: number,
+  y: number,
+  excludeInstanceId?: string
+): boolean {
+  const candidateObject = project.objects.find((objectEntry) => objectEntry.id === objectId)
+  const candidateIsSolid = candidateObject?.solid === true
+  const candidateInstance: ProjectV1["rooms"][number]["instances"][number] = {
+    id: "__candidate__",
+    objectId,
+    x,
+    y
+  }
+
+  for (const otherInstance of roomInstances) {
+    if (excludeInstanceId && otherInstance.id === excludeInstanceId) {
+      continue
+    }
+    const otherObject = project.objects.find((objectEntry) => objectEntry.id === otherInstance.objectId)
+    const otherIsSolid = otherObject?.solid === true
+    if (!candidateIsSolid && !otherIsSolid) {
+      continue
+    }
+    if (intersectsInstances(project, candidateInstance, otherInstance)) {
+      return true
+    }
+  }
+  return false
+}
 
 export function getRuntimeKeyFromKeyboardEvent(event: Pick<KeyboardEvent, "code" | "key">): string {
   return event.code
@@ -596,20 +630,28 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
         })
       )
     },
-    addInstanceToActiveRoom(objectId?: string) {
+    addInstanceToActiveRoom(objectId?: string, x = 80, y = 80) {
       if (!activeRoom) return
       const targetObjectId = objectId ?? selectedObject?.id
       if (!targetObjectId) return
+      if (wouldOverlapSolidInRoom(project, activeRoom.instances, targetObjectId, x, y)) {
+        return
+      }
       const next = addRoomInstance(project, {
         roomId: activeRoom.id,
         objectId: targetObjectId,
-        x: 80,
-        y: 80
+        x,
+        y
       }).project
       pushProjectChange(next, "Add instance")
     },
     moveInstance(instanceId: string, x: number, y: number) {
       if (!activeRoom) return
+      const movingInstance = activeRoom.instances.find((instanceEntry) => instanceEntry.id === instanceId)
+      if (!movingInstance) return
+      if (wouldOverlapSolidInRoom(project, activeRoom.instances, movingInstance.objectId, x, y, instanceId)) {
+        return
+      }
       pushProjectChange(
         moveRoomInstance(project, { roomId: activeRoom.id, instanceId, x, y }),
         "Move instance"
