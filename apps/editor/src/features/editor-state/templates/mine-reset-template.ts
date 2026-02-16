@@ -3,7 +3,6 @@ import {
   createEmptyProjectV1,
   createRoom,
   quickCreateObject,
-  quickCreateSound,
   quickCreateSprite
 } from "@creadordejocs/project-format"
 import {
@@ -20,11 +19,8 @@ export function createMineResetTemplateProject(): TemplateProjectResult {
   const spriteChip = quickCreateSprite(spriteRunner.project, "Chip")
   const spriteMine = quickCreateSprite(spriteChip.project, "Mine")
   const spriteExit = quickCreateSprite(spriteMine.project, "Exit")
-  const soundPickup = quickCreateSound(spriteExit.project, "Pickup")
-  const soundReset = quickCreateSound(soundPickup.project, "Reset")
-  const soundWin = quickCreateSound(soundReset.project, "Win")
 
-  const runnerObject = quickCreateObject(soundWin.project, {
+  const runnerObject = quickCreateObject(spriteExit.project, {
     name: "Runner",
     spriteId: spriteRunner.spriteId,
     x: 80,
@@ -119,7 +115,6 @@ export function createMineResetTemplateProject(): TemplateProjectResult {
     chipObject.objectId,
     { type: "Collision", targetObjectId: runnerObject.objectId },
     [
-      { type: "playSound", soundId: soundPickup.soundId },
       {
         type: "changeVariable",
         scope: "global",
@@ -134,14 +129,9 @@ export function createMineResetTemplateProject(): TemplateProjectResult {
     project,
     mineObject.objectId,
     { type: "Collision", targetObjectId: runnerObject.objectId },
-    [
-      { type: "playSound", soundId: soundReset.soundId },
-      { type: "restartRoom" }
-    ]
+    [{ type: "restartRoom" }]
   )
-  project = addEventWithActions(project, exitObject.objectId, { type: "Collision", targetObjectId: runnerObject.objectId }, [
-    { type: "playSound", soundId: soundWin.soundId }
-  ])
+  project = addEventWithActions(project, exitObject.objectId, { type: "Collision", targetObjectId: runnerObject.objectId }, [])
   project = addIfElseBlockToLatestEvent(
     project,
     exitObject.objectId,

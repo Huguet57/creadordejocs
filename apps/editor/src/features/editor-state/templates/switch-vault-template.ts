@@ -3,7 +3,6 @@ import {
   createEmptyProjectV1,
   createRoom,
   quickCreateObject,
-  quickCreateSound,
   quickCreateSprite
 } from "@creadordejocs/project-format"
 import { addEventWithActions, addGlobalVariableWithId, addIfElseBlockToLatestEvent } from "./helpers.js"
@@ -16,12 +15,8 @@ export function createSwitchVaultTemplateProject(): TemplateProjectResult {
   const spriteLift = quickCreateSprite(spriteSwitch.project, "Lift")
   const spriteGuard = quickCreateSprite(spriteLift.project, "Guard")
   const spriteVaultGate = quickCreateSprite(spriteGuard.project, "VaultGate")
-  const soundSwitch = quickCreateSound(spriteVaultGate.project, "Switch")
-  const soundLift = quickCreateSound(soundSwitch.project, "Lift")
-  const soundGuard = quickCreateSound(soundLift.project, "Guard")
-  const soundWin = quickCreateSound(soundGuard.project, "Win")
 
-  const agentObject = quickCreateObject(soundWin.project, {
+  const agentObject = quickCreateObject(spriteVaultGate.project, {
     name: "Agent",
     spriteId: spriteAgent.spriteId,
     x: 80,
@@ -130,7 +125,6 @@ export function createSwitchVaultTemplateProject(): TemplateProjectResult {
     switchObject.objectId,
     { type: "Collision", targetObjectId: agentObject.objectId },
     [
-      { type: "playSound", soundId: soundSwitch.soundId },
       {
         type: "changeVariable",
         scope: "global",
@@ -152,7 +146,6 @@ export function createSwitchVaultTemplateProject(): TemplateProjectResult {
       right: true
     },
     [
-      { type: "playSound", soundId: soundLift.soundId },
       { type: "teleport", mode: "start", x: null, y: null },
       { type: "goToRoom", roomId: vaultRoom.roomId }
     ],
@@ -165,10 +158,7 @@ export function createSwitchVaultTemplateProject(): TemplateProjectResult {
     project,
     agentObject.objectId,
     { type: "Collision", targetObjectId: guardObject.objectId },
-    [
-      { type: "playSound", soundId: soundGuard.soundId },
-      { type: "teleport", mode: "start", x: null, y: null }
-    ]
+    [{ type: "teleport", mode: "start", x: null, y: null }]
   )
   project = addEventWithActions(
     project,
@@ -184,10 +174,7 @@ export function createSwitchVaultTemplateProject(): TemplateProjectResult {
       operator: "==",
       right: true
     },
-    [
-      { type: "playSound", soundId: soundWin.soundId },
-      { type: "endGame", message: "Has obert la cambra i recuperat el tresor!" }
-    ],
+    [{ type: "endGame", message: "Has obert la cambra i recuperat el tresor!" }],
     [{ type: "goToRoom", roomId: controlRoom.roomId }]
   )
 

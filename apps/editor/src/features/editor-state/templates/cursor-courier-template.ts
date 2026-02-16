@@ -3,7 +3,6 @@ import {
   createEmptyProjectV1,
   createRoom,
   quickCreateObject,
-  quickCreateSound,
   quickCreateSprite
 } from "@creadordejocs/project-format"
 import { addEventWithActions, addGlobalVariableWithId, addIfElseBlockToLatestEvent } from "./helpers.js"
@@ -15,10 +14,8 @@ export function createCursorCourierTemplateProject(): TemplateProjectResult {
   const spritePacket = quickCreateSprite(spriteCourier.project, "Packet")
   const spriteHazard = quickCreateSprite(spritePacket.project, "Hazard")
   const spriteNode = quickCreateSprite(spriteHazard.project, "Node")
-  const soundPickup = quickCreateSound(spriteNode.project, "Pickup")
-  const soundHit = quickCreateSound(soundPickup.project, "Hit")
 
-  const courierObject = quickCreateObject(soundHit.project, {
+  const courierObject = quickCreateObject(spriteNode.project, {
     name: "Courier",
     spriteId: spriteCourier.spriteId,
     x: 80,
@@ -105,7 +102,6 @@ export function createCursorCourierTemplateProject(): TemplateProjectResult {
   ])
   project = addEventWithActions(project, hazardObject.objectId, { type: "OutsideRoom" }, [{ type: "teleport", mode: "start", x: null, y: null }])
   project = addEventWithActions(project, courierObject.objectId, { type: "Collision", targetObjectId: packetObject.objectId }, [
-    { type: "playSound", soundId: soundPickup.soundId },
     { type: "changeScore", delta: 35 },
     {
       type: "changeVariable",
@@ -140,7 +136,6 @@ export function createCursorCourierTemplateProject(): TemplateProjectResult {
     [{ type: "teleport", mode: "start", x: null, y: null }]
   )
   project = addEventWithActions(project, courierObject.objectId, { type: "Collision", targetObjectId: hazardObject.objectId }, [
-    { type: "playSound", soundId: soundHit.soundId },
     { type: "endGame", message: "Has xocat amb una zona de soroll." }
   ])
 

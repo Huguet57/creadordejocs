@@ -3,7 +3,6 @@ import {
   createEmptyProjectV1,
   createRoom,
   quickCreateObject,
-  quickCreateSound,
   quickCreateSprite
 } from "@creadordejocs/project-format"
 import { addEventWithActions, addGlobalVariableWithId, addIfElseBlockToLatestEvent } from "./helpers.js"
@@ -14,10 +13,8 @@ export function createLaneCrosserTemplateProject(): TemplateProjectResult {
   const spritePlayer = quickCreateSprite(empty, "Runner")
   const spriteCar = quickCreateSprite(spritePlayer.project, "Car")
   const spriteGoal = quickCreateSprite(spriteCar.project, "Goal")
-  const soundGoal = quickCreateSound(spriteGoal.project, "Goal")
-  const soundCrash = quickCreateSound(soundGoal.project, "Crash")
 
-  const playerObject = quickCreateObject(soundCrash.project, {
+  const playerObject = quickCreateObject(spriteGoal.project, {
     name: "Runner",
     spriteId: spritePlayer.spriteId,
     x: 280,
@@ -87,6 +84,35 @@ export function createLaneCrosserTemplateProject(): TemplateProjectResult {
   })
   const livesVariableId = withLives.variableId
   let project = withLives.project
+
+  function addCarCollisionFlow(currentProject: typeof project, carObjectId: string): typeof project {
+    const withCollision = addEventWithActions(
+      currentProject,
+      playerObject.objectId,
+      { type: "Collision", targetObjectId: carObjectId },
+      [
+        {
+          type: "changeVariable",
+          scope: "global",
+          variableId: livesVariableId,
+          operator: "subtract",
+          value: 1
+        }
+      ]
+    )
+    return addIfElseBlockToLatestEvent(
+      withCollision,
+      playerObject.objectId,
+      {
+        left: { scope: "global", variableId: livesVariableId },
+        operator: ">",
+        right: 0
+      },
+      [{ type: "teleport", mode: "start", x: null, y: null }],
+      [{ type: "endGame", message: "Has perdut totes les vides" }]
+    )
+  }
+
   project = addEventWithActions(project, playerObject.objectId, { type: "Keyboard", keyboardMode: "down", key: "ArrowUp" }, [
     { type: "move", dx: 0, dy: -24 }
   ])
@@ -106,60 +132,9 @@ export function createLaneCrosserTemplateProject(): TemplateProjectResult {
   project = addEventWithActions(project, carLeftObject.objectId, { type: "Step" }, [
     { type: "setVelocity", speed: 2.4, direction: 180 }
   ])
-  project = addEventWithActions(
-    project,
-    playerObject.objectId,
-    { type: "Collision", targetObjectId: carRightObject.objectId },
-    [
-      { type: "playSound", soundId: soundCrash.soundId },
-      {
-        type: "changeVariable",
-        scope: "global",
-        variableId: livesVariableId,
-        operator: "subtract",
-        value: 1
-      }
-    ]
-  )
-  project = addIfElseBlockToLatestEvent(
-    project,
-    playerObject.objectId,
-    {
-      left: { scope: "global", variableId: livesVariableId },
-      operator: ">",
-      right: 0
-    },
-    [{ type: "teleport", mode: "start", x: null, y: null }],
-    [{ type: "endGame", message: "Has perdut totes les vides" }]
-  )
-  project = addEventWithActions(
-    project,
-    playerObject.objectId,
-    { type: "Collision", targetObjectId: carLeftObject.objectId },
-    [
-      { type: "playSound", soundId: soundCrash.soundId },
-      {
-        type: "changeVariable",
-        scope: "global",
-        variableId: livesVariableId,
-        operator: "subtract",
-        value: 1
-      }
-    ]
-  )
-  project = addIfElseBlockToLatestEvent(
-    project,
-    playerObject.objectId,
-    {
-      left: { scope: "global", variableId: livesVariableId },
-      operator: ">",
-      right: 0
-    },
-    [{ type: "teleport", mode: "start", x: null, y: null }],
-    [{ type: "endGame", message: "Has perdut totes les vides" }]
-  )
+  project = addCarCollisionFlow(project, carRightObject.objectId)
+  project = addCarCollisionFlow(project, carLeftObject.objectId)
   project = addEventWithActions(project, goalObject.objectId, { type: "OnDestroy" }, [
-    { type: "playSound", soundId: soundGoal.soundId },
     { type: "changeScore", delta: 100 },
     { type: "endGame", message: "Meta assolida. Has guanyat!" }
   ])

@@ -3,7 +3,6 @@ import {
   createEmptyProjectV1,
   createRoom,
   quickCreateObject,
-  quickCreateSound,
   quickCreateSprite
 } from "@creadordejocs/project-format"
 import {
@@ -21,11 +20,8 @@ export function createBatteryCourierTemplateProject(): TemplateProjectResult {
   const spriteBattery = quickCreateSprite(spriteCourier.project, "Battery")
   const spriteReactor = quickCreateSprite(spriteBattery.project, "Reactor")
   const spriteHazard = quickCreateSprite(spriteReactor.project, "Hazard")
-  const soundPickup = quickCreateSound(spriteHazard.project, "Pickup")
-  const soundTransfer = quickCreateSound(soundPickup.project, "Transfer")
-  const soundHit = quickCreateSound(soundTransfer.project, "Hit")
 
-  const courierObject = quickCreateObject(soundHit.project, {
+  const courierObject = quickCreateObject(spriteHazard.project, {
     name: "Courier",
     spriteId: spriteCourier.spriteId,
     x: 80,
@@ -127,7 +123,6 @@ export function createBatteryCourierTemplateProject(): TemplateProjectResult {
     batteryObject.objectId,
     { type: "Collision", targetObjectId: courierObject.objectId },
     [
-      { type: "playSound", soundId: soundPickup.soundId },
       {
         type: "changeVariable",
         scope: "object",
@@ -145,7 +140,6 @@ export function createBatteryCourierTemplateProject(): TemplateProjectResult {
     reactorObject.objectId,
     { type: "Collision", targetObjectId: courierObject.objectId },
     [
-      { type: "playSound", soundId: soundTransfer.soundId },
       {
         type: "copyVariable",
         direction: "objectToGlobal",
@@ -183,10 +177,7 @@ export function createBatteryCourierTemplateProject(): TemplateProjectResult {
     project,
     hazardObject.objectId,
     { type: "Collision", targetObjectId: courierObject.objectId },
-    [
-      { type: "playSound", soundId: soundHit.soundId },
-      { type: "endGame", message: "Has tocat una zona electrificada." }
-    ]
+    [{ type: "endGame", message: "Has tocat una zona electrificada." }]
   )
 
   return {

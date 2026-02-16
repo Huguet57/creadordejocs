@@ -148,4 +148,13 @@ describe("template catalog", () => {
 
     expect(hasNestedIf).toBe(true)
   })
+
+  it.each(GAME_TEMPLATES.map((entry) => entry.id))("builds %s without obsolete playSound actions", (templateId) => {
+    const created = createTemplateProject(templateId)
+    const hasPlaySound = created.project.objects.some((objectEntry) =>
+      objectEntry.events.some((eventEntry) => itemsContainActionType(eventEntry.items, "playSound"))
+    )
+
+    expect(hasPlaySound).toBe(false)
+  })
 })
