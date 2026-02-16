@@ -1,18 +1,32 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Play, Square } from "lucide-react"
-import type { EditorController } from "../editor-state/use-editor-controller.js"
+import type { ProjectV1 } from "@creadordejocs/project-format"
 import { Button } from "../../components/ui/button.js"
 import { resolveAssetSource } from "../assets/asset-source-resolver.js"
+import type { RuntimeMouseButton, RuntimeState } from "../editor-state/runtime.js"
 
 const ROOM_WIDTH = 840
 const ROOM_HEIGHT = 480
 const INSTANCE_SIZE = 32
 
 type RunSectionProps = {
-  controller: EditorController
+  controller: RunSectionController
+  mode?: "editor" | "play"
 }
 
-export function RunSection({ controller }: RunSectionProps) {
+export type RunSectionController = {
+  project: ProjectV1
+  runtimeState: RuntimeState
+  activeRoom: ProjectV1["rooms"][number] | null
+  isRunning: boolean
+  run: () => void
+  reset: () => void
+  updateRuntimeMousePosition: (x: number, y: number) => void
+  setRuntimeMouseButton: (button: RuntimeMouseButton, pressed: boolean) => void
+}
+
+export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
+  const isPlayMode = mode === "play"
   const { runtimeState } = controller
   const [resolvedSpriteSources, setResolvedSpriteSources] = useState<Record<string, string>>({})
   const canvasRef = useRef<HTMLDivElement>(null)
@@ -122,95 +136,118 @@ export function RunSection({ controller }: RunSectionProps) {
   }, [controller])
 
   return (
-    <div className="mvp15-run-container flex h-[700px] w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-      {/* Left panel: Controls & HUD */}
-      <aside className="flex w-[200px] flex-col border-r border-slate-200 bg-slate-50">
-        <div className="flex items-center justify-between border-b border-slate-200 p-3">
-          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Run</span>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-3 space-y-4">
-          <div className="space-y-2">
-            <Button
-              className="w-full h-9 text-xs"
-              onClick={() => controller.isRunning ? controller.reset() : controller.run()}
-            >
-              {controller.isRunning ? (
-                <>
-                  <Square className="mr-2 h-3.5 w-3.5" />
-                  Stop
-                </>
-              ) : (
-                <>
-                  <Play className="mr-2 h-3.5 w-3.5" />
-                  Run
-                </>
-              )}
-            </Button>
+    <div className={`mvp15-run-container flex w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm ${isPlayMode ? "min-h-[560px]" : "h-[700px]"}`}>
+      {!isPlayMode && (
+        <aside className="flex w-[200px] flex-col border-r border-slate-200 bg-slate-50">
+          <div className="flex items-center justify-between border-b border-slate-200 p-3">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Run</span>
           </div>
 
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</p>
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-500">Room</span>
-                <span className="text-xs font-medium text-slate-800">{controller.activeRoom?.name ?? "none"}</span>
+          <div className="flex-1 overflow-y-auto p-3 space-y-4">
+            <div className="space-y-2">
+              <Button
+                className="w-full h-9 text-xs"
+                onClick={() => controller.isRunning ? controller.reset() : controller.run()}
+              >
+                {controller.isRunning ? (
+                  <>
+                    <Square className="mr-2 h-3.5 w-3.5" />
+                    Stop
+                  </>
+                ) : (
+                  <>
+                    <Play className="mr-2 h-3.5 w-3.5" />
+                    Run
+                  </>
+                )}
+              </Button>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</p>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-500">Room</span>
+                  <span className="text-xs font-medium text-slate-800">{controller.activeRoom?.name ?? "none"}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-500">Score</span>
+                  <span data-testid="run-score" className="text-xs font-medium text-slate-800">{runtimeState.score}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-500">State</span>
+                  <span
+                    data-testid="run-game-state"
+                    className={`text-xs font-medium ${runtimeState.gameOver ? "text-red-600" : "text-green-600"}`}
+                  >
+                    {runtimeState.gameOver ? "Game Over" : "Running"}
+                  </span>
+                </div>
+                {runtimeState.gameOver && runtimeState.message && (
+                  <p className="mt-1 rounded bg-red-50 px-2 py-1.5 text-[10px] text-red-600">
+                    {runtimeState.message}
+                  </p>
+                )}
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-500">Score</span>
-                <span data-testid="run-score" className="text-xs font-medium text-slate-800">{runtimeState.score}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-500">State</span>
-                <span
-                  data-testid="run-game-state"
-                  className={`text-xs font-medium ${runtimeState.gameOver ? "text-red-600" : "text-green-600"}`}
-                >
-                  {runtimeState.gameOver ? "Game Over" : "Running"}
-                </span>
-              </div>
-              {runtimeState.gameOver && runtimeState.message && (
-                <p className="mt-1 rounded bg-red-50 px-2 py-1.5 text-[10px] text-red-600">
-                  {runtimeState.message}
-                </p>
+            </div>
+
+            <div className="mvp16-run-global-vars space-y-2">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Global variables</p>
+              {globalVariableEntries.length === 0 ? (
+                <p className="mvp16-run-global-vars-empty text-[11px] text-slate-400">No globals defined</p>
+              ) : (
+                <div className="mvp16-run-global-vars-list space-y-1.5">
+                  {globalVariableEntries.map((variableEntry) => (
+                    <div key={variableEntry.id} className="mvp16-run-global-var-row flex items-center justify-between">
+                      <span className="mvp16-run-global-var-name text-xs text-slate-500">{variableEntry.name}</span>
+                      <span className="mvp16-run-global-var-value text-xs font-medium text-slate-800">
+                        {variableEntry.value === undefined ? "–" : String(variableEntry.value)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           </div>
-
-          <div className="mvp16-run-global-vars space-y-2">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Global variables</p>
-            {globalVariableEntries.length === 0 ? (
-              <p className="mvp16-run-global-vars-empty text-[11px] text-slate-400">No globals defined</p>
-            ) : (
-              <div className="mvp16-run-global-vars-list space-y-1.5">
-                {globalVariableEntries.map((variableEntry) => (
-                  <div key={variableEntry.id} className="mvp16-run-global-var-row flex items-center justify-between">
-                    <span className="mvp16-run-global-var-name text-xs text-slate-500">{variableEntry.name}</span>
-                    <span className="mvp16-run-global-var-value text-xs font-medium text-slate-800">
-                      {variableEntry.value === undefined ? "–" : String(variableEntry.value)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </aside>
+        </aside>
+      )}
 
       {/* Right panel: Game canvas */}
       <div className="flex flex-1 flex-col">
-        <div className="flex h-12 items-center justify-between border-b border-slate-200 px-4">
-          <h3 className="text-sm text-slate-800">
-            Preview: <span className="font-semibold text-slate-900">{controller.activeRoom?.name ?? "none"}</span>
-          </h3>
-          {controller.activeRoom && (
-            <span className="text-xs text-slate-400">
-              {controller.isRunning ? "Playing" : "Stopped"}
-            </span>
-          )}
-        </div>
+        {!isPlayMode && (
+          <div className="flex h-12 items-center justify-between border-b border-slate-200 px-4">
+            <h3 className="text-sm text-slate-800">
+              Preview: <span className="font-semibold text-slate-900">{controller.activeRoom?.name ?? "none"}</span>
+            </h3>
+            {controller.activeRoom && (
+              <span className="text-xs text-slate-400">
+                {controller.isRunning ? "Playing" : "Stopped"}
+              </span>
+            )}
+          </div>
+        )}
 
-        <div className="flex-1 overflow-auto p-4 bg-slate-50/50">
+        <div className={`flex-1 overflow-auto p-4 ${isPlayMode ? "bg-slate-50" : "bg-slate-50/50"}`}>
+          {isPlayMode && (
+            <div className="mb-3 flex items-center justify-end">
+              <Button
+                className="h-9 text-xs"
+                onClick={() => controller.isRunning ? controller.reset() : controller.run()}
+              >
+                {controller.isRunning ? (
+                  <>
+                    <Square className="mr-2 h-3.5 w-3.5" />
+                    Stop
+                  </>
+                ) : (
+                  <>
+                    <Play className="mr-2 h-3.5 w-3.5" />
+                    Run
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
           {!controller.activeRoom ? (
             <div className="flex h-full items-center justify-center text-slate-400">
               <p>Create a room first to run the game</p>
