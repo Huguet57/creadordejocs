@@ -14,6 +14,7 @@ import {
   createRoom,
   incrementMetric,
   moveObjectEventAction as moveObjectEventActionModel,
+  moveSpriteFolder as moveSpriteFolderModel,
   moveSpriteToFolder as moveSpriteToFolderModel,
   moveRoomInstance,
   renameSprite as renameSpriteModel,
@@ -515,6 +516,14 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
         return false
       }
       pushProjectChange(next, "Move sprite")
+      return true
+    },
+    moveSpriteFolder(folderId: string, newParentId: string | null) {
+      const next = moveSpriteFolderModel(project, folderId, newParentId)
+      if (next === project) {
+        return false
+      }
+      pushProjectChange(next, "Move folder")
       return true
     },
     deleteSprite(spriteId: string) {

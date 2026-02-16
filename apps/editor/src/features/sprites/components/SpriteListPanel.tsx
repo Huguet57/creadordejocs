@@ -1,8 +1,9 @@
 import { ChevronRight, Folder, FolderOpen, Image, Pencil, Plus, Trash2 } from "lucide-react"
-import { useEffect, useMemo, useState, type ChangeEvent, type KeyboardEvent, type MouseEvent } from "react"
+import { useEffect, useMemo, useState, type ChangeEvent, type DragEvent, type KeyboardEvent, type MouseEvent } from "react"
 import { Button } from "../../../components/ui/button.js"
 
 const DEFAULT_SPRITE_DIMENSION = 32
+const DND_MIME = "application/x-sprite-tree-node"
 
 type SpriteListEntry = {
   id: string
@@ -32,6 +33,7 @@ type SpriteListPanelProps = {
   onMoveSpriteToFolder: (spriteId: string, folderId: string | null) => boolean
   onRenameFolder: (folderId: string, name: string) => boolean
   onDeleteFolder: (folderId: string) => boolean
+  onMoveFolderToParent: (folderId: string, newParentId: string | null) => boolean
 }
 
 type ContextMenuState =
@@ -58,7 +60,8 @@ export function SpriteListPanel({
   onDeleteSprite,
   onMoveSpriteToFolder,
   onRenameFolder,
-  onDeleteFolder
+  onDeleteFolder,
+  onMoveFolderToParent
 }: SpriteListPanelProps) {
   const [isAdding, setIsAdding] = useState(false)
   const [newName, setNewName] = useState("Sprite nou")
@@ -71,6 +74,62 @@ export function SpriteListPanel({
   const [creatingFolderParentId, setCreatingFolderParentId] = useState<string | null | undefined>(undefined)
   const [newFolderName, setNewFolderName] = useState("Nova carpeta")
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null)
+  const [draggedNode, setDraggedNode] = useState<TreeNode | null>(null)
+  const [dropTargetFolderId, setDropTargetFolderId] = useState<string | null | undefined>(undefined)
+
+  const handleDragStart = (event: DragEvent<HTMLElement>, node: TreeNode) => {
+    event.dataTransfer.setData(DND_MIME, JSON.stringify(node))
+    event.dataTransfer.effectAllowed = "move"
+    setDraggedNode(node)
+  }
+
+  const handleDragEnd = () => {
+    setDraggedNode(null)
+    setDropTargetFolderId(undefined)
+  }
+
+  const handleDragOver = (event: DragEvent<HTMLElement>, targetFolderId: string | null) => {
+    if (!event.dataTransfer.types.includes(DND_MIME)) {
+      return
+    }
+    if (draggedNode?.type === "folder" && draggedNode.id === targetFolderId) {
+      return
+    }
+    event.preventDefault()
+    event.dataTransfer.dropEffect = "move"
+    setDropTargetFolderId(targetFolderId)
+  }
+
+  const handleDragLeave = (event: DragEvent<HTMLElement>) => {
+    const related = event.relatedTarget
+    if (related instanceof Node && event.currentTarget.contains(related)) {
+      return
+    }
+    setDropTargetFolderId(undefined)
+  }
+
+  const handleDrop = (event: DragEvent<HTMLElement>, targetFolderId: string | null) => {
+    event.preventDefault()
+    setDropTargetFolderId(undefined)
+    setDraggedNode(null)
+    const raw = event.dataTransfer.getData(DND_MIME)
+    if (!raw) return
+    try {
+      const node = JSON.parse(raw) as TreeNode
+      if (node.type === "sprite") {
+        onMoveSpriteToFolder(node.id, targetFolderId)
+      } else if (node.type === "folder") {
+        if (node.id !== targetFolderId) {
+          onMoveFolderToParent(node.id, targetFolderId)
+        }
+      }
+      if (targetFolderId) {
+        setExpandedFolderIds((previous) => new Set([...previous, targetFolderId]))
+      }
+    } catch {
+      // ignore malformed drag data
+    }
+  }
 
   const foldersById = useMemo(() => new Map(spriteFolders.map((folderEntry) => [folderEntry.id, folderEntry])), [spriteFolders])
 
@@ -270,15 +329,23 @@ export function SpriteListPanel({
     const isExpanded = expandedFolderIds.has(folderEntry.id)
     const isSelected = selectedNode?.type === "folder" && selectedNode.id === folderEntry.id
     const isRenaming = renamingNode?.type === "folder" && renamingNode.id === folderEntry.id
+    const isDragOver = dropTargetFolderId === folderEntry.id
+    const isDragging = draggedNode?.type === "folder" && draggedNode.id === folderEntry.id
     const childFolders = folderChildrenByParent.get(folderEntry.id) ?? []
     const childSprites = spritesByFolder.get(folderEntry.id) ?? []
     return (
       <div key={folderEntry.id} className="mvp16-sprite-tree-folder-container">
         <button
           type="button"
-          className={`mvp16-sprite-tree-folder-row flex h-7 w-full items-center gap-1 rounded px-2 text-left text-xs ${
-            isSelected ? "bg-indigo-50 text-indigo-700" : "text-slate-700 hover:bg-slate-100"
-          }`}
+          draggable={!isRenaming}
+          onDragStart={(event) => handleDragStart(event, { type: "folder", id: folderEntry.id })}
+          onDragEnd={handleDragEnd}
+          onDragOver={(event) => handleDragOver(event, folderEntry.id)}
+          onDragLeave={handleDragLeave}
+          onDrop={(event) => handleDrop(event, folderEntry.id)}
+          className={`mvp16-sprite-tree-folder-row flex h-7 w-full items-center gap-1 rounded px-2 text-left text-xs transition-colors ${
+            isDragOver ? "bg-indigo-100 ring-2 ring-indigo-300" : isSelected ? "bg-indigo-50 text-indigo-700" : "text-slate-700 hover:bg-slate-100"
+          } ${isDragging ? "opacity-40" : ""}`}
           style={{ paddingLeft: `${depth * 14 + 8}px` }}
           onClick={() => setSelectedNode({ type: "folder", id: folderEntry.id })}
           onDoubleClick={() => startRename({ type: "folder", id: folderEntry.id })}
@@ -341,13 +408,17 @@ export function SpriteListPanel({
     const isSelected = selectedNode?.type === "sprite" && selectedNode.id === spriteEntry.id
     const isRenaming = renamingNode?.type === "sprite" && renamingNode.id === spriteEntry.id
     const highlighted = isSelected || isActive
+    const isDragging = draggedNode?.type === "sprite" && draggedNode.id === spriteEntry.id
     return (
       <button
         key={spriteEntry.id}
         type="button"
+        draggable={!isRenaming}
+        onDragStart={(event) => handleDragStart(event, { type: "sprite", id: spriteEntry.id })}
+        onDragEnd={handleDragEnd}
         className={`mvp16-sprite-tree-sprite-row flex h-8 w-full items-center gap-2 rounded px-2 text-left text-xs ${
           highlighted ? "bg-indigo-50 text-indigo-700" : "text-slate-700 hover:bg-slate-100"
-        }`}
+        } ${isDragging ? "opacity-40" : ""}`}
         style={{ paddingLeft: `${depth * 14 + 8}px` }}
         onClick={() => {
           setSelectedNode({ type: "sprite", id: spriteEntry.id })
@@ -426,8 +497,13 @@ export function SpriteListPanel({
       </div>
 
       <div
-        className="mvp16-sprite-tree-items flex-1 overflow-y-auto bg-slate-50 p-2"
+        className={`mvp16-sprite-tree-items flex-1 overflow-y-auto p-2 transition-colors ${
+          dropTargetFolderId === null && draggedNode ? "bg-indigo-50/50" : "bg-slate-50"
+        }`}
         tabIndex={0}
+        onDragOver={(event) => handleDragOver(event, null)}
+        onDragLeave={handleDragLeave}
+        onDrop={(event) => handleDrop(event, null)}
         onKeyDown={(event) => {
           if (renamingNode || creatingFolderParentId !== undefined) {
             return

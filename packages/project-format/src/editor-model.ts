@@ -728,6 +728,50 @@ export function renameSprite(project: ProjectV1, spriteId: string, name: string)
   }
 }
 
+export function moveSpriteFolder(project: ProjectV1, folderId: string, newParentId: string | null): ProjectV1 {
+  const spriteFolders = getSpriteFolders(project)
+  const normalizedParent = newParentId ?? null
+  const folderEntry = spriteFolders.find((entry) => entry.id === folderId)
+  if (!folderEntry) {
+    return project
+  }
+  if ((folderEntry.parentId ?? null) === normalizedParent) {
+    return project
+  }
+  if (normalizedParent && !spriteFolders.some((entry) => entry.id === normalizedParent)) {
+    return project
+  }
+  if (normalizedParent) {
+    const ancestors = new Set<string>()
+    let current: string | null = normalizedParent
+    while (current) {
+      if (current === folderId) {
+        return project
+      }
+      if (ancestors.has(current)) {
+        break
+      }
+      ancestors.add(current)
+      const parent = spriteFolders.find((entry) => entry.id === current)
+      current = parent?.parentId ?? null
+    }
+  }
+  return {
+    ...project,
+    resources: {
+      ...project.resources,
+      spriteFolders: spriteFolders.map((entry) =>
+        entry.id === folderId
+          ? {
+              ...entry,
+              parentId: normalizedParent
+            }
+          : entry
+      )
+    }
+  }
+}
+
 export function moveSpriteToFolder(project: ProjectV1, spriteId: string, folderId: string | null): ProjectV1 {
   const normalizedFolderId = folderId ?? null
   const hasSprite = project.resources.sprites.some((entry) => entry.id === spriteId)

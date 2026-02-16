@@ -94,6 +94,7 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
         onMoveSpriteToFolder={(spriteId, folderId) => controller.moveSpriteToFolder(spriteId, folderId)}
         onRenameFolder={(folderId, name) => controller.renameSpriteFolder(folderId, name)}
         onDeleteFolder={(folderId) => controller.deleteSpriteFolder(folderId)}
+        onMoveFolderToParent={(folderId, newParentId) => controller.moveSpriteFolder(folderId, newParentId)}
       />
 
       <div className="mvp16-sprite-editor-main flex flex-1 flex-col">

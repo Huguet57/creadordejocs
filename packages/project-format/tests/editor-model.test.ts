@@ -11,6 +11,7 @@ import {
   deleteSprite,
   deleteSpriteFolder,
   moveObjectEventAction,
+  moveSpriteFolder,
   moveSpriteToFolder,
   moveRoomInstance,
   renameSprite,
@@ -214,6 +215,31 @@ describe("editor model helpers", () => {
     expect((afterDelete.resources.spriteFolders ?? []).find((entry) => entry.id === rootFolderId)).toBeUndefined()
     expect((afterDelete.resources.spriteFolders ?? []).find((entry) => entry.id === childFolderId)?.parentId).toBeNull()
     expect(afterDelete.resources.sprites.find((entry) => entry.id === spriteResult.spriteId)?.folderId).toBeNull()
+  })
+
+  it("moves a folder to a new parent and prevents cycles", () => {
+    const initial = createEmptyProjectV1("Folder move")
+    const folderA = createSpriteFolder(initial, "A")
+    if (!folderA.folderId) throw new Error("Expected folder A")
+    const folderB = createSpriteFolder(folderA.project, "B")
+    if (!folderB.folderId) throw new Error("Expected folder B")
+    const folderC = createSpriteFolder(folderB.project, "C", folderB.folderId)
+    if (!folderC.folderId) throw new Error("Expected folder C")
+
+    const movedBIntoA = moveSpriteFolder(folderC.project, folderB.folderId, folderA.folderId)
+    expect(
+      (movedBIntoA.resources.spriteFolders ?? []).find((entry) => entry.id === folderB.folderId)?.parentId
+    ).toBe(folderA.folderId)
+
+    const cyclicMoveAIntoC = moveSpriteFolder(movedBIntoA, folderA.folderId, folderC.folderId)
+    expect(
+      (cyclicMoveAIntoC.resources.spriteFolders ?? []).find((entry) => entry.id === folderA.folderId)?.parentId
+    ).toBeNull()
+
+    const movedToRoot = moveSpriteFolder(movedBIntoA, folderB.folderId, null)
+    expect(
+      (movedToRoot.resources.spriteFolders ?? []).find((entry) => entry.id === folderB.folderId)?.parentId
+    ).toBeNull()
   })
 
   it("deletes a sprite and clears object sprite references", () => {
