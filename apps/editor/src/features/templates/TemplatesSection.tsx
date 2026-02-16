@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { Coins, Crosshair, MousePointer2, Route, Waypoints } from "lucide-react"
 import { Button } from "../../components/ui/button.js"
 import {
@@ -6,6 +7,7 @@ import {
   type GameTemplateId
 } from "../editor-state/game-templates.js"
 import type { EditorController } from "../editor-state/use-editor-controller.js"
+import { downloadProjectAsJson } from "./export-project.js"
 
 type TemplatesSectionProps = {
   controller: EditorController
@@ -67,6 +69,17 @@ function renderTemplateCards(controller: EditorController, entries: TemplateCard
 }
 
 export function TemplatesSection({ controller }: TemplatesSectionProps) {
+  const [exportStatus, setExportStatus] = useState<"idle" | "error">("idle")
+
+  const exportCurrentProject = (): void => {
+    try {
+      downloadProjectAsJson(controller.project)
+      setExportStatus("idle")
+    } catch {
+      setExportStatus("error")
+    }
+  }
+
   return (
     <div className="mvp15-templates-panel flex h-[600px] flex-col gap-4 overflow-y-auto rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
       <div>
@@ -93,15 +106,30 @@ export function TemplatesSection({ controller }: TemplatesSectionProps) {
         {renderTemplateCards(controller, advancedTemplates)}
       </div>
 
-      <div className="mt-2 border-t border-slate-200 pt-4">
-        <Button
-          variant="outline"
-          size="sm"
-          className="text-xs"
-          onClick={() => controller.loadSavedProject()}
-        >
-          Load from local storage
-        </Button>
+      <div className="mvp18-templates-footer mt-2 border-t border-slate-200 pt-4">
+        <div className="mvp18-templates-footer-actions flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="mvp18-template-export-current-button text-xs"
+            onClick={exportCurrentProject}
+          >
+            Exportar joc actual
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="mvp18-template-load-local-button text-xs"
+            onClick={() => controller.loadSavedProject()}
+          >
+            Load from local storage
+          </Button>
+        </div>
+        {exportStatus === "error" && (
+          <p className="mvp18-template-export-error mt-2 text-xs text-red-600">
+            No s&apos;ha pogut exportar el joc. Torna-ho a provar.
+          </p>
+        )}
       </div>
     </div>
   )
