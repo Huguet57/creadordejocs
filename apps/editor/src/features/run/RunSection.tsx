@@ -278,7 +278,7 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
                   return (
                     <div
                       key={instanceEntry.id}
-                      className={`mvp15-run-instance absolute flex items-center justify-center overflow-hidden rounded text-[10px] ${spriteSource ? "" : "bg-indigo-500 text-white"}`}
+                      className={`mvp15-run-instance absolute flex items-center justify-center overflow-hidden text-[10px] ${spriteSource ? "" : "bg-indigo-500 text-white"}`}
                       style={{
                         left: instanceEntry.x,
                         top: instanceEntry.y,
