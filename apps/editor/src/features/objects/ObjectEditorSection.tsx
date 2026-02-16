@@ -223,7 +223,7 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
     if (type === "spawnObject") {
       const target = selectableTargetObjects[0]
       if (!target) return null
-      return { type: "spawnObject", objectId: target.id, offsetX: 0, offsetY: 0 }
+      return { type: "spawnObject", objectId: target.id, offsetX: 0, offsetY: 0, positionMode: "absolute" }
     }
     return null
   }

@@ -357,8 +357,9 @@ describe("runtime regressions", () => {
 
     expect(bulletsAfter).toHaveLength(1)
     expect(spawnedBullet).toBeTruthy()
-    expect(spawnedBullet?.x).toBe((shipBefore?.x ?? 0) + 0)
-    expect(spawnedBullet?.y).toBe((shipBefore?.y ?? 0) - 18)
+    // Relative spawn is from center of the ship (32x32 default → +16,+16)
+    expect(spawnedBullet?.x).toBe((shipBefore?.x ?? 0) + 16 + 0)
+    expect(spawnedBullet?.y).toBe((shipBefore?.y ?? 0) + 16 - 18)
   })
 
   it("runs Keyboard/down on every tick while key is held", () => {
@@ -2865,6 +2866,156 @@ describe("runtime regressions", () => {
     const spawned = result.project.rooms[0]?.instances.find((entry) => entry.id !== "instance-spawner")
     expect(spawned).toBeDefined()
     expect(spawned?.rotation).toBe(0)
+  })
+
+  it("spawnObject with positionMode 'absolute' uses world coordinates", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-spawn-absolute",
+        name: "Spawn absolute test",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: { sprites: [], sounds: [] },
+      variables: { global: [], objectByObjectId: {} },
+      objects: [
+        {
+          id: "object-spawner",
+          name: "Spawner",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step",
+              type: "Step",
+              key: null,
+              keyboardMode: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [
+                {
+                  id: "item-spawn",
+                  type: "action",
+                  action: {
+                    id: "action-spawn",
+                    type: "spawnObject",
+                    objectId: "object-target",
+                    offsetX: 200,
+                    offsetY: 300,
+                    positionMode: "absolute"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          id: "object-target",
+          name: "Target",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: []
+        }
+      ],
+      rooms: [{ id: "room-main", name: "Main", instances: [{ id: "instance-spawner", objectId: "object-spawner", x: 50, y: 75 }] }],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    const spawned = result.project.rooms[0]?.instances.find((entry) => entry.id !== "instance-spawner")
+    expect(spawned).toBeDefined()
+    expect(spawned?.x).toBe(200)
+    expect(spawned?.y).toBe(300)
+  })
+
+  it("spawnObject without positionMode defaults to relative from center", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-spawn-relative-default",
+        name: "Spawn relative default test",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: { sprites: [], sounds: [] },
+      variables: { global: [], objectByObjectId: {} },
+      objects: [
+        {
+          id: "object-spawner",
+          name: "Spawner",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step",
+              type: "Step",
+              key: null,
+              keyboardMode: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [
+                {
+                  id: "item-spawn",
+                  type: "action",
+                  action: {
+                    id: "action-spawn",
+                    type: "spawnObject",
+                    objectId: "object-target",
+                    offsetX: 10,
+                    offsetY: 20
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          id: "object-target",
+          name: "Target",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: []
+        }
+      ],
+      rooms: [{ id: "room-main", name: "Main", instances: [{ id: "instance-spawner", objectId: "object-spawner", x: 50, y: 75 }] }],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    // Spawner at (50,75) with default 32x32 → center at (66,91). Offset (10,20) → (76,111)
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    const spawned = result.project.rooms[0]?.instances.find((entry) => entry.id !== "instance-spawner")
+    expect(spawned).toBeDefined()
+    expect(spawned?.x).toBe(76)
+    expect(spawned?.y).toBe(111)
   })
 
   it("rotate/add treats missing rotation as zero (backward compatibility)", () => {

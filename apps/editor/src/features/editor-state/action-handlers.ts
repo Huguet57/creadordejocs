@@ -12,6 +12,8 @@ import {
   clampValue,
   getInstanceHeight,
   getInstanceWidth,
+  getObjectWidth,
+  getObjectHeight,
   intersectsInstances,
   isReadonlyGlobalVariableId,
   isSameVariableValueType,
@@ -441,6 +443,13 @@ export function executeAction(
     if (!targetObjectExists) {
       return { result }
     }
+    const isAbsolute = action.positionMode === "absolute"
+    const resolvedX = resolveNumberValue(action.offsetX, result, ctx) ?? 0
+    const resolvedY = resolveNumberValue(action.offsetY, result, ctx) ?? 0
+    const spawnerW = getObjectWidth(ctx.project, result.instance.objectId)
+    const spawnerH = getObjectHeight(ctx.project, result.instance.objectId)
+    const centerX = result.instance.x + spawnerW / 2
+    const centerY = result.instance.y + spawnerH / 2
     return {
       result: {
         ...result,
@@ -449,8 +458,8 @@ export function executeAction(
           {
             id: `instance-${generateUUID()}`,
             objectId: action.objectId,
-            x: result.instance.x + (resolveNumberValue(action.offsetX, result, ctx) ?? 0),
-            y: result.instance.y + (resolveNumberValue(action.offsetY, result, ctx) ?? 0),
+            x: isAbsolute ? resolvedX : centerX + resolvedX,
+            y: isAbsolute ? resolvedY : centerY + resolvedY,
             rotation: 0
           }
         ]

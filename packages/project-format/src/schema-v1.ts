@@ -157,7 +157,8 @@ const ObjectActionSchema = z.discriminatedUnion("type", [
     type: z.literal("spawnObject"),
     objectId: z.string().min(1),
     offsetX: z.union([z.number(), ValueSourceSchema, LegacyVariableReferenceSchema]),
-    offsetY: z.union([z.number(), ValueSourceSchema, LegacyVariableReferenceSchema])
+    offsetY: z.union([z.number(), ValueSourceSchema, LegacyVariableReferenceSchema]),
+    positionMode: z.enum(["absolute", "relative"]).optional()
   }),
   z.object({
     id: z.string().min(1),

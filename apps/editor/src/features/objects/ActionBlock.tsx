@@ -400,6 +400,14 @@ export function ActionBlock({
                 <option key={obj.id} value={obj.id}>{obj.name}</option>
               ))}
             </select>
+            <select
+              className="action-block-spawn-position-mode h-7 rounded border border-slate-300 bg-white/50 px-2 text-xs focus:outline-none"
+              value={action.positionMode ?? "relative"}
+              onChange={(e) => onUpdate({ ...action, positionMode: e.target.value as "absolute" | "relative" })}
+            >
+              <option value="absolute">Absolut</option>
+              <option value="relative">Relatiu</option>
+            </select>
             <div className="flex items-center gap-1">
               <label className="text-[10px] font-medium opacity-60">X</label>
               <RightValuePicker
