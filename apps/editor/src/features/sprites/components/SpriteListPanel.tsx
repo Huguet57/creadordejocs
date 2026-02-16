@@ -357,7 +357,10 @@ export function SpriteListPanel({
           } ${isDragging ? "opacity-40" : ""}`}
           style={{ paddingLeft: `${depth * 14 + 8}px` }}
           onClick={() => setSelectedNode({ type: "folder", id: folderEntry.id })}
-          onDoubleClick={() => startRename({ type: "folder", id: folderEntry.id })}
+          onDoubleClick={(event) => {
+            event.preventDefault()
+            toggleFolderExpansion(folderEntry.id)
+          }}
           onContextMenu={(event: MouseEvent<HTMLButtonElement>) => {
             event.preventDefault()
             setSelectedNode({ type: "folder", id: folderEntry.id })
