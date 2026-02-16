@@ -198,6 +198,15 @@ export function SpriteImportCropModal({
     ctx.imageSmoothingEnabled = false
     ctx.clearRect(0, 0, previewW, previewH)
 
+    const checkerSize = 8
+    for (let py = 0; py < previewH; py += checkerSize) {
+      for (let px = 0; px < previewW; px += checkerSize) {
+        const isLight = ((px / checkerSize) + (py / checkerSize)) % 2 === 0
+        ctx.fillStyle = isLight ? "#ffffff" : "#e2e2e2"
+        ctx.fillRect(px, py, checkerSize, checkerSize)
+      }
+    }
+
     const tiny = document.createElement("canvas")
     tiny.width = targetWidth
     tiny.height = targetHeight
@@ -315,11 +324,11 @@ export function SpriteImportCropModal({
           </p>
         </div>
 
-        <div className="mvp16-import-crop-body flex flex-1 gap-4 overflow-auto p-4">
+        <div className="mvp16-import-crop-body flex flex-1 items-center justify-center gap-6 overflow-auto p-4">
           <div className="mvp16-import-crop-source flex flex-col items-center gap-2">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Imatge original</span>
             <div
-              className="mvp16-import-crop-source-box flex items-center justify-center overflow-hidden rounded border border-slate-200 bg-slate-100"
+              className="mvp16-import-crop-source-box flex items-center justify-center overflow-hidden border border-slate-200"
               style={{ width: SOURCE_BOX_W, height: SOURCE_BOX_H }}
             >
               <canvas
@@ -337,11 +346,18 @@ export function SpriteImportCropModal({
             </p>
           </div>
 
+          <div className="mvp16-import-crop-arrow flex items-center text-slate-300">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 12h14" />
+              <path d="m12 5 7 7-7 7" />
+            </svg>
+          </div>
+
           <div className="mvp16-import-crop-preview flex flex-col items-center justify-center gap-2">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Resultat esperat</span>
             <div
-              className="mvp16-import-crop-preview-box flex items-center justify-center rounded border border-slate-200 bg-slate-100 p-2"
-              style={{ width: previewW + 16, height: previewH + 16 }}
+              className="mvp16-import-crop-preview-box flex items-center justify-center overflow-hidden border border-slate-200"
+              style={{ width: previewW, height: previewH }}
             >
               <canvas
                 ref={previewCanvasRef}
