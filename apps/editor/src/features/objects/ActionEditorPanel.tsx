@@ -251,6 +251,8 @@ export function ActionEditorPanel({
                       roomInstances={roomInstances}
                       allObjects={allObjects}
                       rooms={rooms}
+                      selectedObjectVariables={selectedObjectVariables}
+                      eventType={activeEvent.type}
                     />
                   )
                 }
@@ -266,6 +268,7 @@ export function ActionEditorPanel({
                     roomInstances={roomInstances}
                     allObjects={allObjects}
                     rooms={rooms}
+                    eventType={activeEvent.type}
                     onUpdateIfCondition={onUpdateIfCondition}
                     onRemoveIfBlock={onRemoveIfBlock}
                     onAddIfBlock={onAddIfBlock}

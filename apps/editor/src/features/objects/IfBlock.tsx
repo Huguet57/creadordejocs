@@ -8,7 +8,8 @@ import {
   type ObjectEventItem,
   type ObjectActionDraft,
   type ObjectActionType,
-  type ObjectIfBlockItem
+  type ObjectIfBlockItem,
+  type ObjectEventType
 } from "../editor-state/types.js"
 import { ActionBlock } from "./ActionBlock.js"
 import type { ProjectV1 } from "@creadordejocs/project-format"
@@ -25,6 +26,7 @@ type IfBlockProps = {
   roomInstances: ProjectV1["rooms"][number]["instances"]
   allObjects: ProjectV1["objects"]
   rooms: ProjectV1["rooms"]
+  eventType: ObjectEventType
   onUpdateIfCondition: (ifBlockId: string, condition: IfCondition) => void
   onRemoveIfBlock: (ifBlockId: string) => void
   onAddIfBlock: (condition: IfCondition, parentIfBlockId?: string, parentBranch?: "then" | "else") => void
@@ -134,6 +136,7 @@ export function IfBlock({
   roomInstances,
   allObjects,
   rooms,
+  eventType,
   onUpdateIfCondition,
   onRemoveIfBlock,
   onAddIfBlock,
@@ -177,6 +180,8 @@ export function IfBlock({
             roomInstances={roomInstances}
             allObjects={allObjects}
             rooms={rooms}
+            selectedObjectVariables={selectedObjectVariables}
+            eventType={eventType}
           />
         )
       }
@@ -191,6 +196,7 @@ export function IfBlock({
           roomInstances={roomInstances}
           allObjects={allObjects}
           rooms={rooms}
+          eventType={eventType}
           onUpdateIfCondition={onUpdateIfCondition}
           onRemoveIfBlock={onRemoveIfBlock}
           onAddIfBlock={onAddIfBlock}
@@ -251,9 +257,10 @@ export function IfBlock({
 
         <RightValuePicker
           value={condition.right}
-          leftVariableType={selectedType}
+          expectedType={selectedType}
           globalVariables={globalVariables}
-          objectVariables={objectVarOptionsForPicker}
+          internalVariables={objectVarOptionsForPicker}
+          allowOtherTarget={eventType === "Collision"}
           variant="blue"
           onChange={(nextRight) =>
             onChange({

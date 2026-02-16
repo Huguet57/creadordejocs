@@ -1,4 +1,4 @@
-import type { ProjectV1 } from "@creadordejocs/project-format"
+import type { ProjectV1, ValueExpressionOutput } from "@creadordejocs/project-format"
 import {
   filterEventLocksByAliveInstances,
   filterEventLocksByRemovedInstances,
@@ -151,29 +151,101 @@ function resolveConditionLeftValue(
   return runtime.objectInstanceVariables[targetInstanceId]?.[condition.left.variableId]
 }
 
-function isVariableReference(
-  value: RuntimeVariableValue | { scope: "global" | "object"; variableId: string }
+function isLegacyVariableReference(
+  value: ValueExpressionOutput
 ): value is { scope: "global" | "object"; variableId: string } {
   return typeof value === "object" && value !== null && "scope" in value && "variableId" in value
+}
+
+function isValueSource(value: ValueExpressionOutput): value is Exclude<
+  ValueExpressionOutput,
+  RuntimeVariableValue | { scope: "global" | "object"; variableId: string }
+> {
+  return typeof value === "object" && value !== null && "source" in value
 }
 
 function resolveConditionRightValue(
   condition: Extract<Extract<RuntimeEventItem, { type: "if" }>["condition"], { left: { scope: "global" | "object"; variableId: string } }>,
   instance: ProjectV1["rooms"][number]["instances"][number],
   runtime: RuntimeState,
-  collisionOtherInstanceId: string | null
+  collisionOtherInstanceId: string | null,
+  roomInstances: ProjectV1["rooms"][number]["instances"]
 ): RuntimeVariableValue | undefined {
-  if (!isVariableReference(condition.right)) {
+  if (typeof condition.right === "number" || typeof condition.right === "string" || typeof condition.right === "boolean") {
     return condition.right
   }
-  if (condition.right.scope === "global") {
-    return runtime.globalVariables[condition.right.variableId]
+
+  if (isLegacyVariableReference(condition.right)) {
+    if (condition.right.scope === "global") {
+      return runtime.globalVariables[condition.right.variableId]
+    }
+    const targetInstanceId = resolveTargetInstanceId(instance, "self", null, collisionOtherInstanceId)
+    if (!targetInstanceId) {
+      return undefined
+    }
+    return runtime.objectInstanceVariables[targetInstanceId]?.[condition.right.variableId]
   }
-  const targetInstanceId = resolveTargetInstanceId(instance, "self", null, collisionOtherInstanceId)
-  if (!targetInstanceId) {
+
+  if (!isValueSource(condition.right)) {
     return undefined
   }
-  return runtime.objectInstanceVariables[targetInstanceId]?.[condition.right.variableId]
+
+  if (condition.right.source === "literal") {
+    return condition.right.value
+  }
+
+  if (condition.right.source === "globalVariable") {
+    return runtime.globalVariables[condition.right.variableId]
+  }
+
+  if (condition.right.source === "internalVariable") {
+    const targetInstanceId = resolveTargetInstanceId(
+      instance,
+      condition.right.target,
+      null,
+      collisionOtherInstanceId
+    )
+    if (!targetInstanceId) {
+      return undefined
+    }
+    return runtime.objectInstanceVariables[targetInstanceId]?.[condition.right.variableId]
+  }
+
+  if (condition.right.source === "attribute") {
+    const targetInstanceId = resolveTargetInstanceId(
+      instance,
+      condition.right.target,
+      null,
+      collisionOtherInstanceId
+    )
+    if (!targetInstanceId) {
+      return undefined
+    }
+    const targetInstance =
+      targetInstanceId === instance.id
+        ? instance
+        : roomInstances.find((instanceEntry) => instanceEntry.id === targetInstanceId)
+    if (!targetInstance) {
+      return undefined
+    }
+    if (condition.right.attribute === "x") {
+      return targetInstance.x
+    }
+    if (condition.right.attribute === "y") {
+      return targetInstance.y
+    }
+    return targetInstance.rotation ?? 0
+  }
+
+  if (!Number.isFinite(condition.right.min) || !Number.isFinite(condition.right.max) || !Number.isFinite(condition.right.step)) {
+    return undefined
+  }
+  if (condition.right.step <= 0 || condition.right.max < condition.right.min) {
+    return undefined
+  }
+  const steps = Math.floor((condition.right.max - condition.right.min) / condition.right.step)
+  const index = Math.floor(Math.random() * (steps + 1))
+  return condition.right.min + index * condition.right.step
 }
 
 function isComparisonCondition(
@@ -189,21 +261,22 @@ function evaluateIfCondition(
   condition: Extract<RuntimeEventItem, { type: "if" }>["condition"],
   instance: ProjectV1["rooms"][number]["instances"][number],
   runtime: RuntimeState,
-  collisionOtherInstanceId: string | null
+  collisionOtherInstanceId: string | null,
+  roomInstances: ProjectV1["rooms"][number]["instances"]
 ): boolean {
   if (!isComparisonCondition(condition)) {
     if (condition.logic === "AND") {
       return condition.conditions.every((entry) =>
-        evaluateIfCondition(entry, instance, runtime, collisionOtherInstanceId)
+        evaluateIfCondition(entry, instance, runtime, collisionOtherInstanceId, roomInstances)
       )
     }
     return condition.conditions.some((entry) =>
-      evaluateIfCondition(entry, instance, runtime, collisionOtherInstanceId)
+      evaluateIfCondition(entry, instance, runtime, collisionOtherInstanceId, roomInstances)
     )
   }
 
   const leftValue = resolveConditionLeftValue(condition, instance, runtime, collisionOtherInstanceId)
-  const rightValue = resolveConditionRightValue(condition, instance, runtime, collisionOtherInstanceId)
+  const rightValue = resolveConditionRightValue(condition, instance, runtime, collisionOtherInstanceId, roomInstances)
   if (leftValue === undefined || rightValue === undefined || !isSameVariableValueType(leftValue, rightValue)) {
     return false
   }
@@ -376,7 +449,13 @@ function runEventItems(
       }
       continue
     }
-    const conditionMatched = evaluateIfCondition(itemEntry.condition, result.instance, result.runtime, collisionOtherInstanceId)
+    const conditionMatched = evaluateIfCondition(
+      itemEntry.condition,
+      result.instance,
+      result.runtime,
+      collisionOtherInstanceId,
+      roomInstances
+    )
     const branchResult = runEventItems(
       project,
       result.instance,

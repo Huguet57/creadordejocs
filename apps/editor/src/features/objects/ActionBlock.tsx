@@ -18,64 +18,11 @@ import {
   Hourglass,
   MessageSquare
 } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
 import { Button } from "../../components/ui/button.js"
-import { Input } from "../../components/ui/input.js"
-import type { ObjectActionDraft, ProjectV1, VariableType, VariableValue } from "@creadordejocs/project-format"
+import type { ObjectActionDraft, ProjectV1, ValueExpression, VariableValue } from "@creadordejocs/project-format"
 import { VariablePicker } from "./VariablePicker.js"
-
-function numInputWidth(raw: string, minCh: number): string {
-  return `${Math.max(minCh, raw.length + 2)}ch`
-}
-
-/** Numeric text input: free typing, auto-width, red border when invalid & unfocused */
-function NumInput({ value, onChange, className, minCh = 6 }: { value: number; onChange: (v: number) => void; className?: string; minCh?: number }) {
-  const [raw, setRaw] = useState(String(value))
-  const [focused, setFocused] = useState(false)
-  const lastExternal = useRef(value)
-
-  // Sync when external value changes (not from local edits)
-  useEffect(() => {
-    if (value !== lastExternal.current) {
-      lastExternal.current = value
-      if (!focused) setRaw(String(value))
-    }
-  }, [value, focused])
-
-  const parsed = Number(raw)
-  const isValid = raw !== "" && Number.isFinite(parsed)
-  const isError = !focused && !isValid
-
-  return (
-    <Input
-      type="text"
-      inputMode="numeric"
-      className={`h-7 px-2 text-xs ${isError ? "border-red-400 bg-red-50" : "bg-white/50 border-slate-300"} ${className ?? ""}`}
-      style={{ width: numInputWidth(raw, minCh) }}
-      value={focused ? raw : String(value)}
-      onChange={(e) => {
-        setRaw(e.target.value)
-        const n = Number(e.target.value)
-        if (Number.isFinite(n)) {
-          lastExternal.current = n
-          onChange(n)
-        }
-      }}
-      onFocus={() => {
-        setRaw(String(value))
-        setFocused(true)
-      }}
-      onBlur={() => {
-        setFocused(false)
-        if (isValid) {
-          lastExternal.current = parsed
-          onChange(parsed)
-          setRaw(String(parsed))
-        }
-      }}
-    />
-  )
-}
+import { RightValuePicker } from "./RightValuePicker.js"
+import type { ObjectEventType } from "../editor-state/types.js"
 
 type ActionBlockProps = {
   action: ObjectActionDraft & { id: string }
@@ -92,6 +39,8 @@ type ActionBlockProps = {
   roomInstances: ProjectV1["rooms"][number]["instances"]
   allObjects: ProjectV1["objects"]
   rooms: ProjectV1["rooms"]
+  selectedObjectVariables: ProjectV1["variables"]["global"]
+  eventType: ObjectEventType
 }
 
 const ACTION_ICONS: Partial<Record<ObjectActionDraft["type"], React.ElementType>> = {
@@ -138,22 +87,24 @@ const ACTION_LABELS: Partial<Record<ObjectActionDraft["type"], string>> = {
 
 // Operator labels used in the UI are inlined in the select options
 
-function parseValueForType(type: VariableType, rawValue: string): VariableValue {
-  if (type === "number") {
-    const parsed = Number(rawValue)
-    return Number.isFinite(parsed) ? parsed : 0
-  }
-  if (type === "boolean") {
-    return rawValue === "true"
-  }
-  return rawValue
+function asLiteralValue(value: VariableValue): ValueExpression {
+  return { source: "literal", value }
 }
 
-function formatValue(value: VariableValue): string {
-  if (typeof value === "boolean") {
-    return value ? "true" : "false"
+function canBeNumericExpression(value: ValueExpression): boolean {
+  if (typeof value === "number") {
+    return true
   }
-  return String(value)
+  if (typeof value === "string" || typeof value === "boolean") {
+    return false
+  }
+  if ("source" in value) {
+    if (value.source === "literal") {
+      return typeof value.value === "number"
+    }
+    return true
+  }
+  return true
 }
 
 export function ActionBlock({
@@ -169,7 +120,9 @@ export function ActionBlock({
   objectVariablesByObjectId,
   roomInstances,
   allObjects,
-  rooms
+  rooms,
+  selectedObjectVariables,
+  eventType
 }: ActionBlockProps) {
   const Icon = ACTION_ICONS[action.type] ?? Move
   const objectVariableOptions = allObjects.flatMap((objectEntry) =>
@@ -188,6 +141,23 @@ export function ActionBlock({
   const compatibleObjectOptionsForCopy = selectedGlobalForCopy
     ? objectVariableOptions.filter((option) => option.type === selectedGlobalForCopy.type)
     : objectVariableOptions
+  const internalVariableOptions = selectedObjectVariables.map((definition) => ({
+    id: definition.id,
+    label: definition.name,
+    type: definition.type,
+    objectName: ""
+  }))
+  const allowOtherTarget = eventType === "Collision"
+  const selectedGlobalVariableForChange =
+    action.type === "changeVariable" && action.scope === "global"
+      ? globalVariables.find((definition) => definition.id === action.variableId)
+      : null
+  const selectedObjectVariableForChange =
+    action.type === "changeVariable" && action.scope === "object"
+      ? objectVariableOptions.find((definition) => definition.id === action.variableId)
+      : null
+  const changeVariableExpectedType =
+    selectedGlobalVariableForChange?.type ?? selectedObjectVariableForChange?.type ?? "number"
 
   return (
     <div className="action-block-container group flex items-center gap-3 py-2 px-3 bg-slate-50 hover:bg-slate-100/60 transition-colors">
@@ -203,11 +173,25 @@ export function ActionBlock({
           <>
             <div className="flex items-center gap-1">
               <label className="text-[10px] font-medium opacity-60">DX</label>
-              <NumInput value={action.dx} onChange={(v) => onUpdate({ ...action, dx: v })} />
+              <RightValuePicker
+                value={action.dx}
+                expectedType="number"
+                globalVariables={globalVariables}
+                internalVariables={internalVariableOptions}
+                allowOtherTarget={allowOtherTarget}
+                onChange={(nextValue) => onUpdate({ ...action, dx: nextValue as typeof action.dx })}
+              />
             </div>
             <div className="flex items-center gap-1">
               <label className="text-[10px] font-medium opacity-60">DY</label>
-              <NumInput value={action.dy} onChange={(v) => onUpdate({ ...action, dy: v })} />
+              <RightValuePicker
+                value={action.dy}
+                expectedType="number"
+                globalVariables={globalVariables}
+                internalVariables={internalVariableOptions}
+                allowOtherTarget={allowOtherTarget}
+                onChange={(nextValue) => onUpdate({ ...action, dy: nextValue as typeof action.dy })}
+              />
             </div>
           </>
         )}
@@ -216,11 +200,25 @@ export function ActionBlock({
           <>
             <div className="flex items-center gap-1">
               <label className="text-[10px] font-medium opacity-60">Speed</label>
-              <NumInput value={action.speed} onChange={(v) => onUpdate({ ...action, speed: v })} />
+              <RightValuePicker
+                value={action.speed}
+                expectedType="number"
+                globalVariables={globalVariables}
+                internalVariables={internalVariableOptions}
+                allowOtherTarget={allowOtherTarget}
+                onChange={(nextValue) => onUpdate({ ...action, speed: nextValue as typeof action.speed })}
+              />
             </div>
             <div className="flex items-center gap-1">
               <label className="text-[10px] font-medium opacity-60">Dir</label>
-              <NumInput value={action.direction} onChange={(v) => onUpdate({ ...action, direction: v })} />
+              <RightValuePicker
+                value={action.direction}
+                expectedType="number"
+                globalVariables={globalVariables}
+                internalVariables={internalVariableOptions}
+                allowOtherTarget={allowOtherTarget}
+                onChange={(nextValue) => onUpdate({ ...action, direction: nextValue as typeof action.direction })}
+              />
             </div>
           </>
         )}
@@ -237,7 +235,14 @@ export function ActionBlock({
             </select>
             <div className="action-block-rotate-angle-field flex items-center gap-1">
               <label className="text-[10px] font-medium opacity-60">Angle</label>
-              <NumInput value={action.angle} onChange={(v) => onUpdate({ ...action, angle: v })} />
+              <RightValuePicker
+                value={action.angle}
+                expectedType="number"
+                globalVariables={globalVariables}
+                internalVariables={internalVariableOptions}
+                allowOtherTarget={allowOtherTarget}
+                onChange={(nextValue) => onUpdate({ ...action, angle: nextValue as typeof action.angle })}
+              />
             </div>
           </>
         )}
@@ -277,7 +282,14 @@ export function ActionBlock({
             )}
             <div className="action-block-move-toward-speed-field flex items-center gap-1">
               <label className="text-[10px] font-medium opacity-60">Speed</label>
-              <NumInput value={action.speed} onChange={(v) => onUpdate({ ...action, speed: v })} />
+              <RightValuePicker
+                value={action.speed}
+                expectedType="number"
+                globalVariables={globalVariables}
+                internalVariables={internalVariableOptions}
+                allowOtherTarget={allowOtherTarget}
+                onChange={(nextValue) => onUpdate({ ...action, speed: nextValue as typeof action.speed })}
+              />
             </div>
           </>
         )}
@@ -295,11 +307,25 @@ export function ActionBlock({
             </select>
             <div className="flex items-center gap-1">
               <label className="text-[10px] font-medium opacity-60">X</label>
-              <NumInput value={action.offsetX} onChange={(v) => onUpdate({ ...action, offsetX: v })} />
+              <RightValuePicker
+                value={action.offsetX}
+                expectedType="number"
+                globalVariables={globalVariables}
+                internalVariables={internalVariableOptions}
+                allowOtherTarget={allowOtherTarget}
+                onChange={(nextValue) => onUpdate({ ...action, offsetX: nextValue as typeof action.offsetX })}
+              />
             </div>
             <div className="flex items-center gap-1">
               <label className="text-[10px] font-medium opacity-60">Y</label>
-              <NumInput value={action.offsetY} onChange={(v) => onUpdate({ ...action, offsetY: v })} />
+              <RightValuePicker
+                value={action.offsetY}
+                expectedType="number"
+                globalVariables={globalVariables}
+                internalVariables={internalVariableOptions}
+                allowOtherTarget={allowOtherTarget}
+                onChange={(nextValue) => onUpdate({ ...action, offsetY: nextValue as typeof action.offsetY })}
+              />
             </div>
           </>
         )}
@@ -307,7 +333,14 @@ export function ActionBlock({
         {action.type === "changeScore" && (
           <div className="flex items-center gap-1">
             <label className="text-[10px] font-medium opacity-60">+/−</label>
-            <NumInput value={action.delta} onChange={(v) => onUpdate({ ...action, delta: v })} />
+            <RightValuePicker
+              value={action.delta}
+              expectedType="number"
+              globalVariables={globalVariables}
+              internalVariables={internalVariableOptions}
+              allowOtherTarget={allowOtherTarget}
+              onChange={(nextValue) => onUpdate({ ...action, delta: nextValue as typeof action.delta })}
+            />
           </div>
         )}
 
@@ -333,11 +366,25 @@ export function ActionBlock({
               <>
                 <div className="flex items-center gap-1">
                   <label className="text-[10px] font-medium opacity-60">X</label>
-                  <NumInput value={action.x ?? 0} onChange={(v) => onUpdate({ ...action, x: v })} />
+                  <RightValuePicker
+                    value={action.x ?? asLiteralValue(0)}
+                    expectedType="number"
+                    globalVariables={globalVariables}
+                    internalVariables={internalVariableOptions}
+                    allowOtherTarget={allowOtherTarget}
+                    onChange={(nextValue) => onUpdate({ ...action, x: nextValue as typeof action.x })}
+                  />
                 </div>
                 <div className="flex items-center gap-1">
                   <label className="text-[10px] font-medium opacity-60">Y</label>
-                  <NumInput value={action.y ?? 0} onChange={(v) => onUpdate({ ...action, y: v })} />
+                  <RightValuePicker
+                    value={action.y ?? asLiteralValue(0)}
+                    expectedType="number"
+                    globalVariables={globalVariables}
+                    internalVariables={internalVariableOptions}
+                    allowOtherTarget={allowOtherTarget}
+                    onChange={(nextValue) => onUpdate({ ...action, y: nextValue as typeof action.y })}
+                  />
                 </div>
               </>
             )}
@@ -347,10 +394,13 @@ export function ActionBlock({
         {action.type === "endGame" && (
           <div className="flex items-center gap-1 flex-1">
             <label className="text-[10px] font-medium opacity-60">Msg</label>
-            <Input
-              className="h-7 w-full px-2 text-xs bg-white/50 border-slate-300"
+            <RightValuePicker
               value={action.message}
-              onChange={(e) => onUpdate({ ...action, message: e.target.value })}
+              expectedType="string"
+              globalVariables={globalVariables}
+              internalVariables={internalVariableOptions}
+              allowOtherTarget={allowOtherTarget}
+              onChange={(nextValue) => onUpdate({ ...action, message: nextValue as typeof action.message })}
             />
           </div>
         )}
@@ -359,19 +409,24 @@ export function ActionBlock({
           <>
             <div className="action-block-message-text-field flex items-center gap-1 flex-1">
               <label className="text-[10px] font-medium opacity-60">Msg</label>
-              <Input
-                className="action-block-message-text-input h-7 w-full px-2 text-xs bg-white/50 border-slate-300"
+              <RightValuePicker
                 value={action.text}
-                onChange={(event) => onUpdate({ ...action, text: event.target.value })}
+                expectedType="string"
+                globalVariables={globalVariables}
+                internalVariables={internalVariableOptions}
+                allowOtherTarget={allowOtherTarget}
+                onChange={(nextValue) => onUpdate({ ...action, text: nextValue as typeof action.text })}
               />
             </div>
             <div className="action-block-message-duration-field flex items-center gap-1">
               <label className="text-[10px] font-medium opacity-60">ms</label>
-              <NumInput
+              <RightValuePicker
                 value={action.durationMs}
-                onChange={(value) => onUpdate({ ...action, durationMs: Math.max(1, Math.round(value)) })}
-                className="action-block-message-duration-input"
-                minCh={8}
+                expectedType="number"
+                globalVariables={globalVariables}
+                internalVariables={internalVariableOptions}
+                allowOtherTarget={allowOtherTarget}
+                onChange={(nextValue) => onUpdate({ ...action, durationMs: nextValue as typeof action.durationMs })}
               />
             </div>
           </>
@@ -396,11 +451,13 @@ export function ActionBlock({
         {action.type === "wait" && (
           <div className="action-block-wait-field flex items-center gap-1">
             <label className="text-[10px] font-medium opacity-60">ms</label>
-            <NumInput
+            <RightValuePicker
               value={action.durationMs}
-              onChange={(v) => onUpdate({ ...action, durationMs: Math.max(1, Math.round(v)) })}
-              className="action-block-wait-ms"
-              minCh={8}
+              expectedType="number"
+              globalVariables={globalVariables}
+              internalVariables={internalVariableOptions}
+              allowOtherTarget={allowOtherTarget}
+              onChange={(nextValue) => onUpdate({ ...action, durationMs: nextValue as typeof action.durationMs })}
             />
           </div>
         )}
@@ -412,7 +469,7 @@ export function ActionBlock({
               variableId={action.variableId}
               globalVariables={globalVariables}
               objectVariables={objectVariableOptions}
-              showTarget
+              showTarget={allowOtherTarget}
               target={action.scope === "object" ? (action.target ?? "self") : null}
               targetInstanceId={action.scope === "object" ? (action.targetInstanceId ?? null) : null}
               roomInstances={roomInstances}
@@ -433,10 +490,11 @@ export function ActionBlock({
                     type: "changeVariable",
                     variableId: nextVariableId,
                     operator: action.operator,
-                    value: action.operator === "set" ? selected.initialValue : 0
+                    value: action.operator === "set" ? asLiteralValue(selected.initialValue) : asLiteralValue(0)
                   })
                 } else {
                   const selected = objectVariableOptions.find((o) => o.id === nextVariableId)
+                  const selectedObjectDefinition = selectedObjectVariables.find((definition) => definition.id === nextVariableId)
                   if (!selected) return
                   onUpdate({
                     ...action,
@@ -444,7 +502,10 @@ export function ActionBlock({
                     variableId: nextVariableId,
                     target: action.scope === "object" ? (action.target ?? "self") : "self",
                     targetInstanceId: action.scope === "object" ? (action.targetInstanceId ?? null) : null,
-                    value: action.operator === "set" ? parseValueForType(selected.type, formatValue(action.value)) : 0
+                    value:
+                      action.operator === "set"
+                        ? asLiteralValue(selectedObjectDefinition?.initialValue ?? 0)
+                        : asLiteralValue(0)
                   })
                 }
               }}
@@ -454,8 +515,8 @@ export function ActionBlock({
               value={action.operator}
               onChange={(event) => {
                 const newOp = event.target.value as "set" | "add" | "subtract" | "multiply"
-                if (newOp !== "set" && typeof action.value !== "number") {
-                  onUpdate({ ...action, operator: newOp, value: 0 })
+                if (newOp !== "set" && !canBeNumericExpression(action.value)) {
+                  onUpdate({ ...action, operator: newOp, value: asLiteralValue(0) })
                 } else {
                   onUpdate({ ...action, operator: newOp })
                 }
@@ -466,31 +527,14 @@ export function ActionBlock({
               <option value="subtract">−</option>
               <option value="multiply">×</option>
             </select>
-            {typeof action.value === "boolean" ? (
-              <select
-                className="action-block-bool-select h-7 w-18 rounded border border-slate-300 bg-white/50 px-2 text-xs"
-                value={String(action.value)}
-                onChange={(event) => onUpdate({ ...action, value: event.target.value === "true" })}
-              >
-                <option value="true">true</option>
-                <option value="false">false</option>
-              </select>
-            ) : typeof action.value === "number" ? (
-              <NumInput
-                value={action.value}
-                onChange={(v) => onUpdate({ ...action, value: v })}
-              />
-            ) : (
-              <Input
-                type="text"
-                className="h-7 px-2 text-xs bg-white/50 border-slate-300"
-                style={{ width: `${Math.max(6, formatValue(action.value).length + 2)}ch` }}
-                value={formatValue(action.value)}
-                onChange={(event) => {
-                  onUpdate({ ...action, value: event.target.value })
-                }}
-              />
-            )}
+            <RightValuePicker
+              value={action.value}
+              expectedType={action.operator === "set" ? changeVariableExpectedType : "number"}
+              globalVariables={globalVariables}
+              internalVariables={internalVariableOptions}
+              allowOtherTarget={allowOtherTarget}
+              onChange={(nextValue) => onUpdate({ ...action, value: nextValue })}
+            />
           </>
         )}
 
@@ -509,7 +553,7 @@ export function ActionBlock({
                 variableId={leftVarId}
                 globalVariables={globalVariables}
                 objectVariables={compatibleObjectOptionsForCopy}
-                showTarget={leftScope === "object"}
+                showTarget={leftScope === "object" && allowOtherTarget}
                 target={leftScope === "object" ? action.instanceTarget : null}
                 targetInstanceId={leftScope === "object" ? (action.instanceTargetId ?? null) : null}
                 roomInstances={roomInstances}
@@ -534,7 +578,7 @@ export function ActionBlock({
                 globalVariables={globalVariables}
                 objectVariables={compatibleObjectOptionsForCopy}
                 allowedScopes={[rightScope]}
-                showTarget={rightScope === "object"}
+                showTarget={rightScope === "object" && allowOtherTarget}
                 target={rightScope === "object" ? action.instanceTarget : null}
                 targetInstanceId={rightScope === "object" ? (action.instanceTargetId ?? null) : null}
                 roomInstances={roomInstances}
@@ -560,7 +604,7 @@ export function ActionBlock({
               variableId={action.variableId}
               globalVariables={globalVariables}
               objectVariables={objectVariableOptions}
-              showTarget
+              showTarget={allowOtherTarget}
               target={action.scope === "object" ? (action.target ?? "self") : null}
               targetInstanceId={action.scope === "object" ? (action.targetInstanceId ?? null) : null}
               roomInstances={roomInstances}
@@ -579,7 +623,8 @@ export function ActionBlock({
                     scope: "global",
                     variableId: nextVariableId,
                     min: action.min,
-                    max: action.max
+                    max: action.max,
+                    step: action.step
                   })
                 } else {
                   onUpdate({
@@ -588,25 +633,43 @@ export function ActionBlock({
                     scope: "object",
                     variableId: nextVariableId,
                     target: action.scope === "object" ? (action.target ?? "self") : "self",
-                    targetInstanceId: action.scope === "object" ? (action.targetInstanceId ?? null) : null
+                    targetInstanceId: action.scope === "object" ? (action.targetInstanceId ?? null) : null,
+                    step: action.step
                   })
                 }
               }}
             />
             <div className="action-block-random-min-field flex items-center gap-1">
               <label className="text-[10px] font-medium opacity-60">Min</label>
-              <NumInput
+              <RightValuePicker
                 value={action.min}
-                onChange={(v) => onUpdate({ ...action, min: Math.round(v) })}
-                className="action-block-random-min-input"
+                expectedType="number"
+                globalVariables={globalVariables}
+                internalVariables={internalVariableOptions}
+                allowOtherTarget={allowOtherTarget}
+                onChange={(nextValue) => onUpdate({ ...action, min: nextValue as typeof action.min })}
               />
             </div>
             <div className="action-block-random-max-field flex items-center gap-1">
               <label className="text-[10px] font-medium opacity-60">Max</label>
-              <NumInput
+              <RightValuePicker
                 value={action.max}
-                onChange={(v) => onUpdate({ ...action, max: Math.round(v) })}
-                className="action-block-random-max-input"
+                expectedType="number"
+                globalVariables={globalVariables}
+                internalVariables={internalVariableOptions}
+                allowOtherTarget={allowOtherTarget}
+                onChange={(nextValue) => onUpdate({ ...action, max: nextValue as typeof action.max })}
+              />
+            </div>
+            <div className="action-block-random-step-field flex items-center gap-1">
+              <label className="text-[10px] font-medium opacity-60">Step</label>
+              <RightValuePicker
+                value={action.step ?? asLiteralValue(1)}
+                expectedType="number"
+                globalVariables={globalVariables}
+                internalVariables={internalVariableOptions}
+                allowOtherTarget={allowOtherTarget}
+                onChange={(nextValue) => onUpdate({ ...action, step: nextValue as typeof action.step })}
               />
             </div>
           </>

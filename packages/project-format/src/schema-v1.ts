@@ -66,23 +66,60 @@ const VariableValueSchema = z.union([z.number(), z.string(), z.boolean()])
 
 const VariableOperatorSchema = z.enum(["set", "add", "subtract", "multiply"])
 
+const ValueTargetSchema = z.enum(["self", "other"])
+const ValueAttributeSchema = z.enum(["x", "y", "rotation"])
+
+const ValueSourceSchema = z.discriminatedUnion("source", [
+  z.object({
+    source: z.literal("literal"),
+    value: VariableValueSchema
+  }),
+  z.object({
+    source: z.literal("random"),
+    min: z.number(),
+    max: z.number(),
+    step: z.number().positive()
+  }),
+  z.object({
+    source: z.literal("attribute"),
+    target: ValueTargetSchema,
+    attribute: ValueAttributeSchema
+  }),
+  z.object({
+    source: z.literal("internalVariable"),
+    target: ValueTargetSchema,
+    variableId: z.string().min(1)
+  }),
+  z.object({
+    source: z.literal("globalVariable"),
+    variableId: z.string().min(1)
+  })
+])
+
+const LegacyVariableReferenceSchema = z.object({
+  scope: z.enum(["global", "object"]),
+  variableId: z.string().min(1)
+})
+
+const ValueExpressionSchema = z.union([VariableValueSchema, ValueSourceSchema, LegacyVariableReferenceSchema])
+
 const ObjectActionSchema = z.discriminatedUnion("type", [
   z.object({
     id: z.string().min(1),
     type: z.literal("move"),
-    dx: z.number(),
-    dy: z.number()
+    dx: z.union([z.number(), ValueSourceSchema, LegacyVariableReferenceSchema]),
+    dy: z.union([z.number(), ValueSourceSchema, LegacyVariableReferenceSchema])
   }),
   z.object({
     id: z.string().min(1),
     type: z.literal("setVelocity"),
-    speed: z.number(),
-    direction: z.number()
+    speed: z.union([z.number(), ValueSourceSchema, LegacyVariableReferenceSchema]),
+    direction: z.union([z.number(), ValueSourceSchema, LegacyVariableReferenceSchema])
   }),
   z.object({
     id: z.string().min(1),
     type: z.literal("rotate"),
-    angle: z.number(),
+    angle: z.union([z.number(), ValueSourceSchema, LegacyVariableReferenceSchema]),
     mode: z.enum(["set", "add"])
   }),
   z.object({
@@ -90,7 +127,7 @@ const ObjectActionSchema = z.discriminatedUnion("type", [
     type: z.literal("moveToward"),
     targetType: z.enum(["object", "mouse"]),
     targetObjectId: z.string().nullable().default(null),
-    speed: z.number()
+    speed: z.union([z.number(), ValueSourceSchema, LegacyVariableReferenceSchema])
   }),
   z.object({
     id: z.string().min(1),
@@ -108,24 +145,24 @@ const ObjectActionSchema = z.discriminatedUnion("type", [
     id: z.string().min(1),
     type: z.literal("spawnObject"),
     objectId: z.string().min(1),
-    offsetX: z.number(),
-    offsetY: z.number()
+    offsetX: z.union([z.number(), ValueSourceSchema, LegacyVariableReferenceSchema]),
+    offsetY: z.union([z.number(), ValueSourceSchema, LegacyVariableReferenceSchema])
   }),
   z.object({
     id: z.string().min(1),
     type: z.literal("changeScore"),
-    delta: z.number()
+    delta: z.union([z.number(), ValueSourceSchema, LegacyVariableReferenceSchema])
   }),
   z.object({
     id: z.string().min(1),
     type: z.literal("endGame"),
-    message: z.string().min(1)
+    message: z.union([z.string().min(1), ValueSourceSchema, LegacyVariableReferenceSchema])
   }),
   z.object({
     id: z.string().min(1),
     type: z.literal("message"),
-    text: z.string().min(1),
-    durationMs: z.number().int().min(1)
+    text: z.union([z.string().min(1), ValueSourceSchema, LegacyVariableReferenceSchema]),
+    durationMs: z.union([z.number().int().min(1), ValueSourceSchema, LegacyVariableReferenceSchema])
   }),
   z.object({
     id: z.string().min(1),
@@ -136,8 +173,8 @@ const ObjectActionSchema = z.discriminatedUnion("type", [
     id: z.string().min(1),
     type: z.literal("teleport"),
     mode: z.enum(["position", "start", "mouse"]),
-    x: z.number().nullable().default(null),
-    y: z.number().nullable().default(null)
+    x: z.union([z.number(), ValueSourceSchema, LegacyVariableReferenceSchema]).nullable().default(null),
+    y: z.union([z.number(), ValueSourceSchema, LegacyVariableReferenceSchema]).nullable().default(null)
   }),
   z.object({
     id: z.string().min(1),
@@ -147,7 +184,7 @@ const ObjectActionSchema = z.discriminatedUnion("type", [
     operator: VariableOperatorSchema,
     target: z.enum(["self", "other", "instanceId"]).nullable().optional(),
     targetInstanceId: z.string().nullable().optional(),
-    value: VariableValueSchema
+    value: ValueExpressionSchema
   }),
   z.object({
     id: z.string().min(1),
@@ -156,8 +193,9 @@ const ObjectActionSchema = z.discriminatedUnion("type", [
     variableId: z.string().min(1),
     target: z.enum(["self", "other", "instanceId"]).nullable().optional(),
     targetInstanceId: z.string().nullable().optional(),
-    min: z.number().int(),
-    max: z.number().int()
+    min: z.union([z.number().int(), ValueSourceSchema, LegacyVariableReferenceSchema]),
+    max: z.union([z.number().int(), ValueSourceSchema, LegacyVariableReferenceSchema]),
+    step: z.union([z.number().int().positive(), ValueSourceSchema, LegacyVariableReferenceSchema]).optional()
   }),
   z.object({
     id: z.string().min(1),
@@ -180,7 +218,7 @@ const ObjectActionSchema = z.discriminatedUnion("type", [
   z.object({
     id: z.string().min(1),
     type: z.literal("wait"),
-    durationMs: z.number().int().min(1)
+    durationMs: z.union([z.number().int().min(1), ValueSourceSchema, LegacyVariableReferenceSchema])
   })
 ])
 
@@ -198,10 +236,12 @@ const IfConditionLeftSchema = z.discriminatedUnion("scope", [
 const IfComparisonConditionSchema = z.object({
   left: IfConditionLeftSchema,
   operator: z.enum(["==", "!=", ">", ">=", "<", "<="]),
-  right: z.union([VariableValueSchema, IfConditionLeftSchema])
+  right: ValueExpressionSchema
 })
 
 export type ObjectActionOutput = z.output<typeof ObjectActionSchema>
+export type ValueExpressionOutput = z.output<typeof ValueExpressionSchema>
+export type ValueSourceOutput = z.output<typeof ValueSourceSchema>
 export type IfConditionOutput =
   | z.output<typeof IfComparisonConditionSchema>
   | {

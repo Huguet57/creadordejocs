@@ -1,4 +1,4 @@
-import type { ProjectV1 } from "./schema-v1.js"
+import type { ProjectV1, ValueExpressionOutput } from "./schema-v1.js"
 import { generateUUID } from "./generate-id.js"
 
 export type CreateObjectInput = {
@@ -55,6 +55,7 @@ export type IfCondition = Extract<ObjectEventItem, { type: "if" }>["condition"]
 export type VariableDefinition = ProjectV1["variables"]["global"][number]
 export type VariableType = VariableDefinition["type"]
 export type VariableValue = VariableDefinition["initialValue"]
+export type ValueExpression = ValueExpressionOutput
 
 export type AddObjectEventInput = {
   objectId: string

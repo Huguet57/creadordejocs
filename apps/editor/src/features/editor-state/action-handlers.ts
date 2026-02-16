@@ -1,4 +1,4 @@
-import { generateUUID, type ProjectV1 } from "@creadordejocs/project-format"
+import { generateUUID, type ProjectV1, type ValueExpressionOutput } from "@creadordejocs/project-format"
 import { buildWaitActionKey, removeWaitProgress } from "./event-lock-utils.js"
 import { enqueueRuntimeToast, type RuntimeToastState } from "./message-toast-utils.js"
 import {
@@ -17,7 +17,8 @@ import {
   resolveTargetInstanceId,
   type RuntimeAction,
   type RuntimeActionResult,
-  type RuntimeState
+  type RuntimeState,
+  type RuntimeVariableValue
 } from "./runtime-types.js"
 
 export type ActionContext = {
@@ -27,50 +28,172 @@ export type ActionContext = {
   roomInstances: ProjectV1["rooms"][number]["instances"]
 }
 
+type RuntimeVariableType = "number" | "string" | "boolean"
+type LegacyVariableReference = { scope: "global" | "object"; variableId: string }
+
+function isLegacyVariableReference(value: ValueExpressionOutput): value is LegacyVariableReference {
+  return typeof value === "object" && value !== null && "scope" in value && "variableId" in value
+}
+
+function isValueSource(value: ValueExpressionOutput): value is Exclude<ValueExpressionOutput, RuntimeVariableValue | LegacyVariableReference> {
+  return typeof value === "object" && value !== null && "source" in value
+}
+
+function getTargetInstanceFromSourceTarget(
+  result: RuntimeActionResult,
+  ctx: ActionContext,
+  target: "self" | "other"
+): ProjectV1["rooms"][number]["instances"][number] | null {
+  if (target === "self") {
+    return result.instance
+  }
+  if (!ctx.collisionOtherInstanceId) {
+    return null
+  }
+  return ctx.roomInstances.find((instanceEntry) => instanceEntry.id === ctx.collisionOtherInstanceId) ?? null
+}
+
+function resolveExpressionValue(
+  expression: ValueExpressionOutput,
+  result: RuntimeActionResult,
+  ctx: ActionContext
+): RuntimeVariableValue | undefined {
+  if (typeof expression === "number" || typeof expression === "string" || typeof expression === "boolean") {
+    return expression
+  }
+
+  if (isLegacyVariableReference(expression)) {
+    if (expression.scope === "global") {
+      return result.runtime.globalVariables[expression.variableId]
+    }
+    return result.runtime.objectInstanceVariables[result.instance.id]?.[expression.variableId]
+  }
+
+  if (!isValueSource(expression)) {
+    return undefined
+  }
+
+  if (expression.source === "literal") {
+    return expression.value
+  }
+
+  if (expression.source === "globalVariable") {
+    return result.runtime.globalVariables[expression.variableId]
+  }
+
+  if (expression.source === "internalVariable") {
+    const targetInstance = getTargetInstanceFromSourceTarget(result, ctx, expression.target)
+    if (!targetInstance) {
+      return undefined
+    }
+    return result.runtime.objectInstanceVariables[targetInstance.id]?.[expression.variableId]
+  }
+
+  if (expression.source === "attribute") {
+    const targetInstance = getTargetInstanceFromSourceTarget(result, ctx, expression.target)
+    if (!targetInstance) {
+      return undefined
+    }
+    if (expression.attribute === "x") {
+      return targetInstance.x
+    }
+    if (expression.attribute === "y") {
+      return targetInstance.y
+    }
+    return targetInstance.rotation ?? 0
+  }
+
+  if (expression.source === "random") {
+    if (!Number.isFinite(expression.min) || !Number.isFinite(expression.max) || !Number.isFinite(expression.step)) {
+      return undefined
+    }
+    if (expression.step <= 0 || expression.max < expression.min) {
+      return undefined
+    }
+    const steps = Math.floor((expression.max - expression.min) / expression.step)
+    if (steps < 0) {
+      return undefined
+    }
+    const index = Math.floor(Math.random() * (steps + 1))
+    return expression.min + index * expression.step
+  }
+
+  return undefined
+}
+
+function resolveValueAsType(
+  expression: ValueExpressionOutput,
+  expectedType: RuntimeVariableType,
+  result: RuntimeActionResult,
+  ctx: ActionContext
+): RuntimeVariableValue | undefined {
+  const resolved = resolveExpressionValue(expression, result, ctx)
+  if (resolved === undefined) {
+    return undefined
+  }
+  return typeof resolved === expectedType ? resolved : undefined
+}
+
+function resolveNumberValue(expression: ValueExpressionOutput, result: RuntimeActionResult, ctx: ActionContext): number | undefined {
+  const resolved = resolveValueAsType(expression, "number", result, ctx)
+  return typeof resolved === "number" ? resolved : undefined
+}
+
+function resolveStringValue(expression: ValueExpressionOutput, result: RuntimeActionResult, ctx: ActionContext): string | undefined {
+  const resolved = resolveValueAsType(expression, "string", result, ctx)
+  return typeof resolved === "string" ? resolved : undefined
+}
+
 export function executeAction(
   action: RuntimeAction,
   result: RuntimeActionResult,
   ctx: ActionContext
 ): { result: RuntimeActionResult; halt?: boolean } {
   if (action.type === "move") {
+    const dx = resolveNumberValue(action.dx, result, ctx) ?? 0
+    const dy = resolveNumberValue(action.dy, result, ctx) ?? 0
     return {
       result: {
         ...result,
         instance: {
           ...result.instance,
-          x: result.instance.x + action.dx,
-          y: result.instance.y + action.dy
+          x: result.instance.x + dx,
+          y: result.instance.y + dy
         }
       }
     }
   }
   if (action.type === "setVelocity") {
-    const radians = (action.direction * Math.PI) / 180
+    const speed = resolveNumberValue(action.speed, result, ctx) ?? 0
+    const direction = resolveNumberValue(action.direction, result, ctx) ?? 0
+    const radians = (direction * Math.PI) / 180
     return {
       result: {
         ...result,
         instance: {
           ...result.instance,
-          x: result.instance.x + Math.cos(radians) * action.speed,
-          y: result.instance.y + Math.sin(radians) * action.speed
+          x: result.instance.x + Math.cos(radians) * speed,
+          y: result.instance.y + Math.sin(radians) * speed
         }
       }
     }
   }
   if (action.type === "rotate") {
     const currentRotation = result.instance.rotation ?? 0
+    const angle = resolveNumberValue(action.angle, result, ctx) ?? 0
     return {
       result: {
         ...result,
         instance: {
           ...result.instance,
-          rotation: action.mode === "set" ? action.angle : currentRotation + action.angle
+          rotation: action.mode === "set" ? angle : currentRotation + angle
         }
       }
     }
   }
   if (action.type === "moveToward") {
-    if (action.speed === 0) {
+    const speed = resolveNumberValue(action.speed, result, ctx) ?? 0
+    if (speed === 0) {
       return { result }
     }
 
@@ -119,8 +242,8 @@ export function executeAction(
         ...result,
         instance: {
           ...result.instance,
-          x: result.instance.x + Math.cos(radians) * action.speed,
-          y: result.instance.y + Math.sin(radians) * action.speed
+          x: result.instance.x + Math.cos(radians) * speed,
+          y: result.instance.y + Math.sin(radians) * speed
         }
       }
     }
@@ -139,13 +262,15 @@ export function executeAction(
   }
   if (action.type === "teleport") {
     if (action.mode === "position") {
+      const resolvedX = action.x === null ? undefined : resolveNumberValue(action.x, result, ctx)
+      const resolvedY = action.y === null ? undefined : resolveNumberValue(action.y, result, ctx)
       return {
         result: {
           ...result,
           instance: {
             ...result.instance,
-            x: action.x ?? result.instance.x,
-            y: action.y ?? result.instance.y
+            x: resolvedX ?? result.instance.x,
+            y: resolvedY ?? result.instance.y
           }
         }
       }
@@ -210,8 +335,8 @@ export function executeAction(
           {
             id: `instance-${generateUUID()}`,
             objectId: action.objectId,
-            x: result.instance.x + action.offsetX,
-            y: result.instance.y + action.offsetY,
+            x: result.instance.x + (resolveNumberValue(action.offsetX, result, ctx) ?? 0),
+            y: result.instance.y + (resolveNumberValue(action.offsetY, result, ctx) ?? 0),
             rotation: 0
           }
         ]
@@ -219,28 +344,38 @@ export function executeAction(
     }
   }
   if (action.type === "changeScore") {
+    const delta = resolveNumberValue(action.delta, result, ctx) ?? 0
     return {
       result: {
         ...result,
-        scoreDelta: result.scoreDelta + action.delta
+        scoreDelta: result.scoreDelta + delta
       }
     }
   }
   if (action.type === "endGame") {
+    const message = resolveStringValue(action.message, result, ctx)
+    if (message === undefined) {
+      return { result }
+    }
     return {
       result: {
         ...result,
-        gameOverMessage: action.message
+        gameOverMessage: message
       }
     }
   }
   if (action.type === "message") {
+    const text = resolveStringValue(action.text, result, ctx)
+    const durationMs = resolveNumberValue(action.durationMs, result, ctx)
+    if (text === undefined || durationMs === undefined) {
+      return { result }
+    }
     return {
       result: {
         ...result,
         runtime: enqueueRuntimeToast(result.runtime as RuntimeToastState, {
-          text: action.text,
-          durationMs: action.durationMs
+          text,
+          durationMs: Math.max(1, Math.round(durationMs))
         }) as RuntimeState
       }
     }
@@ -260,7 +395,15 @@ export function executeAction(
       }
       if (action.operator === "set") {
         const existingValue = result.runtime.globalVariables[action.variableId]
-        if (existingValue === undefined || !isSameVariableValueType(existingValue, action.value)) {
+        if (existingValue === undefined) {
+          return { result }
+        }
+        const expectedType = typeof existingValue
+        if (expectedType !== "number" && expectedType !== "string" && expectedType !== "boolean") {
+          return { result }
+        }
+        const resolvedValue = resolveValueAsType(action.value, expectedType, result, ctx)
+        if (resolvedValue === undefined || !isSameVariableValueType(existingValue, resolvedValue)) {
           return { result }
         }
         return {
@@ -270,13 +413,13 @@ export function executeAction(
               ...result.runtime,
               globalVariables: {
                 ...result.runtime.globalVariables,
-                [action.variableId]: action.value
+                [action.variableId]: resolvedValue
               }
             }
           }
         }
       }
-      const numValue = typeof action.value === "number" ? action.value : 0
+      const numValue = resolveNumberValue(action.value, result, ctx) ?? 0
       return {
         result: {
           ...result,
@@ -300,7 +443,15 @@ export function executeAction(
         return { result }
       }
       const existingValue = targetVariables[action.variableId]
-      if (existingValue === undefined || !isSameVariableValueType(existingValue, action.value)) {
+      if (existingValue === undefined) {
+        return { result }
+      }
+      const expectedType = typeof existingValue
+      if (expectedType !== "number" && expectedType !== "string" && expectedType !== "boolean") {
+        return { result }
+      }
+      const resolvedValue = resolveValueAsType(action.value, expectedType, result, ctx)
+      if (resolvedValue === undefined || !isSameVariableValueType(existingValue, resolvedValue)) {
         return { result }
       }
       return {
@@ -312,14 +463,14 @@ export function executeAction(
               ...result.runtime.objectInstanceVariables,
               [resolvedTargetInstanceId]: {
                 ...result.runtime.objectInstanceVariables[resolvedTargetInstanceId],
-                [action.variableId]: action.value
+                [action.variableId]: resolvedValue
               }
             }
           }
         }
       }
     }
-    const numValue = typeof action.value === "number" ? action.value : 0
+    const numValue = resolveNumberValue(action.value, result, ctx) ?? 0
     return {
       result: {
         ...result,
@@ -334,10 +485,21 @@ export function executeAction(
     }
   }
   if (action.type === "randomizeVariable") {
-    if (action.min > action.max) {
+    const resolvedMin = resolveNumberValue(action.min, result, ctx)
+    const resolvedMax = resolveNumberValue(action.max, result, ctx)
+    const resolvedStep = action.step === undefined ? 1 : resolveNumberValue(action.step, result, ctx)
+    if (resolvedMin === undefined || resolvedMax === undefined || resolvedStep === undefined) {
       return { result }
     }
-    const randomValue = Math.floor(Math.random() * (action.max - action.min + 1)) + action.min
+    const min = Math.round(resolvedMin)
+    const max = Math.round(resolvedMax)
+    const step = Math.round(resolvedStep)
+    if (step <= 0 || min > max) {
+      return { result }
+    }
+    const steps = Math.floor((max - min) / step)
+    const index = Math.floor(Math.random() * (steps + 1))
+    const randomValue = min + index * step
     if (action.scope === "global") {
       if (isReadonlyGlobalVariableId(action.variableId)) {
         return { result }
@@ -477,10 +639,15 @@ export function executeAction(
     }
   }
   if (action.type === "wait") {
+    const durationMs = resolveNumberValue(action.durationMs, result, ctx)
+    if (durationMs === undefined) {
+      return { result }
+    }
+    const roundedDuration = Math.max(1, Math.round(durationMs))
     const waitKey = buildWaitActionKey(result.instance.id, action.id, ctx.collisionOtherInstanceId)
     const elapsed = result.runtime.waitElapsedByInstanceActionId[waitKey] ?? 0
     const nextElapsed = elapsed + RUNTIME_TICK_MS
-    if (nextElapsed < action.durationMs) {
+    if (nextElapsed < roundedDuration) {
       return {
         result: {
           ...result,

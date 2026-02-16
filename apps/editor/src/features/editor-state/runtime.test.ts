@@ -3690,6 +3690,309 @@ describe("runtime regressions", () => {
     expect(result.runtime.objectInstanceVariables["instance-calc"]?.["ov-bool"]).toBe(true)
   })
 
+  it("resolves value sources in changeVariable actions", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-value-source-change-variable",
+        name: "Value source change variable test",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: {
+        sprites: [],
+        sounds: []
+      },
+      variables: {
+        global: [
+          { id: "gv-in", name: "in", type: "number", initialValue: 7 },
+          { id: "gv-out", name: "out", type: "number", initialValue: 0 }
+        ],
+        objectByObjectId: {
+          "object-calc": [
+            { id: "ov-in", name: "inObject", type: "number", initialValue: 5 },
+            { id: "ov-out", name: "outObject", type: "number", initialValue: 0 }
+          ]
+        }
+      },
+      objects: [
+        {
+          id: "object-calc",
+          name: "Calculator",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step",
+              type: "Step",
+              key: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [
+                {
+                  id: "item-a1",
+                  type: "action",
+                  action: {
+                    id: "a1",
+                    type: "changeVariable",
+                    scope: "global",
+                    variableId: "gv-out",
+                    operator: "set",
+                    value: { source: "globalVariable", variableId: "gv-in" }
+                  }
+                },
+                {
+                  id: "item-a2",
+                  type: "action",
+                  action: {
+                    id: "a2",
+                    type: "changeVariable",
+                    scope: "object",
+                    variableId: "ov-out",
+                    operator: "set",
+                    target: "self",
+                    targetInstanceId: null,
+                    value: { source: "attribute", target: "self", attribute: "x" }
+                  }
+                },
+                {
+                  id: "item-a3",
+                  type: "action",
+                  action: {
+                    id: "a3",
+                    type: "changeVariable",
+                    scope: "object",
+                    variableId: "ov-out",
+                    operator: "add",
+                    target: "self",
+                    targetInstanceId: null,
+                    value: { source: "internalVariable", target: "self", variableId: "ov-in" }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      rooms: [{ id: "room-main", name: "Main", instances: [{ id: "instance-calc", objectId: "object-calc", x: 12, y: 4 }] }],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    expect(result.runtime.globalVariables["gv-out"]).toBe(7)
+    expect(result.runtime.objectInstanceVariables["instance-calc"]?.["ov-out"]).toBe(17)
+  })
+
+  it("supports random value source with custom step", () => {
+    const originalRandom = Math.random
+    Math.random = () => 0.95
+    try {
+      const project: ProjectV1 = {
+        version: 1,
+        metadata: {
+          id: "project-random-source-step",
+          name: "Random source step test",
+          locale: "ca",
+          createdAtIso: new Date().toISOString()
+        },
+        resources: {
+          sprites: [],
+          sounds: []
+        },
+        variables: {
+          global: [{ id: "gv-value", name: "value", type: "number", initialValue: 0 }],
+          objectByObjectId: {}
+        },
+        objects: [
+          {
+            id: "object-runner",
+            name: "Runner",
+            spriteId: null,
+            x: 0,
+            y: 0,
+            speed: 0,
+            direction: 0,
+            events: [
+              {
+                id: "event-step",
+                type: "Step",
+                key: null,
+                targetObjectId: null,
+                intervalMs: null,
+                items: [
+                  {
+                    id: "item-a1",
+                    type: "action",
+                    action: {
+                      id: "a1",
+                      type: "changeVariable",
+                      scope: "global",
+                      variableId: "gv-value",
+                      operator: "set",
+                      value: { source: "random", min: 2, max: 8, step: 3 }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        rooms: [{ id: "room-main", name: "Main", instances: [{ id: "instance-runner", objectId: "object-runner", x: 0, y: 0 }] }],
+        scenes: [],
+        metrics: {
+          appStart: 0,
+          projectLoad: 0,
+          runtimeErrors: 0,
+          tutorialCompletion: 0,
+          stuckRate: 0,
+          timeToFirstPlayableFunMs: null
+        }
+      }
+
+      const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+      expect(result.runtime.globalVariables["gv-value"]).toBe(8)
+    } finally {
+      Math.random = originalRandom
+    }
+  })
+
+  it("uses value sources in if conditions and keeps other-only refs collision-scoped", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-value-source-if",
+        name: "Value source if test",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: {
+        sprites: [],
+        sounds: []
+      },
+      variables: {
+        global: [
+          { id: "gv-left", name: "left", type: "number", initialValue: 10 },
+          { id: "gv-right", name: "right", type: "number", initialValue: 10 },
+          { id: "gv-collision", name: "collision", type: "number", initialValue: 0 }
+        ],
+        objectByObjectId: {
+          "object-main": [{ id: "ov-main", name: "mainVal", type: "number", initialValue: 2 }],
+          "object-other": [{ id: "ov-other", name: "otherVal", type: "number", initialValue: 5 }]
+        }
+      },
+      objects: [
+        {
+          id: "object-main",
+          name: "Main",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step",
+              type: "Step",
+              key: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [
+                {
+                  id: "item-if-step",
+                  type: "if",
+                  condition: {
+                    left: { scope: "global", variableId: "gv-left" },
+                    operator: "==",
+                    right: { source: "globalVariable", variableId: "gv-right" }
+                  },
+                  thenActions: [{ id: "item-score", type: "action", action: { id: "a-score", type: "changeScore", delta: 1 } }],
+                  elseActions: []
+                }
+              ]
+            },
+            {
+              id: "event-collision",
+              type: "Collision",
+              key: null,
+              targetObjectId: "object-other",
+              intervalMs: null,
+              items: [
+                {
+                  id: "item-if-collision",
+                  type: "if",
+                  condition: {
+                    left: { scope: "object", variableId: "ov-main" },
+                    operator: "==",
+                    right: { source: "internalVariable", target: "other", variableId: "ov-other" }
+                  },
+                  thenActions: [
+                    {
+                      id: "item-col-a1",
+                      type: "action",
+                      action: {
+                        id: "a-col-1",
+                        type: "changeVariable",
+                        scope: "global",
+                        variableId: "gv-collision",
+                        operator: "set",
+                        value: 1
+                      }
+                    }
+                  ],
+                  elseActions: []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          id: "object-other",
+          name: "Other",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: []
+        }
+      ],
+      rooms: [
+        {
+          id: "room-main",
+          name: "Main",
+          instances: [
+            { id: "instance-main", objectId: "object-main", x: 0, y: 0 },
+            { id: "instance-other", objectId: "object-other", x: 0, y: 0 }
+          ]
+        }
+      ],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const firstTick = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    expect(firstTick.runtime.score).toBe(1)
+    expect(firstTick.runtime.globalVariables["gv-collision"]).toBe(0)
+  })
+
   it("uses Lane Crosser lives and only ends game after repeated collisions", () => {
     const template = createLaneCrosserTemplateProject()
     const runnerObjectId = template.project.objects.find((objectEntry) => objectEntry.name === "Runner")?.id
