@@ -4214,11 +4214,22 @@ describe("runtime regressions", () => {
                   id: "item-if-step",
                   type: "if",
                   condition: {
-                    left: { scope: "global", variableId: "gv-left" },
+                    left: { source: "globalVariable", variableId: "gv-left" },
                     operator: "==",
                     right: { source: "globalVariable", variableId: "gv-right" }
                   },
                   thenActions: [{ id: "item-score", type: "action", action: { id: "a-score", type: "changeScore", delta: 1 } }],
+                  elseActions: []
+                },
+                {
+                  id: "item-if-step-attribute",
+                  type: "if",
+                  condition: {
+                    left: { source: "attribute", target: "self", attribute: "x" },
+                    operator: "==",
+                    right: 0
+                  },
+                  thenActions: [{ id: "item-score-attribute", type: "action", action: { id: "a-score-attribute", type: "changeScore", delta: 1 } }],
                   elseActions: []
                 }
               ]
@@ -4234,7 +4245,7 @@ describe("runtime regressions", () => {
                   id: "item-if-collision",
                   type: "if",
                   condition: {
-                    left: { scope: "object", variableId: "ov-main" },
+                    left: { source: "internalVariable", target: "self", variableId: "ov-main" },
                     operator: "==",
                     right: { source: "internalVariable", target: "other", variableId: "ov-other" }
                   },
@@ -4291,7 +4302,7 @@ describe("runtime regressions", () => {
     }
 
     const firstTick = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
-    expect(firstTick.runtime.score).toBe(1)
+    expect(firstTick.runtime.score).toBe(2)
     expect(firstTick.runtime.globalVariables["gv-collision"]).toBe(0)
   })
 

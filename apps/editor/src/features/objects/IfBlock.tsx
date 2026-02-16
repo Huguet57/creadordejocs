@@ -11,9 +11,9 @@ import {
 } from "../editor-state/types.js"
 import { ActionBlock } from "./ActionBlock.js"
 import { ActionSelectorPanel } from "./ActionSelectorPanel.js"
-import type { ProjectV1 } from "@creadordejocs/project-format"
+import type { ProjectV1, ValueExpression } from "@creadordejocs/project-format"
 import { buildDefaultIfCondition } from "./if-condition-utils.js"
-import { VariablePicker, type ObjectVariableOption } from "./VariablePicker.js"
+import { type ObjectVariableOption } from "./VariablePicker.js"
 import { RightValuePicker } from "./RightValuePicker.js"
 
 type IfBlockProps = {
@@ -46,7 +46,7 @@ type IfContextMenuState = {
   y: number
 } | null
 
-type ComparisonIfCondition = Extract<IfCondition, { left: { scope: "global" | "object"; variableId: string } }>
+type ComparisonIfCondition = Extract<IfCondition, { left: ValueExpression }>
 type CompoundIfCondition = { logic: "AND" | "OR"; conditions: IfCondition[] }
 function isComparisonIfCondition(condition: IfCondition): condition is ComparisonIfCondition {
   return "left" in condition
@@ -75,6 +75,52 @@ function ensureComparisonIfCondition(
     return condition
   }
   return fallbackCondition
+}
+
+function isLegacyConditionLeft(
+  value: ComparisonIfCondition["left"]
+): value is { scope: "global" | "object"; variableId: string } {
+  return typeof value === "object" && value !== null && "scope" in value && "variableId" in value
+}
+
+function isSourceConditionLeft(
+  value: ComparisonIfCondition["left"]
+): value is Extract<ComparisonIfCondition["left"], { source: string }> {
+  return typeof value === "object" && value !== null && "source" in value
+}
+
+function getLeftValueExpectedType(
+  left: ComparisonIfCondition["left"],
+  globalVariables: ProjectV1["variables"]["global"],
+  selectedObjectVariables: ProjectV1["variables"]["global"]
+): "number" | "string" | "boolean" {
+  if (isLegacyConditionLeft(left)) {
+    const source = left.scope === "global" ? globalVariables : selectedObjectVariables
+    return source.find((variable) => variable.id === left.variableId)?.type ?? "number"
+  }
+  if (!isSourceConditionLeft(left)) {
+    return "number"
+  }
+  if (left.source === "attribute") {
+    return "number"
+  }
+  if (left.source === "globalVariable") {
+    return globalVariables.find((variable) => variable.id === left.variableId)?.type ?? "number"
+  }
+  if (left.source === "internalVariable") {
+    return selectedObjectVariables.find((variable) => variable.id === left.variableId)?.type ?? "number"
+  }
+  return "number"
+}
+
+function getDefaultRightValueForType(type: "number" | "string" | "boolean"): ComparisonIfCondition["right"] {
+  if (type === "boolean") {
+    return false
+  }
+  if (type === "string") {
+    return ""
+  }
+  return 0
 }
 
 function BranchAddButton({
@@ -304,26 +350,28 @@ export function IfBlock({
     condition: ComparisonIfCondition,
     onChange: (nextCondition: ComparisonIfCondition) => void
   ) => {
-    const variableSource = condition.left.scope === "global" ? globalVariables : selectedObjectVariables
-    const selectedVariable = variableSource.find((variable) => variable.id === condition.left.variableId)
-    const selectedType = selectedVariable?.type ?? "number"
+    const selectedType = getLeftValueExpectedType(condition.left, globalVariables, selectedObjectVariables)
 
     return (
       <>
-        <VariablePicker
-          scope={condition.left.scope}
-          variableId={condition.left.variableId}
+        <RightValuePicker
+          value={condition.left}
+          expectedType={selectedType}
           globalVariables={globalVariables}
-          objectVariables={objectVarOptionsForPicker}
+          internalVariables={objectVarOptionsForPicker}
+          allowOtherTarget={eventType === "Collision"}
+          allowedSources={["globalVariable", "internalVariable", "attribute"]}
           variant="blue"
-          onChange={(nextScope, nextVariableId) => {
-            const nextSource = nextScope === "global" ? globalVariables : selectedObjectVariables
-            const nextVariable = nextSource.find((v) => v.id === nextVariableId)
-            if (!nextVariable) return
+          onChange={(nextLeft) => {
+            const nextType = getLeftValueExpectedType(
+              nextLeft as ComparisonIfCondition["left"],
+              globalVariables,
+              selectedObjectVariables
+            )
             onChange({
-              left: { scope: nextScope, variableId: nextVariableId },
+              left: nextLeft as ComparisonIfCondition["left"],
               operator: condition.operator,
-              right: nextVariable.initialValue
+              right: getDefaultRightValueForType(nextType)
             })
           }}
         />

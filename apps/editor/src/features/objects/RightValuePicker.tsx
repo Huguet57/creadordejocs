@@ -23,6 +23,7 @@ type RightValuePickerProps = {
   globalVariables: VariableOption[]
   internalVariables: ObjectVariableOption[]
   allowOtherTarget?: boolean
+  allowedSources?: ("literal" | "random" | "attribute" | "internalVariable" | "globalVariable")[]
   onChange: (nextValue: ValueExpression) => void
   variant?: "default" | "blue" | undefined
 }
@@ -44,6 +45,7 @@ export function RightValuePicker({
   globalVariables,
   internalVariables,
   allowOtherTarget = false,
+  allowedSources = ["literal", "random", "attribute", "internalVariable", "globalVariable"],
   onChange,
   variant = "blue"
 }: RightValuePickerProps) {
@@ -156,8 +158,13 @@ export function RightValuePicker({
     }
   }, [isOpen])
 
-  const filteredGlobal = globalVariables.filter((v) => v.type === expectedType)
-  const filteredInternal = internalVariables.filter((v) => v.type === expectedType)
+  const canPickLiteral = allowedSources.includes("literal")
+  const canPickRandom = allowedSources.includes("random")
+  const canPickAttributes = allowedSources.includes("attribute")
+  const canPickInternal = allowedSources.includes("internalVariable")
+  const canPickGlobal = allowedSources.includes("globalVariable")
+  const filteredGlobal = canPickGlobal ? globalVariables.filter((v) => v.type === expectedType) : []
+  const filteredInternal = canPickInternal ? internalVariables.filter((v) => v.type === expectedType) : []
   const hasVariables = filteredGlobal.length > 0 || filteredInternal.length > 0
 
   const borderColor = variant === "blue" ? "border-blue-200" : "border-slate-300"
@@ -253,64 +260,66 @@ export function RightValuePicker({
           ref={popoverRef}
           className="right-value-picker-popover absolute top-full z-50 mt-1 min-w-[220px] max-h-[300px] overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg"
         >
-          <div className="right-value-picker-literal-section">
-            <div className="right-value-picker-section-header px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-50 border-b border-slate-100">
-              Valor
-            </div>
-            <div className="right-value-picker-literal-row px-3 py-2">
-              {expectedType === "boolean" ? (
-                <div className="flex gap-1">
-                  {(["true", "false"] as const).map((boolValue) => (
-                    <button
-                      key={boolValue}
-                      type="button"
-                      className={`right-value-picker-bool-btn flex-1 px-2 py-1 rounded text-xs transition-colors ${
-                        ((typeof value === "boolean" && String(value) === boolValue) ||
-                          (isSourceValue(value) && value.source === "literal" && String(value.value) === boolValue))
-                          ? "bg-blue-100 text-blue-700 font-medium"
-                          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                      }`}
-                      onClick={() => {
-                        onChange(boolValue === "true")
-                        setIsOpen(false)
-                      }}
-                    >
-                      {boolValue}
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <form
-                  className="flex gap-1"
-                  onSubmit={(event) => {
-                    event.preventDefault()
-                    commitLiteral(localLiteral)
-                    setIsOpen(false)
-                  }}
-                >
-                  <input
-                    ref={inputRef}
-                    className="right-value-picker-literal-input h-7 flex-1 rounded border border-slate-200 bg-white px-2 text-xs focus:border-blue-400 focus:outline-none"
-                    type="text"
-                    inputMode={expectedType === "number" ? "numeric" : "text"}
-                    value={localLiteral}
-                    onChange={(event) => setLocalLiteral(event.target.value)}
-                    onBlur={() => {
+          {canPickLiteral && (
+            <div className="right-value-picker-literal-section">
+              <div className="right-value-picker-section-header px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-50 border-b border-slate-100">
+                Valor
+              </div>
+              <div className="right-value-picker-literal-row px-3 py-2">
+                {expectedType === "boolean" ? (
+                  <div className="flex gap-1">
+                    {(["true", "false"] as const).map((boolValue) => (
+                      <button
+                        key={boolValue}
+                        type="button"
+                        className={`right-value-picker-bool-btn flex-1 px-2 py-1 rounded text-xs transition-colors ${
+                          ((typeof value === "boolean" && String(value) === boolValue) ||
+                            (isSourceValue(value) && value.source === "literal" && String(value.value) === boolValue))
+                            ? "bg-blue-100 text-blue-700 font-medium"
+                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                        }`}
+                        onClick={() => {
+                          onChange(boolValue === "true")
+                          setIsOpen(false)
+                        }}
+                      >
+                        {boolValue}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <form
+                    className="flex gap-1"
+                    onSubmit={(event) => {
+                      event.preventDefault()
                       commitLiteral(localLiteral)
+                      setIsOpen(false)
                     }}
-                  />
-                  <button
-                    type="submit"
-                    className="right-value-picker-literal-confirm h-7 px-2 rounded bg-blue-500 text-white text-xs hover:bg-blue-600 transition-colors shrink-0"
                   >
-                    OK
-                  </button>
-                </form>
-              )}
+                    <input
+                      ref={inputRef}
+                      className="right-value-picker-literal-input h-7 flex-1 rounded border border-slate-200 bg-white px-2 text-xs focus:border-blue-400 focus:outline-none"
+                      type="text"
+                      inputMode={expectedType === "number" ? "numeric" : "text"}
+                      value={localLiteral}
+                      onChange={(event) => setLocalLiteral(event.target.value)}
+                      onBlur={() => {
+                        commitLiteral(localLiteral)
+                      }}
+                    />
+                    <button
+                      type="submit"
+                      className="right-value-picker-literal-confirm h-7 px-2 rounded bg-blue-500 text-white text-xs hover:bg-blue-600 transition-colors shrink-0"
+                    >
+                      OK
+                    </button>
+                  </form>
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
-          {expectedType === "number" && (
+          {canPickRandom && expectedType === "number" && (
             <div className="right-value-picker-random-section">
               <div className="right-value-picker-section-header px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-50 border-b border-slate-100 border-t">
                 Random
@@ -363,7 +372,7 @@ export function RightValuePicker({
             </div>
           )}
 
-          {expectedType === "number" && (
+          {canPickAttributes && expectedType === "number" && (
             <div className="right-value-picker-attributes-section">
               <div className="right-value-picker-section-header px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-50 border-b border-slate-100 border-t flex items-center justify-between">
                 <span>Attributes</span>
@@ -401,7 +410,7 @@ export function RightValuePicker({
             </div>
           )}
 
-          {filteredInternal.length > 0 && (
+          {canPickInternal && filteredInternal.length > 0 && (
             <div className="right-value-picker-internal-section">
               <div className="right-value-picker-section-header px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-50 border-b border-slate-100 border-t flex items-center justify-between">
                 <span>Internal variables</span>
@@ -441,7 +450,7 @@ export function RightValuePicker({
 
           {hasVariables && (
             <>
-              {filteredGlobal.length > 0 && (
+              {canPickGlobal && filteredGlobal.length > 0 && (
                 <div className="right-value-picker-global-section">
                   <div className="right-value-picker-section-header px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-50 border-b border-slate-100 border-t">
                     Global

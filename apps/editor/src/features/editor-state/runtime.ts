@@ -142,22 +142,6 @@ function getEventItems(eventEntry: ProjectV1["objects"][number]["events"][number
     }))
 }
 
-function resolveConditionLeftValue(
-  condition: Extract<Extract<RuntimeEventItem, { type: "if" }>["condition"], { left: { scope: "global" | "object"; variableId: string } }>,
-  instance: ProjectV1["rooms"][number]["instances"][number],
-  runtime: RuntimeState,
-  collisionOtherInstanceId: string | null
-): RuntimeVariableValue | undefined {
-  if (condition.left.scope === "global") {
-    return runtime.globalVariables[condition.left.variableId]
-  }
-  const targetInstanceId = resolveTargetInstanceId(instance, "self", null, collisionOtherInstanceId)
-  if (!targetInstanceId) {
-    return undefined
-  }
-  return runtime.objectInstanceVariables[targetInstanceId]?.[condition.left.variableId]
-}
-
 function isLegacyVariableReference(
   value: ValueExpressionOutput
 ): value is { scope: "global" | "object"; variableId: string } {
@@ -171,57 +155,57 @@ function isValueSource(value: ValueExpressionOutput): value is Exclude<
   return typeof value === "object" && value !== null && "source" in value
 }
 
-function resolveConditionRightValue(
-  condition: Extract<Extract<RuntimeEventItem, { type: "if" }>["condition"], { left: { scope: "global" | "object"; variableId: string } }>,
+function resolveConditionExpressionValue(
+  expression: ValueExpressionOutput,
   instance: ProjectV1["rooms"][number]["instances"][number],
   runtime: RuntimeState,
   collisionOtherInstanceId: string | null,
   roomInstances: ProjectV1["rooms"][number]["instances"]
 ): RuntimeVariableValue | undefined {
-  if (typeof condition.right === "number" || typeof condition.right === "string" || typeof condition.right === "boolean") {
-    return condition.right
+  if (typeof expression === "number" || typeof expression === "string" || typeof expression === "boolean") {
+    return expression
   }
 
-  if (isLegacyVariableReference(condition.right)) {
-    if (condition.right.scope === "global") {
-      return runtime.globalVariables[condition.right.variableId]
+  if (isLegacyVariableReference(expression)) {
+    if (expression.scope === "global") {
+      return runtime.globalVariables[expression.variableId]
     }
     const targetInstanceId = resolveTargetInstanceId(instance, "self", null, collisionOtherInstanceId)
     if (!targetInstanceId) {
       return undefined
     }
-    return runtime.objectInstanceVariables[targetInstanceId]?.[condition.right.variableId]
+    return runtime.objectInstanceVariables[targetInstanceId]?.[expression.variableId]
   }
 
-  if (!isValueSource(condition.right)) {
+  if (!isValueSource(expression)) {
     return undefined
   }
 
-  if (condition.right.source === "literal") {
-    return condition.right.value
+  if (expression.source === "literal") {
+    return expression.value
   }
 
-  if (condition.right.source === "globalVariable") {
-    return runtime.globalVariables[condition.right.variableId]
+  if (expression.source === "globalVariable") {
+    return runtime.globalVariables[expression.variableId]
   }
 
-  if (condition.right.source === "internalVariable") {
+  if (expression.source === "internalVariable") {
     const targetInstanceId = resolveTargetInstanceId(
       instance,
-      condition.right.target,
+      expression.target,
       null,
       collisionOtherInstanceId
     )
     if (!targetInstanceId) {
       return undefined
     }
-    return runtime.objectInstanceVariables[targetInstanceId]?.[condition.right.variableId]
+    return runtime.objectInstanceVariables[targetInstanceId]?.[expression.variableId]
   }
 
-  if (condition.right.source === "attribute") {
+  if (expression.source === "attribute") {
     const targetInstanceId = resolveTargetInstanceId(
       instance,
-      condition.right.target,
+      expression.target,
       null,
       collisionOtherInstanceId
     )
@@ -235,31 +219,31 @@ function resolveConditionRightValue(
     if (!targetInstance) {
       return undefined
     }
-    if (condition.right.attribute === "x") {
+    if (expression.attribute === "x") {
       return targetInstance.x
     }
-    if (condition.right.attribute === "y") {
+    if (expression.attribute === "y") {
       return targetInstance.y
     }
     return targetInstance.rotation ?? 0
   }
 
-  if (!Number.isFinite(condition.right.min) || !Number.isFinite(condition.right.max) || !Number.isFinite(condition.right.step)) {
+  if (!Number.isFinite(expression.min) || !Number.isFinite(expression.max) || !Number.isFinite(expression.step)) {
     return undefined
   }
-  if (condition.right.step <= 0 || condition.right.max < condition.right.min) {
+  if (expression.step <= 0 || expression.max < expression.min) {
     return undefined
   }
-  const steps = Math.floor((condition.right.max - condition.right.min) / condition.right.step)
+  const steps = Math.floor((expression.max - expression.min) / expression.step)
   const index = Math.floor(Math.random() * (steps + 1))
-  return condition.right.min + index * condition.right.step
+  return expression.min + index * expression.step
 }
 
 function isComparisonCondition(
   condition: Extract<RuntimeEventItem, { type: "if" }>["condition"]
 ): condition is Extract<
   Extract<RuntimeEventItem, { type: "if" }>["condition"],
-  { left: { scope: "global" | "object"; variableId: string } }
+  { left: ValueExpressionOutput }
 > {
   return "left" in condition
 }
@@ -282,8 +266,8 @@ function evaluateIfCondition(
     )
   }
 
-  const leftValue = resolveConditionLeftValue(condition, instance, runtime, collisionOtherInstanceId)
-  const rightValue = resolveConditionRightValue(condition, instance, runtime, collisionOtherInstanceId, roomInstances)
+  const leftValue = resolveConditionExpressionValue(condition.left, instance, runtime, collisionOtherInstanceId, roomInstances)
+  const rightValue = resolveConditionExpressionValue(condition.right, instance, runtime, collisionOtherInstanceId, roomInstances)
   if (leftValue === undefined || rightValue === undefined || !isSameVariableValueType(leftValue, rightValue)) {
     return false
   }

@@ -233,13 +233,20 @@ const ObjectActionSchema = z.discriminatedUnion("type", [
   })
 ])
 
-const IfConditionLeftSchema = z.discriminatedUnion("scope", [
+const IfConditionLeftSchema = z.union([
+  LegacyVariableReferenceSchema,
   z.object({
-    scope: z.literal("global"),
+    source: z.literal("attribute"),
+    target: ValueTargetSchema,
+    attribute: ValueAttributeSchema
+  }),
+  z.object({
+    source: z.literal("internalVariable"),
+    target: ValueTargetSchema,
     variableId: z.string().min(1)
   }),
   z.object({
-    scope: z.literal("object"),
+    source: z.literal("globalVariable"),
     variableId: z.string().min(1)
   })
 ])
