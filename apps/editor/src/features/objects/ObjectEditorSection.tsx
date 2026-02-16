@@ -2,35 +2,13 @@ import { useEffect, useMemo, useState } from "react"
 import type { ObjectActionDraft } from "@creadordejocs/project-format"
 import { isSpriteCompatibleWithObjectSize, type EditorController } from "../editor-state/use-editor-controller.js"
 import { SYSTEM_MOUSE_GLOBALS, type IfCondition, type ObjectActionType } from "../editor-state/types.js"
-import { resolveAssetSource } from "../assets/asset-source-resolver.js"
 import { ObjectListPanel } from "./ObjectListPanel.js"
 import { ObjectVariablesPanel } from "./ObjectVariablesPanel.js"
 import { EventListPanel } from "./EventListPanel.js"
 import { ActionEditorPanel } from "./ActionEditorPanel.js"
 import { buildDefaultIfCondition } from "./if-condition-utils.js"
 import { SpritePickerModal } from "../sprites/components/SpritePickerModal.js"
-import { normalizePixelGrid } from "../sprites/utils/sprite-grid.js"
-
-function spritePixelsToDataUrl(pixelsRgba: string[], width: number, height: number): string {
-  if (!pixelsRgba.length || width <= 0 || height <= 0) return ""
-  const normalized = normalizePixelGrid(pixelsRgba, width, height)
-  const canvas = document.createElement("canvas")
-  canvas.width = width
-  canvas.height = height
-  const ctx = canvas.getContext("2d")
-  if (!ctx) return ""
-  const imageData = ctx.createImageData(width, height)
-  for (let index = 0; index < normalized.length; index += 1) {
-    const color = normalized[index] ?? "#00000000"
-    const offset = index * 4
-    imageData.data[offset] = parseInt(color.slice(1, 3), 16)
-    imageData.data[offset + 1] = parseInt(color.slice(3, 5), 16)
-    imageData.data[offset + 2] = parseInt(color.slice(5, 7), 16)
-    imageData.data[offset + 3] = parseInt(color.slice(7, 9), 16)
-  }
-  ctx.putImageData(imageData, 0, 0)
-  return canvas.toDataURL("image/png")
-}
+import { resolveSpritePreviewSource } from "../sprites/utils/sprite-preview-source.js"
 
 type ObjectEditorSectionProps = {
   controller: EditorController
@@ -50,12 +28,8 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
     const resolveSprites = async () => {
       const pairs = await Promise.all(
         sprites.map(async (spriteEntry) => {
-          const resolved = await resolveAssetSource(spriteEntry.assetSource)
-          if (resolved) {
-            return [spriteEntry.id, resolved] as const
-          }
-          const fallback = spritePixelsToDataUrl(spriteEntry.pixelsRgba, spriteEntry.width, spriteEntry.height)
-          return [spriteEntry.id, fallback] as const
+          const resolved = await resolveSpritePreviewSource(spriteEntry)
+          return [spriteEntry.id, resolved] as const
         })
       )
       if (!cancelled) {

@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { Play, Square } from "lucide-react"
 import type { ProjectV1 } from "@creadordejocs/project-format"
 import { Button } from "../../components/ui/button.js"
-import { resolveAssetSource } from "../assets/asset-source-resolver.js"
 import type { RuntimeMouseButton, RuntimeState } from "../editor-state/runtime.js"
+import { resolveSpritePreviewSource } from "../sprites/utils/sprite-preview-source.js"
 
 const ROOM_WIDTH = 832
 const ROOM_HEIGHT = 480
@@ -56,8 +56,8 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
     const resolveSprites = async () => {
       const pairs = await Promise.all(
         sprites.map(async (spriteEntry) => {
-          const resolved = await resolveAssetSource(spriteEntry.assetSource)
-          return [spriteEntry.id, resolved ?? ""] as const
+          const resolved = await resolveSpritePreviewSource(spriteEntry)
+          return [spriteEntry.id, resolved] as const
         })
       )
       if (!cancelled) {

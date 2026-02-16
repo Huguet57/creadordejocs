@@ -11,8 +11,8 @@ import {
 import { Box, EyeOff, Grid3X3, Plus, X } from "lucide-react"
 import type { EditorController } from "../editor-state/use-editor-controller.js"
 import { Button } from "../../components/ui/button.js"
-import { resolveAssetSource } from "../assets/asset-source-resolver.js"
 import { getPositionCountsByCoordinate, getPositionKey, wouldOverlapSolid } from "./room-placement-utils.js"
+import { resolveSpritePreviewSource } from "../sprites/utils/sprite-preview-source.js"
 
 const ROOM_WIDTH = 832
 const ROOM_HEIGHT = 480
@@ -126,8 +126,8 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
     const resolveSprites = async () => {
       const pairs = await Promise.all(
         sprites.map(async (spriteEntry) => {
-          const resolved = await resolveAssetSource(spriteEntry.assetSource)
-          return [spriteEntry.id, resolved ?? ""] as const
+          const resolved = await resolveSpritePreviewSource(spriteEntry)
+          return [spriteEntry.id, resolved] as const
         })
       )
       if (!cancelled) {
