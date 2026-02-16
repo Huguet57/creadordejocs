@@ -53,34 +53,39 @@ export function RightValuePicker({
   const [randomMin, setRandomMin] = useState("0")
   const [randomMax, setRandomMax] = useState("10")
   const [randomStep, setRandomStep] = useState("1")
-  const [popoverStyle, setPopoverStyle] = useState<React.CSSProperties>({})
   const containerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const randomMinInputRef = useRef<HTMLInputElement>(null)
   const popoverRef = useRef<HTMLDivElement>(null)
 
-  // Position popover so it stays within the viewport (runs before paint)
+  // Position popover so it stays within the viewport (direct DOM, before paint)
   useLayoutEffect(() => {
-    if (!isOpen || !popoverRef.current || !containerRef.current) return
-    const popoverRect = popoverRef.current.getBoundingClientRect()
-    const containerRect = containerRef.current.getBoundingClientRect()
-    const viewportWidth = window.innerWidth
+    const popover = popoverRef.current
+    const container = containerRef.current
+    if (!isOpen || !popover || !container) return
+
+    // Reset to natural position so we can measure true content width
+    popover.style.left = "0px"
+    popover.style.maxWidth = "none"
+
+    const naturalWidth = popover.scrollWidth
+    const containerRect = container.getBoundingClientRect()
+    const viewportWidth = document.documentElement.clientWidth
     const margin = 8
 
-    // Default: align left edge of popover with container
+    // Start aligned to container left edge, then shift if it overflows
     let leftOffset = 0
-
-    // If popover overflows right, shift it left
-    if (containerRect.left + popoverRect.width > viewportWidth - margin) {
-      leftOffset = viewportWidth - margin - popoverRect.width - containerRect.left
+    if (containerRect.left + naturalWidth > viewportWidth - margin) {
+      leftOffset = viewportWidth - margin - naturalWidth - containerRect.left
     }
 
-    // Never shift so far right that the left edge goes off-screen
+    // Never push past the left viewport edge
     if (containerRect.left + leftOffset < margin) {
       leftOffset = margin - containerRect.left
     }
 
-    setPopoverStyle({ left: `${leftOffset}px` })
+    popover.style.left = `${leftOffset}px`
+    popover.style.maxWidth = `${viewportWidth - margin * 2}px`
   }, [isOpen])
 
   // Sync local literal state with external value
@@ -219,7 +224,6 @@ export function RightValuePicker({
       {isOpen && (
         <div
           ref={popoverRef}
-          style={popoverStyle}
           className="right-value-picker-popover absolute top-full z-50 mt-1 min-w-[220px] max-h-[300px] overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg"
         >
           <div className="right-value-picker-literal-section">
