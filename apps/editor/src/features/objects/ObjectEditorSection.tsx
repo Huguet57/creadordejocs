@@ -245,6 +245,7 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
       <ObjectListPanel
         objects={controller.project.objects}
         activeObjectId={controller.activeObjectId}
+        spriteSources={resolvedSpriteSources}
         onSelectObject={(id) => controller.setActiveObjectId(id)}
         onAddObject={(name) => controller.addObject(name)}
         onDeleteObject={() => controller.deleteSelectedObject()}

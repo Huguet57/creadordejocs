@@ -151,7 +151,6 @@ export function SpritePickerModal({
 
   const renderSpriteRow = (spriteEntry: SpriteOption, depth: number) => {
     const isSelected = selectedSpriteEntry?.id === spriteEntry.id
-    const isAssigned = selectedObjectSpriteId === spriteEntry.id
     const rowIsDisabled = !spriteEntry.isCompatible
     return (
       <button
@@ -172,7 +171,6 @@ export function SpritePickerModal({
           <p className="truncate font-medium">{spriteEntry.name}</p>
           <p className="truncate text-[10px] text-slate-400">
             {spriteEntry.width} x {spriteEntry.height}
-            {isAssigned ? " · assignat" : spriteEntry.isExactSize ? " · mida exacta" : " · escalat"}
           </p>
         </div>
       </button>
@@ -264,14 +262,7 @@ export function SpritePickerModal({
                 <div className="space-y-1 border border-slate-200 bg-slate-50 p-3 text-xs">
                   <p className="font-semibold text-slate-800">{selectedSpriteEntry.name}</p>
                   <p className="text-slate-500">
-                    Mida original: {selectedSpriteEntry.width} x {selectedSpriteEntry.height}
-                  </p>
-                  <p className={selectedSpriteEntry.isCompatible ? "text-emerald-700" : "text-rose-600"}>
-                    {selectedSpriteEntry.isCompatible
-                      ? selectedSpriteEntry.isExactSize
-                        ? "Compatible: mida exacta."
-                        : `Compatible: s'escalara a ${objectWidth} x ${objectHeight}.`
-                      : "No compatible amb el ratio d'aquest objecte."}
+                    {selectedSpriteEntry.width} x {selectedSpriteEntry.height} px
                   </p>
                 </div>
               ) : (

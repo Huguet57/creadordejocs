@@ -6,6 +6,7 @@ import type { ProjectV1 } from "@creadordejocs/project-format"
 type ObjectListPanelProps = {
   objects: ProjectV1["objects"]
   activeObjectId: string | null
+  spriteSources: Record<string, string>
   onSelectObject: (id: string) => void
   onAddObject: (name: string) => void
   onDeleteObject: () => void
@@ -14,6 +15,7 @@ type ObjectListPanelProps = {
 export function ObjectListPanel({
   objects,
   activeObjectId,
+  spriteSources,
   onSelectObject,
   onAddObject,
   onDeleteObject
@@ -63,7 +65,16 @@ export function ObjectListPanel({
                 className="flex flex-1 items-center gap-2 text-left text-sm"
                 onClick={() => onSelectObject(objectEntry.id)}
               >
-                <Box className={`h-3.5 w-3.5 ${activeObjectId === objectEntry.id ? "text-blue-500" : "text-slate-400"}`} />
+                {objectEntry.spriteId && spriteSources[objectEntry.spriteId] ? (
+                  <img
+                    src={spriteSources[objectEntry.spriteId]}
+                    alt=""
+                    className="objlist-sprite-icon h-5 w-5 object-contain"
+                    style={{ imageRendering: "pixelated" }}
+                  />
+                ) : (
+                  <Box className={`h-3.5 w-3.5 ${activeObjectId === objectEntry.id ? "text-blue-500" : "text-slate-400"}`} />
+                )}
                 <span className={`truncate ${activeObjectId === objectEntry.id ? "font-medium text-slate-900" : "text-slate-600"}`}>
                   {objectEntry.name}
                 </span>
