@@ -456,7 +456,7 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
             setIsSpritePickerOpen(false)
           }}
           onCreateNewSprite={() => {
-            const createdSpriteId = controller.createSpriteForSelectedObject(`${selectedObject.name} Sprite`)
+            const createdSpriteId = controller.createSpriteForSelectedObject(selectedObject.name)
             controller.openSpriteEditor(createdSpriteId)
             setIsSpritePickerOpen(false)
           }}

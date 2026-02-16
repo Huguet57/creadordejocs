@@ -578,7 +578,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
     addObject(name: string) {
       const trimmedName = name.trim()
       if (!trimmedName) return
-      const createdSprite = quickCreateSpriteWithSize(project, `${trimmedName} Sprite`, 32, 32)
+      const createdSprite = quickCreateSpriteWithSize(project, trimmedName, 32, 32)
       const result = quickCreateObject(createdSprite.project, {
         name: trimmedName,
         spriteId: createdSprite.spriteId,
