@@ -328,7 +328,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                   return (
                     <div
                       key={instanceEntry.id}
-                      className={`mvp15-room-instance group absolute flex cursor-move items-center justify-center overflow-hidden rounded text-[10px] ${spriteSource ? "" : "bg-blue-500 text-white"} ${draggingInstanceId === instanceEntry.id ? "opacity-30" : ""}`}
+                      className={`mvp15-room-instance group absolute flex cursor-move items-center justify-center rounded text-[10px] ${spriteSource ? "" : "bg-blue-500 text-white"} ${draggingInstanceId === instanceEntry.id ? "opacity-30" : ""}`}
                       style={{ left: instanceEntry.x, top: instanceEntry.y, width: instanceWidth, height: instanceHeight }}
                       draggable
                       onDragStart={(event) => {
