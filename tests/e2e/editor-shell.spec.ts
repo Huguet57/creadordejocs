@@ -31,8 +31,8 @@ test("creates sprite, object and object listener", async ({ page }) => {
   await page.getByRole("button", { name: "Add Object" }).click()
   await page.locator("input[placeholder='Name...']").fill("PlayerShip")
   await page.locator("input[placeholder='Name...']").press("Enter")
-  await expect(page.getByText("PlayerShip")).toBeVisible()
-  await page.getByText("PlayerShip").click()
+  await expect(page.getByRole("button", { name: "PlayerShip" })).toBeVisible()
+  await page.getByRole("button", { name: "PlayerShip" }).click()
 
   // Add event
   await page.getByRole("button", { name: "Add Event" }).click()
