@@ -321,7 +321,6 @@ const ObjectEventSchema = z
     type: z.enum([
       "Create",
       "Step",
-      "Draw",
       "Collision",
       "Keyboard",
       "OnDestroy",

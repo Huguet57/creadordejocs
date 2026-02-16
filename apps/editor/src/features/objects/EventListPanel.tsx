@@ -27,7 +27,6 @@ type EventListPanelProps = {
 const EVENT_ICONS: Record<ObjectEventType, React.ElementType> = {
   Create: Play,
   Step: Activity,
-  Draw: MousePointerClick, // Placeholder
   Collision: Swords,
   Keyboard: Keyboard,
   OnDestroy: X,

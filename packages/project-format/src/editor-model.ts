@@ -46,7 +46,6 @@ export type UpdateObjectPropertiesInput = {
 export type ObjectEventType =
   | "Create"
   | "Step"
-  | "Draw"
   | "Collision"
   | "Keyboard"
   | "OnDestroy"

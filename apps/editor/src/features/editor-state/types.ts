@@ -5,7 +5,6 @@ export type EditorSection = "sprites" | "objects" | "rooms" | "run" | "templates
 export type ObjectEventType =
   | "Create"
   | "Step"
-  | "Draw"
   | "Collision"
   | "Keyboard"
   | "OnDestroy"
@@ -46,7 +45,6 @@ export { type ObjectActionDraft }
 export const OBJECT_EVENT_TYPES: ObjectEventType[] = [
   "Create",
   "Step",
-  "Draw",
   "Collision",
   "Keyboard",
   "OnDestroy",
