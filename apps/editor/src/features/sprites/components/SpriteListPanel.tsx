@@ -340,10 +340,19 @@ export function SpriteListPanel({
           draggable={!isRenaming}
           onDragStart={(event) => handleDragStart(event, { type: "folder", id: folderEntry.id })}
           onDragEnd={handleDragEnd}
-          onDragOver={(event) => handleDragOver(event, folderEntry.id)}
-          onDragLeave={handleDragLeave}
-          onDrop={(event) => handleDrop(event, folderEntry.id)}
-          className={`mvp16-sprite-tree-folder-row flex h-7 w-full items-center gap-1 rounded px-2 text-left text-xs transition-colors ${
+          onDragOver={(event) => {
+            event.stopPropagation()
+            handleDragOver(event, folderEntry.id)
+          }}
+          onDragLeave={(event) => {
+            event.stopPropagation()
+            handleDragLeave(event)
+          }}
+          onDrop={(event) => {
+            event.stopPropagation()
+            handleDrop(event, folderEntry.id)
+          }}
+          className={`mvp16-sprite-tree-folder-row flex h-8 w-full items-center gap-1 rounded px-2 text-left text-xs transition-colors ${
             isDragOver ? "bg-indigo-100 ring-2 ring-indigo-300" : isSelected ? "bg-indigo-50 text-indigo-700" : "text-slate-700 hover:bg-slate-100"
           } ${isDragging ? "opacity-40" : ""}`}
           style={{ paddingLeft: `${depth * 14 + 8}px` }}
