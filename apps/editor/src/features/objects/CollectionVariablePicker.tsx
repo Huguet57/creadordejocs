@@ -9,7 +9,15 @@ type CollectionVariablePickerProps = {
   globalVariables: ProjectV1["variables"]["global"]
   objectVariables: ProjectV1["variables"]["global"]
   onChange: (scope: "global" | "object", variableId: string) => void
+  allowOtherTarget?: boolean
+  target?: "self" | "other" | null | undefined
+  onTargetChange?: (target: "self" | "other") => void
   variant?: "default" | "purple" | undefined
+}
+
+const TARGET_LABELS: Record<string, string> = {
+  self: "self",
+  other: "other"
 }
 
 export function CollectionVariablePicker({
@@ -19,10 +27,18 @@ export function CollectionVariablePicker({
   globalVariables,
   objectVariables,
   onChange,
+  allowOtherTarget = false,
+  target,
+  onTargetChange,
   variant = "default"
 }: CollectionVariablePickerProps) {
   const [isOpen, setIsOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
+  const [localTarget, setLocalTarget] = useState<"self" | "other">(target === "other" ? "other" : "self")
+
+  useEffect(() => {
+    setLocalTarget(target === "other" ? "other" : "self")
+  }, [target])
 
   useEffect(() => {
     if (!isOpen) return
@@ -47,6 +63,11 @@ export function CollectionVariablePicker({
 
   const ScopeIcon = scope === "global" ? Globe : Box
 
+  const targetSuffix =
+    scope === "object" && allowOtherTarget && target
+      ? `(${TARGET_LABELS[target] ?? target})`
+      : null
+
   const borderColor = variant === "purple" ? "border-purple-300" : "border-slate-300"
   const hoverBg = variant === "purple" ? "hover:bg-purple-50" : "hover:bg-slate-50"
   const focusBorder = variant === "purple" ? "focus:border-purple-400" : "focus:border-slate-400"
@@ -54,6 +75,7 @@ export function CollectionVariablePicker({
   const rowHover = variant === "purple" ? "hover:bg-purple-50" : "hover:bg-blue-50"
 
   const itemTypeBadge = collectionType === "list" ? "list" : "map"
+  const showTargetToggle = allowOtherTarget && filteredObject.length > 0
 
   return (
     <div className="collection-variable-picker-container relative" ref={containerRef}>
@@ -64,6 +86,9 @@ export function CollectionVariablePicker({
       >
         <ScopeIcon className="h-3 w-3 shrink-0 text-slate-400" />
         <span className="truncate text-slate-700">{displayName}</span>
+        {targetSuffix && (
+          <span className="text-[9px] text-slate-400 shrink-0">{targetSuffix}</span>
+        )}
         <ChevronDown className="h-3 w-3 shrink-0 text-slate-300" />
       </button>
 
@@ -98,8 +123,30 @@ export function CollectionVariablePicker({
 
           {filteredObject.length > 0 && (
             <div className="collection-variable-picker-object-section">
-              <div className="collection-variable-picker-section-header px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-50 border-b border-slate-100">
-                Objecte
+              <div className="collection-variable-picker-section-header px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                <span>Objecte</span>
+                {showTargetToggle && (
+                  <div className="flex items-center gap-1">
+                    {(["self", "other"] as const).map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        className={`collection-variable-picker-target-btn px-1.5 py-0.5 rounded text-[9px] transition-colors ${
+                          localTarget === t
+                            ? "bg-slate-700 text-white"
+                            : "bg-slate-200 text-slate-500 hover:bg-slate-300"
+                        }`}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setLocalTarget(t)
+                          onTargetChange?.(t)
+                        }}
+                      >
+                        {TARGET_LABELS[t]}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
               {filteredObject.map((variable) => (
                 <button
@@ -114,7 +161,9 @@ export function CollectionVariablePicker({
                   }}
                 >
                   <Box className="h-3 w-3 text-slate-400 shrink-0" />
-                  <span className="flex-1 truncate">{variable.name}</span>
+                  <span className="flex-1 truncate">
+                    {allowOtherTarget ? `${localTarget}.` : ""}{variable.name}
+                  </span>
                   <span className="collection-variable-picker-type-badge text-[9px] px-1 py-0.5 rounded bg-slate-100 text-slate-400 shrink-0">
                     {itemTypeBadge}
                   </span>

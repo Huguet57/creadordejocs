@@ -486,9 +486,14 @@ export function ControlBlock({
           collectionType="list"
           globalVariables={globalVariables}
           objectVariables={selectedObjectVariables}
+          allowOtherTarget={allowOtherTarget}
+          target={(item.target as "self" | "other" | null | undefined) ?? null}
+          onTargetChange={(nextTarget) =>
+            onUpdateBlock(item.id, { target: nextTarget } as Partial<ObjectControlBlockItem>)
+          }
           variant="purple"
           onChange={(nextScope, nextVarId) =>
-            onUpdateBlock(item.id, { scope: nextScope, variableId: nextVarId } as Partial<ObjectControlBlockItem>)
+            onUpdateBlock(item.id, { scope: nextScope, variableId: nextVarId, ...(nextScope === "object" ? { target: "self" } : {}) } as Partial<ObjectControlBlockItem>)
           }
         />
         <input
@@ -517,9 +522,14 @@ export function ControlBlock({
           collectionType="map"
           globalVariables={globalVariables}
           objectVariables={selectedObjectVariables}
+          allowOtherTarget={allowOtherTarget}
+          target={(item.target as "self" | "other" | null | undefined) ?? null}
+          onTargetChange={(nextTarget) =>
+            onUpdateBlock(item.id, { target: nextTarget } as Partial<ObjectControlBlockItem>)
+          }
           variant="purple"
           onChange={(nextScope, nextVarId) =>
-            onUpdateBlock(item.id, { scope: nextScope, variableId: nextVarId } as Partial<ObjectControlBlockItem>)
+            onUpdateBlock(item.id, { scope: nextScope, variableId: nextVarId, ...(nextScope === "object" ? { target: "self" } : {}) } as Partial<ObjectControlBlockItem>)
           }
         />
         <input
