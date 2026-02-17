@@ -241,6 +241,7 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
                 [selectedObject.id]: null
               }))
             }}
+            onCancelAddEvent={() => setIsEventSelectorOpen(false)}
             onRemoveEvent={(id) => {
               controller.removeObjectEvent(id)
               if (activeEventId === id) {
