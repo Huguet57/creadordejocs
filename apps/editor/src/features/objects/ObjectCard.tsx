@@ -27,7 +27,7 @@ export function ObjectCard({ objectName, spriteSrc, visible, solid, onToggleVisi
               className="objcard-sprite-img h-full w-full object-contain"
             />
           ) : (
-            <Box className="h-5 w-5 text-slate-400" />
+            <Box className="h-4 w-4 text-slate-600" />
           )}
         </button>
         <div className="objcard-info flex min-w-0 flex-1 flex-col gap-1">
