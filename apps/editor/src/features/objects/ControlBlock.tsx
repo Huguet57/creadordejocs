@@ -1,5 +1,5 @@
-import { Plus, Trash, X } from "lucide-react"
-import { useEffect, useState } from "react"
+import { Plus, Trash, X, GitBranch, RotateCcw, List, Map } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
 import { Button } from "../../components/ui/button.js"
 import {
   type IfCondition,
@@ -9,6 +9,7 @@ import {
 } from "../editor-state/types.js"
 import { ActionBlock } from "./ActionBlock.js"
 import type { ProjectV1, ValueExpression, ObjectControlBlockItem } from "@creadordejocs/project-format"
+import { generateUUID } from "@creadordejocs/project-format"
 import { buildDefaultIfCondition } from "./if-condition-utils.js"
 import { type ObjectVariableOption } from "./VariablePicker.js"
 import { RightValuePicker } from "./RightValuePicker.js"
@@ -210,6 +211,54 @@ export function ControlBlock({
 
   const [contextMenu, setContextMenu] = useState<BlockContextMenuState>(null)
   const [showElseManually, setShowElseManually] = useState(false)
+  const [blockPickerBranch, setBlockPickerBranch] = useState<"then" | "else" | null>(null)
+  const blockPickerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!blockPickerBranch) return
+    function handleMouseDown(event: MouseEvent) {
+      if (blockPickerRef.current && !blockPickerRef.current.contains(event.target as Node)) {
+        setBlockPickerBranch(null)
+      }
+    }
+    document.addEventListener("mousedown", handleMouseDown)
+    return () => document.removeEventListener("mousedown", handleMouseDown)
+  }, [blockPickerBranch])
+
+  function createAndAddBlock(blockType: "if" | "repeat" | "forEachList" | "forEachMap", branch: "then" | "else") {
+    let block: ObjectControlBlockItem | null = null
+    if (blockType === "if" && defaultIfCondition) {
+      block = { id: `if-${generateUUID()}`, type: "if", condition: defaultIfCondition, thenActions: [], elseActions: [] }
+    } else if (blockType === "repeat") {
+      block = { id: `repeat-${generateUUID()}`, type: "repeat", count: 3, actions: [] }
+    } else if (blockType === "forEachList") {
+      const firstList = [...globalVariables, ...selectedObjectVariables].find((v) => v.type === "list")
+      if (firstList) {
+        const isGlobal = globalVariables.some((v) => v.id === firstList.id)
+        block = {
+          id: `forEach-${generateUUID()}`, type: "forEachList",
+          scope: isGlobal ? "global" : "object", variableId: firstList.id,
+          itemLocalVarName: "item", indexLocalVarName: "index", actions: [],
+          ...(isGlobal ? {} : { target: "self" })
+        }
+      }
+    } else if (blockType === "forEachMap") {
+      const firstMap = [...globalVariables, ...selectedObjectVariables].find((v) => v.type === "map")
+      if (firstMap) {
+        const isGlobal = globalVariables.some((v) => v.id === firstMap.id)
+        block = {
+          id: `forEachMap-${generateUUID()}`, type: "forEachMap",
+          scope: isGlobal ? "global" : "object", variableId: firstMap.id,
+          keyLocalVarName: "key", valueLocalVarName: "value", actions: [],
+          ...(isGlobal ? {} : { target: "self" })
+        }
+      }
+    }
+    if (block) {
+      onAddBlock(block, item.id, branch)
+    }
+    setBlockPickerBranch(null)
+  }
   const hasElseContent = item.type === "if" && item.elseActions.length > 0
   const elseVisible = item.type === "if" && (hasElseContent || showElseManually)
 
@@ -596,23 +645,36 @@ export function ControlBlock({
             <Plus className="h-3 w-3" />
             Add action
           </button>
-          <button
-            type="button"
-            className="control-block-branch-add-block flex items-center gap-1 px-2 py-1 text-[10px] text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-            disabled={!defaultIfCondition}
-            onClick={() => {
-              if (defaultIfCondition) {
-                onAddBlock(
-                  { id: "", type: "if", condition: defaultIfCondition, thenActions: [], elseActions: [] },
-                  item.id,
-                  branch
-                )
-              }
-            }}
-          >
-            <Plus className="h-3 w-3" />
-            Add if block
-          </button>
+          <div className="relative" ref={blockPickerBranch === branch ? blockPickerRef : undefined}>
+            <button
+              type="button"
+              className="control-block-branch-add-block-toggle flex items-center gap-1 px-2 py-1 text-[10px] text-slate-400 hover:text-purple-600 hover:bg-purple-50 transition-colors rounded"
+              onClick={() => setBlockPickerBranch(blockPickerBranch === branch ? null : branch)}
+            >
+              <Plus className="h-3 w-3" />
+              Add block
+            </button>
+            {blockPickerBranch === branch && (
+              <div className="control-block-inline-block-picker absolute bottom-full left-0 z-50 mb-1 min-w-[160px] rounded-lg border border-slate-200 bg-white shadow-lg">
+                {[
+                  { type: "if" as const, label: "If", icon: GitBranch },
+                  { type: "repeat" as const, label: "Repeat", icon: RotateCcw },
+                  { type: "forEachList" as const, label: "Each list", icon: List },
+                  { type: "forEachMap" as const, label: "Each map", icon: Map }
+                ].map(({ type: blockType, label, icon: Icon }) => (
+                  <button
+                    key={blockType}
+                    type="button"
+                    className="control-block-inline-block-option flex items-center gap-2 w-full px-3 py-1.5 text-xs text-left text-slate-600 hover:bg-purple-50 hover:text-purple-700 transition-colors"
+                    onClick={() => createAndAddBlock(blockType, branch)}
+                  >
+                    <Icon className="h-3.5 w-3.5 shrink-0" />
+                    <span>{label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     )
