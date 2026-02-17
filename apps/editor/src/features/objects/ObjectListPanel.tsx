@@ -76,128 +76,136 @@ export function ObjectListPanel({
     }
   }, [contextMenu])
 
-  if (isCollapsed) {
-    return (
-      <aside className="mvp3-object-list-panel objlist-collapsed flex w-10 shrink-0 flex-col items-center bg-slate-50 py-2 gap-2">
-        <button
-          type="button"
-          className="objlist-expand-btn inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
-          onClick={() => setIsCollapsed(false)}
-          title="Expand object list"
-        >
-          <ChevronRight className="h-4 w-4" />
-        </button>
-        <button
-          type="button"
-          className="objlist-add-btn-collapsed inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
-          onClick={() => {
-            setIsCollapsed(false)
-            setIsAdding(true)
-          }}
-          title="Add object"
-        >
-          <Plus className="h-4 w-4" />
-        </button>
-      </aside>
-    )
-  }
-
   return (
-    <aside className="mvp3-object-list-panel flex w-[200px] shrink-0 flex-col bg-slate-50">
-      <div className="objlist-header flex items-center justify-between border-b border-slate-200 px-2 py-1.5">
-        <button
-          type="button"
-          className="objlist-add-btn inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
-          onClick={() => setIsAdding(true)}
-          title="Add object"
-        >
-          <Plus className="h-4 w-4" />
-        </button>
-        <button
-          type="button"
-          className="objlist-collapse-btn inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
-          onClick={() => setIsCollapsed(true)}
-          title="Collapse object list"
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </button>
-      </div>
-
-      {isAdding && (
-        <div className="objlist-add-form border-b border-slate-200 bg-white p-2">
-          <div className="flex gap-1.5">
-            <input
-              ref={inputCallbackRef}
-              value={newObjectName}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                setNewObjectName(e.target.value)
+    <aside
+      className={`mvp3-object-list-panel flex shrink-0 flex-col bg-slate-50 overflow-hidden transition-[width] duration-200 ease-in-out ${
+        isCollapsed ? "w-10" : "w-[200px]"
+      }`}
+    >
+      <div className={`objlist-header flex items-center border-b border-slate-200 px-1.5 py-1.5 ${isCollapsed ? "justify-center" : "justify-between"}`}>
+        {isCollapsed ? (
+          <div className="flex flex-col items-center gap-1">
+            <button
+              type="button"
+              className="objlist-expand-btn inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
+              onClick={() => setIsCollapsed(false)}
+              title="Expand object list"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              className="objlist-add-btn-collapsed inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
+              onClick={() => {
+                setIsCollapsed(false)
+                setIsAdding(true)
               }}
-              onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
-                blockUndoShortcuts(e)
-                if (e.key === "Enter") handleAddObject()
-                if (e.key === "Escape") setIsAdding(false)
-              }}
-              className="flex h-7 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
-              placeholder="Name..."
-            />
-            <Button
-              size="sm"
-              className="objlist-add-confirm h-7 w-7 shrink-0 px-0"
-              onClick={handleAddObject}
               title="Add object"
             >
-              <Plus className="h-3.5 w-3.5" />
-            </Button>
+              <Plus className="h-4 w-4" />
+            </button>
           </div>
-        </div>
-      )}
-
-      <div
-        className="flex-1 overflow-y-auto p-2"
-        onContextMenu={(e) => handleContextMenu(e, null)}
-      >
-        <div className="flex flex-col gap-0.5">
-          {objects.length === 0 && !isAdding && (
-            <p className="px-2 py-4 text-center text-xs text-slate-400">
-              Right-click or press + to add
-            </p>
-          )}
-          {objects.map((objectEntry) => {
-            const isOpen = openTabIds.includes(objectEntry.id)
-            return (
-              <div
-                key={objectEntry.id}
-                className={`objlist-item group flex cursor-pointer items-center rounded px-2 py-1.5 transition-colors ${
-                  isOpen
-                    ? "bg-white/60 hover:bg-white/80"
-                    : "hover:bg-slate-100"
-                }`}
-                onClick={() => onSelectObject(objectEntry.id)}
-                onContextMenu={(e) => {
-                  e.stopPropagation()
-                  handleContextMenu(e, objectEntry.id)
-                }}
-              >
-                <div className="flex flex-1 items-center gap-2 text-left text-sm min-w-0">
-                  {objectEntry.spriteId && spriteSources[objectEntry.spriteId] ? (
-                    <img
-                      src={spriteSources[objectEntry.spriteId]}
-                      alt=""
-                      className="objlist-sprite-icon h-5 w-5 shrink-0 object-contain"
-                      style={{ imageRendering: "pixelated" }}
-                    />
-                  ) : (
-                    <Box className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                  )}
-                  <span className={`truncate ${isOpen ? "font-medium text-slate-700" : "text-slate-600"}`}>
-                    {objectEntry.name}
-                  </span>
-                </div>
-              </div>
-            )
-          })}
-        </div>
+        ) : (
+          <>
+            <button
+              type="button"
+              className="objlist-add-btn inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
+              onClick={() => setIsAdding(true)}
+              title="Add object"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              className="objlist-collapse-btn inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
+              onClick={() => setIsCollapsed(true)}
+              title="Collapse object list"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+          </>
+        )}
       </div>
+
+      {!isCollapsed && (
+        <>
+          {isAdding && (
+            <div className="objlist-add-form border-b border-slate-200 bg-white p-2">
+              <div className="flex gap-1.5">
+                <input
+                  ref={inputCallbackRef}
+                  value={newObjectName}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                    setNewObjectName(e.target.value)
+                  }}
+                  onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
+                    blockUndoShortcuts(e)
+                    if (e.key === "Enter") handleAddObject()
+                    if (e.key === "Escape") setIsAdding(false)
+                  }}
+                  className="flex h-7 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+                  placeholder="Name..."
+                />
+                <Button
+                  size="sm"
+                  className="objlist-add-confirm h-7 w-7 shrink-0 px-0"
+                  onClick={handleAddObject}
+                  title="Add object"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <div
+            className="flex-1 overflow-y-auto p-2"
+            onContextMenu={(e) => handleContextMenu(e, null)}
+          >
+            <div className="flex flex-col gap-0.5">
+              {objects.length === 0 && !isAdding && (
+                <p className="px-2 py-4 text-center text-xs text-slate-400">
+                  Right-click or press + to add
+                </p>
+              )}
+              {objects.map((objectEntry) => {
+                const isOpen = openTabIds.includes(objectEntry.id)
+                return (
+                  <div
+                    key={objectEntry.id}
+                    className={`objlist-item group flex cursor-pointer items-center rounded px-2 py-1.5 transition-colors ${
+                      isOpen
+                        ? "bg-white/60 hover:bg-white/80"
+                        : "hover:bg-slate-100"
+                    }`}
+                    onClick={() => onSelectObject(objectEntry.id)}
+                    onContextMenu={(e) => {
+                      e.stopPropagation()
+                      handleContextMenu(e, objectEntry.id)
+                    }}
+                  >
+                    <div className="flex flex-1 items-center gap-2 text-left text-sm min-w-0">
+                      {objectEntry.spriteId && spriteSources[objectEntry.spriteId] ? (
+                        <img
+                          src={spriteSources[objectEntry.spriteId]}
+                          alt=""
+                          className="objlist-sprite-icon h-5 w-5 shrink-0 object-contain"
+                          style={{ imageRendering: "pixelated" }}
+                        />
+                      ) : (
+                        <Box className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                      )}
+                      <span className={`truncate ${isOpen ? "font-medium text-slate-700" : "text-slate-600"}`}>
+                        {objectEntry.name}
+                      </span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </>
+      )}
 
       {contextMenu && (
         <div
