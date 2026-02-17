@@ -7,6 +7,7 @@ import { resolveSpritePreviewSource } from "../sprites/utils/sprite-preview-sour
 
 const ROOM_WIDTH = 832
 const ROOM_HEIGHT = 480
+const START_RUN_KEY_CODE = "Space"
 
 type RunSectionProps = {
   controller: RunSectionController
@@ -22,6 +23,14 @@ export type RunSectionController = {
   reset: () => void
   updateRuntimeMousePosition: (x: number, y: number) => void
   setRuntimeMouseButton: (button: RuntimeMouseButton, pressed: boolean) => void
+}
+
+function isEditableTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) {
+    return false
+  }
+  const tag = target.tagName.toLowerCase()
+  return tag === "input" || tag === "textarea" || target.isContentEditable
 }
 
 export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
@@ -71,6 +80,27 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
       cancelled = true
     }
   }, [sprites])
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.code !== START_RUN_KEY_CODE || event.repeat) {
+        return
+      }
+      if (isEditableTarget(event.target)) {
+        return
+      }
+      if (controller.isRunning || !controller.activeRoom) {
+        return
+      }
+      event.preventDefault()
+      controller.run()
+    }
+
+    window.addEventListener("keydown", onKeyDown)
+    return () => {
+      window.removeEventListener("keydown", onKeyDown)
+    }
+  }, [controller])
 
   useEffect(() => {
     const canvasElement = canvasRef.current
@@ -262,6 +292,14 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
                 className="mvp15-run-canvas relative overflow-hidden border-b border-slate-200 bg-white"
                 style={{ width: ROOM_WIDTH, height: ROOM_HEIGHT }}
               >
+                {!controller.isRunning && (
+                  <div className="mvp19-run-start-overlay pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-slate-900/30">
+                    <div className="mvp19-run-start-overlay-card rounded-md border border-slate-200 bg-white/95 px-4 py-2 text-center shadow-sm">
+                      <p className="text-xs font-semibold text-slate-800">Prem Space per iniciar el run</p>
+                      <p className="text-[11px] text-slate-500">També pots clicar el botó Run</p>
+                    </div>
+                  </div>
+                )}
                 {controller.activeRoom.instances.map((instanceEntry) => {
                   const objectEntry = controller.project.objects.find((entry) => entry.id === instanceEntry.objectId)
                   const instanceWidth = objectEntry?.width ?? 32
