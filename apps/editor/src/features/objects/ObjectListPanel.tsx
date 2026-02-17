@@ -3,8 +3,6 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Folder,
-  FolderOpen,
   FolderPlus,
   Pencil,
   Plus,
@@ -385,9 +383,6 @@ export function ObjectListPanel({
                 <span className="objlist-folder-chevron mr-0.5 shrink-0 text-slate-400">
                   {isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                 </span>
-                <span className="mr-1.5 shrink-0 text-slate-400">
-                  {isExpanded ? <FolderOpen className="h-3.5 w-3.5" /> : <Folder className="h-3.5 w-3.5" />}
-                </span>
                 {isRenaming ? (
                   <input
                     ref={renameInputCallbackRef}
@@ -411,7 +406,7 @@ export function ObjectListPanel({
                   />
                 ) : (
                   <span
-                    className="truncate text-sm font-medium text-slate-600"
+                    className="truncate text-sm text-slate-600"
                     onDoubleClick={(e) => {
                       e.stopPropagation()
                       setRenamingFolderId(folder.id)
