@@ -2,7 +2,6 @@ import type { EditorController } from "../features/editor-state/use-editor-contr
 import { ObjectEditorSection } from "../features/objects/ObjectEditorSection.js"
 import { RoomEditorSection } from "../features/rooms/RoomEditorSection.js"
 import { RunSection } from "../features/run/RunSection.js"
-import { ShareSection } from "../features/share/ShareSection.js"
 import { SpriteEditorSection } from "../features/sprites/SpriteEditorSection.js"
 import { TemplatesSection } from "../features/templates/TemplatesSection.js"
 import { GlobalVariablesSection } from "../features/variables/GlobalVariablesSection.js"
@@ -26,9 +25,6 @@ export function EditorWorkspace({ controller }: EditorWorkspaceProps) {
   }
   if (controller.activeSection === "globalVariables") {
     return <GlobalVariablesSection controller={controller} />
-  }
-  if (controller.activeSection === "share") {
-    return <ShareSection controller={controller} />
   }
   return <RunSection controller={controller} />
 }

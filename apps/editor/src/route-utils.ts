@@ -8,8 +8,7 @@ const VALID_EDITOR_SECTIONS: readonly EditorSection[] = [
   "rooms",
   "run",
   "templates",
-  "globalVariables",
-  "share"
+  "globalVariables"
 ]
 
 export function normalizePathname(pathname: string): string {

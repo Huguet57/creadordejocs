@@ -1,4 +1,3 @@
-import { useRef, useState, type ChangeEvent } from "react"
 import { Coins, Crosshair, MousePointer2, Route, Waypoints } from "lucide-react"
 import { Button } from "../../components/ui/button.js"
 import {
@@ -7,7 +6,6 @@ import {
   type GameTemplateId
 } from "../editor-state/game-templates.js"
 import type { EditorController } from "../editor-state/use-editor-controller.js"
-import { downloadProjectAsJson } from "./export-project.js"
 
 type TemplatesSectionProps = {
   controller: EditorController
@@ -66,33 +64,6 @@ function renderTemplateCards(controller: EditorController, entries: TemplateCard
 }
 
 export function TemplatesSection({ controller }: TemplatesSectionProps) {
-  const [exportStatus, setExportStatus] = useState<"idle" | "error">("idle")
-  const importInputRef = useRef<HTMLInputElement | null>(null)
-
-  const exportCurrentProject = (): void => {
-    try {
-      downloadProjectAsJson(controller.project)
-      setExportStatus("idle")
-    } catch {
-      setExportStatus("error")
-    }
-  }
-
-  const openImportPicker = (): void => {
-    controller.resetImportStatus()
-    importInputRef.current?.click()
-  }
-
-  const importFromFile = async (event: ChangeEvent<HTMLInputElement>): Promise<void> => {
-    const selectedFile = event.currentTarget.files?.[0]
-    event.currentTarget.value = ""
-    if (!selectedFile) {
-      return
-    }
-    controller.resetImportStatus()
-    await controller.importProjectFromJsonFile(selectedFile)
-  }
-
   return (
     <div className="mvp15-templates-panel flex h-[600px] flex-col gap-4 overflow-y-auto rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
       <div>
@@ -110,49 +81,6 @@ export function TemplatesSection({ controller }: TemplatesSectionProps) {
           Templates de dificultat intermitja
         </h3>
         {renderTemplateCards(controller, intermediateTemplates)}
-      </div>
-
-      <div className="mvp18-templates-footer mt-2 border-t border-slate-200 pt-4">
-        <div className="mvp18-templates-footer-actions flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="mvp18-template-export-current-button text-xs"
-            onClick={exportCurrentProject}
-          >
-            Exportar joc actual
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="mvp18-template-import-json-button text-xs"
-            onClick={openImportPicker}
-            disabled={controller.importStatus === "importing"}
-          >
-            Importar joc (.json)
-          </Button>
-          <input
-            ref={importInputRef}
-            type="file"
-            accept="application/json,.json"
-            className="mvp18-template-import-json-input hidden"
-            onChange={(event) => void importFromFile(event)}
-          />
-        </div>
-        {exportStatus === "error" && (
-          <p className="mvp18-template-export-error mt-2 text-xs text-red-600">
-            No s&apos;ha pogut exportar el joc. Torna-ho a provar.
-          </p>
-        )}
-        {controller.importStatus === "importing" && (
-          <p className="mvp18-template-import-status mt-2 text-xs text-amber-700">Important joc...</p>
-        )}
-        {controller.importStatus === "imported" && (
-          <p className="mvp18-template-import-success mt-2 text-xs text-emerald-700">Joc importat correctament.</p>
-        )}
-        {controller.importStatus === "error" && (
-          <p className="mvp18-template-import-error mt-2 text-xs text-red-600">No s&apos;ha pogut importar el fitxer.</p>
-        )}
       </div>
     </div>
   )

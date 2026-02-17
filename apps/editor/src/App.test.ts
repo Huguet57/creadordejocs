@@ -51,15 +51,27 @@ describe("sound-free editor UI", () => {
     expect(actionTypes).not.toContain("playSound")
   })
 
-  it("shows a share entry in the compact sidebar", () => {
+  it("does not show a share entry in the compact sidebar", () => {
     const markup = renderToStaticMarkup(
       createElement(EditorSidebarCompact, {
-        activeSection: "share",
+        activeSection: "sprites",
         onSectionChange: vi.fn()
       })
     )
 
-    expect(markup).toContain("Share")
-    expect(markup).toContain("sidebar-share")
+    expect(markup).not.toContain("Share")
+    expect(markup).not.toContain("sidebar-share")
+  })
+
+  it("shows import label under templates in compact sidebar", () => {
+    const markup = renderToStaticMarkup(
+      createElement(EditorSidebarCompact, {
+        activeSection: "templates",
+        onSectionChange: vi.fn()
+      })
+    )
+
+    expect(markup).toContain("sidebar-templates")
+    expect(markup).toContain("Import")
   })
 })

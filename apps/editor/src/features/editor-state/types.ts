@@ -8,7 +8,7 @@ import {
   type ProjectV1
 } from "@creadordejocs/project-format"
 
-export type EditorSection = "sprites" | "objects" | "rooms" | "run" | "templates" | "globalVariables" | "share"
+export type EditorSection = "sprites" | "objects" | "rooms" | "run" | "templates" | "globalVariables"
 
 export type ObjectEventType =
   | "Create"

@@ -6,7 +6,9 @@ import { LandingPage } from "./features/landing/LandingPage.js"
 import type { EditorSection } from "./features/editor-state/types.js"
 import { EditorSidebarCompact } from "./layout/EditorSidebarCompact.js"
 import { EditorWorkspace } from "./layout/EditorWorkspace.js"
+import { ImportDropdown } from "./layout/ImportDropdown.js"
 import { PlayPage } from "./features/play/PlayPage.js"
+import { ShareDropdown } from "./layout/ShareDropdown.js"
 import { resolveAppRoute, resolveEditorSection, resolvePlayShareId, buildEditorSectionPath, type AppRoute } from "./route-utils.js"
 
 const landingTitle = "Creador de jocs online | Com crear un joc gratis | CreadorDeJocs"
@@ -101,9 +103,13 @@ function EditorAppShell() {
     >
       <div className="mvp15-editor-frame mx-auto flex max-w-7xl flex-col gap-3">
         <div className="flex items-center justify-between px-1">
-          <p data-testid="save-status" className="text-xs text-slate-400">
-            {formatStatus(controller.saveStatus)}
-          </p>
+          <div className="mvp19-header-left flex items-center gap-1">
+            <ImportDropdown controller={controller} />
+            <ShareDropdown controller={controller} />
+            <p data-testid="save-status" className="mvp19-header-save-status ml-2 text-xs text-slate-400">
+              {formatStatus(controller.saveStatus)}
+            </p>
+          </div>
           <div className="flex items-center gap-1">
             <Button
               data-testid="undo-button"

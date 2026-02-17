@@ -5,6 +5,10 @@ test.beforeEach(async ({ page }) => {
 })
 
 test("navigates sidebar sections and keeps modular editors available", async ({ page }) => {
+  await expect(page.getByTestId("header-import-trigger")).toBeVisible()
+  await expect(page.getByTestId("header-share-trigger")).toBeVisible()
+  await expect(page.getByTestId("sidebar-share")).toHaveCount(0)
+
   await page.getByTestId("sidebar-sprites").click()
   await expect(page.getByText("Sprites", { exact: true }).first()).toBeVisible()
 
