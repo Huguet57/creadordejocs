@@ -1,5 +1,5 @@
 import { Minus, Plus, X } from "lucide-react"
-import { useCallback, useMemo, useState, type KeyboardEvent } from "react"
+import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from "react"
 import type { VariableItemType, VariableType, VariableValue } from "@creadordejocs/project-format"
 import { Button } from "../../components/ui/button.js"
 import { ObjectCard } from "./ObjectCard.js"
@@ -121,28 +121,52 @@ function placeholderForItemType(itemType: VariableItemType): string {
 }
 
 function defaultForItemType(itemType: VariableItemType): PrimitiveValue {
-  if (itemType === "number") return ""
+  if (itemType === "number") return 0
   if (itemType === "boolean") return false
   return ""
 }
 
-function coerceItemValue(raw: string, itemType: VariableItemType): PrimitiveValue {
-  if (itemType === "number") {
-    if (raw === "" || raw === "-") return raw
-    const parsed = Number(raw)
-    return Number.isFinite(parsed) ? parsed : raw
-  }
-  if (itemType === "boolean") return raw === "true"
-  return raw
-}
 
-function coerceItemOnBlur(current: PrimitiveValue, itemType: VariableItemType): PrimitiveValue {
-  if (itemType === "number") {
-    if (current === "" || current === "-") return 0
-    const parsed = Number(current)
-    return Number.isFinite(parsed) ? parsed : 0
-  }
-  return current
+function NumericDraftInput({
+  value,
+  onCommit,
+  className,
+  placeholder
+}: {
+  value: number | string
+  onCommit: (next: number) => void
+  className: string
+  placeholder?: string
+}) {
+  const [draft, setDraft] = useState(String(value))
+
+  useEffect(() => {
+    setDraft(String(value))
+  }, [value])
+
+  return (
+    <input
+      className={className}
+      type="text"
+      inputMode="numeric"
+      value={draft}
+      placeholder={placeholder ?? "0"}
+      onChange={(event) => {
+        const raw = event.target.value
+        setDraft(raw)
+        const parsed = Number(raw)
+        if (raw !== "" && raw !== "-" && Number.isFinite(parsed)) {
+          onCommit(parsed)
+        }
+      }}
+      onBlur={() => {
+        const parsed = Number(draft)
+        const final = Number.isFinite(parsed) && draft !== "" && draft !== "-" ? parsed : 0
+        onCommit(final)
+        setDraft(String(final))
+      }}
+    />
+  )
 }
 
 function ListValueEditor({
@@ -178,25 +202,26 @@ function ListValueEditor({
               <option value="true">true</option>
               <option value="false">false</option>
             </select>
+          ) : itemType === "number" ? (
+            <NumericDraftInput
+              className={inputClass}
+              value={item as number}
+              onCommit={(num) => {
+                const next = [...value]
+                next[index] = num
+                onChange(next)
+              }}
+            />
           ) : (
             <input
               className={inputClass}
               type="text"
-              inputMode={itemType === "number" ? "numeric" : "text"}
               value={String(item)}
               placeholder={placeholderForItemType(itemType)}
               onChange={(event) => {
                 const next = [...value]
-                next[index] = coerceItemValue(event.target.value, itemType)
+                next[index] = event.target.value
                 onChange(next)
-              }}
-              onBlur={() => {
-                const coerced = coerceItemOnBlur(item, itemType)
-                if (coerced !== item) {
-                  const next = [...value]
-                  next[index] = coerced
-                  onChange(next)
-                }
               }}
             />
           )}
@@ -258,11 +283,11 @@ function MapValueEditor({
   }
 
   const handleAdd = () => {
-    let newKey = ""
-    let counter = 0
+    let newKey = "key"
+    let counter = 1
     while (newKey in value) {
-      counter++
       newKey = `key${counter}`
+      counter++
     }
     onChange({ ...value, [newKey]: defaultForItemType(itemType) })
   }
@@ -286,18 +311,19 @@ function MapValueEditor({
               <option value="true">true</option>
               <option value="false">false</option>
             </select>
+          ) : itemType === "number" ? (
+            <NumericDraftInput
+              className={`${inputClass} w-0`}
+              value={val as number}
+              onCommit={(num) => handleValueChange(key, num)}
+            />
           ) : (
             <input
               className={`${inputClass} w-0`}
               type="text"
-              inputMode={itemType === "number" ? "numeric" : "text"}
               value={String(val)}
               placeholder={placeholderForItemType(itemType)}
-              onChange={(event) => handleValueChange(key, coerceItemValue(event.target.value, itemType))}
-              onBlur={() => {
-                const coerced = coerceItemOnBlur(val, itemType)
-                if (coerced !== val) handleValueChange(key, coerced)
-              }}
+              onChange={(event) => handleValueChange(key, event.target.value)}
             />
           )}
           <button
@@ -632,31 +658,25 @@ export function ObjectVariablesPanel({
                         itemType={definition.itemType ?? "number"}
                         onChange={(next) => onUpdateVariable(objectId, definition.id, definition.name, next)}
                       />
+                    ) : definition.type === "number" ? (
+                      <NumericDraftInput
+                        className="mvpv2-vars-value-input h-7 w-full rounded border border-slate-200 bg-slate-50 px-2 text-xs text-slate-700 transition-colors focus:border-slate-400 focus:bg-white focus:outline-none"
+                        value={definition.initialValue as number}
+                        onCommit={(num) => onUpdateVariable(objectId, definition.id, definition.name, num)}
+                      />
                     ) : (
                       <input
                         className="mvpv2-vars-value-input h-7 w-full rounded border border-slate-200 bg-slate-50 px-2 text-xs text-slate-700 transition-colors focus:border-slate-400 focus:bg-white focus:outline-none"
                         type="text"
-                        inputMode={definition.type === "number" ? "numeric" : "text"}
                         value={formatInputValue(definition.type, definition.initialValue)}
-                        placeholder={definition.type === "number" ? "0" : ""}
                         onChange={(event) =>
                           onUpdateVariable(
                             objectId,
                             definition.id,
                             definition.name,
-                            definition.type === "number"
-                              ? (event.target.value === "" || event.target.value === "-" ? event.target.value : parseInitialValue(definition.type, event.target.value))
-                              : parseInitialValue(definition.type, event.target.value, definition.itemType ?? "number")
+                            parseInitialValue(definition.type, event.target.value, definition.itemType ?? "number")
                           )
                         }
-                        onBlur={() => {
-                          if (definition.type === "number") {
-                            const raw = formatInputValue(definition.type, definition.initialValue)
-                            if (raw === "" || raw === "-") {
-                              onUpdateVariable(objectId, definition.id, definition.name, 0)
-                            }
-                          }
-                        }}
                       />
                     )}
                   </div>
