@@ -456,6 +456,33 @@ export function ObjectListPanel({
             </div>
           )
         })}
+        {isAdding && addingInFolderId === parentId && (
+          <div
+            className="objlist-add-form-inline flex gap-1.5 py-1 pr-2"
+            style={{ paddingLeft: `${depth * 16 + 8}px` }}
+          >
+            <input
+              ref={inputCallbackRef}
+              value={newObjectName}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setNewObjectName(e.target.value)}
+              onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
+                blockUndoShortcuts(e)
+                if (e.key === "Enter") handleAddObject()
+                if (e.key === "Escape") { setIsAdding(false); setAddingInFolderId(null) }
+              }}
+              className="flex h-7 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+              placeholder="Name..."
+            />
+            <Button
+              size="sm"
+              className="objlist-add-confirm h-7 w-7 shrink-0 px-0"
+              onClick={handleAddObject}
+              title="Add object"
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        )}
       </>
     )
   }
@@ -634,33 +661,6 @@ export function ObjectListPanel({
 
       {!isCollapsed && (
         <>
-          {isAdding && (
-            <div className="objlist-add-form border-b border-slate-200 bg-white p-2">
-              <div className="flex gap-1.5">
-                <input
-                  ref={inputCallbackRef}
-                  value={newObjectName}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) => setNewObjectName(e.target.value)}
-                  onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
-                    blockUndoShortcuts(e)
-                    if (e.key === "Enter") handleAddObject()
-                    if (e.key === "Escape") { setIsAdding(false); setAddingInFolderId(null) }
-                  }}
-                  className="flex h-7 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
-                  placeholder="Name..."
-                />
-                <Button
-                  size="sm"
-                  className="objlist-add-confirm h-7 w-7 shrink-0 px-0"
-                  onClick={handleAddObject}
-                  title="Add object"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            </div>
-          )}
-
           <div
             className={`flex-1 overflow-y-auto p-2 ${dropTargetIsRoot ? "bg-blue-50/50" : ""}`}
             onContextMenu={(e) => openContextMenu(e, null, null)}
