@@ -655,7 +655,7 @@ export function ControlBlock({
               Add block
             </button>
             {blockPickerBranch === branch && (
-              <div className="control-block-inline-block-picker absolute bottom-full left-0 z-50 mb-1 min-w-[160px] rounded-lg border border-slate-200 bg-white shadow-lg">
+              <div className="control-block-inline-block-picker absolute top-full left-0 z-50 mt-1 min-w-[160px] rounded-lg border border-slate-200 bg-white shadow-lg">
                 {[
                   { type: "if" as const, label: "If", icon: GitBranch },
                   { type: "repeat" as const, label: "Repeat", icon: RotateCcw },

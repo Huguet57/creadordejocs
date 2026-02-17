@@ -2,7 +2,11 @@ import {
   Box,
   Check,
   ChevronDown,
+  GitBranch,
+  List,
+  Map,
   Plus,
+  RotateCcw,
 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { Button } from "../../components/ui/button.js"
@@ -106,6 +110,8 @@ export function ActionEditorPanel({
 }: ActionEditorPanelProps) {
   const [actionPickerTarget, setActionPickerTarget] = useState<ActionPickerTarget>(null)
   const [blockPickerTarget, setBlockPickerTarget] = useState<BlockPickerTarget>(null)
+  const [footerBlockPickerOpen, setFooterBlockPickerOpen] = useState(false)
+  const footerBlockPickerRef = useRef<HTMLDivElement>(null)
   const [backgroundContextMenu, setBackgroundContextMenu] = useState<{ x: number; y: number } | null>(null)
   const [isCollisionTargetMenuOpen, setIsCollisionTargetMenuOpen] = useState(false)
   const [draggedActionId, setDraggedActionId] = useState<string | null>(null)
@@ -158,6 +164,17 @@ export function ActionEditorPanel({
       setIsCollisionTargetMenuOpen(false)
     }
   }, [activeEvent?.type])
+
+  useEffect(() => {
+    if (!footerBlockPickerOpen) return
+    function handleMouseDown(event: MouseEvent) {
+      if (footerBlockPickerRef.current && !footerBlockPickerRef.current.contains(event.target as Node)) {
+        setFooterBlockPickerOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleMouseDown)
+    return () => document.removeEventListener("mousedown", handleMouseDown)
+  }, [footerBlockPickerOpen])
 
   if (!selectedObject) {
     return (
@@ -682,16 +699,41 @@ export function ActionEditorPanel({
                 <Plus className="mr-2 h-3.5 w-3.5" />
                 Add Action
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="control-block-add-block h-8 w-full justify-start text-xs"
-                onClick={() => setBlockPickerTarget({ kind: "event" })}
-              >
-                <Plus className="mr-2 h-3.5 w-3.5" />
-                Add Block
-              </Button>
+              <div className="relative" ref={footerBlockPickerRef}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="control-block-add-block h-8 w-full justify-start text-xs"
+                  onClick={() => setFooterBlockPickerOpen(!footerBlockPickerOpen)}
+                >
+                  <Plus className="mr-2 h-3.5 w-3.5" />
+                  Add Block
+                </Button>
+                {footerBlockPickerOpen && (
+                  <div className="control-block-footer-block-picker absolute bottom-full left-0 z-50 mb-1 min-w-[160px] rounded-lg border border-slate-200 bg-white shadow-lg">
+                    {[
+                      { type: "if" as const, label: "If", icon: GitBranch },
+                      { type: "repeat" as const, label: "Repeat", icon: RotateCcw },
+                      { type: "forEachList" as const, label: "Each list", icon: List },
+                      { type: "forEachMap" as const, label: "Each map", icon: Map }
+                    ].map(({ type: blockType, label, icon: Icon }) => (
+                      <button
+                        key={blockType}
+                        type="button"
+                        className="control-block-footer-block-option flex items-center gap-2 w-full px-3 py-1.5 text-xs text-left text-slate-600 hover:bg-purple-50 hover:text-purple-700 transition-colors"
+                        onClick={() => {
+                          handleSelectBlock(blockType)
+                          setFooterBlockPickerOpen(false)
+                        }}
+                      >
+                        <Icon className="h-3.5 w-3.5 shrink-0" />
+                        <span>{label}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </>
