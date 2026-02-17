@@ -1,4 +1,4 @@
-import { Minus, Plus, X, Variable } from "lucide-react"
+import { Minus, Plus, X } from "lucide-react"
 import { useCallback, useMemo, useState, type KeyboardEvent } from "react"
 import type { VariableItemType, VariableType, VariableValue } from "@creadordejocs/project-format"
 import { Button } from "../../components/ui/button.js"
@@ -114,19 +114,35 @@ function parseSafeMap(raw: string, itemType: VariableItemType): Record<string, P
   }
 }
 
+function placeholderForItemType(itemType: VariableItemType): string {
+  if (itemType === "number") return "0"
+  if (itemType === "boolean") return "false"
+  return ""
+}
+
 function defaultForItemType(itemType: VariableItemType): PrimitiveValue {
-  if (itemType === "number") return 0
+  if (itemType === "number") return ""
   if (itemType === "boolean") return false
   return ""
 }
 
 function coerceItemValue(raw: string, itemType: VariableItemType): PrimitiveValue {
   if (itemType === "number") {
+    if (raw === "" || raw === "-") return raw
     const parsed = Number(raw)
-    return Number.isFinite(parsed) ? parsed : 0
+    return Number.isFinite(parsed) ? parsed : raw
   }
   if (itemType === "boolean") return raw === "true"
   return raw
+}
+
+function coerceItemOnBlur(current: PrimitiveValue, itemType: VariableItemType): PrimitiveValue {
+  if (itemType === "number") {
+    if (current === "" || current === "-") return 0
+    const parsed = Number(current)
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+  return current
 }
 
 function ListValueEditor({
@@ -165,12 +181,22 @@ function ListValueEditor({
           ) : (
             <input
               className={inputClass}
-              type={itemType === "number" ? "number" : "text"}
+              type="text"
+              inputMode={itemType === "number" ? "numeric" : "text"}
               value={String(item)}
+              placeholder={placeholderForItemType(itemType)}
               onChange={(event) => {
                 const next = [...value]
                 next[index] = coerceItemValue(event.target.value, itemType)
                 onChange(next)
+              }}
+              onBlur={() => {
+                const coerced = coerceItemOnBlur(item, itemType)
+                if (coerced !== item) {
+                  const next = [...value]
+                  next[index] = coerced
+                  onChange(next)
+                }
               }}
             />
           )}
@@ -232,19 +258,19 @@ function MapValueEditor({
   }
 
   const handleAdd = () => {
-    let newKey = "key"
-    let counter = 1
+    let newKey = ""
+    let counter = 0
     while (newKey in value) {
-      newKey = `key${counter}`
       counter++
+      newKey = `key${counter}`
     }
     onChange({ ...value, [newKey]: defaultForItemType(itemType) })
   }
 
   return (
     <div className="mvpv2-map-editor flex w-full min-w-0 flex-col gap-1">
-      {entries.map(([key, val]) => (
-        <div key={key} className="mvpv2-map-entry-row flex min-w-0 items-center gap-0.5">
+      {entries.map(([key, val], index) => (
+        <div key={index} className="mvpv2-map-entry-row flex min-w-0 items-center gap-0.5">
           <input
             className={`${inputClass} w-0 font-medium`}
             value={key}
@@ -263,10 +289,15 @@ function MapValueEditor({
           ) : (
             <input
               className={`${inputClass} w-0`}
-              type={itemType === "number" ? "number" : "text"}
+              type="text"
+              inputMode={itemType === "number" ? "numeric" : "text"}
               value={String(val)}
+              placeholder={placeholderForItemType(itemType)}
               onChange={(event) => handleValueChange(key, coerceItemValue(event.target.value, itemType))}
-              placeholder="value"
+              onBlur={() => {
+                const coerced = coerceItemOnBlur(val, itemType)
+                if (coerced !== val) handleValueChange(key, coerced)
+              }}
             />
           )}
           <button
@@ -311,7 +342,7 @@ export function ObjectVariablesPanel({
   const [newVariableName, setNewVariableName] = useState("")
   const [newVariableType, setNewVariableType] = useState<VariableType>("number")
   const [newVariableItemType, setNewVariableItemType] = useState<VariableItemType>("number")
-  const [newVariableRawValue, setNewVariableRawValue] = useState("0")
+  const [newVariableRawValue, setNewVariableRawValue] = useState("")
 
   const variableNames = useMemo(
     () => new Set(variables.map((definition) => definition.name.trim().toLocaleLowerCase())),
@@ -342,7 +373,7 @@ export function ObjectVariablesPanel({
     setNewVariableName("")
     setNewVariableType("number")
     setNewVariableItemType("number")
-    setNewVariableRawValue("0")
+    setNewVariableRawValue("")
     setIsAdding(false)
   }
 
@@ -450,13 +481,11 @@ export function ObjectVariablesPanel({
                     setNewVariableRawValue(
                       nextType === "boolean"
                         ? "false"
-                        : nextType === "number"
-                          ? "0"
-                          : nextType === "list"
-                            ? "[]"
-                            : nextType === "map"
-                              ? "{}"
-                              : ""
+                        : nextType === "list"
+                          ? "[]"
+                          : nextType === "map"
+                            ? "{}"
+                            : ""
                     )
                   }}
                 >
@@ -508,10 +537,16 @@ export function ObjectVariablesPanel({
               ) : (
                 <input
                   className="mvpv2-vars-add-field-value-input h-8 w-full rounded border border-slate-300 bg-white px-3 text-xs text-slate-900 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400"
-                  type={newVariableType === "number" ? "number" : "text"}
+                  type="text"
+                  inputMode={newVariableType === "number" ? "numeric" : "text"}
                   value={newVariableRawValue}
                   onChange={(event) => setNewVariableRawValue(event.target.value)}
-                  placeholder="Value"
+                  onBlur={() => {
+                    if (newVariableType === "number" && (newVariableRawValue === "" || newVariableRawValue === "-")) {
+                      setNewVariableRawValue("0")
+                    }
+                  }}
+                  placeholder={newVariableType === "number" ? "0" : "Value"}
                 />
               )}
             </div>
@@ -533,15 +568,9 @@ export function ObjectVariablesPanel({
         <div className="mvpv2-vars-list flex-1 overflow-y-auto p-2">
           <div className="flex flex-col gap-1.5">
             {variables.length === 0 && (
-              <button
-                type="button"
-                className="mvpv2-vars-empty flex flex-col items-center gap-1.5 rounded-md border border-dashed border-slate-300 px-3 py-5 text-center transition-colors hover:border-slate-400 hover:bg-white"
-                onClick={() => setIsAdding(true)}
-              >
-                <Variable className="h-5 w-5 text-slate-300" />
-                <span className="text-[11px] text-slate-400">No variables yet</span>
-                <span className="text-[10px] text-slate-400">Click to add one</span>
-              </button>
+              <p className="mvpv2-vars-empty px-1 py-2 text-center text-[11px] text-slate-400">
+                No variables yet
+              </p>
             )}
             {variables.map((definition) => (
                 <div
@@ -606,16 +635,28 @@ export function ObjectVariablesPanel({
                     ) : (
                       <input
                         className="mvpv2-vars-value-input h-7 w-full rounded border border-slate-200 bg-slate-50 px-2 text-xs text-slate-700 transition-colors focus:border-slate-400 focus:bg-white focus:outline-none"
-                        type={definition.type === "number" ? "number" : "text"}
+                        type="text"
+                        inputMode={definition.type === "number" ? "numeric" : "text"}
                         value={formatInputValue(definition.type, definition.initialValue)}
+                        placeholder={definition.type === "number" ? "0" : ""}
                         onChange={(event) =>
                           onUpdateVariable(
                             objectId,
                             definition.id,
                             definition.name,
-                            parseInitialValue(definition.type, event.target.value, definition.itemType ?? "number")
+                            definition.type === "number"
+                              ? (event.target.value === "" || event.target.value === "-" ? event.target.value : parseInitialValue(definition.type, event.target.value))
+                              : parseInitialValue(definition.type, event.target.value, definition.itemType ?? "number")
                           )
                         }
+                        onBlur={() => {
+                          if (definition.type === "number") {
+                            const raw = formatInputValue(definition.type, definition.initialValue)
+                            if (raw === "" || raw === "-") {
+                              onUpdateVariable(objectId, definition.id, definition.name, 0)
+                            }
+                          }
+                        }}
                       />
                     )}
                   </div>
