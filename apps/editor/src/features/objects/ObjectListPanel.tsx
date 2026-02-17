@@ -339,8 +339,8 @@ export function ObjectListPanel({
           return (
             <div
               key={objectEntry.id}
-              className={`objlist-item group flex cursor-pointer items-center rounded py-1.5 pr-2 transition-colors ${
-                isActive ? "bg-white shadow-sm ring-1 ring-blue-200" : "hover:bg-slate-100"
+              className={`objlist-item group flex cursor-pointer items-center py-1.5 pr-2 transition-colors ${
+                isActive ? "-mx-2 bg-blue-50" : "rounded hover:bg-slate-100"
               }`}
               style={{ paddingLeft: `${depth * 16 + 8}px` }}
               draggable
