@@ -210,14 +210,58 @@ export function ActionEditorPanel({
       return { id: `repeat-${generateUUID()}`, type: "repeat", count: 3, actions: [] }
     }
     if (type === "forEachList") {
-      const firstList = globalVariables.find((v) => v.type === "list")
-      if (!firstList) return null
-      return { id: `forEach-${generateUUID()}`, type: "forEachList", scope: "global", variableId: firstList.id, itemLocalVarName: "item", indexLocalVarName: "index", actions: [] }
+      const firstGlobalList = globalVariables.find((v) => v.type === "list")
+      if (firstGlobalList) {
+        return {
+          id: `forEach-${generateUUID()}`,
+          type: "forEachList",
+          scope: "global",
+          variableId: firstGlobalList.id,
+          itemLocalVarName: "item",
+          indexLocalVarName: "index",
+          actions: []
+        }
+      }
+      const firstObjectList = selectedObjectVariables.find((v) => v.type === "list")
+      if (!firstObjectList) return null
+      return {
+        id: `forEach-${generateUUID()}`,
+        type: "forEachList",
+        scope: "object",
+        variableId: firstObjectList.id,
+        target: "self",
+        targetInstanceId: null,
+        itemLocalVarName: "item",
+        indexLocalVarName: "index",
+        actions: []
+      }
     }
     if (type === "forEachMap") {
-      const firstMap = globalVariables.find((v) => v.type === "map")
-      if (!firstMap) return null
-      return { id: `forEachMap-${generateUUID()}`, type: "forEachMap", scope: "global", variableId: firstMap.id, keyLocalVarName: "key", valueLocalVarName: "value", actions: [] }
+      const firstGlobalMap = globalVariables.find((v) => v.type === "map")
+      if (firstGlobalMap) {
+        return {
+          id: `forEachMap-${generateUUID()}`,
+          type: "forEachMap",
+          scope: "global",
+          variableId: firstGlobalMap.id,
+          keyLocalVarName: "key",
+          valueLocalVarName: "value",
+          actions: []
+        }
+      }
+      const firstObjectMap = selectedObjectVariables.find((v) => v.type === "map")
+      if (!firstObjectMap) return null
+      return {
+        id: `forEachMap-${generateUUID()}`,
+        type: "forEachMap",
+        scope: "object",
+        variableId: firstObjectMap.id,
+        target: "self",
+        targetInstanceId: null,
+        keyLocalVarName: "key",
+        valueLocalVarName: "value",
+        actions: []
+      }
     }
     return null
   }

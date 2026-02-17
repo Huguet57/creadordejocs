@@ -12,6 +12,7 @@ import type { ProjectV1, ValueExpression, ObjectControlBlockItem } from "@creado
 import { buildDefaultIfCondition } from "./if-condition-utils.js"
 import { type ObjectVariableOption } from "./VariablePicker.js"
 import { RightValuePicker } from "./RightValuePicker.js"
+import { CollectionVariablePicker } from "./CollectionVariablePicker.js"
 import type { ActionDropTarget } from "./action-dnd.js"
 
 type ControlBlockProps = {
@@ -479,27 +480,17 @@ export function ControlBlock({
     if (item.type !== "forEachList") return null
     return (
       <>
-        <select
-          className="control-block-scope-select h-7 rounded border border-purple-300 bg-white/50 px-2 text-xs"
-          value={item.scope}
-          onChange={(e) => {
-            const nextScope = e.target.value as "global" | "object"
-            const nextVariableId = nextScope === "global" ? (listGlobalOptions[0]?.id ?? "") : (listObjectOptions[0]?.id ?? "")
-            onUpdateBlock(item.id, { scope: nextScope, variableId: nextVariableId } as Partial<ObjectControlBlockItem>)
-          }}
-        >
-          <option value="global">global</option>
-          <option value="object">object</option>
-        </select>
-        <select
-          className="control-block-var-select h-7 rounded border border-purple-300 bg-white/50 px-2 text-xs"
-          value={item.variableId}
-          onChange={(e) => onUpdateBlock(item.id, { variableId: e.target.value } as Partial<ObjectControlBlockItem>)}
-        >
-          {(item.scope === "global" ? listGlobalOptions : listObjectOptions).map((entry) => (
-            <option key={entry.id} value={entry.id}>{entry.name}</option>
-          ))}
-        </select>
+        <CollectionVariablePicker
+          scope={item.scope}
+          variableId={item.variableId}
+          collectionType="list"
+          globalVariables={globalVariables}
+          objectVariables={selectedObjectVariables}
+          variant="purple"
+          onChange={(nextScope, nextVarId) =>
+            onUpdateBlock(item.id, { scope: nextScope, variableId: nextVarId } as Partial<ObjectControlBlockItem>)
+          }
+        />
         <input
           className="control-block-local-item h-7 w-20 rounded border border-purple-300 bg-white/50 px-2 text-xs"
           value={item.itemLocalVarName}
@@ -520,27 +511,17 @@ export function ControlBlock({
     if (item.type !== "forEachMap") return null
     return (
       <>
-        <select
-          className="control-block-scope-select h-7 rounded border border-purple-300 bg-white/50 px-2 text-xs"
-          value={item.scope}
-          onChange={(e) => {
-            const nextScope = e.target.value as "global" | "object"
-            const nextVariableId = nextScope === "global" ? (mapGlobalOptions[0]?.id ?? "") : (mapObjectOptions[0]?.id ?? "")
-            onUpdateBlock(item.id, { scope: nextScope, variableId: nextVariableId } as Partial<ObjectControlBlockItem>)
-          }}
-        >
-          <option value="global">global</option>
-          <option value="object">object</option>
-        </select>
-        <select
-          className="control-block-var-select h-7 rounded border border-purple-300 bg-white/50 px-2 text-xs"
-          value={item.variableId}
-          onChange={(e) => onUpdateBlock(item.id, { variableId: e.target.value } as Partial<ObjectControlBlockItem>)}
-        >
-          {(item.scope === "global" ? mapGlobalOptions : mapObjectOptions).map((entry) => (
-            <option key={entry.id} value={entry.id}>{entry.name}</option>
-          ))}
-        </select>
+        <CollectionVariablePicker
+          scope={item.scope}
+          variableId={item.variableId}
+          collectionType="map"
+          globalVariables={globalVariables}
+          objectVariables={selectedObjectVariables}
+          variant="purple"
+          onChange={(nextScope, nextVarId) =>
+            onUpdateBlock(item.id, { scope: nextScope, variableId: nextVarId } as Partial<ObjectControlBlockItem>)
+          }
+        />
         <input
           className="control-block-local-key h-7 w-20 rounded border border-purple-300 bg-white/50 px-2 text-xs"
           value={item.keyLocalVarName}
