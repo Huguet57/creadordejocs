@@ -226,6 +226,7 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
             events={selectedObject.events}
             activeEventId={activeEventId}
             collisionTargets={selectableTargetObjects}
+            isAddingEvent={isEventSelectorOpen}
             onSelectEvent={(id) => {
               setIsEventSelectorOpen(false)
               setActiveEventIdByObjectId((previous) => ({
@@ -233,7 +234,13 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
                 [selectedObject.id]: id
               }))
             }}
-            onStartAddEvent={() => setIsEventSelectorOpen(true)}
+            onStartAddEvent={() => {
+              setIsEventSelectorOpen(true)
+              setActiveEventIdByObjectId((previous) => ({
+                ...previous,
+                [selectedObject.id]: null
+              }))
+            }}
             onRemoveEvent={(id) => {
               controller.removeObjectEvent(id)
               if (activeEventId === id) {

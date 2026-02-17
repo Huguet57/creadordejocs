@@ -77,7 +77,7 @@ describe("template catalog", () => {
 
   it.each(ADVANCED_TEMPLATE_IDS)("builds %s with conditionals and mouse event usage", (templateId) => {
     const created = createTemplateProject(templateId)
-    const mouseEventTypes = new Set(["MouseMove", "Mouse", "MouseDown", "MouseClick"])
+    const mouseEventTypes = new Set(["MouseMove", "Mouse"])
     const usedMouseEventTypes = new Set<string>()
     for (const objectEntry of created.project.objects) {
       for (const eventEntry of objectEntry.events) {

@@ -10,6 +10,7 @@ type EventListPanelProps = {
   events: ObjectEventEntry[]
   activeEventId: string | null
   collisionTargets: { id: string; name: string; spriteSrc: string | null }[]
+  isAddingEvent: boolean
   onSelectEvent: (id: string) => void
   onStartAddEvent: () => void
   onRemoveEvent: (id: string) => void
@@ -31,6 +32,7 @@ export function EventListPanel({
   events,
   activeEventId,
   collisionTargets,
+  isAddingEvent,
   onSelectEvent,
   onStartAddEvent,
   onRemoveEvent
@@ -115,6 +117,15 @@ export function EventListPanel({
               </div>
             )
           })}
+          {isAddingEvent && (
+            <div className="mvp26-event-ghost-row flex items-center gap-2 rounded bg-white px-2 py-1.5 shadow-sm ring-1 ring-slate-200">
+              <Plus className="mvp26-event-ghost-icon h-3.5 w-3.5 text-blue-500" />
+              <div className="mvp26-event-ghost-text flex flex-col overflow-hidden">
+                <span className="truncate text-sm font-medium text-slate-900">New event</span>
+                <span className="truncate text-[10px] text-slate-400">Configuring...</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

@@ -238,7 +238,7 @@ describe("project format v1", () => {
     expect(loaded.objects[0]?.events[0]?.keyboardMode).toBe("down")
   })
 
-  it("parses mouse event types and normalizes legacy modes", () => {
+  it("parses mouse event types", () => {
     const project = createEmptyProjectV1("Mouse events")
     const source = JSON.stringify({
       ...project,
@@ -261,17 +261,19 @@ describe("project format v1", () => {
               items: [{ id: "item-score", type: "action", action: { id: "action-score", type: "changeScore", delta: 1 } }]
             },
             {
-              id: "event-mouse-down",
-              type: "MouseDown",
+              id: "event-mouse-held",
+              type: "Mouse",
               key: null,
+              mouseMode: "down",
               targetObjectId: null,
               intervalMs: null,
               items: [{ id: "item-score-2", type: "action", action: { id: "action-score-2", type: "changeScore", delta: 1 } }]
             },
             {
-              id: "event-mouse-click",
-              type: "MouseClick",
+              id: "event-mouse-press",
+              type: "Mouse",
               key: null,
+              mouseMode: "press",
               targetObjectId: null,
               intervalMs: null,
               items: [{ id: "item-score-3", type: "action", action: { id: "action-score-3", type: "changeScore", delta: 1 } }]

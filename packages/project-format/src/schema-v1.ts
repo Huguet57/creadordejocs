@@ -224,8 +224,7 @@ const ObjectEventSchema = z
       "OutsideRoom",
       "Timer",
       "MouseMove",
-      "MouseDown",
-      "MouseClick"
+      "Mouse"
     ]),
     key: z.enum(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"]).nullable().default(null),
     keyboardMode: z.enum(["down", "press"]).nullable().optional(),
@@ -236,22 +235,9 @@ const ObjectEventSchema = z
     actions: z.array(ObjectActionSchema).optional()
   })
   .transform(({ items, actions, mouseMode, ...eventEntry }) => {
-    const normalizedType =
-      eventEntry.type === "MouseDown" || eventEntry.type === "MouseClick"
-        ? "Mouse"
-        : eventEntry.type
-    const normalizedMouseMode =
-      eventEntry.type === "MouseDown"
-        ? "down"
-        : eventEntry.type === "MouseClick"
-          ? "press"
-          : eventEntry.type === "Mouse"
-            ? (mouseMode ?? "down")
-            : null
     return {
       ...eventEntry,
-      type: normalizedType,
-      ...(normalizedType === "Mouse" ? { mouseMode: normalizedMouseMode ?? "down" } : {}),
+      ...(eventEntry.type === "Mouse" ? { mouseMode: mouseMode ?? "down" } : {}),
       items:
         items ??
         (actions ?? []).map((actionEntry) => ({
