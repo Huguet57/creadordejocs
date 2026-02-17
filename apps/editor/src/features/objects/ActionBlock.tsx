@@ -1,28 +1,15 @@
 import {
-  CopyPlus,
-  Flag,
-  Maximize,
   Move,
-  FastForward,
-  Trash,
-  Trophy,
   X,
-  Locate,
-  Variable,
-  Dices,
-  ArrowLeftRight,
-  DoorOpen,
-  RotateCcw,
-  Hourglass,
-  MessageSquare,
   GripVertical
 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { Button } from "../../components/ui/button.js"
-import type { ObjectActionDraft, ProjectV1, ValueExpression, VariableValue } from "@creadordejocs/project-format"
+import { ACTION_REGISTRY, type ObjectActionDraft, type ProjectV1, type ValueExpression, type VariableValue } from "@creadordejocs/project-format"
 import { VariablePicker } from "./VariablePicker.js"
 import { RightValuePicker } from "./RightValuePicker.js"
 import type { ObjectEventType } from "../editor-state/types.js"
+import { ACTION_ICON_MAP } from "./action-icon-map.js"
 
 type ActionBlockProps = {
   action: ObjectActionDraft & { id: string }
@@ -57,48 +44,6 @@ type ActionContextMenuState = {
   x: number
   y: number
 } | null
-
-const ACTION_ICONS: Partial<Record<ObjectActionDraft["type"], React.ElementType>> = {
-  move: Move,
-  setVelocity: FastForward,
-  rotate: RotateCcw,
-  moveToward: Move,
-  clampToRoom: Maximize,
-  teleport: Locate,
-  destroySelf: Trash,
-  destroyOther: X,
-  spawnObject: CopyPlus,
-  changeScore: Trophy,
-  endGame: Flag,
-  message: MessageSquare,
-  changeVariable: Variable,
-  randomizeVariable: Dices,
-  copyVariable: ArrowLeftRight,
-  goToRoom: DoorOpen,
-  restartRoom: RotateCcw,
-  wait: Hourglass
-}
-
-const ACTION_LABELS: Partial<Record<ObjectActionDraft["type"], string>> = {
-  move: "Moure",
-  setVelocity: "Velocitat",
-  rotate: "Rotar",
-  moveToward: "Anar cap a",
-  clampToRoom: "Limitar a la pantalla",
-  teleport: "Teleport",
-  destroySelf: "Destruir-se",
-  destroyOther: "Destruir altre",
-  spawnObject: "Crear obj.",
-  changeScore: "Punts",
-  endGame: "Fi joc",
-  message: "Missatge",
-  changeVariable: "Variable",
-  randomizeVariable: "Aleatori",
-  copyVariable: "Copiar var.",
-  goToRoom: "Anar a sala",
-  restartRoom: "Reiniciar",
-  wait: "Esperar",
-}
 
 // Operator labels used in the UI are inlined in the select options
 
@@ -145,7 +90,8 @@ export function ActionBlock({
   onDropOnAction,
   onDragEndAction
 }: ActionBlockProps) {
-  const Icon = ACTION_ICONS[action.type] ?? Move
+  const Icon = ACTION_ICON_MAP[action.type] ?? Move
+  const actionLabel = ACTION_REGISTRY.find((entry) => entry.type === action.type)?.ui.shortLabel ?? action.type
   const isDestroySelfAction = action.type === "destroySelf"
   const objectVariableOptions = allObjects.flatMap((objectEntry) =>
     (objectVariablesByObjectId[objectEntry.id] ?? []).map((definition) => ({
@@ -253,7 +199,7 @@ export function ActionBlock({
             isDestroySelfAction ? "text-red-600" : "text-slate-500"
           }`}
         >
-          {ACTION_LABELS[action.type]}
+          {actionLabel}
         </span>
       </div>
 

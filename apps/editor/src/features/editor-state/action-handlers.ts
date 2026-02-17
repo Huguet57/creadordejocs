@@ -234,7 +234,7 @@ function resolveSolidLimitedPosition(
   return { x: startX, y: startY }
 }
 
-export function executeAction(
+function executeActionFallback(
   action: RuntimeAction,
   result: RuntimeActionResult,
   ctx: ActionContext
@@ -800,4 +800,53 @@ export function executeAction(
     }
   }
   return { result }
+}
+
+type ActionExecutor<K extends RuntimeAction["type"]> = (
+  action: Extract<RuntimeAction, { type: K }>,
+  result: RuntimeActionResult,
+  ctx: ActionContext
+) => { result: RuntimeActionResult; halt?: boolean }
+
+export type ActionRuntimeRegistry = {
+  [K in RuntimeAction["type"]]: ActionExecutor<K>
+}
+
+export const ACTION_RUNTIME_REGISTRY: ActionRuntimeRegistry = {
+  move: (action, result, ctx) => executeActionFallback(action, result, ctx),
+  setVelocity: (action, result, ctx) => executeActionFallback(action, result, ctx),
+  rotate: (action, result, ctx) => executeActionFallback(action, result, ctx),
+  moveToward: (action, result, ctx) => executeActionFallback(action, result, ctx),
+  clampToRoom: (action, result, ctx) => executeActionFallback(action, result, ctx),
+  teleport: (action, result, ctx) => executeActionFallback(action, result, ctx),
+  destroySelf: (action, result, ctx) => executeActionFallback(action, result, ctx),
+  destroyOther: (action, result, ctx) => executeActionFallback(action, result, ctx),
+  spawnObject: (action, result, ctx) => executeActionFallback(action, result, ctx),
+  changeScore: (action, result, ctx) => executeActionFallback(action, result, ctx),
+  endGame: (action, result, ctx) => executeActionFallback(action, result, ctx),
+  message: (action, result, ctx) => executeActionFallback(action, result, ctx),
+  playSound: (action, result, ctx) => executeActionFallback(action, result, ctx),
+  changeVariable: (action, result, ctx) => executeActionFallback(action, result, ctx),
+  randomizeVariable: (action, result, ctx) => executeActionFallback(action, result, ctx),
+  copyVariable: (action, result, ctx) => executeActionFallback(action, result, ctx),
+  goToRoom: (action, result, ctx) => executeActionFallback(action, result, ctx),
+  restartRoom: (action, result, ctx) => executeActionFallback(action, result, ctx),
+  wait: (action, result, ctx) => executeActionFallback(action, result, ctx)
+}
+
+function dispatchAction<K extends RuntimeAction["type"]>(
+  action: Extract<RuntimeAction, { type: K }>,
+  result: RuntimeActionResult,
+  ctx: ActionContext
+): { result: RuntimeActionResult; halt?: boolean } {
+  const executor = ACTION_RUNTIME_REGISTRY[action.type]
+  return executor(action, result, ctx)
+}
+
+export function executeAction(
+  action: RuntimeAction,
+  result: RuntimeActionResult,
+  ctx: ActionContext
+): { result: RuntimeActionResult; halt?: boolean } {
+  return dispatchAction(action, result, ctx)
 }

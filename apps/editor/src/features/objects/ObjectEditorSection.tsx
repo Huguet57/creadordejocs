@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import {
+  createEditorDefaultAction,
   cloneObjectEventItemForPaste,
   type ObjectActionDraft,
   type ObjectEventItem
@@ -136,96 +137,14 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
   const globalVariablesWithSystem = [...controller.project.variables.global, ...SYSTEM_MOUSE_GLOBALS]
 
   const defaultActionFromType = (type: ObjectActionType): ObjectActionDraft | null => {
-    if (type === "move") return { type: "move", dx: 0, dy: 0 }
-    if (type === "setVelocity") return { type: "setVelocity", speed: 1, direction: 0 }
-    if (type === "rotate") return { type: "rotate", angle: 0, mode: "add" }
-    if (type === "moveToward") {
-      return {
-        type: "moveToward",
-        targetType: selectableTargetObjects.length > 0 ? "object" : "mouse",
-        targetObjectId: selectableTargetObjects[0]?.id ?? null,
-        speed: 1
-      }
-    }
-    if (type === "clampToRoom") return { type: "clampToRoom" }
-    if (type === "teleport") return { type: "teleport", mode: "position", x: 0, y: 0 }
-    if (type === "changeVariable") {
-      const firstGlobal = controller.project.variables.global[0]
-      const firstObjectVariable = selectedObjectVariableDefinitions[0]
-      if (firstGlobal) {
-        return {
-          type: "changeVariable",
-          scope: "global",
-          variableId: firstGlobal.id,
-          operator: "set",
-          value: firstGlobal.initialValue
-        }
-      }
-      if (!firstObjectVariable) return null
-      return {
-        type: "changeVariable",
-        scope: "object",
-        variableId: firstObjectVariable.id,
-        operator: "set",
-        target: "self",
-        targetInstanceId: null,
-        value: firstObjectVariable.initialValue
-      }
-    }
-    if (type === "randomizeVariable") {
-      const firstNumericGlobal = controller.project.variables.global.find((entry) => entry.type === "number")
-      const firstNumericObjectVariable = selectedObjectVariableDefinitions.find((entry) => entry.type === "number")
-      if (firstNumericGlobal) {
-        return {
-          type: "randomizeVariable",
-          scope: "global",
-          variableId: firstNumericGlobal.id,
-          min: 0,
-          max: 10
-        }
-      }
-      if (!firstNumericObjectVariable) return null
-      return {
-        type: "randomizeVariable",
-        scope: "object",
-        variableId: firstNumericObjectVariable.id,
-        target: "self",
-        targetInstanceId: null,
-        min: 0,
-        max: 10
-      }
-    }
-    if (type === "copyVariable") {
-      const firstObjectVariable = selectedObjectVariableDefinitions[0]
-      const firstGlobal = controller.project.variables.global[0]
-      if (!firstObjectVariable || !firstGlobal) return null
-      return {
-        type: "copyVariable",
-        direction: "globalToObject",
-        globalVariableId: firstGlobal.id,
-        objectVariableId: firstObjectVariable.id,
-        instanceTarget: "self",
-        instanceTargetId: null
-      }
-    }
-    if (type === "goToRoom") {
-      const firstRoom = controller.project.rooms[0]
-      if (!firstRoom) return null
-      return { type: "goToRoom", roomId: firstRoom.id }
-    }
-    if (type === "restartRoom") return { type: "restartRoom" }
-    if (type === "wait") return { type: "wait", durationMs: 500 }
-    if (type === "destroySelf") return { type: "destroySelf" }
-    if (type === "destroyOther") return { type: "destroyOther" }
-    if (type === "changeScore") return { type: "changeScore", delta: 1 }
-    if (type === "endGame") return { type: "endGame", message: "Game over" }
-    if (type === "message") return { type: "message", text: "Missatge", durationMs: 2000 }
-    if (type === "spawnObject") {
-      const target = selectableTargetObjects[0]
-      if (!target) return null
-      return { type: "spawnObject", objectId: target.id, offsetX: 0, offsetY: 0, positionMode: "absolute" }
-    }
-    return null
+    const actionDraft = createEditorDefaultAction(type, {
+      selectableTargetObjectIds: selectableTargetObjects.map((objectEntry) => objectEntry.id),
+      globalVariables: controller.project.variables.global,
+      objectVariables: selectedObjectVariableDefinitions,
+      roomIds: controller.project.rooms.map((roomEntry) => roomEntry.id),
+      soundIds: controller.project.resources.sounds.map((soundEntry) => soundEntry.id)
+    })
+    return actionDraft as ObjectActionDraft | null
   }
 
   useEffect(() => {

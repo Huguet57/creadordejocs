@@ -1,54 +1,18 @@
 import {
-  CopyPlus,
-  Flag,
-  Maximize,
-  Move,
-  FastForward,
-  Trash,
-  Trophy,
   Plus,
-  Locate,
-  X,
-  Variable,
-  Dices,
-  ArrowLeftRight,
-  DoorOpen,
-  RotateCcw,
-  Hourglass,
-  MessageSquare
+  X
 } from "lucide-react"
-import type { ElementType } from "react"
 import {
   ACTION_CATEGORIES,
   ACTION_DISPLAY_NAMES,
   type ObjectActionType
 } from "../editor-state/types.js"
+import { ACTION_ICON_MAP } from "./action-icon-map.js"
 
 type ActionSelectorPanelProps = {
   classNamePrefix: string
   onSelectAction: (type: ObjectActionType) => void
   onClose: () => void
-}
-
-const ACTION_ICONS: Record<ObjectActionType, ElementType> = {
-  move: Move,
-  setVelocity: FastForward,
-  rotate: RotateCcw,
-  moveToward: Move,
-  clampToRoom: Maximize,
-  teleport: Locate,
-  destroySelf: Trash,
-  destroyOther: X,
-  spawnObject: CopyPlus,
-  changeScore: Trophy,
-  endGame: Flag,
-  message: MessageSquare,
-  changeVariable: Variable,
-  randomizeVariable: Dices,
-  copyVariable: ArrowLeftRight,
-  goToRoom: DoorOpen,
-  restartRoom: RotateCcw,
-  wait: Hourglass
 }
 
 export function ActionSelectorPanel({
@@ -81,7 +45,7 @@ export function ActionSelectorPanel({
             </p>
             <div className="grid grid-cols-4 gap-2">
               {category.types.map((type) => {
-                const Icon = ACTION_ICONS[type] ?? Plus
+                const Icon = ACTION_ICON_MAP[type] ?? Plus
                 return (
                   <button
                     key={type}

@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { generateUUID } from "./generate-id.js"
+import { createObjectActionSchema } from "./action-registry.js"
 
 const SceneObjectSchema = z.object({
   id: z.string().min(1),
@@ -114,125 +115,12 @@ const LegacyVariableReferenceSchema = z.object({
 
 const ValueExpressionSchema = z.union([VariableValueSchema, ValueSourceSchema, LegacyVariableReferenceSchema])
 
-const ObjectActionSchema = z.discriminatedUnion("type", [
-  z.object({
-    id: z.string().min(1),
-    type: z.literal("move"),
-    dx: z.union([z.number(), ValueSourceSchema, LegacyVariableReferenceSchema]),
-    dy: z.union([z.number(), ValueSourceSchema, LegacyVariableReferenceSchema])
-  }),
-  z.object({
-    id: z.string().min(1),
-    type: z.literal("setVelocity"),
-    speed: z.union([z.number(), ValueSourceSchema, LegacyVariableReferenceSchema]),
-    direction: z.union([z.number(), ValueSourceSchema, LegacyVariableReferenceSchema])
-  }),
-  z.object({
-    id: z.string().min(1),
-    type: z.literal("rotate"),
-    angle: z.union([z.number(), ValueSourceSchema, LegacyVariableReferenceSchema]),
-    mode: z.enum(["set", "add"])
-  }),
-  z.object({
-    id: z.string().min(1),
-    type: z.literal("moveToward"),
-    targetType: z.enum(["object", "mouse"]),
-    targetObjectId: z.string().nullable().default(null),
-    speed: z.union([z.number(), ValueSourceSchema, LegacyVariableReferenceSchema])
-  }),
-  z.object({
-    id: z.string().min(1),
-    type: z.literal("clampToRoom")
-  }),
-  z.object({
-    id: z.string().min(1),
-    type: z.literal("destroySelf")
-  }),
-  z.object({
-    id: z.string().min(1),
-    type: z.literal("destroyOther")
-  }),
-  z.object({
-    id: z.string().min(1),
-    type: z.literal("spawnObject"),
-    objectId: z.string().min(1),
-    offsetX: z.union([z.number(), ValueSourceSchema, LegacyVariableReferenceSchema]),
-    offsetY: z.union([z.number(), ValueSourceSchema, LegacyVariableReferenceSchema]),
-    positionMode: z.enum(["absolute", "relative"]).optional()
-  }),
-  z.object({
-    id: z.string().min(1),
-    type: z.literal("changeScore"),
-    delta: z.union([z.number(), ValueSourceSchema, LegacyVariableReferenceSchema])
-  }),
-  z.object({
-    id: z.string().min(1),
-    type: z.literal("endGame"),
-    message: z.union([z.string().min(1), ValueSourceSchema, LegacyVariableReferenceSchema])
-  }),
-  z.object({
-    id: z.string().min(1),
-    type: z.literal("message"),
-    text: z.union([z.string().min(1), ValueSourceSchema, LegacyVariableReferenceSchema]),
-    durationMs: z.union([z.number().int().min(1), ValueSourceSchema, LegacyVariableReferenceSchema])
-  }),
-  z.object({
-    id: z.string().min(1),
-    type: z.literal("playSound"),
-    soundId: z.string().min(1)
-  }),
-  z.object({
-    id: z.string().min(1),
-    type: z.literal("teleport"),
-    mode: z.enum(["position", "start", "mouse"]),
-    x: z.union([z.number(), ValueSourceSchema, LegacyVariableReferenceSchema]).nullable().default(null),
-    y: z.union([z.number(), ValueSourceSchema, LegacyVariableReferenceSchema]).nullable().default(null)
-  }),
-  z.object({
-    id: z.string().min(1),
-    type: z.literal("changeVariable"),
-    scope: z.enum(["global", "object"]),
-    variableId: z.string().min(1),
-    operator: VariableOperatorSchema,
-    target: z.enum(["self", "other", "instanceId"]).nullable().optional(),
-    targetInstanceId: z.string().nullable().optional(),
-    value: ValueExpressionSchema
-  }),
-  z.object({
-    id: z.string().min(1),
-    type: z.literal("randomizeVariable"),
-    scope: z.enum(["global", "object"]),
-    variableId: z.string().min(1),
-    target: z.enum(["self", "other", "instanceId"]).nullable().optional(),
-    targetInstanceId: z.string().nullable().optional(),
-    min: z.union([z.number().int(), ValueSourceSchema, LegacyVariableReferenceSchema]),
-    max: z.union([z.number().int(), ValueSourceSchema, LegacyVariableReferenceSchema]),
-    step: z.union([z.number().int().positive(), ValueSourceSchema, LegacyVariableReferenceSchema]).optional()
-  }),
-  z.object({
-    id: z.string().min(1),
-    type: z.literal("copyVariable"),
-    direction: z.enum(["globalToObject", "objectToGlobal"]),
-    globalVariableId: z.string().min(1),
-    objectVariableId: z.string().min(1),
-    instanceTarget: z.enum(["self", "other", "instanceId"]),
-    instanceTargetId: z.string().nullable().default(null)
-  }),
-  z.object({
-    id: z.string().min(1),
-    type: z.literal("goToRoom"),
-    roomId: z.string().min(1)
-  }),
-  z.object({
-    id: z.string().min(1),
-    type: z.literal("restartRoom")
-  }),
-  z.object({
-    id: z.string().min(1),
-    type: z.literal("wait"),
-    durationMs: z.union([z.number().int().min(1), ValueSourceSchema, LegacyVariableReferenceSchema])
-  })
-])
+const ObjectActionSchema = createObjectActionSchema({
+  valueSourceSchema: ValueSourceSchema,
+  legacyVariableReferenceSchema: LegacyVariableReferenceSchema,
+  variableOperatorSchema: VariableOperatorSchema,
+  variableValueSchema: VariableValueSchema
+})
 
 const IfConditionLeftSchema = z.union([
   LegacyVariableReferenceSchema,

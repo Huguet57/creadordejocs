@@ -1,4 +1,12 @@
-import type { ProjectV1, ObjectActionDraft } from "@creadordejocs/project-format"
+import {
+  ACTION_CATEGORY_LABELS,
+  ACTION_REGISTRY,
+  getEditorVisibleActionTypes,
+  type ActionCategoryId,
+  type ActionType,
+  type ObjectActionDraft,
+  type ProjectV1
+} from "@creadordejocs/project-format"
 
 export type EditorSection = "sprites" | "objects" | "rooms" | "run" | "templates" | "globalVariables" | "share"
 
@@ -15,25 +23,7 @@ export type ObjectEventType =
   | "MouseClick"
 export type ObjectEventKey = "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight" | "Space"
 export type ObjectKeyboardMode = "down" | "press"
-export type ObjectActionType =
-  | "move"
-  | "setVelocity"
-  | "rotate"
-  | "moveToward"
-  | "clampToRoom"
-  | "teleport"
-  | "destroySelf"
-  | "destroyOther"
-  | "spawnObject"
-  | "changeScore"
-  | "endGame"
-  | "message"
-  | "changeVariable"
-  | "randomizeVariable"
-  | "copyVariable"
-  | "goToRoom"
-  | "restartRoom"
-  | "wait"
+export type ObjectActionType = Exclude<ActionType, "playSound">
 
 export type ObjectEventEntry = ProjectV1["objects"][number]["events"][number]
 export type ObjectEventItem = ObjectEventEntry["items"][number]
@@ -60,79 +50,22 @@ export const SYSTEM_MOUSE_GLOBALS = [
   { id: "__mouse_y", name: "mouse_y", type: "number" as const, initialValue: 0 }
 ]
 export const OBJECT_EVENT_KEYS: ObjectEventKey[] = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"]
-export const OBJECT_ACTION_TYPES: ObjectActionType[] = [
-  "move",
-  "setVelocity",
-  "rotate",
-  "moveToward",
-  "clampToRoom",
-  "teleport",
-  "destroySelf",
-  "destroyOther",
-  "spawnObject",
-  "changeScore",
-  "endGame",
-  "message",
-  "changeVariable",
-  "randomizeVariable",
-  "copyVariable",
-  "goToRoom",
-  "restartRoom",
-  "wait"
-]
+export const OBJECT_ACTION_TYPES: ObjectActionType[] = getEditorVisibleActionTypes().filter(
+  (actionType): actionType is ObjectActionType => actionType !== "playSound"
+)
 
-export const ACTION_DISPLAY_NAMES: Record<ObjectActionType, string> = {
-  move: "Moure",
-  setVelocity: "Velocitat",
-  rotate: "Rotar",
-  moveToward: "Anar cap a",
-  clampToRoom: "Limitar a sala",
-  teleport: "Teleport",
-  destroySelf: "Destruir-se",
-  destroyOther: "Destruir altre",
-  spawnObject: "Crear objecte",
-  changeScore: "Canviar punts",
-  endGame: "Fi del joc",
-  message: "Missatge",
-  changeVariable: "Variable",
-  randomizeVariable: "Aleatori",
-  copyVariable: "Copiar variable",
-  goToRoom: "Anar a sala",
-  restartRoom: "Reiniciar sala",
-  wait: "Esperar",
-}
+export const ACTION_DISPLAY_NAMES: Record<ObjectActionType, string> = Object.fromEntries(
+  ACTION_REGISTRY.filter((entry) => entry.ui.editorVisible).map((entry) => [entry.type, entry.ui.label])
+) as Record<ObjectActionType, string>
 
-export type ActionCategory = "movement" | "objects" | "game" | "variables" | "rooms" | "flow"
+export type ActionCategory = ActionCategoryId
 
-export const ACTION_CATEGORIES: { id: ActionCategory; label: string; types: ObjectActionType[] }[] = [
-  {
-    id: "movement",
-    label: "Moviment",
-    types: ["move", "setVelocity", "rotate", "moveToward", "clampToRoom", "teleport"]
-  },
-  {
-    id: "objects",
-    label: "Objectes",
-    types: ["destroySelf", "destroyOther", "spawnObject"]
-  },
-  {
-    id: "game",
-    label: "Joc",
-    types: ["changeScore", "endGame", "message"]
-  },
-  {
-    id: "variables",
-    label: "Variables",
-    types: ["changeVariable", "randomizeVariable", "copyVariable"]
-  },
-  {
-    id: "rooms",
-    label: "Sales",
-    types: ["goToRoom", "restartRoom"]
-  },
-  {
-    id: "flow",
-    label: "Flux",
-    types: ["wait"]
-  }
-]
+export const ACTION_CATEGORIES: { id: ActionCategory; label: string; types: ObjectActionType[] }[] = Object.keys(
+  ACTION_CATEGORY_LABELS
+).map((categoryId) => ({
+  id: categoryId as ActionCategory,
+  label: ACTION_CATEGORY_LABELS[categoryId as ActionCategory],
+  types: ACTION_REGISTRY.filter(
+    (entry) => entry.ui.editorVisible && entry.ui.categoryId === categoryId && entry.type !== "playSound"
+  ).map((entry) => entry.type as ObjectActionType)
+}))
