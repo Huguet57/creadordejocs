@@ -109,8 +109,6 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
   const handleDeleteObjectById = (objectId: string) => {
     const targetObject = projectObjects.find((o) => o.id === objectId)
     if (!targetObject) return
-    const confirmed = window.confirm(`Vols eliminar l'objecte "${targetObject.name}"?`)
-    if (!confirmed) return
 
     const currentIndex = openTabIds.indexOf(objectId)
     const remainingTabs = openTabIds.filter((id) => id !== objectId)

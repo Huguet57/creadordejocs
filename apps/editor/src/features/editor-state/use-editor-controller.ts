@@ -1031,8 +1031,6 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
     },
     deleteSelectedObject() {
       if (!selectedObject) return
-      const confirmed = window.confirm(`Vols eliminar l'objecte "${selectedObject.name}"?`)
-      if (!confirmed) return
       const next: ProjectV1 = {
         ...project,
         objects: project.objects.filter((entry) => entry.id !== selectedObject.id),
