@@ -1,4 +1,4 @@
-import { Plus, X, Variable } from "lucide-react"
+import { Minus, Plus, X, Variable } from "lucide-react"
 import { useCallback, useMemo, useState, type KeyboardEvent } from "react"
 import type { VariableItemType, VariableType, VariableValue } from "@creadordejocs/project-format"
 import { Button } from "../../components/ui/button.js"
@@ -94,6 +94,207 @@ function formatInputValue(type: VariableType, value: VariableValue): string {
     return JSON.stringify(value)
   }
   return ""
+}
+
+type PrimitiveValue = string | number | boolean
+
+function parseSafeList(raw: string, itemType: VariableItemType): PrimitiveValue[] {
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter((entry): entry is PrimitiveValue => typeof entry === itemType)
+  } catch {
+    return []
+  }
+}
+
+function parseSafeMap(raw: string, itemType: VariableItemType): Record<string, PrimitiveValue> {
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {}
+    return Object.fromEntries(
+      Object.entries(parsed as Record<string, unknown>).filter(([, v]) => typeof v === itemType)
+    ) as Record<string, PrimitiveValue>
+  } catch {
+    return {}
+  }
+}
+
+function defaultForItemType(itemType: VariableItemType): PrimitiveValue {
+  if (itemType === "number") return 0
+  if (itemType === "boolean") return false
+  return ""
+}
+
+function coerceItemValue(raw: string, itemType: VariableItemType): PrimitiveValue {
+  if (itemType === "number") {
+    const parsed = Number(raw)
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+  if (itemType === "boolean") return raw === "true"
+  return raw
+}
+
+function ListValueEditor({
+  value,
+  itemType,
+  onChange,
+  compact = false
+}: {
+  value: PrimitiveValue[]
+  itemType: VariableItemType
+  onChange: (next: PrimitiveValue[]) => void
+  compact?: boolean
+}) {
+  const inputClass = compact
+    ? "mvpv2-list-item-input h-6 min-w-0 flex-1 rounded border border-slate-200 bg-slate-50 px-1.5 text-[11px] text-slate-700 transition-colors focus:border-slate-400 focus:bg-white focus:outline-none"
+    : "mvpv2-list-item-input h-7 min-w-0 flex-1 rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400"
+
+  return (
+    <div className="mvpv2-list-editor flex w-full flex-col gap-1">
+      {value.map((item, index) => (
+        <div key={index} className="mvpv2-list-item-row flex items-center gap-1">
+          <span className="mvpv2-list-item-idx w-4 shrink-0 text-right text-[10px] text-slate-400">{index}</span>
+          {itemType === "boolean" ? (
+            <select
+              className={inputClass}
+              value={String(item)}
+              onChange={(event) => {
+                const next = [...value]
+                next[index] = event.target.value === "true"
+                onChange(next)
+              }}
+            >
+              <option value="true">true</option>
+              <option value="false">false</option>
+            </select>
+          ) : (
+            <input
+              className={inputClass}
+              type={itemType === "number" ? "number" : "text"}
+              value={String(item)}
+              onChange={(event) => {
+                const next = [...value]
+                next[index] = coerceItemValue(event.target.value, itemType)
+                onChange(next)
+              }}
+            />
+          )}
+          <button
+            type="button"
+            className="mvpv2-list-item-remove shrink-0 rounded p-0.5 text-slate-300 transition-colors hover:bg-red-50 hover:text-red-500"
+            onClick={() => onChange(value.filter((_, i) => i !== index))}
+            title="Remove item"
+          >
+            <Minus className="h-3 w-3" />
+          </button>
+        </div>
+      ))}
+      <button
+        type="button"
+        className="mvpv2-list-add-btn mt-0.5 flex items-center gap-1 self-start rounded px-1 py-0.5 text-[10px] text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+        onClick={() => onChange([...value, defaultForItemType(itemType)])}
+      >
+        <Plus className="h-3 w-3" />
+        <span>Add item</span>
+      </button>
+    </div>
+  )
+}
+
+function MapValueEditor({
+  value,
+  itemType,
+  onChange,
+  compact = false
+}: {
+  value: Record<string, PrimitiveValue>
+  itemType: VariableItemType
+  onChange: (next: Record<string, PrimitiveValue>) => void
+  compact?: boolean
+}) {
+  const entries = Object.entries(value)
+
+  const inputClass = compact
+    ? "mvpv2-map-entry-input h-6 min-w-0 flex-1 rounded border border-slate-200 bg-slate-50 px-1.5 text-[11px] text-slate-700 transition-colors focus:border-slate-400 focus:bg-white focus:outline-none"
+    : "mvpv2-map-entry-input h-7 min-w-0 flex-1 rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400"
+
+  const handleKeyChange = (oldKey: string, newKey: string) => {
+    const next: Record<string, PrimitiveValue> = {}
+    for (const [key, val] of entries) {
+      next[key === oldKey ? newKey : key] = val
+    }
+    onChange(next)
+  }
+
+  const handleValueChange = (key: string, newValue: PrimitiveValue) => {
+    onChange({ ...value, [key]: newValue })
+  }
+
+  const handleRemove = (key: string) => {
+    const next = { ...value }
+    delete next[key]
+    onChange(next)
+  }
+
+  const handleAdd = () => {
+    let newKey = "key"
+    let counter = 1
+    while (newKey in value) {
+      newKey = `key${counter}`
+      counter++
+    }
+    onChange({ ...value, [newKey]: defaultForItemType(itemType) })
+  }
+
+  return (
+    <div className="mvpv2-map-editor flex w-full flex-col gap-1">
+      {entries.map(([key, val]) => (
+        <div key={key} className="mvpv2-map-entry-row flex items-center gap-1">
+          <input
+            className={`${inputClass} font-medium`}
+            value={key}
+            onChange={(event) => handleKeyChange(key, event.target.value)}
+            placeholder="key"
+          />
+          {itemType === "boolean" ? (
+            <select
+              className={inputClass}
+              value={String(val)}
+              onChange={(event) => handleValueChange(key, event.target.value === "true")}
+            >
+              <option value="true">true</option>
+              <option value="false">false</option>
+            </select>
+          ) : (
+            <input
+              className={inputClass}
+              type={itemType === "number" ? "number" : "text"}
+              value={String(val)}
+              onChange={(event) => handleValueChange(key, coerceItemValue(event.target.value, itemType))}
+              placeholder="value"
+            />
+          )}
+          <button
+            type="button"
+            className="mvpv2-map-entry-remove shrink-0 rounded p-0.5 text-slate-300 transition-colors hover:bg-red-50 hover:text-red-500"
+            onClick={() => handleRemove(key)}
+            title="Remove entry"
+          >
+            <Minus className="h-3 w-3" />
+          </button>
+        </div>
+      ))}
+      <button
+        type="button"
+        className="mvpv2-map-add-btn mt-0.5 flex items-center gap-1 self-start rounded px-1 py-0.5 text-[10px] text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+        onClick={handleAdd}
+      >
+        <Plus className="h-3 w-3" />
+        <span>Add entry</span>
+      </button>
+    </div>
+  )
 }
 
 export function ObjectVariablesPanel({
@@ -309,12 +510,17 @@ export function ObjectVariablesPanel({
                   <option value="true">true</option>
                   <option value="false">false</option>
                 </select>
-              ) : newVariableType === "list" || newVariableType === "map" ? (
-                <textarea
-                  className="mvpv2-vars-add-field-value-collection min-h-[4rem] w-full rounded border border-slate-300 bg-white px-3 py-2 font-mono text-xs text-slate-900 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400"
-                  value={newVariableRawValue}
-                  onChange={(event) => setNewVariableRawValue(event.target.value)}
-                  placeholder={newVariableType === "list" ? "[1, 2, 3]" : '{"hp": 10}'}
+              ) : newVariableType === "list" ? (
+                <ListValueEditor
+                  value={parseSafeList(newVariableRawValue, newVariableItemType)}
+                  itemType={newVariableItemType}
+                  onChange={(next) => setNewVariableRawValue(JSON.stringify(next))}
+                />
+              ) : newVariableType === "map" ? (
+                <MapValueEditor
+                  value={parseSafeMap(newVariableRawValue, newVariableItemType)}
+                  itemType={newVariableItemType}
+                  onChange={(next) => setNewVariableRawValue(JSON.stringify(next))}
                 />
               ) : (
                 <input
@@ -402,19 +608,19 @@ export function ObjectVariablesPanel({
                         <option value="true">true</option>
                         <option value="false">false</option>
                       </select>
-                    ) : definition.type === "list" || definition.type === "map" ? (
-                      <textarea
-                        className="mvpv2-vars-value-collection min-h-[3.5rem] w-full resize-y rounded border border-slate-200 bg-slate-50 px-2 py-1.5 font-mono text-xs text-slate-700 transition-colors focus:border-slate-400 focus:bg-white focus:outline-none"
-                        value={formatInputValue(definition.type, definition.initialValue)}
-                        placeholder={definition.type === "list" ? "[1, 2, 3]" : '{"key": "value"}'}
-                        onChange={(event) =>
-                          onUpdateVariable(
-                            objectId,
-                            definition.id,
-                            definition.name,
-                            parseInitialValue(definition.type, event.target.value, definition.itemType ?? "number")
-                          )
-                        }
+                    ) : definition.type === "list" ? (
+                      <ListValueEditor
+                        compact
+                        value={definition.initialValue as PrimitiveValue[]}
+                        itemType={definition.itemType ?? "number"}
+                        onChange={(next) => onUpdateVariable(objectId, definition.id, definition.name, next)}
+                      />
+                    ) : definition.type === "map" ? (
+                      <MapValueEditor
+                        compact
+                        value={definition.initialValue as Record<string, PrimitiveValue>}
+                        itemType={definition.itemType ?? "number"}
+                        onChange={(next) => onUpdateVariable(objectId, definition.id, definition.name, next)}
                       />
                     ) : (
                       <input
