@@ -39,8 +39,10 @@ export type ActionContext = {
 }
 
 type RuntimeVariableType = "number" | "string" | "boolean"
+type RuntimeVariableItemType = RuntimeVariableType
 type LegacyVariableReference = { scope: "global" | "object"; variableId: string }
 type ValueSourceExpression = Extract<ValueExpressionOutput, { source: string }>
+type CollectionVariableDefinition = Extract<ProjectV1["variables"]["global"][number], { type: "list" | "map" }>
 export const MAX_FLOW_ITERATIONS = 500
 
 function isLegacyVariableReference(value: ValueExpressionOutput): value is LegacyVariableReference {
@@ -173,6 +175,82 @@ export function isScalarListValue(value: unknown): value is (number | string | b
 
 export function isScalarMapValue(value: unknown): value is Record<string, number | string | boolean> {
   return !!value && typeof value === "object" && !Array.isArray(value) && Object.values(value).every((entry) => isScalarValue(entry))
+}
+
+function isScalarValueOfItemType(value: RuntimeVariableValue, itemType: RuntimeVariableItemType): boolean {
+  return typeof value === itemType
+}
+
+function getGlobalCollectionDefinition(
+  project: ProjectV1,
+  variableId: string,
+  expectedType: "list" | "map"
+): CollectionVariableDefinition | null {
+  const definition = project.variables.global.find((entry) => entry.id === variableId)
+  if (definition?.type !== expectedType) {
+    return null
+  }
+  return definition
+}
+
+function getObjectCollectionDefinition(
+  project: ProjectV1,
+  roomInstances: ProjectV1["rooms"][number]["instances"],
+  instanceId: string,
+  variableId: string,
+  expectedType: "list" | "map"
+): CollectionVariableDefinition | null {
+  const objectId = roomInstances.find((entry) => entry.id === instanceId)?.objectId
+  if (!objectId) {
+    return null
+  }
+  const definition = (project.variables.objectByObjectId[objectId] ?? []).find((entry) => entry.id === variableId)
+  if (definition?.type !== expectedType) {
+    return null
+  }
+  return definition
+}
+
+function updateObjectVariableValue(
+  runtime: RuntimeState,
+  targetInstanceId: string,
+  variableId: string,
+  value: RuntimeVariableValue
+): RuntimeState {
+  const targetVariables = runtime.objectInstanceVariables[targetInstanceId]
+  if (!targetVariables) {
+    return runtime
+  }
+  return {
+    ...runtime,
+    objectInstanceVariables: {
+      ...runtime.objectInstanceVariables,
+      [targetInstanceId]: {
+        ...targetVariables,
+        [variableId]: value
+      }
+    }
+  }
+}
+
+function resolveCollectionTargetInstanceId(
+  action: {
+    scope: "global" | "object"
+    target?: "self" | "other" | "instanceId" | null | undefined
+    targetInstanceId?: string | null | undefined
+  },
+  result: RuntimeActionResult,
+  ctx: ActionContext
+): string | null {
+  if (action.scope === "global") {
+    return null
+  }
+  return resolveTargetInstanceId(
+    result.instance,
+    action.target ?? "self",
+    action.targetInstanceId ?? null,
+    ctx.collisionOtherInstanceId
+  )
 }
 
 export function mergeIterationActionResult(
@@ -776,6 +854,357 @@ function executeActionFallback(
       }
     }
   }
+  if (action.type === "listPush") {
+    const targetInstanceId = resolveCollectionTargetInstanceId(action, result, ctx)
+    const collectionDefinition =
+      action.scope === "global"
+        ? getGlobalCollectionDefinition(ctx.project, action.variableId, "list")
+        : targetInstanceId
+          ? getObjectCollectionDefinition(ctx.project, ctx.roomInstances, targetInstanceId, action.variableId, "list")
+          : null
+    if (!collectionDefinition) {
+      return { result }
+    }
+    const resolvedValue = resolveExpressionValue(action.value, result, ctx)
+    if (resolvedValue === undefined || !isScalarValue(resolvedValue)) {
+      return { result }
+    }
+    if (!isScalarValueOfItemType(resolvedValue, collectionDefinition.itemType)) {
+      return { result }
+    }
+    if (action.scope === "global") {
+      const existing = result.runtime.globalVariables[action.variableId]
+      if (!isScalarListValue(existing)) {
+        return { result }
+      }
+      return {
+        result: {
+          ...result,
+          runtime: {
+            ...result.runtime,
+            globalVariables: {
+              ...result.runtime.globalVariables,
+              [action.variableId]: [...existing, resolvedValue]
+            }
+          }
+        }
+      }
+    }
+    if (!targetInstanceId) {
+      return { result }
+    }
+    const existing = result.runtime.objectInstanceVariables[targetInstanceId]?.[action.variableId]
+    if (!isScalarListValue(existing)) {
+      return { result }
+    }
+    return {
+      result: {
+        ...result,
+        runtime: updateObjectVariableValue(result.runtime, targetInstanceId, action.variableId, [...existing, resolvedValue])
+      }
+    }
+  }
+  if (action.type === "listSetAt") {
+    const targetInstanceId = resolveCollectionTargetInstanceId(action, result, ctx)
+    const collectionDefinition =
+      action.scope === "global"
+        ? getGlobalCollectionDefinition(ctx.project, action.variableId, "list")
+        : targetInstanceId
+          ? getObjectCollectionDefinition(ctx.project, ctx.roomInstances, targetInstanceId, action.variableId, "list")
+          : null
+    if (!collectionDefinition) {
+      return { result }
+    }
+    const index = resolveNumberValue(action.index, result, ctx)
+    const resolvedValue = resolveExpressionValue(action.value, result, ctx)
+    if (index === undefined || !Number.isInteger(index) || resolvedValue === undefined || !isScalarValue(resolvedValue)) {
+      return { result }
+    }
+    if (!isScalarValueOfItemType(resolvedValue, collectionDefinition.itemType)) {
+      return { result }
+    }
+    if (action.scope === "global") {
+      const existing = result.runtime.globalVariables[action.variableId]
+      if (!isScalarListValue(existing) || index < 0 || index >= existing.length) {
+        return { result }
+      }
+      const nextList = [...existing]
+      nextList[index] = resolvedValue
+      return {
+        result: {
+          ...result,
+          runtime: {
+            ...result.runtime,
+            globalVariables: {
+              ...result.runtime.globalVariables,
+              [action.variableId]: nextList
+            }
+          }
+        }
+      }
+    }
+    if (!targetInstanceId) {
+      return { result }
+    }
+    const existing = result.runtime.objectInstanceVariables[targetInstanceId]?.[action.variableId]
+    if (!isScalarListValue(existing) || index < 0 || index >= existing.length) {
+      return { result }
+    }
+    const nextList = [...existing]
+    nextList[index] = resolvedValue
+    return {
+      result: {
+        ...result,
+        runtime: updateObjectVariableValue(result.runtime, targetInstanceId, action.variableId, nextList)
+      }
+    }
+  }
+  if (action.type === "listRemoveAt") {
+    const targetInstanceId = resolveCollectionTargetInstanceId(action, result, ctx)
+    const collectionDefinition =
+      action.scope === "global"
+        ? getGlobalCollectionDefinition(ctx.project, action.variableId, "list")
+        : targetInstanceId
+          ? getObjectCollectionDefinition(ctx.project, ctx.roomInstances, targetInstanceId, action.variableId, "list")
+          : null
+    if (!collectionDefinition) {
+      return { result }
+    }
+    const index = resolveNumberValue(action.index, result, ctx)
+    if (index === undefined || !Number.isInteger(index)) {
+      return { result }
+    }
+    if (action.scope === "global") {
+      const existing = result.runtime.globalVariables[action.variableId]
+      if (!isScalarListValue(existing) || index < 0 || index >= existing.length) {
+        return { result }
+      }
+      return {
+        result: {
+          ...result,
+          runtime: {
+            ...result.runtime,
+            globalVariables: {
+              ...result.runtime.globalVariables,
+              [action.variableId]: existing.filter((_, itemIndex) => itemIndex !== index)
+            }
+          }
+        }
+      }
+    }
+    if (!targetInstanceId) {
+      return { result }
+    }
+    const existing = result.runtime.objectInstanceVariables[targetInstanceId]?.[action.variableId]
+    if (!isScalarListValue(existing) || index < 0 || index >= existing.length) {
+      return { result }
+    }
+    return {
+      result: {
+        ...result,
+        runtime: updateObjectVariableValue(
+          result.runtime,
+          targetInstanceId,
+          action.variableId,
+          existing.filter((_, itemIndex) => itemIndex !== index)
+        )
+      }
+    }
+  }
+  if (action.type === "listClear") {
+    const targetInstanceId = resolveCollectionTargetInstanceId(action, result, ctx)
+    const collectionDefinition =
+      action.scope === "global"
+        ? getGlobalCollectionDefinition(ctx.project, action.variableId, "list")
+        : targetInstanceId
+          ? getObjectCollectionDefinition(ctx.project, ctx.roomInstances, targetInstanceId, action.variableId, "list")
+          : null
+    if (!collectionDefinition) {
+      return { result }
+    }
+    if (action.scope === "global") {
+      const existing = result.runtime.globalVariables[action.variableId]
+      if (!isScalarListValue(existing)) {
+        return { result }
+      }
+      return {
+        result: {
+          ...result,
+          runtime: {
+            ...result.runtime,
+            globalVariables: {
+              ...result.runtime.globalVariables,
+              [action.variableId]: []
+            }
+          }
+        }
+      }
+    }
+    if (!targetInstanceId) {
+      return { result }
+    }
+    const existing = result.runtime.objectInstanceVariables[targetInstanceId]?.[action.variableId]
+    if (!isScalarListValue(existing)) {
+      return { result }
+    }
+    return {
+      result: {
+        ...result,
+        runtime: updateObjectVariableValue(result.runtime, targetInstanceId, action.variableId, [])
+      }
+    }
+  }
+  if (action.type === "mapSet") {
+    const targetInstanceId = resolveCollectionTargetInstanceId(action, result, ctx)
+    const collectionDefinition =
+      action.scope === "global"
+        ? getGlobalCollectionDefinition(ctx.project, action.variableId, "map")
+        : targetInstanceId
+          ? getObjectCollectionDefinition(ctx.project, ctx.roomInstances, targetInstanceId, action.variableId, "map")
+          : null
+    if (!collectionDefinition) {
+      return { result }
+    }
+    const key = resolveStringValue(action.key, result, ctx)
+    const resolvedValue = resolveExpressionValue(action.value, result, ctx)
+    if (key === undefined || resolvedValue === undefined || !isScalarValue(resolvedValue)) {
+      return { result }
+    }
+    if (!isScalarValueOfItemType(resolvedValue, collectionDefinition.itemType)) {
+      return { result }
+    }
+    if (action.scope === "global") {
+      const existing = result.runtime.globalVariables[action.variableId]
+      if (!isScalarMapValue(existing)) {
+        return { result }
+      }
+      return {
+        result: {
+          ...result,
+          runtime: {
+            ...result.runtime,
+            globalVariables: {
+              ...result.runtime.globalVariables,
+              [action.variableId]: {
+                ...existing,
+                [key]: resolvedValue
+              }
+            }
+          }
+        }
+      }
+    }
+    if (!targetInstanceId) {
+      return { result }
+    }
+    const existing = result.runtime.objectInstanceVariables[targetInstanceId]?.[action.variableId]
+    if (!isScalarMapValue(existing)) {
+      return { result }
+    }
+    return {
+      result: {
+        ...result,
+        runtime: updateObjectVariableValue(result.runtime, targetInstanceId, action.variableId, {
+          ...existing,
+          [key]: resolvedValue
+        })
+      }
+    }
+  }
+  if (action.type === "mapDelete") {
+    const targetInstanceId = resolveCollectionTargetInstanceId(action, result, ctx)
+    const collectionDefinition =
+      action.scope === "global"
+        ? getGlobalCollectionDefinition(ctx.project, action.variableId, "map")
+        : targetInstanceId
+          ? getObjectCollectionDefinition(ctx.project, ctx.roomInstances, targetInstanceId, action.variableId, "map")
+          : null
+    if (!collectionDefinition) {
+      return { result }
+    }
+    const key = resolveStringValue(action.key, result, ctx)
+    if (key === undefined) {
+      return { result }
+    }
+    if (action.scope === "global") {
+      const existing = result.runtime.globalVariables[action.variableId]
+      if (!isScalarMapValue(existing) || !(key in existing)) {
+        return { result }
+      }
+      const nextMap = { ...existing }
+      delete nextMap[key]
+      return {
+        result: {
+          ...result,
+          runtime: {
+            ...result.runtime,
+            globalVariables: {
+              ...result.runtime.globalVariables,
+              [action.variableId]: nextMap
+            }
+          }
+        }
+      }
+    }
+    if (!targetInstanceId) {
+      return { result }
+    }
+    const existing = result.runtime.objectInstanceVariables[targetInstanceId]?.[action.variableId]
+    if (!isScalarMapValue(existing) || !(key in existing)) {
+      return { result }
+    }
+    const nextMap = { ...existing }
+    delete nextMap[key]
+    return {
+      result: {
+        ...result,
+        runtime: updateObjectVariableValue(result.runtime, targetInstanceId, action.variableId, nextMap)
+      }
+    }
+  }
+  if (action.type === "mapClear") {
+    const targetInstanceId = resolveCollectionTargetInstanceId(action, result, ctx)
+    const collectionDefinition =
+      action.scope === "global"
+        ? getGlobalCollectionDefinition(ctx.project, action.variableId, "map")
+        : targetInstanceId
+          ? getObjectCollectionDefinition(ctx.project, ctx.roomInstances, targetInstanceId, action.variableId, "map")
+          : null
+    if (!collectionDefinition) {
+      return { result }
+    }
+    if (action.scope === "global") {
+      const existing = result.runtime.globalVariables[action.variableId]
+      if (!isScalarMapValue(existing)) {
+        return { result }
+      }
+      return {
+        result: {
+          ...result,
+          runtime: {
+            ...result.runtime,
+            globalVariables: {
+              ...result.runtime.globalVariables,
+              [action.variableId]: {}
+            }
+          }
+        }
+      }
+    }
+    if (!targetInstanceId) {
+      return { result }
+    }
+    const existing = result.runtime.objectInstanceVariables[targetInstanceId]?.[action.variableId]
+    if (!isScalarMapValue(existing)) {
+      return { result }
+    }
+    return {
+      result: {
+        ...result,
+        runtime: updateObjectVariableValue(result.runtime, targetInstanceId, action.variableId, {})
+      }
+    }
+  }
   if (action.type === "goToRoom") {
     const targetRoom = ctx.project.rooms.find((roomEntry) => roomEntry.id === action.roomId)
     if (!targetRoom) {
@@ -867,6 +1296,13 @@ export const ACTION_RUNTIME_REGISTRY: ActionRuntimeRegistry = {
   changeVariable: (action, result, ctx) => executeActionFallback(action, result, ctx),
   randomizeVariable: (action, result, ctx) => executeActionFallback(action, result, ctx),
   copyVariable: (action, result, ctx) => executeActionFallback(action, result, ctx),
+  listPush: (action, result, ctx) => executeActionFallback(action, result, ctx),
+  listSetAt: (action, result, ctx) => executeActionFallback(action, result, ctx),
+  listRemoveAt: (action, result, ctx) => executeActionFallback(action, result, ctx),
+  listClear: (action, result, ctx) => executeActionFallback(action, result, ctx),
+  mapSet: (action, result, ctx) => executeActionFallback(action, result, ctx),
+  mapDelete: (action, result, ctx) => executeActionFallback(action, result, ctx),
+  mapClear: (action, result, ctx) => executeActionFallback(action, result, ctx),
   goToRoom: (action, result, ctx) => executeActionFallback(action, result, ctx),
   restartRoom: (action, result, ctx) => executeActionFallback(action, result, ctx),
   wait: (action, result, ctx) => executeActionFallback(action, result, ctx),

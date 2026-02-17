@@ -13,13 +13,35 @@ type ActionSelectorPanelProps = {
   classNamePrefix: string
   onSelectAction: (type: ObjectActionType) => void
   onClose: () => void
+  hasListActions?: boolean
+  hasMapActions?: boolean
 }
 
 export function ActionSelectorPanel({
   classNamePrefix,
   onSelectAction,
-  onClose
+  onClose,
+  hasListActions = false,
+  hasMapActions = false
 }: ActionSelectorPanelProps) {
+  const listActionTypes: ObjectActionType[] = ["listPush", "listSetAt", "listRemoveAt", "listClear"]
+  const mapActionTypes: ObjectActionType[] = ["mapSet", "mapDelete", "mapClear"]
+  const collectionActionTypes = new Set<ObjectActionType>([...listActionTypes, ...mapActionTypes])
+
+  const baseCategories = ACTION_CATEGORIES.map((category) => ({
+    ...category,
+    types: category.types.filter((type) => !collectionActionTypes.has(type))
+  })).filter((category) => category.types.length > 0)
+
+  const visibleListActions = hasListActions ? listActionTypes.filter((type) => ACTION_DISPLAY_NAMES[type]) : []
+  const visibleMapActions = hasMapActions ? mapActionTypes.filter((type) => ACTION_DISPLAY_NAMES[type]) : []
+
+  const renderedCategories: { id: string; label: string; types: ObjectActionType[] }[] = [
+    ...baseCategories,
+    ...(visibleListActions.length > 0 ? [{ id: "lists", label: "Llistes", types: visibleListActions }] : []),
+    ...(visibleMapActions.length > 0 ? [{ id: "maps", label: "Mapes", types: visibleMapActions }] : [])
+  ]
+
   return (
     <div className={`${classNamePrefix}-panel flex flex-1 flex-col overflow-hidden bg-slate-50/50`}>
       <div className={`${classNamePrefix}-panel-header flex items-center justify-between border-b border-slate-200 px-4 py-2`}>
@@ -38,7 +60,7 @@ export function ActionSelectorPanel({
       </div>
 
       <div className={`${classNamePrefix}-grid flex-1 space-y-4 overflow-y-auto p-4`}>
-        {ACTION_CATEGORIES.map((category) => (
+        {renderedCategories.map((category) => (
           <div key={category.id} className={`${classNamePrefix}-category`}>
             <p className={`${classNamePrefix}-category-label mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400`}>
               {category.label}

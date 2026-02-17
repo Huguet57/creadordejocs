@@ -13,6 +13,7 @@ import {
 } from "@creadordejocs/project-format"
 import { VariablePicker } from "./VariablePicker.js"
 import { RightValuePicker as BaseRightValuePicker } from "./RightValuePicker.js"
+import { CollectionVariablePicker } from "./CollectionVariablePicker.js"
 import type { ObjectEventType } from "../editor-state/types.js"
 import { ACTION_ICON_MAP } from "./action-icon-map.js"
 
@@ -73,6 +74,16 @@ function canBeNumericExpression(value: ValueExpression): boolean {
   return true
 }
 
+function defaultScalarByItemType(type: "number" | "string" | "boolean"): number | string | boolean {
+  if (type === "number") {
+    return 0
+  }
+  if (type === "boolean") {
+    return false
+  }
+  return ""
+}
+
 export function ActionBlock({
   action,
   onUpdate,
@@ -100,17 +111,29 @@ export function ActionBlock({
   const Icon = ACTION_ICON_MAP[action.type] ?? Move
   const actionLabel = ACTION_REGISTRY.find((entry) => entry.type === action.type)?.ui.shortLabel ?? action.type
   const isDestroySelfAction = action.type === "destroySelf"
-  const objectVariableOptions = allObjects.flatMap((objectEntry) =>
+  const allObjectVariableOptions = allObjects.flatMap((objectEntry) =>
     (objectVariablesByObjectId[objectEntry.id] ?? []).map((definition) => ({
       id: definition.id,
       objectName: objectEntry.name,
       label: `${objectEntry.name}.${definition.name}`,
-      type: definition.type
+      type: definition.type,
+      itemType: definition.type === "list" || definition.type === "map" ? definition.itemType : null
     }))
-  ).filter((definition) => definition.type === "number" || definition.type === "string" || definition.type === "boolean")
+  )
+  const objectVariableOptions = allObjectVariableOptions.filter(
+    (definition) => definition.type === "number" || definition.type === "string" || definition.type === "boolean"
+  )
+  const collectionObjectVariableOptions = allObjectVariableOptions.filter(
+    (definition): definition is typeof allObjectVariableOptions[number] & { type: "list" | "map"; itemType: "number" | "string" | "boolean" } =>
+      (definition.type === "list" || definition.type === "map") && definition.itemType !== null
+  )
   const scalarGlobalVariables = globalVariables.filter(
     (definition): definition is Extract<typeof globalVariables[number], { type: "number" | "string" | "boolean" }> =>
       definition.type === "number" || definition.type === "string" || definition.type === "boolean"
+  )
+  const collectionGlobalVariables = globalVariables.filter(
+    (definition): definition is Extract<typeof globalVariables[number], { type: "list" | "map" }> =>
+      definition.type === "list" || definition.type === "map"
   )
 
   const selectedGlobalForCopy =
@@ -145,6 +168,19 @@ export function ActionBlock({
     changeVariableExpectedType === "number" || changeVariableExpectedType === "string" || changeVariableExpectedType === "boolean"
       ? changeVariableExpectedType
       : "number"
+  const selectedCollectionVariable =
+    action.type === "listPush" ||
+    action.type === "listSetAt" ||
+    action.type === "listRemoveAt" ||
+    action.type === "listClear" ||
+    action.type === "mapSet" ||
+    action.type === "mapDelete" ||
+    action.type === "mapClear"
+      ? action.scope === "global"
+        ? collectionGlobalVariables.find((definition) => definition.id === action.variableId)
+        : collectionObjectVariableOptions.find((definition) => definition.id === action.variableId)
+      : null
+  const selectedCollectionItemType = selectedCollectionVariable?.itemType ?? "number"
   const [contextMenu, setContextMenu] = useState<ActionContextMenuState>(null)
   const RightValuePicker = (
     props: Omit<React.ComponentProps<typeof BaseRightValuePicker>, "iterationVariables">
@@ -751,6 +787,241 @@ export function ActionBlock({
                 onChange={(nextValue) => onUpdate({ ...action, step: nextValue as typeof action.step })}
               />
             </div>
+          </>
+        )}
+
+        {(action.type === "listPush" ||
+          action.type === "listSetAt" ||
+          action.type === "listRemoveAt" ||
+          action.type === "listClear" ||
+          action.type === "mapSet" ||
+          action.type === "mapDelete" ||
+          action.type === "mapClear") && (
+          <>
+            <CollectionVariablePicker
+              scope={action.scope}
+              variableId={action.variableId}
+              collectionType={
+                action.type === "listPush" ||
+                action.type === "listSetAt" ||
+                action.type === "listRemoveAt" ||
+                action.type === "listClear"
+                  ? "list"
+                  : "map"
+              }
+              globalVariables={globalVariables}
+              objectVariables={selectedObjectVariables}
+              allowOtherTarget={allowOtherTarget}
+              target={action.scope === "object" ? (action.target === "other" ? "other" : "self") : null}
+              onTargetChange={(nextTarget) => {
+                if (action.scope !== "object") {
+                  return
+                }
+                onUpdate({ ...action, target: nextTarget, targetInstanceId: null })
+              }}
+              onChange={(nextScope, nextVariableId) => {
+                const isListAction =
+                  action.type === "listPush" ||
+                  action.type === "listSetAt" ||
+                  action.type === "listRemoveAt" ||
+                  action.type === "listClear"
+                if (nextScope === "global") {
+                  const selectedGlobal = collectionGlobalVariables.find((definition) => definition.id === nextVariableId)
+                  if (!selectedGlobal) {
+                    return
+                  }
+                  const defaultValue = asLiteralValue(defaultScalarByItemType(selectedGlobal.itemType))
+                  if (action.type === "listPush") {
+                    onUpdate({
+                      type: "listPush",
+                      scope: "global",
+                      variableId: nextVariableId,
+                      value: defaultValue
+                    })
+                    return
+                  }
+                  if (action.type === "listSetAt") {
+                    onUpdate({
+                      type: "listSetAt",
+                      scope: "global",
+                      variableId: nextVariableId,
+                      index: action.index,
+                      value: defaultValue
+                    })
+                    return
+                  }
+                  if (action.type === "listRemoveAt") {
+                    onUpdate({ type: "listRemoveAt", scope: "global", variableId: nextVariableId, index: action.index })
+                    return
+                  }
+                  if (action.type === "listClear") {
+                    onUpdate({ type: "listClear", scope: "global", variableId: nextVariableId })
+                    return
+                  }
+                  if (action.type === "mapSet") {
+                    onUpdate({
+                      type: "mapSet",
+                      scope: "global",
+                      variableId: nextVariableId,
+                      key: action.key,
+                      value: defaultValue
+                    })
+                    return
+                  }
+                  if (action.type === "mapDelete") {
+                    onUpdate({ type: "mapDelete", scope: "global", variableId: nextVariableId, key: action.key })
+                    return
+                  }
+                  onUpdate({ type: "mapClear", scope: "global", variableId: nextVariableId })
+                  return
+                }
+                const selectedObject = selectedObjectVariables.find(
+                  (definition) =>
+                    definition.id === nextVariableId &&
+                    (isListAction ? definition.type === "list" : definition.type === "map")
+                )
+                if (!selectedObject || (selectedObject.type !== "list" && selectedObject.type !== "map")) {
+                  return
+                }
+                const defaultValue = asLiteralValue(defaultScalarByItemType(selectedObject.itemType))
+                if (action.type === "listPush") {
+                  onUpdate({
+                    type: "listPush",
+                    scope: "object",
+                    variableId: nextVariableId,
+                    target: action.scope === "object" ? (action.target ?? "self") : "self",
+                    targetInstanceId: action.scope === "object" ? (action.targetInstanceId ?? null) : null,
+                    value: defaultValue
+                  })
+                  return
+                }
+                if (action.type === "listSetAt") {
+                  onUpdate({
+                    type: "listSetAt",
+                    scope: "object",
+                    variableId: nextVariableId,
+                    target: action.scope === "object" ? (action.target ?? "self") : "self",
+                    targetInstanceId: action.scope === "object" ? (action.targetInstanceId ?? null) : null,
+                    index: action.index,
+                    value: defaultValue
+                  })
+                  return
+                }
+                if (action.type === "listRemoveAt") {
+                  onUpdate({
+                    type: "listRemoveAt",
+                    scope: "object",
+                    variableId: nextVariableId,
+                    target: action.scope === "object" ? (action.target ?? "self") : "self",
+                    targetInstanceId: action.scope === "object" ? (action.targetInstanceId ?? null) : null,
+                    index: action.index
+                  })
+                  return
+                }
+                if (action.type === "listClear") {
+                  onUpdate({
+                    type: "listClear",
+                    scope: "object",
+                    variableId: nextVariableId,
+                    target: action.scope === "object" ? (action.target ?? "self") : "self",
+                    targetInstanceId: action.scope === "object" ? (action.targetInstanceId ?? null) : null
+                  })
+                  return
+                }
+                if (action.type === "mapSet") {
+                  onUpdate({
+                    type: "mapSet",
+                    scope: "object",
+                    variableId: nextVariableId,
+                    target: action.scope === "object" ? (action.target ?? "self") : "self",
+                    targetInstanceId: action.scope === "object" ? (action.targetInstanceId ?? null) : null,
+                    key: action.key,
+                    value: defaultValue
+                  })
+                  return
+                }
+                if (action.type === "mapDelete") {
+                  onUpdate({
+                    type: "mapDelete",
+                    scope: "object",
+                    variableId: nextVariableId,
+                    target: action.scope === "object" ? (action.target ?? "self") : "self",
+                    targetInstanceId: action.scope === "object" ? (action.targetInstanceId ?? null) : null,
+                    key: action.key
+                  })
+                  return
+                }
+                onUpdate({
+                  type: "mapClear",
+                  scope: "object",
+                  variableId: nextVariableId,
+                  target: action.scope === "object" ? (action.target ?? "self") : "self",
+                  targetInstanceId: action.scope === "object" ? (action.targetInstanceId ?? null) : null
+                })
+              }}
+            />
+
+            {(action.type === "listSetAt" || action.type === "listRemoveAt") && (
+              <div className="action-block-collection-index-field flex items-center gap-1">
+                <label className="text-[10px] font-medium opacity-60">Idx</label>
+                <RightValuePicker
+                  value={action.index}
+                  expectedType="number"
+                  globalVariables={globalVariables}
+                  internalVariables={internalVariableOptions}
+                  allowOtherTarget={allowOtherTarget}
+                  onChange={(nextValue) => onUpdate({ ...action, index: nextValue as typeof action.index })}
+                />
+              </div>
+            )}
+
+            {(action.type === "listPush" || action.type === "listSetAt") && (
+              <div className="action-block-collection-value-field flex items-center gap-1">
+                <label className="text-[10px] font-medium opacity-60">Val</label>
+                <RightValuePicker
+                  value={action.value}
+                  expectedType={selectedCollectionItemType}
+                  globalVariables={globalVariables}
+                  internalVariables={internalVariableOptions}
+                  allowOtherTarget={allowOtherTarget}
+                  onChange={(nextValue) => onUpdate({ ...action, value: nextValue })}
+                />
+              </div>
+            )}
+
+            {(action.type === "mapSet" || action.type === "mapDelete") && (
+              <div className="action-block-collection-key-field flex items-center gap-1">
+                <label className="text-[10px] font-medium opacity-60">Key</label>
+                <RightValuePicker
+                  value={action.key}
+                  expectedType="string"
+                  globalVariables={globalVariables}
+                  internalVariables={internalVariableOptions}
+                  allowOtherTarget={allowOtherTarget}
+                  onChange={(nextValue) => onUpdate({ ...action, key: nextValue as typeof action.key })}
+                />
+              </div>
+            )}
+
+            {action.type === "mapSet" && (
+              <div className="action-block-collection-map-value-field flex items-center gap-1">
+                <label className="text-[10px] font-medium opacity-60">Val</label>
+                <RightValuePicker
+                  value={action.value}
+                  expectedType={selectedCollectionItemType}
+                  globalVariables={globalVariables}
+                  internalVariables={internalVariableOptions}
+                  allowOtherTarget={allowOtherTarget}
+                  onChange={(nextValue) => onUpdate({ ...action, value: nextValue })}
+                />
+              </div>
+            )}
+
+            {(action.type === "listClear" || action.type === "mapClear") && (
+              <span className="action-block-collection-clear-note text-[10px] font-medium text-slate-500">
+                Clear
+              </span>
+            )}
           </>
         )}
       </div>

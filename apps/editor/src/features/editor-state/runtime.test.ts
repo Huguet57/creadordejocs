@@ -5015,3 +5015,211 @@ describe("runtime object dimensions", () => {
     expect(result.runtime.score).toBe(1)
   })
 })
+
+function createCollectionMutationProject(rawActions: unknown[], eventType: "Step" | "Collision" = "Step"): ProjectV1 {
+  return {
+    version: 1,
+    metadata: {
+      id: "project-collection-mutations",
+      name: "Collection mutation runtime tests",
+      locale: "ca",
+      createdAtIso: new Date().toISOString()
+    },
+    resources: { sprites: [], sounds: [] },
+    variables: {
+      global: [
+        { id: "gv-list", name: "gList", type: "list", itemType: "number", initialValue: [1, 2] },
+        { id: "gv-map", name: "gMap", type: "map", itemType: "number", initialValue: { a: 1 } }
+      ],
+      objectByObjectId: {
+        "object-actor": [
+          { id: "ov-list", name: "oList", type: "list", itemType: "number", initialValue: [10, 20] },
+          { id: "ov-map", name: "oMap", type: "map", itemType: "number", initialValue: { hp: 5 } }
+        ],
+        "object-target": [
+          { id: "ov-list", name: "oList", type: "list", itemType: "number", initialValue: [30, 40] },
+          { id: "ov-map", name: "oMap", type: "map", itemType: "number", initialValue: { hp: 9 } }
+        ]
+      }
+    },
+    objects: [
+      {
+        id: "object-actor",
+        name: "Actor",
+        spriteId: null,
+        x: 0,
+        y: 0,
+        speed: 0,
+        direction: 0,
+        events: [
+          {
+            id: "event-main",
+            type: eventType,
+            key: null,
+            keyboardMode: null,
+            targetObjectId: eventType === "Collision" ? "object-target" : null,
+            intervalMs: null,
+            items: rawActions.map((action, index) => ({
+              id: `item-${index}`,
+              type: "action",
+              action: action as never
+            }))
+          }
+        ]
+      },
+      {
+        id: "object-target",
+        name: "Target",
+        spriteId: null,
+        x: 0,
+        y: 0,
+        speed: 0,
+        direction: 0,
+        events: []
+      }
+    ],
+    rooms: [
+      {
+        id: "room-main",
+        name: "Main",
+        instances: [
+          { id: "instance-actor", objectId: "object-actor", x: 0, y: 0 },
+          { id: "instance-target", objectId: "object-target", x: 0, y: 0 }
+        ]
+      }
+    ],
+    scenes: [],
+    metrics: {
+      appStart: 0,
+      projectLoad: 0,
+      runtimeErrors: 0,
+      tutorialCompletion: 0,
+      stuckRate: 0,
+      timeToFirstPlayableFunMs: null
+    }
+  }
+}
+
+describe("runtime collection mutation actions", () => {
+  it("listPush appends an item to global list", () => {
+    const project = createCollectionMutationProject([
+      { id: "a-list-push", type: "listPush", scope: "global", variableId: "gv-list", value: 3 }
+    ])
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    expect(result.runtime.globalVariables["gv-list"]).toEqual([1, 2, 3])
+  })
+
+  it("listPush does nothing when value type does not match list itemType", () => {
+    const project = createCollectionMutationProject([
+      { id: "a-list-push-invalid", type: "listPush", scope: "global", variableId: "gv-list", value: "bad" }
+    ])
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    expect(result.runtime.globalVariables["gv-list"]).toEqual([1, 2])
+  })
+
+  it("listSetAt updates list index on global scope", () => {
+    const project = createCollectionMutationProject([
+      { id: "a-list-set", type: "listSetAt", scope: "global", variableId: "gv-list", index: 1, value: 99 }
+    ])
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    expect(result.runtime.globalVariables["gv-list"]).toEqual([1, 99])
+  })
+
+  it("listSetAt does nothing when index is out of range", () => {
+    const project = createCollectionMutationProject([
+      { id: "a-list-set-oob", type: "listSetAt", scope: "global", variableId: "gv-list", index: 5, value: 99 }
+    ])
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    expect(result.runtime.globalVariables["gv-list"]).toEqual([1, 2])
+  })
+
+  it("listRemoveAt removes item at index", () => {
+    const project = createCollectionMutationProject([
+      { id: "a-list-remove", type: "listRemoveAt", scope: "global", variableId: "gv-list", index: 0 }
+    ])
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    expect(result.runtime.globalVariables["gv-list"]).toEqual([2])
+  })
+
+  it("listRemoveAt does nothing when index is out of range", () => {
+    const project = createCollectionMutationProject([
+      { id: "a-list-remove-oob", type: "listRemoveAt", scope: "global", variableId: "gv-list", index: -1 }
+    ])
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    expect(result.runtime.globalVariables["gv-list"]).toEqual([1, 2])
+  })
+
+  it("listClear empties the list", () => {
+    const project = createCollectionMutationProject([
+      { id: "a-list-clear", type: "listClear", scope: "global", variableId: "gv-list" }
+    ])
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    expect(result.runtime.globalVariables["gv-list"]).toEqual([])
+  })
+
+  it("listClear does nothing when variable is not a list", () => {
+    const project = createCollectionMutationProject([
+      { id: "a-list-clear-invalid", type: "listClear", scope: "global", variableId: "gv-map" }
+    ])
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    expect(result.runtime.globalVariables["gv-map"]).toEqual({ a: 1 })
+  })
+
+  it("mapSet assigns key/value pair", () => {
+    const project = createCollectionMutationProject([
+      { id: "a-map-set", type: "mapSet", scope: "global", variableId: "gv-map", key: "b", value: 2 }
+    ])
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    expect(result.runtime.globalVariables["gv-map"]).toEqual({ a: 1, b: 2 })
+  })
+
+  it("mapSet does nothing when value type does not match map itemType", () => {
+    const project = createCollectionMutationProject([
+      { id: "a-map-set-invalid", type: "mapSet", scope: "global", variableId: "gv-map", key: "b", value: false }
+    ])
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    expect(result.runtime.globalVariables["gv-map"]).toEqual({ a: 1 })
+  })
+
+  it("mapDelete removes key", () => {
+    const project = createCollectionMutationProject([
+      { id: "a-map-delete", type: "mapDelete", scope: "global", variableId: "gv-map", key: "a" }
+    ])
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    expect(result.runtime.globalVariables["gv-map"]).toEqual({})
+  })
+
+  it("mapDelete does nothing when key does not exist", () => {
+    const project = createCollectionMutationProject([
+      { id: "a-map-delete-miss", type: "mapDelete", scope: "global", variableId: "gv-map", key: "z" }
+    ])
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    expect(result.runtime.globalVariables["gv-map"]).toEqual({ a: 1 })
+  })
+
+  it("mapClear empties map", () => {
+    const project = createCollectionMutationProject([
+      { id: "a-map-clear", type: "mapClear", scope: "global", variableId: "gv-map" }
+    ])
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    expect(result.runtime.globalVariables["gv-map"]).toEqual({})
+  })
+
+  it("mapClear does nothing when variable is not a map", () => {
+    const project = createCollectionMutationProject([
+      { id: "a-map-clear-invalid", type: "mapClear", scope: "global", variableId: "gv-list" }
+    ])
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    expect(result.runtime.globalVariables["gv-list"]).toEqual([1, 2])
+  })
+
+  it("object scope supports target other for collection actions in collisions", () => {
+    const project = createCollectionMutationProject(
+      [{ id: "a-list-push-other", type: "listPush", scope: "object", variableId: "ov-list", target: "other", value: 7 }],
+      "Collision"
+    )
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    expect(result.runtime.objectInstanceVariables["instance-target"]?.["ov-list"]).toEqual([30, 40, 7])
+    expect(result.runtime.objectInstanceVariables["instance-actor"]?.["ov-list"]).toEqual([10, 20])
+  })
+})

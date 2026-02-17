@@ -135,6 +135,21 @@ export function ActionEditorPanel({
     ): variableEntry is Extract<typeof selectedObjectVariables[number], { type: "number" | "string" | "boolean" }> =>
       variableEntry.type === "number" || variableEntry.type === "string" || variableEntry.type === "boolean"
   )
+  const collisionOtherObjectIds =
+    activeEvent?.type !== "Collision"
+      ? []
+      : activeEvent.targetObjectId
+        ? [activeEvent.targetObjectId]
+        : selectableTargetObjects.map((targetObject) => targetObject.id)
+  const otherVariablesForCollision = collisionOtherObjectIds.flatMap((objectId) => objectVariablesByObjectId[objectId] ?? [])
+  const hasListActionsAvailable =
+    globalVariables.some((variableEntry) => variableEntry.type === "list") ||
+    selectedObjectVariables.some((variableEntry) => variableEntry.type === "list") ||
+    otherVariablesForCollision.some((variableEntry) => variableEntry.type === "list")
+  const hasMapActionsAvailable =
+    globalVariables.some((variableEntry) => variableEntry.type === "map") ||
+    selectedObjectVariables.some((variableEntry) => variableEntry.type === "map") ||
+    otherVariablesForCollision.some((variableEntry) => variableEntry.type === "map")
 
   useEffect(() => {
     if (!backgroundContextMenu) {
@@ -747,6 +762,8 @@ export function ActionEditorPanel({
           classNamePrefix="mvp3-action-picker"
           onSelectAction={handleSelectAction}
           onClose={() => setActionPickerTarget(null)}
+          hasListActions={hasListActionsAvailable}
+          hasMapActions={hasMapActionsAvailable}
         />
       )}
     </div>

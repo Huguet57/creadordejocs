@@ -2,6 +2,7 @@ import { z } from "zod"
 
 type ScalarVariableValue = number | string | boolean
 type VariableValueSchema = z.ZodType<ScalarVariableValue>
+type ScalarVariableType = "number" | "string" | "boolean"
 
 export type ActionType = (typeof ACTION_REGISTRY)[number]["type"]
 
@@ -103,6 +104,34 @@ export const ACTION_REGISTRY = [
   {
     type: "copyVariable",
     ui: { label: "Copiar variable", shortLabel: "Copiar var.", categoryId: "variables", editorVisible: true }
+  },
+  {
+    type: "listPush",
+    ui: { label: "Afegir al final", shortLabel: "Afegir al final", categoryId: "variables", editorVisible: true }
+  },
+  {
+    type: "listSetAt",
+    ui: { label: "Canviar valor", shortLabel: "Canviar valor", categoryId: "variables", editorVisible: true }
+  },
+  {
+    type: "listRemoveAt",
+    ui: { label: "Eliminar valor", shortLabel: "Eliminar valor", categoryId: "variables", editorVisible: true }
+  },
+  {
+    type: "listClear",
+    ui: { label: "Buidar llista", shortLabel: "Buidar llista", categoryId: "variables", editorVisible: true }
+  },
+  {
+    type: "mapSet",
+    ui: { label: "Afegir clau", shortLabel: "Afegir clau", categoryId: "variables", editorVisible: true }
+  },
+  {
+    type: "mapDelete",
+    ui: { label: "Eliminar clau", shortLabel: "Eliminar clau", categoryId: "variables", editorVisible: true }
+  },
+  {
+    type: "mapClear",
+    ui: { label: "Buidar mapa", shortLabel: "Buidar mapa", categoryId: "variables", editorVisible: true }
   },
   {
     type: "goToRoom",
@@ -268,6 +297,69 @@ export function createObjectActionSchema<
     }),
     z.object({
       id: z.string().min(1),
+      type: z.literal("listPush"),
+      scope: z.enum(["global", "object"]),
+      variableId: z.string().min(1),
+      target: z.enum(["self", "other", "instanceId"]).nullable().optional(),
+      targetInstanceId: z.string().nullable().optional(),
+      value: valueOrSource
+    }),
+    z.object({
+      id: z.string().min(1),
+      type: z.literal("listSetAt"),
+      scope: z.enum(["global", "object"]),
+      variableId: z.string().min(1),
+      target: z.enum(["self", "other", "instanceId"]).nullable().optional(),
+      targetInstanceId: z.string().nullable().optional(),
+      index: z.union([z.number().int(), deps.valueSourceSchema, deps.legacyVariableReferenceSchema]),
+      value: valueOrSource
+    }),
+    z.object({
+      id: z.string().min(1),
+      type: z.literal("listRemoveAt"),
+      scope: z.enum(["global", "object"]),
+      variableId: z.string().min(1),
+      target: z.enum(["self", "other", "instanceId"]).nullable().optional(),
+      targetInstanceId: z.string().nullable().optional(),
+      index: z.union([z.number().int(), deps.valueSourceSchema, deps.legacyVariableReferenceSchema])
+    }),
+    z.object({
+      id: z.string().min(1),
+      type: z.literal("listClear"),
+      scope: z.enum(["global", "object"]),
+      variableId: z.string().min(1),
+      target: z.enum(["self", "other", "instanceId"]).nullable().optional(),
+      targetInstanceId: z.string().nullable().optional()
+    }),
+    z.object({
+      id: z.string().min(1),
+      type: z.literal("mapSet"),
+      scope: z.enum(["global", "object"]),
+      variableId: z.string().min(1),
+      target: z.enum(["self", "other", "instanceId"]).nullable().optional(),
+      targetInstanceId: z.string().nullable().optional(),
+      key: stringOrSource,
+      value: valueOrSource
+    }),
+    z.object({
+      id: z.string().min(1),
+      type: z.literal("mapDelete"),
+      scope: z.enum(["global", "object"]),
+      variableId: z.string().min(1),
+      target: z.enum(["self", "other", "instanceId"]).nullable().optional(),
+      targetInstanceId: z.string().nullable().optional(),
+      key: stringOrSource
+    }),
+    z.object({
+      id: z.string().min(1),
+      type: z.literal("mapClear"),
+      scope: z.enum(["global", "object"]),
+      variableId: z.string().min(1),
+      target: z.enum(["self", "other", "instanceId"]).nullable().optional(),
+      targetInstanceId: z.string().nullable().optional()
+    }),
+    z.object({
+      id: z.string().min(1),
       type: z.literal("goToRoom"),
       roomId: z.string().min(1)
     }),
@@ -313,6 +405,27 @@ export function createObjectActionSchema<
 
 export function getEditorVisibleActionTypes(): ActionType[] {
   return ACTION_REGISTRY.filter((entry) => entry.ui.editorVisible).map((entry) => entry.type)
+}
+
+function defaultScalarValueForType(type: ScalarVariableType): ScalarVariableValue {
+  if (type === "number") {
+    return 0
+  }
+  if (type === "boolean") {
+    return false
+  }
+  return ""
+}
+
+function firstCollectionValue(
+  variable: Extract<ActionVariableDefinition, { type: "list" | "map" }>
+): ScalarVariableValue {
+  if (variable.type === "list") {
+    const first = variable.initialValue[0]
+    return first ?? defaultScalarValueForType(variable.itemType)
+  }
+  const firstEntry = Object.values(variable.initialValue)[0]
+  return firstEntry ?? defaultScalarValueForType(variable.itemType)
 }
 
 export function createEditorDefaultAction(type: ActionType, ctx: ActionDefaultsContext): Record<string, unknown> | null {
@@ -386,6 +499,153 @@ export function createEditorDefaultAction(type: ActionType, ctx: ActionDefaultsC
       objectVariableId: firstObjectVariable.id,
       instanceTarget: "self",
       instanceTargetId: null
+    }
+  }
+  if (type === "listPush") {
+    const firstGlobalList = ctx.globalVariables.find((entry) => entry.type === "list")
+    if (firstGlobalList) {
+      return {
+        type: "listPush",
+        scope: "global",
+        variableId: firstGlobalList.id,
+        value: firstCollectionValue(firstGlobalList)
+      }
+    }
+    const firstObjectList = ctx.objectVariables.find((entry) => entry.type === "list")
+    if (!firstObjectList) return null
+    return {
+      type: "listPush",
+      scope: "object",
+      variableId: firstObjectList.id,
+      target: "self",
+      targetInstanceId: null,
+      value: firstCollectionValue(firstObjectList)
+    }
+  }
+  if (type === "listSetAt") {
+    const firstGlobalList = ctx.globalVariables.find((entry) => entry.type === "list")
+    if (firstGlobalList) {
+      return {
+        type: "listSetAt",
+        scope: "global",
+        variableId: firstGlobalList.id,
+        index: 0,
+        value: firstCollectionValue(firstGlobalList)
+      }
+    }
+    const firstObjectList = ctx.objectVariables.find((entry) => entry.type === "list")
+    if (!firstObjectList) return null
+    return {
+      type: "listSetAt",
+      scope: "object",
+      variableId: firstObjectList.id,
+      target: "self",
+      targetInstanceId: null,
+      index: 0,
+      value: firstCollectionValue(firstObjectList)
+    }
+  }
+  if (type === "listRemoveAt") {
+    const firstGlobalList = ctx.globalVariables.find((entry) => entry.type === "list")
+    if (firstGlobalList) {
+      return {
+        type: "listRemoveAt",
+        scope: "global",
+        variableId: firstGlobalList.id,
+        index: 0
+      }
+    }
+    const firstObjectList = ctx.objectVariables.find((entry) => entry.type === "list")
+    if (!firstObjectList) return null
+    return {
+      type: "listRemoveAt",
+      scope: "object",
+      variableId: firstObjectList.id,
+      target: "self",
+      targetInstanceId: null,
+      index: 0
+    }
+  }
+  if (type === "listClear") {
+    const firstGlobalList = ctx.globalVariables.find((entry) => entry.type === "list")
+    if (firstGlobalList) {
+      return {
+        type: "listClear",
+        scope: "global",
+        variableId: firstGlobalList.id
+      }
+    }
+    const firstObjectList = ctx.objectVariables.find((entry) => entry.type === "list")
+    if (!firstObjectList) return null
+    return {
+      type: "listClear",
+      scope: "object",
+      variableId: firstObjectList.id,
+      target: "self",
+      targetInstanceId: null
+    }
+  }
+  if (type === "mapSet") {
+    const firstGlobalMap = ctx.globalVariables.find((entry) => entry.type === "map")
+    if (firstGlobalMap) {
+      return {
+        type: "mapSet",
+        scope: "global",
+        variableId: firstGlobalMap.id,
+        key: "key",
+        value: firstCollectionValue(firstGlobalMap)
+      }
+    }
+    const firstObjectMap = ctx.objectVariables.find((entry) => entry.type === "map")
+    if (!firstObjectMap) return null
+    return {
+      type: "mapSet",
+      scope: "object",
+      variableId: firstObjectMap.id,
+      target: "self",
+      targetInstanceId: null,
+      key: "key",
+      value: firstCollectionValue(firstObjectMap)
+    }
+  }
+  if (type === "mapDelete") {
+    const firstGlobalMap = ctx.globalVariables.find((entry) => entry.type === "map")
+    if (firstGlobalMap) {
+      return {
+        type: "mapDelete",
+        scope: "global",
+        variableId: firstGlobalMap.id,
+        key: "key"
+      }
+    }
+    const firstObjectMap = ctx.objectVariables.find((entry) => entry.type === "map")
+    if (!firstObjectMap) return null
+    return {
+      type: "mapDelete",
+      scope: "object",
+      variableId: firstObjectMap.id,
+      target: "self",
+      targetInstanceId: null,
+      key: "key"
+    }
+  }
+  if (type === "mapClear") {
+    const firstGlobalMap = ctx.globalVariables.find((entry) => entry.type === "map")
+    if (firstGlobalMap) {
+      return {
+        type: "mapClear",
+        scope: "global",
+        variableId: firstGlobalMap.id
+      }
+    }
+    const firstObjectMap = ctx.objectVariables.find((entry) => entry.type === "map")
+    if (!firstObjectMap) return null
+    return {
+      type: "mapClear",
+      scope: "object",
+      variableId: firstObjectMap.id,
+      target: "self",
+      targetInstanceId: null
     }
   }
   if (type === "goToRoom") {
