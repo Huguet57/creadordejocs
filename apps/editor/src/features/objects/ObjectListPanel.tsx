@@ -11,7 +11,7 @@ type ContextMenuState = {
 
 type ObjectListPanelProps = {
   objects: ProjectV1["objects"]
-  openTabIds: string[]
+  activeObjectId: string | null
   spriteSources: Record<string, string>
   onSelectObject: (id: string) => void
   onOpenInNewTab: (id: string) => void
@@ -21,7 +21,7 @@ type ObjectListPanelProps = {
 
 export function ObjectListPanel({
   objects,
-  openTabIds,
+  activeObjectId,
   spriteSources,
   onSelectObject,
   onOpenInNewTab,
@@ -169,13 +169,13 @@ export function ObjectListPanel({
                 </p>
               )}
               {objects.map((objectEntry) => {
-                const isOpen = openTabIds.includes(objectEntry.id)
+                const isActive = activeObjectId === objectEntry.id
                 return (
                   <div
                     key={objectEntry.id}
                     className={`objlist-item group flex cursor-pointer items-center rounded px-2 py-1.5 transition-colors ${
-                      isOpen
-                        ? "bg-white/60 hover:bg-white/80"
+                      isActive
+                        ? "bg-white shadow-sm ring-1 ring-blue-200"
                         : "hover:bg-slate-100"
                     }`}
                     onClick={() => onSelectObject(objectEntry.id)}
@@ -193,9 +193,9 @@ export function ObjectListPanel({
                           style={{ imageRendering: "pixelated" }}
                         />
                       ) : (
-                        <Box className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                        <Box className={`h-3.5 w-3.5 shrink-0 ${isActive ? "text-blue-500" : "text-slate-400"}`} />
                       )}
-                      <span className={`truncate ${isOpen ? "font-medium text-slate-700" : "text-slate-600"}`}>
+                      <span className={`truncate ${isActive ? "font-medium text-slate-900" : "text-slate-600"}`}>
                         {objectEntry.name}
                       </span>
                     </div>

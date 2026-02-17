@@ -252,7 +252,7 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
     <div className="mvp15-object-editor-container flex h-[600px] w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
       <ObjectListPanel
         objects={projectObjects}
-        openTabIds={openTabIds}
+        activeObjectId={controller.activeObjectId}
         spriteSources={resolvedSpriteSources}
         onSelectObject={handleSelectObject}
         onOpenInNewTab={(id) => setOpenTabIds((prev) => (prev.includes(id) ? prev : [...prev, id]))}
