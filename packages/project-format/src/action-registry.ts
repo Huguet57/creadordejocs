@@ -123,11 +123,11 @@ export const ACTION_REGISTRY = [
   },
   {
     type: "mapSet",
-    ui: { label: "Afegir clau", shortLabel: "Afegir clau", categoryId: "variables", editorVisible: true }
+    ui: { label: "Afegir entrada", shortLabel: "Afegir entrada", categoryId: "variables", editorVisible: true }
   },
   {
     type: "mapDelete",
-    ui: { label: "Eliminar clau", shortLabel: "Eliminar clau", categoryId: "variables", editorVisible: true }
+    ui: { label: "Eliminar entrada", shortLabel: "Eliminar entrada", categoryId: "variables", editorVisible: true }
   },
   {
     type: "mapClear",

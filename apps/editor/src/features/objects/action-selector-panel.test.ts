@@ -45,6 +45,6 @@ describe("ActionSelectorPanel", () => {
     expect(withCollections).toContain("Llistes")
     expect(withCollections).toContain("Mapes")
     expect(withCollections).toContain("Afegir al final")
-    expect(withCollections).toContain("Afegir clau")
+    expect(withCollections).toContain("Afegir entrada")
   })
 })
