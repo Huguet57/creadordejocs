@@ -50,8 +50,8 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
   const { runtimeState } = controller
   const [resolvedSpriteSources, setResolvedSpriteSources] = useState<Record<string, string>>({})
   const canvasRef = useRef<HTMLDivElement>(null)
-  const rawMouseX = typeof runtimeState.globalVariables.__mouse_x === "number" ? runtimeState.globalVariables.__mouse_x : 0
-  const rawMouseY = typeof runtimeState.globalVariables.__mouse_y === "number" ? runtimeState.globalVariables.__mouse_y : 0
+  const rawMouseX = runtimeState.mouse.x
+  const rawMouseY = runtimeState.mouse.y
   const mouseX = Math.round(Math.max(0, Math.min(ROOM_WIDTH, rawMouseX)))
   const mouseY = Math.round(Math.max(0, Math.min(ROOM_HEIGHT, rawMouseY)))
   const userGlobalVariableEntries = controller.project.variables.global.map((variableEntry) => ({
@@ -59,11 +59,10 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
     name: variableEntry.name,
     value: runtimeState.globalVariables[variableEntry.id]
   }))
-  const systemGlobalVariableEntries = [
-    { id: "__mouse_x", name: "mouse_x", value: mouseX },
-    { id: "__mouse_y", name: "mouse_y", value: mouseY }
+  const mouseVariableEntries = [
+    { id: "mouse.x", name: "mouse.x", value: mouseX },
+    { id: "mouse.y", name: "mouse.y", value: mouseY }
   ]
-  const globalVariableEntries = [...userGlobalVariableEntries, ...systemGlobalVariableEntries]
 
   const sprites = controller.project.resources.sprites
   const spriteById = useMemo(
@@ -236,11 +235,11 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
 
             <div className="mvp16-run-global-vars space-y-2">
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Global variables</p>
-              {globalVariableEntries.length === 0 ? (
+              {userGlobalVariableEntries.length === 0 ? (
                 <p className="mvp16-run-global-vars-empty text-[11px] text-slate-400">No globals defined</p>
               ) : (
                 <div className="mvp16-run-global-vars-list space-y-1.5">
-                  {globalVariableEntries.map((variableEntry) => (
+                  {userGlobalVariableEntries.map((variableEntry) => (
                     <div key={variableEntry.id} className="mvp16-run-global-var-row flex items-center justify-between">
                       <span className="mvp16-run-global-var-name text-xs text-slate-500">{variableEntry.name}</span>
                       <span className="mvp16-run-global-var-value text-xs font-medium text-slate-800">
@@ -250,6 +249,19 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
                   ))}
                 </div>
               )}
+            </div>
+            <div className="mvp16-run-mouse-vars space-y-2">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Mouse</p>
+              <div className="mvp16-run-mouse-vars-list space-y-1.5">
+                {mouseVariableEntries.map((variableEntry) => (
+                  <div key={variableEntry.id} className="mvp16-run-mouse-var-row flex items-center justify-between">
+                    <span className="mvp16-run-mouse-var-name text-xs text-slate-500">{variableEntry.name}</span>
+                    <span className="mvp16-run-mouse-var-value text-xs font-medium text-slate-800">
+                      {formatRuntimeVariableValue(variableEntry.value)}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </aside>

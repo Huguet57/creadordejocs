@@ -6,7 +6,7 @@ import {
   type ObjectEventItem
 } from "@creadordejocs/project-format"
 import { isSpriteCompatibleWithObjectSize, type EditorController } from "../editor-state/use-editor-controller.js"
-import { SYSTEM_MOUSE_GLOBALS, type ObjectActionType } from "../editor-state/types.js"
+import { type ObjectActionType } from "../editor-state/types.js"
 import { ObjectListPanel } from "./ObjectListPanel.js"
 import { ObjectVariablesPanel } from "./ObjectVariablesPanel.js"
 import { EventListPanel } from "./EventListPanel.js"
@@ -135,8 +135,6 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
         normalizedObjectHeight === Math.max(1, Math.round(spriteEntry.height))
     }))
   }, [resolvedSpriteSources, selectedObject, sprites])
-  const globalVariablesWithSystem = [...controller.project.variables.global, ...SYSTEM_MOUSE_GLOBALS]
-
   const defaultActionFromType = (type: ObjectActionType): ObjectActionDraft | null => {
     const actionDraft = createEditorDefaultAction(type, {
       selectableTargetObjectIds: selectableTargetObjects.map((objectEntry) => objectEntry.id),
@@ -256,7 +254,7 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
               selectedObject={selectedObject}
               activeEvent={activeEvent}
               selectableTargetObjects={selectableTargetObjects}
-              globalVariables={globalVariablesWithSystem}
+              globalVariables={controller.project.variables.global}
               selectedObjectVariables={selectedObjectVariableDefinitions}
               objectVariablesByObjectId={controller.project.variables.objectByObjectId}
               roomInstances={controller.activeRoom?.instances ?? []}

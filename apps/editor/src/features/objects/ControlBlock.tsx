@@ -87,6 +87,7 @@ function getLeftValueExpectedType(
     return asScalarType(source.find((v) => v.id === left.variableId)?.type)
   }
   if (typeof left !== "object" || left === null || !("source" in left)) return "number"
+  if (left.source === "mouseAttribute") return "number"
   if (left.source === "attribute") return "number"
   if (left.source === "globalVariable") return asScalarType(globalVariables.find((v) => v.id === left.variableId)?.type)
   if (left.source === "internalVariable") return asScalarType(selectedObjectVariables.find((v) => v.id === left.variableId)?.type)

@@ -77,8 +77,8 @@ export const EVENT_CATEGORIES: { id: EventCategoryId; label: string; types: Obje
 ]
 
 export const SYSTEM_MOUSE_GLOBALS = [
-  { id: "__mouse_x", name: "mouse_x", type: "number" as const, initialValue: 0 },
-  { id: "__mouse_y", name: "mouse_y", type: "number" as const, initialValue: 0 }
+  { id: "mouse.x", name: "mouse.x", type: "number" as const, initialValue: 0 },
+  { id: "mouse.y", name: "mouse.y", type: "number" as const, initialValue: 0 }
 ]
 export const OBJECT_EVENT_KEYS: ObjectEventKey[] = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"]
 export const OBJECT_ACTION_TYPES: ObjectActionType[] = getEditorVisibleActionTypes().filter(

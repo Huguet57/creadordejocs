@@ -178,7 +178,7 @@ function createMouseBuiltinConditionProject(): ProjectV1 {
                 id: "if-mouse-x",
                 type: "if",
                 condition: {
-                  left: { scope: "global", variableId: "__mouse_x" },
+                  left: { source: "mouseAttribute", attribute: "x" },
                   operator: ">",
                   right: 100
                 },
@@ -477,7 +477,7 @@ describe("runtime regressions", () => {
     expect(secondPress.runtime.score).toBe(2)
   })
 
-  it("resolves mouse_x as readonly runtime builtin global", () => {
+  it("resolves mouse.x as runtime mouse attribute", () => {
     const project = createMouseBuiltinConditionProject()
     const runtime = createInitialRuntimeState(project)
 
@@ -498,8 +498,8 @@ describe("runtime regressions", () => {
 
     expect(belowThreshold.runtime.score).toBe(0)
     expect(aboveThreshold.runtime.score).toBe(1)
-    expect(aboveThreshold.runtime.globalVariables.__mouse_x).toBe(120)
-    expect(aboveThreshold.runtime.globalVariables.__mouse_y).toBe(30)
+    expect(aboveThreshold.runtime.mouse.x).toBe(120)
+    expect(aboveThreshold.runtime.mouse.y).toBe(30)
   })
 
   it("wins Coin Dash only after collecting all coins", () => {

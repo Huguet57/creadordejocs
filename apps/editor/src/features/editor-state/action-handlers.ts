@@ -2,8 +2,6 @@ import { generateUUID, type ProjectV1, type ValueExpressionOutput } from "@cread
 import { buildWaitActionKey, removeWaitProgress } from "./event-lock-utils.js"
 import { enqueueRuntimeToast, type RuntimeToastState } from "./message-toast-utils.js"
 import {
-  BUILTIN_MOUSE_X_VARIABLE_ID,
-  BUILTIN_MOUSE_Y_VARIABLE_ID,
   ROOM_HEIGHT,
   ROOM_WIDTH,
   RUNTIME_TICK_MS,
@@ -53,6 +51,11 @@ function isValueSource(value: ValueExpressionOutput): value is ValueSourceExpres
   return typeof value === "object" && value !== null && "source" in value
 }
 
+function getRuntimeMouseValue(runtime: RuntimeState, attribute: "x" | "y"): number | undefined {
+  const value = attribute === "x" ? runtime.mouse.x : runtime.mouse.y
+  return typeof value === "number" ? value : undefined
+}
+
 function getTargetInstanceFromSourceTarget(
   result: RuntimeActionResult,
   ctx: ActionContext,
@@ -93,6 +96,10 @@ function resolveExpressionValue(
 
   if (expression.source === "globalVariable") {
     return result.runtime.globalVariables[expression.variableId]
+  }
+
+  if (expression.source === "mouseAttribute") {
+    return getRuntimeMouseValue(result.runtime, expression.attribute)
   }
 
   if (expression.source === "iterationVariable") {
@@ -425,8 +432,8 @@ function executeActionFallback(
     let targetY: number | null = null
 
     if (action.targetType === "mouse") {
-      const mouseX = result.runtime.globalVariables[BUILTIN_MOUSE_X_VARIABLE_ID]
-      const mouseY = result.runtime.globalVariables[BUILTIN_MOUSE_Y_VARIABLE_ID]
+      const mouseX = result.runtime.mouse.x
+      const mouseY = result.runtime.mouse.y
       if (typeof mouseX === "number" && typeof mouseY === "number") {
         targetX = mouseX
         targetY = mouseY
@@ -511,8 +518,8 @@ function executeActionFallback(
       }
     }
     if (action.mode === "mouse") {
-      const mouseX = result.runtime.globalVariables[BUILTIN_MOUSE_X_VARIABLE_ID]
-      const mouseY = result.runtime.globalVariables[BUILTIN_MOUSE_Y_VARIABLE_ID]
+      const mouseX = result.runtime.mouse.x
+      const mouseY = result.runtime.mouse.y
       return {
         result: {
           ...result,

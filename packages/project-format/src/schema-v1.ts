@@ -120,6 +120,7 @@ const VariableOperatorSchema = z.enum(["set", "add", "subtract", "multiply"])
 
 const ValueTargetSchema = z.enum(["self", "other"])
 const ValueAttributeSchema = z.enum(["x", "y", "rotation", "instanceCount"])
+const MouseAttributeSchema = z.enum(["x", "y"])
 
 const ValueSourceSchema = z.discriminatedUnion("source", [
   z.object({
@@ -145,6 +146,10 @@ const ValueSourceSchema = z.discriminatedUnion("source", [
   z.object({
     source: z.literal("globalVariable"),
     variableId: z.string().min(1)
+  }),
+  z.object({
+    source: z.literal("mouseAttribute"),
+    attribute: MouseAttributeSchema
   }),
   z.object({
     source: z.literal("iterationVariable"),
@@ -181,6 +186,10 @@ const IfConditionLeftSchema = z.union([
   z.object({
     source: z.literal("globalVariable"),
     variableId: z.string().min(1)
+  }),
+  z.object({
+    source: z.literal("mouseAttribute"),
+    attribute: MouseAttributeSchema
   }),
   z.object({
     source: z.literal("iterationVariable"),
@@ -438,10 +447,11 @@ const ObjectEventSchema = z
         type: "action" as const,
         action: actionEntry
       }))
+    const migratedItems = migrateFlowActionItems(rawItems)
     return {
       ...eventEntry,
       ...(eventEntry.type === "Mouse" ? { mouseMode: mouseMode ?? "down" } : {}),
-      items: migrateFlowActionItems(rawItems)
+      items: migratedItems
     }
   })
 

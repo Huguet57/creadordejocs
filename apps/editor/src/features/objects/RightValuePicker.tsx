@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { Globe, Box, ChevronDown, Hash, Dices, Crosshair } from "lucide-react"
 import type { ValueExpression } from "@creadordejocs/project-format"
 import type { VariableOption, ObjectVariableOption } from "./VariablePicker.js"
+import { SYSTEM_MOUSE_GLOBALS } from "../editor-state/types.js"
 
 type LegacyVariableReference = { scope: "global" | "object"; variableId: string }
 type ValueSourceExpression = Extract<ValueExpression, { source: string }>
@@ -22,6 +23,12 @@ function isSourceValue(
   return typeof value === "object" && value !== null && "source" in value
 }
 
+function getMouseAttributeFromVariableId(variableId: string): "x" | "y" | null {
+  if (variableId === "mouse.x") return "x"
+  if (variableId === "mouse.y") return "y"
+  return null
+}
+
 type RightValuePickerProps = {
   value: ValueExpression
   expectedType: "number" | "string" | "boolean"
@@ -30,7 +37,9 @@ type RightValuePickerProps = {
   iterationVariables?: { name: string; type: "number" | "string" | "boolean" }[]
   filterByExpectedType?: boolean
   allowOtherTarget?: boolean
-  allowedSources?: ("literal" | "random" | "attribute" | "internalVariable" | "globalVariable" | "iterationVariable")[]
+  allowedSources?: (
+    "literal" | "random" | "attribute" | "internalVariable" | "globalVariable" | "mouseAttribute" | "iterationVariable"
+  )[]
   onChange: (nextValue: ValueExpression) => void
   variant?: "default" | "blue" | undefined
 }
@@ -172,17 +181,23 @@ export function RightValuePicker({
   const canPickAttributes = allowedSources.includes("attribute")
   const canPickInternal = allowedSources.includes("internalVariable")
   const canPickGlobal = allowedSources.includes("globalVariable")
+  const canPickMouse = canPickGlobal || allowedSources.includes("mouseAttribute")
   const canPickIteration = allowedSources.includes("iterationVariable")
   const filteredGlobal = canPickGlobal
     ? globalVariables.filter((variable) => !filterByExpectedType || variable.type === expectedType)
     : []
+  const filteredMouse =
+    canPickMouse && expectedType === "number"
+      ? SYSTEM_MOUSE_GLOBALS.map((entry) => ({ id: entry.id, name: entry.name, type: entry.type }))
+      : []
   const filteredInternal = canPickInternal
     ? internalVariables.filter((variable) => !filterByExpectedType || variable.type === expectedType)
     : []
   const filteredIteration = canPickIteration
     ? iterationVariables.filter((variable) => !filterByExpectedType || variable.type === expectedType)
     : []
-  const hasVariables = filteredGlobal.length > 0 || filteredInternal.length > 0 || filteredIteration.length > 0
+  const hasVariables =
+    filteredGlobal.length > 0 || filteredMouse.length > 0 || filteredInternal.length > 0 || filteredIteration.length > 0
 
   const borderColor = variant === "blue" ? "border-blue-200" : "border-slate-300"
   const hoverBg = variant === "blue" ? "hover:bg-blue-50" : "hover:bg-slate-50"
@@ -203,6 +218,9 @@ export function RightValuePicker({
     if (value.source === "random") {
       const rangeText = `${value.min}↔${value.max}`
       return value.step === 1 ? rangeText : `${rangeText}·pas${value.step}`
+    }
+    if (value.source === "mouseAttribute") {
+      return `mouse.${value.attribute}`
     }
     if (value.source === "attribute") {
       return `${value.target}.${formatAttributeLabel(value.attribute as ValueAttribute)}`
@@ -226,6 +244,8 @@ export function RightValuePicker({
         : Box
       : value.source === "random"
       ? Dices
+      : value.source === "mouseAttribute"
+      ? Crosshair
       : value.source === "attribute"
       ? Crosshair
       : value.source === "globalVariable"
@@ -494,6 +514,34 @@ export function RightValuePicker({
 
           {hasVariables && (
             <>
+              {filteredMouse.length > 0 && (
+                <div className="right-value-picker-mouse-section">
+                  <div className="right-value-picker-section-header px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-50 border-b border-slate-100 border-t">
+                    Mouse
+                  </div>
+                  {filteredMouse.map((variable) => (
+                    <button
+                      key={variable.id}
+                      type="button"
+                      className="right-value-picker-mouse-row flex items-center gap-2 w-full px-3 py-1.5 text-xs text-left hover:bg-blue-50 transition-colors"
+                      onClick={() => {
+                        const attribute = getMouseAttributeFromVariableId(variable.id)
+                        if (!attribute) {
+                          return
+                        }
+                        onChange({ source: "mouseAttribute", attribute })
+                        setIsOpen(false)
+                      }}
+                    >
+                      <Crosshair className="h-3 w-3 text-slate-400 shrink-0" />
+                      <span className="flex-1 truncate">{variable.name}</span>
+                      <span className="right-value-picker-type-badge text-[9px] px-1 py-0.5 rounded bg-slate-100 text-slate-400 shrink-0">
+                        num
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
               {canPickGlobal && filteredGlobal.length > 0 && (
                 <div className="right-value-picker-global-section">
                   <div className="right-value-picker-section-header px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-50 border-b border-slate-100 border-t">

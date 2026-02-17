@@ -5,8 +5,6 @@ export const ROOM_WIDTH = 832
 export const ROOM_HEIGHT = 480
 export const INSTANCE_SIZE = 32
 export const RUNTIME_TICK_MS = 80
-export const BUILTIN_MOUSE_X_VARIABLE_ID = "__mouse_x"
-export const BUILTIN_MOUSE_Y_VARIABLE_ID = "__mouse_y"
 
 export type RuntimeMouseButton = "left" | "middle" | "right"
 export type RuntimeMouseInput = {
@@ -31,6 +29,7 @@ export type RuntimeState = {
   playedSoundIds: string[]
   instanceStartPositions: Record<string, { x: number; y: number }>
   globalVariables: Record<string, RuntimeVariableValue>
+  mouse: { x: number; y: number }
   objectInstanceVariables: Record<string, Record<string, RuntimeVariableValue>>
   nextRoomId: string | null
   restartRoomRequested: boolean
@@ -145,7 +144,8 @@ export function isSameVariableValueType(left: RuntimeVariableValue, right: Runti
 }
 
 export function isReadonlyGlobalVariableId(variableId: string): boolean {
-  return variableId === BUILTIN_MOUSE_X_VARIABLE_ID || variableId === BUILTIN_MOUSE_Y_VARIABLE_ID
+  void variableId
+  return false
 }
 
 export function applyGlobalNumericOperation(

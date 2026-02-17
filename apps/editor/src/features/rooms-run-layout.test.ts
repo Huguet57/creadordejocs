@@ -57,7 +57,8 @@ function createRunControllerMock(): RunSectionController {
       gameOver: false,
       message: "",
       activeToast: null,
-      globalVariables: {}
+      globalVariables: {},
+      mouse: { x: 0, y: 0 }
     },
     activeRoom: {
       id: "room-1",

@@ -20,8 +20,6 @@ import {
   type ActionContext
 } from "./action-handlers.js"
 import {
-  BUILTIN_MOUSE_X_VARIABLE_ID,
-  BUILTIN_MOUSE_Y_VARIABLE_ID,
   ROOM_HEIGHT,
   ROOM_WIDTH,
   RUNTIME_TICK_MS,
@@ -102,11 +100,7 @@ function getInstanceStartPosition(
 }
 
 function buildInitialGlobalVariables(project: ProjectV1): Record<string, RuntimeVariableValue> {
-  return {
-    ...Object.fromEntries(project.variables.global.map((definition) => [definition.id, definition.initialValue])),
-    [BUILTIN_MOUSE_X_VARIABLE_ID]: 0,
-    [BUILTIN_MOUSE_Y_VARIABLE_ID]: 0
-  }
+  return Object.fromEntries(project.variables.global.map((definition) => [definition.id, definition.initialValue]))
 }
 
 function buildInitialObjectVariablesForObject(project: ProjectV1, objectId: string): Record<string, RuntimeVariableValue> {
@@ -162,6 +156,11 @@ function isValueSource(value: ValueExpressionOutput): value is ValueSourceExpres
   return typeof value === "object" && value !== null && "source" in value
 }
 
+function getRuntimeMouseValue(runtime: RuntimeState, attribute: "x" | "y"): number | undefined {
+  const value = attribute === "x" ? runtime.mouse.x : runtime.mouse.y
+  return Number.isFinite(value) ? value : undefined
+}
+
 function resolveConditionExpressionValue(
   expression: ValueExpressionOutput,
   instance: ProjectV1["rooms"][number]["instances"][number],
@@ -195,6 +194,10 @@ function resolveConditionExpressionValue(
 
   if (expression.source === "globalVariable") {
     return runtime.globalVariables[expression.variableId]
+  }
+
+  if (expression.source === "mouseAttribute") {
+    return getRuntimeMouseValue(runtime, expression.attribute)
   }
 
   if (expression.source === "iterationVariable") {
@@ -325,11 +328,7 @@ function evaluateIfCondition(
 function applyMouseBuiltinsToRuntime(runtime: RuntimeState, mouseInput: RuntimeMouseInput): RuntimeState {
   return {
     ...runtime,
-    globalVariables: {
-      ...runtime.globalVariables,
-      [BUILTIN_MOUSE_X_VARIABLE_ID]: mouseInput.x,
-      [BUILTIN_MOUSE_Y_VARIABLE_ID]: mouseInput.y
-    }
+    mouse: { x: mouseInput.x, y: mouseInput.y }
   }
 }
 
@@ -834,6 +833,7 @@ export function createInitialRuntimeState(project?: ProjectV1): RuntimeState {
     playedSoundIds: [],
     instanceStartPositions: {},
     globalVariables: project ? buildInitialGlobalVariables(project) : {},
+    mouse: { x: 0, y: 0 },
     objectInstanceVariables: {},
     nextRoomId: null,
     restartRoomRequested: false,
@@ -863,6 +863,7 @@ export function runRuntimeTick(
       ...buildInitialGlobalVariables(project),
       ...runtime.globalVariables
     },
+    mouse: runtime.mouse,
     nextRoomId: null,
     restartRoomRequested: false
   }
