@@ -84,7 +84,6 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
   const [placementGhost, setPlacementGhost] = useState<RoomPlacementGhost | null>(null)
   const [showGrid, setShowGrid] = useState(true)
   const transparentDragImageRef = useRef<HTMLDivElement | null>(null)
-  const objectDragImageRef = useRef<HTMLDivElement | null>(null)
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const sprites = controller.project.resources.sprites
   const spriteById = useMemo(
@@ -110,10 +109,6 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
       if (transparentDragImageRef.current) {
         transparentDragImageRef.current.remove()
         transparentDragImageRef.current = null
-      }
-      if (objectDragImageRef.current) {
-        objectDragImageRef.current.remove()
-        objectDragImageRef.current = null
       }
     }
   }, [])
@@ -346,37 +341,23 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                 onDragStart={(event) => {
                   event.dataTransfer.setData(OBJECT_DRAG_DATA_KEY, obj.id)
                   event.dataTransfer.effectAllowed = "copy"
-                  if (objectDragImageRef.current) {
-                    objectDragImageRef.current.remove()
-                    objectDragImageRef.current = null
+                  if (!transparentDragImageRef.current) {
+                    const element = document.createElement("div")
+                    element.style.width = "1px"
+                    element.style.height = "1px"
+                    element.style.position = "fixed"
+                    element.style.top = "-1000px"
+                    element.style.left = "-1000px"
+                    element.style.opacity = "0.01"
+                    document.body.appendChild(element)
+                    transparentDragImageRef.current = element
                   }
-                  const dragImage = document.createElement("div")
-                  dragImage.className =
-                    "mvp22-room-object-drag-image pointer-events-none flex h-8 w-8 items-center justify-center rounded border border-slate-300 bg-white shadow-sm"
-                  dragImage.style.position = "fixed"
-                  dragImage.style.top = "-1000px"
-                  dragImage.style.left = "-1000px"
-                  const iconElement = event.currentTarget.querySelector(
-                    ".mvp21-room-object-list-sprite-icon, .mvp22-room-object-list-fallback-icon"
-                  )
-                  if (iconElement) {
-                    const iconClone = iconElement.cloneNode(true) as HTMLElement
-                    iconClone.style.width = "20px"
-                    iconClone.style.height = "20px"
-                    dragImage.appendChild(iconClone)
-                  }
-                  document.body.appendChild(dragImage)
-                  objectDragImageRef.current = dragImage
-                  event.dataTransfer.setDragImage(dragImage, 16, 16)
+                  event.dataTransfer.setDragImage(transparentDragImageRef.current, 0, 0)
                   setDraggingObjectId(obj.id)
                 }}
                 onDragEnd={() => {
                   setDraggingObjectId(null)
                   setPlacementGhost(null)
-                  if (objectDragImageRef.current) {
-                    objectDragImageRef.current.remove()
-                    objectDragImageRef.current = null
-                  }
                 }}
                 title={`Add ${obj.name} to room`}
                 disabled={!controller.activeRoom}
