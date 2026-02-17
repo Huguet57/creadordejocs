@@ -5,7 +5,11 @@ import type { VariableOption, ObjectVariableOption } from "./VariablePicker.js"
 
 type LegacyVariableReference = { scope: "global" | "object"; variableId: string }
 type ValueSourceTarget = "self" | "other"
-type ValueAttribute = "x" | "y" | "rotation"
+type ValueAttribute = "x" | "y" | "rotation" | "instanceCount"
+
+function formatAttributeLabel(attribute: ValueAttribute): string {
+  return attribute === "instanceCount" ? "instance count" : attribute
+}
 
 function isLegacyVariableReference(value: ValueExpression): value is LegacyVariableReference {
   return typeof value === "object" && value !== null && "scope" in value && "variableId" in value
@@ -194,7 +198,7 @@ export function RightValuePicker({
       return value.step === 1 ? rangeText : `${rangeText}·pas${value.step}`
     }
     if (value.source === "attribute") {
-      return `${value.target}.${value.attribute}`
+      return `${value.target}.${formatAttributeLabel(value.attribute as ValueAttribute)}`
     }
     if (value.source === "internalVariable") {
       const label = internalVariables.find((item) => item.id === value.variableId)?.label ?? "?"
@@ -397,7 +401,7 @@ export function RightValuePicker({
                   ))}
                 </div>
               </div>
-              {(["x", "y", "rotation"] as const).map((attribute) => (
+              {(["x", "y", "rotation", "instanceCount"] as const).map((attribute) => (
                 <button
                   key={`attribute-row-${attribute}`}
                   type="button"
@@ -409,7 +413,7 @@ export function RightValuePicker({
                 >
                   <Crosshair className="h-3 w-3 text-slate-400 shrink-0" />
                   <span className="flex-1 truncate">
-                    {localTarget}.{attribute}
+                    {localTarget}.{formatAttributeLabel(attribute)}
                   </span>
                 </button>
               ))}

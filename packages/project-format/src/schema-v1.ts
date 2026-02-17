@@ -78,7 +78,7 @@ const VariableValueSchema = z.union([z.number(), z.string(), z.boolean()])
 const VariableOperatorSchema = z.enum(["set", "add", "subtract", "multiply"])
 
 const ValueTargetSchema = z.enum(["self", "other"])
-const ValueAttributeSchema = z.enum(["x", "y", "rotation"])
+const ValueAttributeSchema = z.enum(["x", "y", "rotation", "instanceCount"])
 
 const ValueSourceSchema = z.discriminatedUnion("source", [
   z.object({

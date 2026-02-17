@@ -4271,6 +4271,121 @@ describe("runtime regressions", () => {
     expect(result.runtime.objectInstanceVariables["instance-calc"]?.["ov-out"]).toBe(17)
   })
 
+  it("supports instanceCount attribute for self and other targets", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-instance-count-attribute",
+        name: "Instance count attribute test",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: {
+        sprites: [],
+        sounds: []
+      },
+      variables: {
+        global: [
+          { id: "gv-self-count", name: "selfCount", type: "number", initialValue: 0 },
+          { id: "gv-other-count", name: "otherCount", type: "number", initialValue: 0 }
+        ],
+        objectByObjectId: {}
+      },
+      objects: [
+        {
+          id: "object-main",
+          name: "Main",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step",
+              type: "Step",
+              key: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [
+                {
+                  id: "item-step-self-count",
+                  type: "action",
+                  action: {
+                    id: "a-step-self-count",
+                    type: "changeVariable",
+                    scope: "global",
+                    variableId: "gv-self-count",
+                    operator: "set",
+                    value: { source: "attribute", target: "self", attribute: "instanceCount" }
+                  }
+                }
+              ]
+            },
+            {
+              id: "event-collision",
+              type: "Collision",
+              key: null,
+              targetObjectId: "object-other",
+              intervalMs: null,
+              items: [
+                {
+                  id: "item-collision-other-count",
+                  type: "action",
+                  action: {
+                    id: "a-collision-other-count",
+                    type: "changeVariable",
+                    scope: "global",
+                    variableId: "gv-other-count",
+                    operator: "set",
+                    value: { source: "attribute", target: "other", attribute: "instanceCount" }
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          id: "object-other",
+          name: "Other",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: []
+        }
+      ],
+      rooms: [
+        {
+          id: "room-main",
+          name: "Main",
+          instances: [
+            { id: "instance-main-1", objectId: "object-main", x: 0, y: 0 },
+            { id: "instance-main-2", objectId: "object-main", x: 100, y: 100 },
+            { id: "instance-other-1", objectId: "object-other", x: 0, y: 0 },
+            { id: "instance-other-2", objectId: "object-other", x: 50, y: 50 },
+            { id: "instance-other-3", objectId: "object-other", x: 200, y: 200 }
+          ]
+        }
+      ],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+
+    expect(result.runtime.globalVariables["gv-self-count"]).toBe(2)
+    expect(result.runtime.globalVariables["gv-other-count"]).toBe(3)
+  })
+
   it("supports random value source with custom step", () => {
     const originalRandom = Math.random
     Math.random = () => 0.95

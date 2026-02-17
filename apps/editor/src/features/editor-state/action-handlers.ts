@@ -104,6 +104,9 @@ function resolveExpressionValue(
     if (expression.attribute === "y") {
       return targetInstance.y
     }
+    if (expression.attribute === "instanceCount") {
+      return ctx.roomInstances.filter((instanceEntry) => instanceEntry.objectId === targetInstance.objectId).length
+    }
     return targetInstance.rotation ?? 0
   }
 
