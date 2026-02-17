@@ -89,6 +89,7 @@ export function ObjectListPanel({
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [isAdding, setIsAdding] = useState(false)
   const [addingInFolderId, setAddingInFolderId] = useState<string | null>(null)
+  const [pendingNewObjectFolderId, setPendingNewObjectFolderId] = useState<string | null>(null)
   const [newObjectName, setNewObjectName] = useState("Objecte nou")
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null)
   const contextMenuRef = useRef<HTMLDivElement>(null)
@@ -141,31 +142,52 @@ export function ObjectListPanel({
 
   const handleAddObject = () => {
     if (!newObjectName.trim()) return
+    const targetFolderId = addingInFolderId
     onAddObject(newObjectName)
-    if (addingInFolderId) {
-      const latestObject = objects[objects.length - 1]
-      if (latestObject) {
-        setObjectFolderMap((prev) => ({ ...prev, [latestObject.id]: addingInFolderId }))
-      }
-    }
+    setPendingNewObjectFolderId(targetFolderId)
     setNewObjectName("Objecte nou")
     setIsAdding(false)
     setAddingInFolderId(null)
   }
 
-  // We need to assign the new object to a folder after it's created.
-  // Since onAddObject is async-ish (state update), watch for new objects.
-  const prevObjectCountRef = useRef(objects.length)
+  // Assign the actual newly-created object(s) to the folder target.
+  const prevObjectIdsRef = useRef<Set<string>>(new Set(objects.map((o) => o.id)))
   useEffect(() => {
-    if (objects.length > prevObjectCountRef.current && addingInFolderId) {
-      const newestObject = objects[objects.length - 1]
-      if (newestObject) {
-        setObjectFolderMap((prev) => ({ ...prev, [newestObject.id]: addingInFolderId }))
-      }
-      setAddingInFolderId(null)
+    const previousIds = prevObjectIdsRef.current
+    const currentIds = new Set(objects.map((o) => o.id))
+    const addedObjectIds = objects.map((o) => o.id).filter((id) => !previousIds.has(id))
+
+    if (pendingNewObjectFolderId && addedObjectIds.length > 0) {
+      setObjectFolderMap((prev) => {
+        const next = { ...prev }
+        for (const objectId of addedObjectIds) {
+          next[objectId] = pendingNewObjectFolderId
+        }
+        return next
+      })
+      setPendingNewObjectFolderId(null)
+    } else if (!pendingNewObjectFolderId && addedObjectIds.length > 0) {
+      // Explicitly clear folder mapping for new root objects.
+      setObjectFolderMap((prev) => {
+        const next = { ...prev }
+        for (const objectId of addedObjectIds) {
+          next[objectId] = null
+        }
+        return next
+      })
     }
-    prevObjectCountRef.current = objects.length
-  }, [objects.length, addingInFolderId, objects])
+
+    prevObjectIdsRef.current = currentIds
+  }, [objects, pendingNewObjectFolderId])
+
+  useEffect(() => {
+    if (!isAdding) {
+      // If creation is cancelled before object is created, clear pending target.
+      if (pendingNewObjectFolderId && objects.length === prevObjectIdsRef.current.size) {
+        setPendingNewObjectFolderId(null)
+      }
+    }
+  }, [isAdding, objects.length, pendingNewObjectFolderId])
 
   // -------------------------------------------------------------------------
   // Folder CRUD
