@@ -183,6 +183,7 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
         activeObjectId={controller.activeObjectId}
         spriteSources={resolvedSpriteSources}
         onSelectObject={(id) => controller.setActiveObjectId(id)}
+        onDeselectObject={() => controller.setActiveObjectId(null)}
         onAddObject={(name) => controller.addObject(name)}
         onDeleteObject={() => controller.deleteSelectedObject()}
       />

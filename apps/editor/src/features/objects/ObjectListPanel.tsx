@@ -8,6 +8,7 @@ type ObjectListPanelProps = {
   activeObjectId: string | null
   spriteSources: Record<string, string>
   onSelectObject: (id: string) => void
+  onDeselectObject: () => void
   onAddObject: (name: string) => void
   onDeleteObject: () => void
 }
@@ -17,6 +18,7 @@ export function ObjectListPanel({
   activeObjectId,
   spriteSources,
   onSelectObject,
+  onDeselectObject,
   onAddObject,
   onDeleteObject
 }: ObjectListPanelProps) {
@@ -46,7 +48,14 @@ export function ObjectListPanel({
         <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Objects</span>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-2">
+      <div
+        className="flex-1 overflow-y-auto p-2"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) {
+            onDeselectObject()
+          }
+        }}
+      >
         <div className="flex flex-col gap-1">
           {objects.length === 0 && (
             <p className="px-2 py-4 text-center text-xs text-slate-400">No objects yet</p>

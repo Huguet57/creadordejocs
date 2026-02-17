@@ -63,7 +63,7 @@ describe("sound-free editor UI", () => {
     expect(markup).not.toContain("sidebar-share")
   })
 
-  it("shows import label under templates in compact sidebar", () => {
+  it("shows templates button in compact sidebar without import label", () => {
     const markup = renderToStaticMarkup(
       createElement(EditorSidebarCompact, {
         activeSection: "templates",
@@ -72,6 +72,6 @@ describe("sound-free editor UI", () => {
     )
 
     expect(markup).toContain("sidebar-templates")
-    expect(markup).toContain("Import")
+    expect(markup).not.toContain("Import")
   })
 })
