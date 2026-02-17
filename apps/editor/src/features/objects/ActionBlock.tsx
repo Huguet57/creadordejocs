@@ -148,7 +148,13 @@ export function ActionBlock({
   const [contextMenu, setContextMenu] = useState<ActionContextMenuState>(null)
   const RightValuePicker = (
     props: Omit<React.ComponentProps<typeof BaseRightValuePicker>, "iterationVariables">
-  ) => <BaseRightValuePicker {...props} iterationVariables={iterationVariables} />
+  ) => (
+    <BaseRightValuePicker
+      {...props}
+      iterationVariables={iterationVariables}
+      allowedSources={props.allowedSources ?? ["literal", "random", "attribute", "internalVariable", "globalVariable", "iterationVariable"]}
+    />
+  )
 
   useEffect(() => {
     if (!contextMenu) {

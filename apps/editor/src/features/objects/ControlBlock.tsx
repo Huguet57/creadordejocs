@@ -118,6 +118,19 @@ function getBlockLabel(type: ObjectControlBlockItem["type"]): string {
   return type
 }
 
+function getNextLocalVariableName(baseName: string, existingNames: string[]): string {
+  const escapedBaseName = baseName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  const matcher = new RegExp(`^${escapedBaseName}(\\d+)?$`)
+  let highestSuffix = 0
+  for (const existingName of existingNames) {
+    const match = matcher.exec(existingName)
+    if (!match) continue
+    const suffix = match[1] ? Number(match[1]) : 1
+    highestSuffix = Math.max(highestSuffix, suffix)
+  }
+  return highestSuffix === 0 ? baseName : `${baseName}${highestSuffix + 1}`
+}
+
 export function ControlBlock({
   item,
   selectableTargetObjects,
@@ -227,6 +240,11 @@ export function ControlBlock({
 
   function createAndAddBlock(blockType: "if" | "repeat" | "forEachList" | "forEachMap", branch: "then" | "else") {
     let block: ObjectControlBlockItem | null = null
+    const availableLocalNames = (isFlowBlockType(item.type) ? flowIterationVariables : iterationVariables).map((variable) => variable.name)
+    const defaultItemName = getNextLocalVariableName("item", availableLocalNames)
+    const defaultIndexName = getNextLocalVariableName("index", availableLocalNames)
+    const defaultKeyName = getNextLocalVariableName("key", availableLocalNames)
+    const defaultValueName = getNextLocalVariableName("value", availableLocalNames)
     if (blockType === "if" && defaultIfCondition) {
       block = { id: `if-${generateUUID()}`, type: "if", condition: defaultIfCondition, thenActions: [], elseActions: [] }
     } else if (blockType === "repeat") {
@@ -238,7 +256,7 @@ export function ControlBlock({
         block = {
           id: `forEach-${generateUUID()}`, type: "forEachList",
           scope: isGlobal ? "global" : "object", variableId: firstList.id,
-          itemLocalVarName: "item", indexLocalVarName: "index", actions: [],
+          itemLocalVarName: defaultItemName, indexLocalVarName: defaultIndexName, actions: [],
           ...(isGlobal ? {} : { target: "self" })
         }
       }
@@ -249,7 +267,7 @@ export function ControlBlock({
         block = {
           id: `forEachMap-${generateUUID()}`, type: "forEachMap",
           scope: isGlobal ? "global" : "object", variableId: firstMap.id,
-          keyLocalVarName: "key", valueLocalVarName: "value", actions: [],
+          keyLocalVarName: defaultKeyName, valueLocalVarName: defaultValueName, actions: [],
           ...(isGlobal ? {} : { target: "self" })
         }
       }
@@ -548,13 +566,21 @@ export function ControlBlock({
         <input
           className="control-block-local-item h-7 w-20 rounded border border-purple-300 bg-white/50 px-2 text-xs"
           value={item.itemLocalVarName}
-          onChange={(e) => onUpdateBlock(item.id, { itemLocalVarName: e.target.value } as Partial<ObjectControlBlockItem>)}
+          onChange={(e) => {
+            const nextValue = e.target.value
+            if (nextValue !== "" && nextValue === (item.indexLocalVarName ?? "")) return
+            onUpdateBlock(item.id, { itemLocalVarName: nextValue } as Partial<ObjectControlBlockItem>)
+          }}
           placeholder="item"
         />
         <input
           className="control-block-local-index h-7 w-20 rounded border border-purple-300 bg-white/50 px-2 text-xs"
           value={item.indexLocalVarName ?? ""}
-          onChange={(e) => onUpdateBlock(item.id, { indexLocalVarName: e.target.value || undefined } as Partial<ObjectControlBlockItem>)}
+          onChange={(e) => {
+            const nextValue = e.target.value
+            if (nextValue !== "" && nextValue === item.itemLocalVarName) return
+            onUpdateBlock(item.id, { indexLocalVarName: nextValue || undefined } as Partial<ObjectControlBlockItem>)
+          }}
           placeholder="index"
         />
       </>
@@ -584,13 +610,21 @@ export function ControlBlock({
         <input
           className="control-block-local-key h-7 w-20 rounded border border-purple-300 bg-white/50 px-2 text-xs"
           value={item.keyLocalVarName}
-          onChange={(e) => onUpdateBlock(item.id, { keyLocalVarName: e.target.value } as Partial<ObjectControlBlockItem>)}
+          onChange={(e) => {
+            const nextValue = e.target.value
+            if (nextValue !== "" && nextValue === item.valueLocalVarName) return
+            onUpdateBlock(item.id, { keyLocalVarName: nextValue } as Partial<ObjectControlBlockItem>)
+          }}
           placeholder="key"
         />
         <input
           className="control-block-local-value h-7 w-20 rounded border border-purple-300 bg-white/50 px-2 text-xs"
           value={item.valueLocalVarName}
-          onChange={(e) => onUpdateBlock(item.id, { valueLocalVarName: e.target.value } as Partial<ObjectControlBlockItem>)}
+          onChange={(e) => {
+            const nextValue = e.target.value
+            if (nextValue !== "" && nextValue === item.keyLocalVarName) return
+            onUpdateBlock(item.id, { valueLocalVarName: nextValue } as Partial<ObjectControlBlockItem>)
+          }}
           placeholder="value"
         />
       </>
