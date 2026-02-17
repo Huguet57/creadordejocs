@@ -120,22 +120,22 @@ export function EventListPanel({
             )
           })}
           {isAddingEvent && (
-            <div className="mvp26-event-ghost-row flex items-center justify-between rounded bg-white px-2 py-1.5 shadow-sm ring-1 ring-slate-200">
-              <div className="flex items-center gap-2 overflow-hidden">
-                <Plus className="mvp26-event-ghost-icon h-3.5 w-3.5 shrink-0 text-blue-500" />
-                <div className="mvp26-event-ghost-text flex flex-col overflow-hidden">
+            <div className="mvp26-event-ghost-row group flex cursor-default items-center justify-between rounded bg-white px-2 py-1.5 shadow-sm ring-1 ring-slate-200">
+              <div className="flex flex-1 items-center gap-2 text-left">
+                <Plus className="h-3.5 w-3.5 text-blue-500" />
+                <div className="flex flex-col overflow-hidden">
                   <span className="truncate text-sm font-medium text-slate-900">New event</span>
                   <span className="truncate text-[10px] text-slate-400">Configuring...</span>
                 </div>
               </div>
               <button
                 type="button"
-                className="mvp26-event-ghost-cancel inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-slate-400 transition-colors hover:text-red-500"
+                className="mvp26-event-ghost-cancel opacity-100 transition-opacity hover:text-red-500"
                 onClick={onCancelAddEvent}
                 title="Cancel"
                 aria-label="Cancel new event"
               >
-                <X className="h-3 w-3" />
+                <X className="h-3.5 w-3.5" />
               </button>
             </div>
           )}
