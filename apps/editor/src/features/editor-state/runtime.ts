@@ -805,16 +805,14 @@ export function runRuntimeTick(
         }
         continue
       }
-      if (eventEntry.type === "MouseDown") {
-        if (mouseInput.pressedButtons.size > 0) {
+      if (eventEntry.type === "Mouse") {
+        const shouldRun = eventEntry.mouseMode === "press"
+          ? mouseInput.justPressedButtons.size > 0
+          : mouseInput.pressedButtons.size > 0
+        if (shouldRun) {
           matchingEvents.push(eventEntry)
         }
         continue
-      }
-      if (eventEntry.type === "MouseClick") {
-        if (mouseInput.justPressedButtons.size > 0) {
-          matchingEvents.push(eventEntry)
-        }
       }
     }
 

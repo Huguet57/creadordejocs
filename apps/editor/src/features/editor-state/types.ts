@@ -15,14 +15,14 @@ export type ObjectEventType =
   | "Step"
   | "Collision"
   | "Keyboard"
+  | "Mouse"
   | "OnDestroy"
   | "OutsideRoom"
   | "Timer"
   | "MouseMove"
-  | "MouseDown"
-  | "MouseClick"
 export type ObjectEventKey = "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight" | "Space"
 export type ObjectKeyboardMode = "down" | "press"
+export type ObjectMouseMode = "down" | "press"
 export type ObjectActionType = Exclude<ActionType, "playSound">
 
 export type ObjectEventEntry = ProjectV1["objects"][number]["events"][number]
@@ -37,12 +37,11 @@ export const OBJECT_EVENT_TYPES: ObjectEventType[] = [
   "Step",
   "Collision",
   "Keyboard",
+  "Mouse",
   "OnDestroy",
   "OutsideRoom",
   "Timer",
-  "MouseMove",
-  "MouseDown",
-  "MouseClick"
+  "MouseMove"
 ]
 
 export const EVENT_DISPLAY_NAMES: Record<ObjectEventType, string> = {
@@ -50,12 +49,11 @@ export const EVENT_DISPLAY_NAMES: Record<ObjectEventType, string> = {
   Step: "Step",
   Collision: "Collision",
   Keyboard: "Keyboard",
+  Mouse: "Mouse",
   OnDestroy: "On destroy",
   OutsideRoom: "Outside room",
   Timer: "Timer",
-  MouseMove: "Mouse move",
-  MouseDown: "Mouse down",
-  MouseClick: "Mouse click"
+  MouseMove: "Mouse move"
 }
 
 export type EventCategoryId = "lifecycle" | "input" | "collision"
@@ -69,7 +67,7 @@ export const EVENT_CATEGORIES: { id: EventCategoryId; label: string; types: Obje
   {
     id: "input",
     label: "Input",
-    types: ["Keyboard", "MouseMove", "MouseDown", "MouseClick"]
+    types: ["Keyboard", "Mouse", "MouseMove"]
   },
   {
     id: "collision",

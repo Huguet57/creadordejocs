@@ -48,14 +48,14 @@ export type ObjectEventType =
   | "Step"
   | "Collision"
   | "Keyboard"
+  | "Mouse"
   | "OnDestroy"
   | "OutsideRoom"
   | "MouseMove"
-  | "MouseDown"
-  | "MouseClick"
   | "Timer"
 export type ObjectEventKey = "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight" | "Space"
 export type ObjectKeyboardMode = "down" | "press"
+export type ObjectMouseMode = "down" | "press"
 export type ObjectEventItem = ProjectV1["objects"][number]["events"][number]["items"][number]
 export type ObjectAction = Extract<ObjectEventItem, { type: "action" }>["action"]
 export type ObjectIfBlock = Extract<ObjectEventItem, { type: "if" }>
@@ -74,6 +74,7 @@ export type AddObjectEventInput = {
   type: ObjectEventType
   key?: ObjectEventKey | null
   keyboardMode?: ObjectKeyboardMode | null
+  mouseMode?: ObjectMouseMode | null
   targetObjectId?: string | null
   intervalMs?: number | null
 }
@@ -177,6 +178,7 @@ export type UpdateObjectEventConfigInput = {
   eventId: string
   key?: ObjectEventKey | null
   keyboardMode?: ObjectKeyboardMode | null
+  mouseMode?: ObjectMouseMode | null
   targetObjectId?: string | null
   intervalMs?: number | null
 }
@@ -1075,6 +1077,7 @@ export function addObjectEvent(project: ProjectV1, input: AddObjectEventInput): 
                 keyboardMode: input.keyboardMode ?? (input.type === "Keyboard" ? "down" : null),
                 targetObjectId: input.targetObjectId ?? null,
                 intervalMs: input.intervalMs ?? null,
+                ...(input.type === "Mouse" ? { mouseMode: input.mouseMode ?? "down" } : {}),
                 items: []
               }
             ]
@@ -1491,13 +1494,20 @@ export function updateObjectEventConfig(project: ProjectV1, input: UpdateObjectE
             ...objectEntry,
             events: objectEntry.events.map((eventEntry) =>
               eventEntry.id === input.eventId
-                ? {
-                    ...eventEntry,
-                    key: input.key === undefined ? eventEntry.key : input.key,
-                    keyboardMode: input.keyboardMode === undefined ? eventEntry.keyboardMode : input.keyboardMode,
-                    targetObjectId: input.targetObjectId === undefined ? eventEntry.targetObjectId : input.targetObjectId,
-                    intervalMs: input.intervalMs === undefined ? eventEntry.intervalMs : input.intervalMs
-                  }
+                ? (() => {
+                    const nextMouseMode =
+                      eventEntry.type === "Mouse"
+                        ? (input.mouseMode === undefined ? (eventEntry.mouseMode ?? "down") : (input.mouseMode ?? "down"))
+                        : undefined
+                    return {
+                      ...eventEntry,
+                      key: input.key === undefined ? eventEntry.key : input.key,
+                      keyboardMode: input.keyboardMode === undefined ? eventEntry.keyboardMode : input.keyboardMode,
+                      targetObjectId: input.targetObjectId === undefined ? eventEntry.targetObjectId : input.targetObjectId,
+                      intervalMs: input.intervalMs === undefined ? eventEntry.intervalMs : input.intervalMs,
+                      ...(eventEntry.type === "Mouse" && nextMouseMode ? { mouseMode: nextMouseMode } : {})
+                    }
+                  })()
                 : eventEntry
             )
           }

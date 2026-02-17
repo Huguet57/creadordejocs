@@ -247,8 +247,8 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
           {isEventSelectorOpen ? (
             <EventSelectorPanel
               classNamePrefix="mvp24-event-picker"
-              onSelectEvent={(type, key, keyboardMode, intervalMs) => {
-                controller.addObjectEvent(type, key ?? null, keyboardMode ?? null, null, intervalMs ?? null)
+              onSelectEvent={(type, key, keyboardMode, mouseMode, intervalMs) => {
+                controller.addObjectEvent(type, key ?? null, keyboardMode ?? null, mouseMode ?? null, null, intervalMs ?? null)
                 setSelectNewestForObjectId(selectedObject.id)
                 setIsEventSelectorOpen(false)
               }}
@@ -265,9 +265,9 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
               roomInstances={controller.activeRoom?.instances ?? []}
               allObjects={controller.project.objects}
               rooms={controller.project.rooms}
-              onUpdateEventConfig={(key, keyboardMode, targetId, intervalMs) => {
+              onUpdateEventConfig={(key, keyboardMode, mouseMode, targetId, intervalMs) => {
                 if (activeEvent) {
-                  controller.updateObjectEventConfig(activeEvent.id, key, keyboardMode, targetId, intervalMs)
+                  controller.updateObjectEventConfig(activeEvent.id, key, keyboardMode, mouseMode, targetId, intervalMs)
                 }
               }}
               onAddAction={handleAddAction}

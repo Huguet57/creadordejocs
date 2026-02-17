@@ -77,7 +77,10 @@ function createKeyboardScoringProject(mode: "down" | "press"): ProjectV1 {
   }
 }
 
-function createMouseScoringProject(eventType: "MouseMove" | "MouseDown" | "MouseClick"): ProjectV1 {
+function createMouseScoringProject(
+  eventType: "MouseMove" | "Mouse",
+  mouseMode: "down" | "press" | null = null
+): ProjectV1 {
   return {
     version: 1,
     metadata: {
@@ -111,6 +114,7 @@ function createMouseScoringProject(eventType: "MouseMove" | "MouseDown" | "Mouse
             keyboardMode: null,
             targetObjectId: null,
             intervalMs: null,
+            ...(eventType === "Mouse" ? { mouseMode: mouseMode ?? "down" } : {}),
             items: [
               {
                 id: "item-action-score",
@@ -419,8 +423,8 @@ describe("runtime regressions", () => {
     expect(second.runtime.score).toBe(1)
   })
 
-  it("runs MouseDown while any mouse button is held", () => {
-    const project = createMouseScoringProject("MouseDown")
+  it("runs Mouse/down while any mouse button is held", () => {
+    const project = createMouseScoringProject("Mouse", "down")
     const runtime = createInitialRuntimeState(project)
 
     const held = runRuntimeTick(project, "room-main", new Set(), runtime, new Set(), {
@@ -442,8 +446,8 @@ describe("runtime regressions", () => {
     expect(released.runtime.score).toBe(1)
   })
 
-  it("runs MouseClick only on press edge", () => {
-    const project = createMouseScoringProject("MouseClick")
+  it("runs Mouse/press only on press edge", () => {
+    const project = createMouseScoringProject("Mouse", "press")
     const runtime = createInitialRuntimeState(project)
 
     const first = runRuntimeTick(project, "room-main", new Set(), runtime, new Set(), {

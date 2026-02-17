@@ -1,6 +1,7 @@
-import { Activity, Box, Keyboard, Mouse, MousePointer2, MousePointerClick, Play, Plus, Scan, Swords, Timer, X } from "lucide-react"
+import { Activity, Box, Keyboard, Mouse, MousePointer2, Play, Plus, Scan, Swords, Timer, X } from "lucide-react"
 import { Button } from "../../components/ui/button.js"
 import {
+  EVENT_DISPLAY_NAMES,
   type ObjectEventType,
   type ObjectEventEntry
 } from "../editor-state/types.js"
@@ -22,9 +23,8 @@ const EVENT_ICONS: Record<ObjectEventType, React.ElementType> = {
   OnDestroy: X,
   OutsideRoom: Scan,
   Timer: Timer,
-  MouseMove: MousePointer2,
-  MouseDown: Mouse,
-  MouseClick: MousePointerClick
+  Mouse: Mouse,
+  MouseMove: MousePointer2
 }
 
 export function EventListPanel({
@@ -69,7 +69,7 @@ export function EventListPanel({
                   <Icon className={`h-3.5 w-3.5 ${activeEventId === event.id ? "text-blue-500" : "text-slate-400"}`} />
                   <div className="flex flex-col overflow-hidden">
                     <span className={`truncate text-sm ${activeEventId === event.id ? "font-medium text-slate-900" : "text-slate-600"}`}>
-                      {event.type}
+                      {EVENT_DISPLAY_NAMES[event.type] ?? event.type}
                     </span>
                     {event.type === "Collision" && collisionTarget && (
                       <span className="mvp20-event-collision-target-row inline-flex items-center gap-1 text-[10px] text-slate-400">
@@ -89,6 +89,11 @@ export function EventListPanel({
                     {event.type === "Keyboard" && event.key && (
                       <span className="truncate text-[10px] text-slate-400">
                         {event.keyboardMode === "press" ? "KeyPress" : "KeyDown"}: {event.key}
+                      </span>
+                    )}
+                    {event.type === "Mouse" && (
+                      <span className="truncate text-[10px] text-slate-400">
+                        {event.mouseMode === "press" ? "Pressed" : "Held"}
                       </span>
                     )}
                     {event.type === "Timer" && (

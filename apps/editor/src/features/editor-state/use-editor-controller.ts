@@ -70,7 +70,7 @@ import {
   type RuntimeState
 } from "./runtime.js"
 import { intersectsInstances } from "./runtime-types.js"
-import type { EditorSection, ObjectEventKey, ObjectEventType, ObjectKeyboardMode } from "./types.js"
+import type { EditorSection, ObjectEventKey, ObjectEventType, ObjectKeyboardMode, ObjectMouseMode } from "./types.js"
 import { resolveAssetSource } from "../assets/asset-source-resolver.js"
 
 const AUTOSAVE_MS = 4000
@@ -661,12 +661,13 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       type: ObjectEventType,
       key: ObjectEventKey | null = null,
       keyboardMode: ObjectKeyboardMode | null = null,
+      mouseMode: ObjectMouseMode | null = null,
       targetObjectId: string | null = null,
       intervalMs: number | null = null
     ) {
       if (!selectedObject) return
       pushProjectChange(
-        addObjectEvent(project, { objectId: selectedObject.id, type, key, keyboardMode, targetObjectId, intervalMs }),
+        addObjectEvent(project, { objectId: selectedObject.id, type, key, keyboardMode, mouseMode, targetObjectId, intervalMs }),
         `Add ${type} event`
       )
     },
@@ -674,6 +675,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       eventId: string,
       key: ObjectEventKey | null,
       keyboardMode: ObjectKeyboardMode | null,
+      mouseMode: ObjectMouseMode | null,
       targetObjectId: string | null,
       intervalMs: number | null
     ) {
@@ -684,6 +686,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
           eventId,
           key,
           keyboardMode,
+          mouseMode,
           targetObjectId,
           intervalMs
         })

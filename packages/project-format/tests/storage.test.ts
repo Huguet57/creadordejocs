@@ -238,7 +238,7 @@ describe("project format v1", () => {
     expect(loaded.objects[0]?.events[0]?.keyboardMode).toBe("down")
   })
 
-  it("parses mouse event types", () => {
+  it("parses mouse event types and normalizes legacy modes", () => {
     const project = createEmptyProjectV1("Mouse events")
     const source = JSON.stringify({
       ...project,
@@ -283,7 +283,9 @@ describe("project format v1", () => {
 
     const loaded = parseProjectV1(source)
     expect(loaded.objects[0]?.events[0]?.type).toBe("MouseMove")
-    expect(loaded.objects[0]?.events[1]?.type).toBe("MouseDown")
-    expect(loaded.objects[0]?.events[2]?.type).toBe("MouseClick")
+    expect(loaded.objects[0]?.events[1]?.type).toBe("Mouse")
+    expect(loaded.objects[0]?.events[1]?.mouseMode).toBe("down")
+    expect(loaded.objects[0]?.events[2]?.type).toBe("Mouse")
+    expect(loaded.objects[0]?.events[2]?.mouseMode).toBe("press")
   })
 })

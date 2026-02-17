@@ -219,6 +219,7 @@ const ObjectEventSchema = z
       "Step",
       "Collision",
       "Keyboard",
+      "Mouse",
       "OnDestroy",
       "OutsideRoom",
       "Timer",
@@ -228,21 +229,38 @@ const ObjectEventSchema = z
     ]),
     key: z.enum(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"]).nullable().default(null),
     keyboardMode: z.enum(["down", "press"]).nullable().optional(),
+    mouseMode: z.enum(["down", "press"]).nullable().optional(),
     targetObjectId: z.string().nullable().default(null),
     intervalMs: z.number().positive().nullable().default(null),
     items: z.array(ObjectEventItemSchema).optional(),
     actions: z.array(ObjectActionSchema).optional()
   })
-  .transform(({ items, actions, ...eventEntry }) => ({
-    ...eventEntry,
-    items:
-      items ??
-      (actions ?? []).map((actionEntry) => ({
-        id: `item-${actionEntry.id}`,
-        type: "action" as const,
-        action: actionEntry
-      }))
-  }))
+  .transform(({ items, actions, mouseMode, ...eventEntry }) => {
+    const normalizedType =
+      eventEntry.type === "MouseDown" || eventEntry.type === "MouseClick"
+        ? "Mouse"
+        : eventEntry.type
+    const normalizedMouseMode =
+      eventEntry.type === "MouseDown"
+        ? "down"
+        : eventEntry.type === "MouseClick"
+          ? "press"
+          : eventEntry.type === "Mouse"
+            ? (mouseMode ?? "down")
+            : null
+    return {
+      ...eventEntry,
+      type: normalizedType,
+      ...(normalizedType === "Mouse" ? { mouseMode: normalizedMouseMode ?? "down" } : {}),
+      items:
+        items ??
+        (actions ?? []).map((actionEntry) => ({
+          id: `item-${actionEntry.id}`,
+          type: "action" as const,
+          action: actionEntry
+        }))
+    }
+  })
 
 const ObjectSchema = z.object({
   id: z.string().min(1),

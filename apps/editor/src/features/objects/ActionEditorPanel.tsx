@@ -8,13 +8,15 @@ import { useEffect, useRef, useState } from "react"
 import { Button } from "../../components/ui/button.js"
 import { Label } from "../../components/ui/label.js"
 import {
+  EVENT_DISPLAY_NAMES,
   OBJECT_EVENT_KEYS,
   type IfCondition,
   type ObjectActionDraft,
   type ObjectActionType,
   type ObjectEventEntry,
   type ObjectEventKey,
-  type ObjectKeyboardMode
+  type ObjectKeyboardMode,
+  type ObjectMouseMode
 } from "../editor-state/types.js"
 import { ActionBlock } from "./ActionBlock.js"
 import { IfBlock } from "./IfBlock.js"
@@ -36,6 +38,7 @@ type ActionEditorPanelProps = {
   onUpdateEventConfig: (
     key: ObjectEventKey | null,
     keyboardMode: ObjectKeyboardMode | null,
+    mouseMode: ObjectMouseMode | null,
     targetId: string | null,
     intervalMs: number | null
   ) => void
@@ -104,6 +107,8 @@ export function ActionEditorPanel({
   const collisionTargetSelection = activeEvent?.type === "Collision" && activeEvent.targetObjectId
     ? selectableTargetObjects.find((obj) => obj.id === activeEvent.targetObjectId) ?? null
     : null
+  const isMouseButtonEvent = activeEvent?.type === "Mouse"
+  const mouseModeValue: ObjectMouseMode = activeEvent?.mouseMode ?? "down"
 
   useEffect(() => {
     if (!backgroundContextMenu) {
@@ -191,7 +196,7 @@ export function ActionEditorPanel({
     <div className="mvp3-action-editor-panel flex flex-1 flex-col bg-white">
       <div className="flex h-12 items-center justify-between border-b border-slate-200 px-4">
         <h3 className="text-sm text-slate-800">
-          When <span className="font-semibold text-slate-900">{activeEvent.type}</span>
+          When <span className="font-semibold text-slate-900">{EVENT_DISPLAY_NAMES[activeEvent.type] ?? activeEvent.type}</span>
         </h3>
 
         {activeEvent.type === "Keyboard" && (
@@ -204,6 +209,7 @@ export function ActionEditorPanel({
                 onUpdateEventConfig(
                   activeEvent.key ?? "ArrowLeft",
                   e.target.value as ObjectKeyboardMode,
+                  activeEvent.mouseMode ?? null,
                   activeEvent.targetObjectId,
                   activeEvent.intervalMs
                 )
@@ -220,6 +226,7 @@ export function ActionEditorPanel({
                 onUpdateEventConfig(
                   e.target.value as ObjectEventKey,
                   activeEvent.keyboardMode ?? "down",
+                  activeEvent.mouseMode ?? null,
                   activeEvent.targetObjectId,
                   activeEvent.intervalMs
                 )
@@ -228,6 +235,28 @@ export function ActionEditorPanel({
               {OBJECT_EVENT_KEYS.map((key) => (
                 <option key={key} value={key}>{key}</option>
               ))}
+            </select>
+          </div>
+        )}
+
+        {isMouseButtonEvent && (
+          <div className="mvp25-mouse-event-config flex items-center gap-2">
+            <Label className="text-xs text-slate-400">Mode</Label>
+            <select
+              className="h-7 rounded border border-slate-200 bg-slate-50 px-2 text-xs text-slate-700 focus:border-slate-400 focus:outline-none"
+              value={mouseModeValue}
+              onChange={(event) =>
+                onUpdateEventConfig(
+                  activeEvent.key,
+                  activeEvent.keyboardMode ?? null,
+                  event.target.value as ObjectMouseMode,
+                  activeEvent.targetObjectId,
+                  activeEvent.intervalMs
+                )
+              }
+            >
+              <option value="down">Held</option>
+              <option value="press">Pressed</option>
             </select>
           </div>
         )}
@@ -265,6 +294,7 @@ export function ActionEditorPanel({
                       onUpdateEventConfig(
                         activeEvent.key,
                         activeEvent.keyboardMode ?? null,
+                        activeEvent.mouseMode ?? null,
                         null,
                         activeEvent.intervalMs
                       )
@@ -286,6 +316,7 @@ export function ActionEditorPanel({
                         onUpdateEventConfig(
                           activeEvent.key,
                           activeEvent.keyboardMode ?? null,
+                          activeEvent.mouseMode ?? null,
                           targetObject.id,
                           activeEvent.intervalMs
                         )
@@ -326,6 +357,7 @@ export function ActionEditorPanel({
                 onUpdateEventConfig(
                   activeEvent.key,
                   activeEvent.keyboardMode ?? null,
+                  activeEvent.mouseMode ?? null,
                   activeEvent.targetObjectId,
                   Math.max(1, Number(e.target.value) || 1)
                 )
