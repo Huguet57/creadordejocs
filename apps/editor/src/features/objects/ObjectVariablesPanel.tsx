@@ -147,14 +147,14 @@ function ListValueEditor({
   compact?: boolean
 }) {
   const inputClass = compact
-    ? "mvpv2-list-item-input h-6 min-w-0 flex-1 rounded border border-slate-200 bg-slate-50 px-1.5 text-[11px] text-slate-700 transition-colors focus:border-slate-400 focus:bg-white focus:outline-none"
-    : "mvpv2-list-item-input h-7 min-w-0 flex-1 rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400"
+    ? "mvpv2-list-item-input h-6 min-w-0 flex-1 rounded border border-slate-200 bg-slate-50 px-1 text-[11px] text-slate-700 transition-colors focus:border-slate-400 focus:bg-white focus:outline-none"
+    : "mvpv2-list-item-input h-7 min-w-0 flex-1 rounded border border-slate-300 bg-white px-1.5 text-xs text-slate-900 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400"
 
   return (
     <div className="mvpv2-list-editor flex w-full flex-col gap-1">
       {value.map((item, index) => (
-        <div key={index} className="mvpv2-list-item-row flex items-center gap-1">
-          <span className="mvpv2-list-item-idx w-4 shrink-0 text-right text-[10px] text-slate-400">{index}</span>
+        <div key={index} className="mvpv2-list-item-row flex items-center gap-0.5">
+          <span className="mvpv2-list-item-idx w-3 shrink-0 text-right text-[9px] text-slate-400">{index}</span>
           {itemType === "boolean" ? (
             <select
               className={inputClass}
@@ -216,8 +216,8 @@ function MapValueEditor({
   const entries = Object.entries(value)
 
   const inputClass = compact
-    ? "mvpv2-map-entry-input h-6 min-w-0 flex-1 rounded border border-slate-200 bg-slate-50 px-1.5 text-[11px] text-slate-700 transition-colors focus:border-slate-400 focus:bg-white focus:outline-none"
-    : "mvpv2-map-entry-input h-7 min-w-0 flex-1 rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400"
+    ? "mvpv2-map-entry-input h-6 min-w-0 flex-1 rounded border border-slate-200 bg-slate-50 px-1 text-[11px] text-slate-700 transition-colors focus:border-slate-400 focus:bg-white focus:outline-none"
+    : "mvpv2-map-entry-input h-7 min-w-0 flex-1 rounded border border-slate-300 bg-white px-1.5 text-xs text-slate-900 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400"
 
   const handleKeyChange = (oldKey: string, newKey: string) => {
     const next: Record<string, PrimitiveValue> = {}
@@ -248,18 +248,18 @@ function MapValueEditor({
   }
 
   return (
-    <div className="mvpv2-map-editor flex w-full flex-col gap-1">
+    <div className="mvpv2-map-editor flex w-full min-w-0 flex-col gap-1">
       {entries.map(([key, val]) => (
-        <div key={key} className="mvpv2-map-entry-row flex items-center gap-1">
+        <div key={key} className="mvpv2-map-entry-row flex min-w-0 items-center gap-0.5">
           <input
-            className={`${inputClass} font-medium`}
+            className={`${inputClass} w-0 font-medium`}
             value={key}
             onChange={(event) => handleKeyChange(key, event.target.value)}
             placeholder="key"
           />
           {itemType === "boolean" ? (
             <select
-              className={inputClass}
+              className={`${inputClass} w-0`}
               value={String(val)}
               onChange={(event) => handleValueChange(key, event.target.value === "true")}
             >
@@ -268,7 +268,7 @@ function MapValueEditor({
             </select>
           ) : (
             <input
-              className={inputClass}
+              className={`${inputClass} w-0`}
               type={itemType === "number" ? "number" : "text"}
               value={String(val)}
               onChange={(event) => handleValueChange(key, coerceItemValue(event.target.value, itemType))}
