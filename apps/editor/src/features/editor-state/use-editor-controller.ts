@@ -1044,6 +1044,23 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       pushProjectChange(next, `Delete object: ${selectedObject.name}`)
       setActiveObjectId(null)
     },
+    deleteObjectById(objectId: string) {
+      const target = project.objects.find((entry) => entry.id === objectId)
+      if (!target) return false
+      const next: ProjectV1 = {
+        ...project,
+        objects: project.objects.filter((entry) => entry.id !== objectId),
+        rooms: project.rooms.map((room) => ({
+          ...room,
+          instances: room.instances.filter((instance) => instance.objectId !== objectId)
+        }))
+      }
+      pushProjectChange(next, `Delete object: ${target.name}`)
+      if (activeObjectId === objectId) {
+        setActiveObjectId(null)
+      }
+      return true
+    },
     saveNow() {
       persistProject(project, "Manual save")
     },

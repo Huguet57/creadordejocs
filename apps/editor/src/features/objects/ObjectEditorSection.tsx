@@ -106,18 +106,19 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
     }
   }
 
-  const handleDeleteObject = () => {
-    if (!controller.selectedObject) return
-    const deletedId = controller.selectedObject.id
-    const currentIndex = openTabIds.indexOf(deletedId)
-    const remainingTabs = openTabIds.filter((id) => id !== deletedId)
+  const handleDeleteObjectById = (objectId: string) => {
+    const targetObject = projectObjects.find((o) => o.id === objectId)
+    if (!targetObject) return
+    const confirmed = window.confirm(`Vols eliminar l'objecte "${targetObject.name}"?`)
+    if (!confirmed) return
 
-    // deleteSelectedObject calls setActiveObjectId(null) internally
-    controller.deleteSelectedObject()
+    const currentIndex = openTabIds.indexOf(objectId)
+    const remainingTabs = openTabIds.filter((id) => id !== objectId)
 
-    // Remove from tabs and switch to next available tab
+    controller.deleteObjectById(objectId)
+
     setOpenTabIds(remainingTabs)
-    if (remainingTabs.length > 0) {
+    if (controller.activeObjectId === objectId && remainingTabs.length > 0) {
       const nextTabId = remainingTabs[Math.min(currentIndex, remainingTabs.length - 1)] ?? null
       controller.setActiveObjectId(nextTabId)
     }
@@ -251,12 +252,12 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
     <div className="mvp15-object-editor-container flex h-[600px] w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
       <ObjectListPanel
         objects={projectObjects}
-        activeObjectId={controller.activeObjectId}
         openTabIds={openTabIds}
         spriteSources={resolvedSpriteSources}
         onSelectObject={handleSelectObject}
+        onOpenInNewTab={(id) => setOpenTabIds((prev) => (prev.includes(id) ? prev : [...prev, id]))}
         onAddObject={(name) => controller.addObject(name)}
-        onDeleteActiveObject={handleDeleteObject}
+        onDeleteObject={handleDeleteObjectById}
       />
 
       <div className="objtabs-editor-area flex min-w-0 flex-1 flex-col border-l border-slate-200">
