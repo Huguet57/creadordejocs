@@ -187,7 +187,7 @@ function ListValueEditor({
   return (
     <div className="mvpv2-list-editor flex w-full flex-col gap-1">
       {value.map((item, index) => (
-        <div key={index} className="mvpv2-list-item-row flex items-center gap-0.5">
+        <div key={index} className="mvpv2-list-item-row flex items-center gap-1.5">
           <span className="mvpv2-list-item-idx w-3 shrink-0 text-right text-[9px] text-slate-400">{index}</span>
           {itemType === "boolean" ? (
             <select
