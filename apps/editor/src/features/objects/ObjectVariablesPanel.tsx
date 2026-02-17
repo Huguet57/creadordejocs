@@ -33,13 +33,7 @@ type ObjectVariablesPanelProps = {
   onSpriteClick: () => void
 }
 
-const TYPE_STYLES: Record<VariableType, { badge: string; border: string }> = {
-  number: { badge: "bg-blue-100 text-blue-700", border: "border-l-blue-400" },
-  string: { badge: "bg-emerald-100 text-emerald-700", border: "border-l-emerald-400" },
-  boolean: { badge: "bg-amber-100 text-amber-700", border: "border-l-amber-400" },
-  list: { badge: "bg-violet-100 text-violet-700", border: "border-l-violet-400" },
-  map: { badge: "bg-rose-100 text-rose-700", border: "border-l-rose-400" }
-}
+const TYPE_BADGE_CLASS = "bg-slate-100 text-slate-500"
 
 function typeBadgeLabel(type: VariableType, itemType?: VariableItemType): string {
   if ((type === "list" || type === "map") && itemType) {
@@ -549,14 +543,12 @@ export function ObjectVariablesPanel({
                 <span className="text-[10px] text-slate-400">Click to add one</span>
               </button>
             )}
-            {variables.map((definition) => {
-              const typeStyle = TYPE_STYLES[definition.type]
-              return (
+            {variables.map((definition) => (
                 <div
                   key={definition.id}
-                  className={`mvpv2-vars-row group rounded-md border border-slate-200 border-l-2 ${typeStyle.border} bg-white transition-shadow hover:shadow-sm`}
+                  className="mvpv2-vars-row group rounded border border-slate-200 bg-white"
                 >
-                  <div className="flex items-center gap-1 px-2.5 pt-2 pb-1">
+                  <div className="flex items-center gap-1 px-2 pt-1.5 pb-1">
                     <input
                       className="mvpv2-vars-name-input h-6 min-w-0 flex-1 truncate rounded border border-transparent bg-transparent px-1 text-xs font-medium text-slate-800 transition-colors hover:border-slate-300 focus:border-slate-400 focus:bg-white focus:outline-none"
                       value={definition.name}
@@ -570,7 +562,7 @@ export function ObjectVariablesPanel({
                       }
                     />
                     <span
-                      className={`mvpv2-vars-type-badge shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium leading-none ${typeStyle.badge}`}
+                      className={`mvpv2-vars-type-badge shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium leading-none ${TYPE_BADGE_CLASS}`}
                     >
                       {typeBadgeLabel(definition.type, definition.itemType)}
                     </span>
@@ -584,7 +576,7 @@ export function ObjectVariablesPanel({
                     </button>
                   </div>
 
-                  <div className="flex items-start gap-1.5 px-2.5 pb-2">
+                  <div className="flex items-start gap-1.5 px-2 pb-1.5">
                     <span className="mvpv2-vars-equals mt-1 text-[10px] font-medium text-slate-400">=</span>
                     {definition.type === "boolean" ? (
                       <select
@@ -628,8 +620,7 @@ export function ObjectVariablesPanel({
                     )}
                   </div>
                 </div>
-              )
-            })}
+            ))}
           </div>
         </div>
       )}
