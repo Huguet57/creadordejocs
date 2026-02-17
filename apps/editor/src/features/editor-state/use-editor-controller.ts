@@ -46,6 +46,7 @@ import {
   type ObjectActionDraft,
   type ObjectEventItem,
   type IfCondition,
+  type VariableItemType,
   type VariableType,
   type VariableValue,
   type ProjectV1
@@ -591,8 +592,8 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       pushProjectChange(result.project, `Create object: ${trimmedName}`)
       setActiveObjectId(result.objectId)
     },
-    addGlobalVariable(name: string, type: VariableType, initialValue: VariableValue) {
-      const result = addGlobalVariableModel(project, { name, type, initialValue })
+    addGlobalVariable(name: string, type: VariableType, initialValue: VariableValue, itemType?: VariableItemType) {
+      const result = addGlobalVariableModel(project, { name, type, initialValue, ...(itemType ? { itemType } : {}) })
       if (!result.variableId) {
         return
       }
@@ -604,8 +605,20 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
     removeGlobalVariable(variableId: string) {
       pushProjectChange(removeGlobalVariableModel(project, { variableId }), "Remove global variable")
     },
-    addObjectVariable(objectId: string, name: string, type: VariableType, initialValue: VariableValue) {
-      const result = addObjectVariableModel(project, { objectId, name, type, initialValue })
+    addObjectVariable(
+      objectId: string,
+      name: string,
+      type: VariableType,
+      initialValue: VariableValue,
+      itemType?: VariableItemType
+    ) {
+      const result = addObjectVariableModel(project, {
+        objectId,
+        name,
+        type,
+        initialValue,
+        ...(itemType ? { itemType } : {})
+      })
       if (!result.variableId) {
         return
       }

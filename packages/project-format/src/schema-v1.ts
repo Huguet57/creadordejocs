@@ -68,10 +68,50 @@ const BooleanVariableDefinitionSchema = z.object({
   initialValue: z.boolean()
 })
 
-const VariableDefinitionSchema = z.discriminatedUnion("type", [
+const CollectionItemTypeSchema = z.enum(["number", "string", "boolean"])
+
+const ListVariableDefinitionSchema = z
+  .object({
+    id: z.string().min(1),
+    name: z.string().min(1),
+    type: z.literal("list"),
+    itemType: CollectionItemTypeSchema,
+    initialValue: z.array(z.union([z.number(), z.string(), z.boolean()]))
+  })
+  .superRefine((value, ctx) => {
+    const hasInvalid = value.initialValue.some((entry) => typeof entry !== value.itemType)
+    if (hasInvalid) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "List initialValue items must match itemType"
+      })
+    }
+  })
+
+const MapVariableDefinitionSchema = z
+  .object({
+    id: z.string().min(1),
+    name: z.string().min(1),
+    type: z.literal("map"),
+    itemType: CollectionItemTypeSchema,
+    initialValue: z.record(z.union([z.number(), z.string(), z.boolean()]))
+  })
+  .superRefine((value, ctx) => {
+    const hasInvalid = Object.values(value.initialValue).some((entry) => typeof entry !== value.itemType)
+    if (hasInvalid) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Map initialValue values must match itemType"
+      })
+    }
+  })
+
+const VariableDefinitionSchema = z.union([
   NumberVariableDefinitionSchema,
   StringVariableDefinitionSchema,
-  BooleanVariableDefinitionSchema
+  BooleanVariableDefinitionSchema,
+  ListVariableDefinitionSchema,
+  MapVariableDefinitionSchema
 ])
 
 const VariableValueSchema = z.union([z.number(), z.string(), z.boolean()])
@@ -105,6 +145,10 @@ const ValueSourceSchema = z.discriminatedUnion("source", [
   z.object({
     source: z.literal("globalVariable"),
     variableId: z.string().min(1)
+  }),
+  z.object({
+    source: z.literal("iterationVariable"),
+    variableName: z.string().min(1)
   })
 ])
 
@@ -137,6 +181,10 @@ const IfConditionLeftSchema = z.union([
   z.object({
     source: z.literal("globalVariable"),
     variableId: z.string().min(1)
+  }),
+  z.object({
+    source: z.literal("iterationVariable"),
+    variableName: z.string().min(1)
   })
 ])
 

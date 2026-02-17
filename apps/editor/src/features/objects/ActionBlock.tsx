@@ -3,12 +3,19 @@ import {
   X,
   GripVertical
 } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useState, type ComponentProps } from "react"
 import { Button } from "../../components/ui/button.js"
-import { ACTION_REGISTRY, type ObjectActionDraft, type ProjectV1, type ValueExpression, type VariableValue } from "@creadordejocs/project-format"
+import {
+  ACTION_REGISTRY,
+  createEditorDefaultAction,
+  generateUUID,
+  type ObjectActionDraft,
+  type ProjectV1,
+  type ValueExpression
+} from "@creadordejocs/project-format"
 import { VariablePicker } from "./VariablePicker.js"
-import { RightValuePicker } from "./RightValuePicker.js"
-import type { ObjectEventType } from "../editor-state/types.js"
+import { RightValuePicker as BaseRightValuePicker } from "./RightValuePicker.js"
+import type { ObjectActionType, ObjectEventType } from "../editor-state/types.js"
 import { ACTION_ICON_MAP } from "./action-icon-map.js"
 
 type ActionBlockProps = {
@@ -38,6 +45,7 @@ type ActionBlockProps = {
   onDragOverAction?: (actionId: string, position: "top" | "bottom") => void
   onDropOnAction?: (actionId: string, position: "top" | "bottom") => void
   onDragEndAction?: () => void
+  iterationVariables?: { name: string; type: "number" | "string" | "boolean" }[]
 }
 
 type ActionContextMenuState = {
@@ -47,7 +55,7 @@ type ActionContextMenuState = {
 
 // Operator labels used in the UI are inlined in the select options
 
-function asLiteralValue(value: VariableValue): ValueExpression {
+function asLiteralValue(value: string | number | boolean): ValueExpression {
   return { source: "literal", value }
 }
 
@@ -65,6 +73,12 @@ function canBeNumericExpression(value: ValueExpression): boolean {
     return true
   }
   return true
+}
+
+function isFlowAction(
+  action: ObjectActionDraft & { id: string }
+): action is Extract<ObjectActionDraft & { id: string }, { type: "repeat" | "forEachList" | "forEachMap" }> {
+  return action.type === "repeat" || action.type === "forEachList" || action.type === "forEachMap"
 }
 
 export function ActionBlock({
@@ -88,7 +102,8 @@ export function ActionBlock({
   onDragStartAction,
   onDragOverAction,
   onDropOnAction,
-  onDragEndAction
+  onDragEndAction,
+  iterationVariables = []
 }: ActionBlockProps) {
   const Icon = ACTION_ICON_MAP[action.type] ?? Move
   const actionLabel = ACTION_REGISTRY.find((entry) => entry.type === action.type)?.ui.shortLabel ?? action.type
@@ -100,11 +115,15 @@ export function ActionBlock({
       label: `${objectEntry.name}.${definition.name}`,
       type: definition.type
     }))
+  ).filter((definition) => definition.type === "number" || definition.type === "string" || definition.type === "boolean")
+  const scalarGlobalVariables = globalVariables.filter(
+    (definition): definition is Extract<typeof globalVariables[number], { type: "number" | "string" | "boolean" }> =>
+      definition.type === "number" || definition.type === "string" || definition.type === "boolean"
   )
 
   const selectedGlobalForCopy =
     action.type === "copyVariable"
-      ? globalVariables.find((definition) => definition.id === action.globalVariableId)
+      ? scalarGlobalVariables.find((definition) => definition.id === action.globalVariableId)
       : null
   const compatibleObjectOptionsForCopy = selectedGlobalForCopy
     ? objectVariableOptions.filter((option) => option.type === selectedGlobalForCopy.type)
@@ -114,11 +133,15 @@ export function ActionBlock({
     label: definition.name,
     type: definition.type,
     objectName: ""
-  }))
+  })).filter((definition) => definition.type === "number" || definition.type === "string" || definition.type === "boolean")
+  const scalarSelectedObjectVariables = selectedObjectVariables.filter(
+    (definition): definition is Extract<typeof selectedObjectVariables[number], { type: "number" | "string" | "boolean" }> =>
+      definition.type === "number" || definition.type === "string" || definition.type === "boolean"
+  )
   const allowOtherTarget = eventType === "Collision"
   const selectedGlobalVariableForChange =
     action.type === "changeVariable" && action.scope === "global"
-      ? globalVariables.find((definition) => definition.id === action.variableId)
+      ? scalarGlobalVariables.find((definition) => definition.id === action.variableId)
       : null
   const selectedObjectVariableForChange =
     action.type === "changeVariable" && action.scope === "object"
@@ -126,7 +149,80 @@ export function ActionBlock({
       : null
   const changeVariableExpectedType =
     selectedGlobalVariableForChange?.type ?? selectedObjectVariableForChange?.type ?? "number"
+  const normalizedChangeVariableExpectedType: "number" | "string" | "boolean" =
+    changeVariableExpectedType === "number" || changeVariableExpectedType === "string" || changeVariableExpectedType === "boolean"
+      ? changeVariableExpectedType
+      : "number"
+  const listGlobalOptions = globalVariables.filter(
+    (definition): definition is Extract<typeof globalVariables[number], { type: "list" }> => definition.type === "list"
+  )
+  const mapGlobalOptions = globalVariables.filter(
+    (definition): definition is Extract<typeof globalVariables[number], { type: "map" }> => definition.type === "map"
+  )
+  const listObjectOptions = selectedObjectVariables.filter(
+    (definition): definition is Extract<typeof selectedObjectVariables[number], { type: "list" }> => definition.type === "list"
+  )
+  const mapObjectOptions = selectedObjectVariables.filter(
+    (definition): definition is Extract<typeof selectedObjectVariables[number], { type: "map" }> => definition.type === "map"
+  )
+  const flowIterationVariables = (() => {
+    if (!isFlowAction(action)) {
+      return iterationVariables
+    }
+    if (action.type === "repeat") {
+      return [...iterationVariables, { name: "index", type: "number" as const }]
+    }
+    if (action.type === "forEachList") {
+      const itemType =
+        action.scope === "global"
+          ? (listGlobalOptions.find((entry) => entry.id === action.variableId)?.itemType ?? "number")
+          : (listObjectOptions.find((entry) => entry.id === action.variableId)?.itemType ?? "number")
+      return [
+        ...iterationVariables,
+        { name: action.itemLocalVarName, type: itemType },
+        ...(action.indexLocalVarName ? [{ name: action.indexLocalVarName, type: "number" as const }] : [])
+      ]
+    }
+    const valueType =
+      action.scope === "global"
+        ? (mapGlobalOptions.find((entry) => entry.id === action.variableId)?.itemType ?? "number")
+        : (mapObjectOptions.find((entry) => entry.id === action.variableId)?.itemType ?? "number")
+    return [
+      ...iterationVariables,
+      { name: action.keyLocalVarName, type: "string" as const },
+      { name: action.valueLocalVarName, type: valueType }
+    ]
+  })()
   const [contextMenu, setContextMenu] = useState<ActionContextMenuState>(null)
+  const [newNestedActionType, setNewNestedActionType] = useState<ObjectActionType>("changeScore")
+  const RightValuePicker = (
+    props: Omit<ComponentProps<typeof BaseRightValuePicker>, "iterationVariables">
+  ) => <BaseRightValuePicker {...props} iterationVariables={iterationVariables} />
+  const nestedFlowActions = isFlowAction(action)
+    ? action.actions.filter(
+        (entry): entry is ObjectActionDraft & { id: string } =>
+          typeof entry === "object" && entry !== null && "id" in entry && "type" in entry
+      )
+    : []
+  const addNestedFlowAction = () => {
+    if (!isFlowAction(action)) {
+      return
+    }
+    const nextDraft = createEditorDefaultAction(newNestedActionType, {
+      selectableTargetObjectIds: selectableObjects.map((entry) => entry.id),
+      globalVariables,
+      objectVariables: selectedObjectVariables,
+      roomIds: rooms.map((entry) => entry.id),
+      soundIds: []
+    })
+    if (!nextDraft) {
+      return
+    }
+    onUpdate({
+      ...action,
+      actions: [...nestedFlowActions, { id: `action-${generateUUID()}`, ...(nextDraft as ObjectActionDraft) }]
+    })
+  }
 
   useEffect(() => {
     if (!contextMenu) {
@@ -139,7 +235,7 @@ export function ActionBlock({
 
   return (
     <div
-      className={`action-block-container group relative flex items-center gap-3 py-2 px-3 bg-slate-50 hover:bg-slate-100/60 transition-colors ${
+      className={`action-block-container group relative flex flex-wrap items-center gap-3 py-2 px-3 bg-slate-50 hover:bg-slate-100/60 transition-colors ${
         isDragging ? "mvp18-action-block-dragging opacity-45" : ""
       }`}
       onContextMenu={(event) => {
@@ -511,6 +607,114 @@ export function ActionBlock({
           </div>
         )}
 
+        {action.type === "repeat" && (
+          <div className="mvp31-flow-repeat-field flex items-center gap-1">
+            <label className="text-[10px] font-medium opacity-60">count</label>
+            <RightValuePicker
+              value={action.count}
+              expectedType="number"
+              globalVariables={globalVariables}
+              internalVariables={internalVariableOptions}
+              allowOtherTarget={allowOtherTarget}
+              onChange={(nextValue) => onUpdate({ ...action, count: nextValue as typeof action.count })}
+            />
+          </div>
+        )}
+
+        {action.type === "forEachList" && (
+          <>
+            <select
+              className="mvp31-flow-scope h-7 rounded border border-slate-300 bg-white/50 px-2 text-xs"
+              value={action.scope}
+              onChange={(event) => {
+                const nextScope = event.target.value as "global" | "object"
+                const nextVariableId =
+                  nextScope === "global" ? (listGlobalOptions[0]?.id ?? "") : (listObjectOptions[0]?.id ?? "")
+                onUpdate({
+                  ...action,
+                  scope: nextScope,
+                  variableId: nextVariableId,
+                  target: nextScope === "object" ? (action.target ?? "self") : undefined,
+                  targetInstanceId: nextScope === "object" ? (action.targetInstanceId ?? null) : undefined
+                })
+              }}
+            >
+              <option value="global">global</option>
+              <option value="object">object</option>
+            </select>
+            <select
+              className="mvp31-flow-list-var h-7 rounded border border-slate-300 bg-white/50 px-2 text-xs"
+              value={action.variableId}
+              onChange={(event) => onUpdate({ ...action, variableId: event.target.value })}
+            >
+              {(action.scope === "global" ? listGlobalOptions : listObjectOptions).map((entry) => (
+                <option key={entry.id} value={entry.id}>
+                  {entry.name}
+                </option>
+              ))}
+            </select>
+            <input
+              className="mvp31-flow-local-name h-7 w-20 rounded border border-slate-300 bg-white/50 px-2 text-xs"
+              value={action.itemLocalVarName}
+              onChange={(event) => onUpdate({ ...action, itemLocalVarName: event.target.value })}
+              placeholder="item"
+            />
+            <input
+              className="mvp31-flow-local-index h-7 w-20 rounded border border-slate-300 bg-white/50 px-2 text-xs"
+              value={action.indexLocalVarName ?? ""}
+              onChange={(event) => onUpdate({ ...action, indexLocalVarName: event.target.value || undefined })}
+              placeholder="index"
+            />
+          </>
+        )}
+
+        {action.type === "forEachMap" && (
+          <>
+            <select
+              className="mvp31-flow-scope h-7 rounded border border-slate-300 bg-white/50 px-2 text-xs"
+              value={action.scope}
+              onChange={(event) => {
+                const nextScope = event.target.value as "global" | "object"
+                const nextVariableId =
+                  nextScope === "global" ? (mapGlobalOptions[0]?.id ?? "") : (mapObjectOptions[0]?.id ?? "")
+                onUpdate({
+                  ...action,
+                  scope: nextScope,
+                  variableId: nextVariableId,
+                  target: nextScope === "object" ? (action.target ?? "self") : undefined,
+                  targetInstanceId: nextScope === "object" ? (action.targetInstanceId ?? null) : undefined
+                })
+              }}
+            >
+              <option value="global">global</option>
+              <option value="object">object</option>
+            </select>
+            <select
+              className="mvp31-flow-map-var h-7 rounded border border-slate-300 bg-white/50 px-2 text-xs"
+              value={action.variableId}
+              onChange={(event) => onUpdate({ ...action, variableId: event.target.value })}
+            >
+              {(action.scope === "global" ? mapGlobalOptions : mapObjectOptions).map((entry) => (
+                <option key={entry.id} value={entry.id}>
+                  {entry.name}
+                </option>
+              ))}
+            </select>
+            <input
+              className="mvp31-flow-local-key h-7 w-20 rounded border border-slate-300 bg-white/50 px-2 text-xs"
+              value={action.keyLocalVarName}
+              onChange={(event) => onUpdate({ ...action, keyLocalVarName: event.target.value })}
+              placeholder="key"
+            />
+            <input
+              className="mvp31-flow-local-value h-7 w-20 rounded border border-slate-300 bg-white/50 px-2 text-xs"
+              value={action.valueLocalVarName}
+              onChange={(event) => onUpdate({ ...action, valueLocalVarName: event.target.value })}
+              placeholder="value"
+            />
+          </>
+        )}
+
         {action.type === "changeVariable" && (
           <>
             <VariablePicker
@@ -532,7 +736,7 @@ export function ActionBlock({
               {...(action.operator !== "set" ? { filter: (v: { type: string }) => v.type === "number" } : {})}
               onChange={(nextScope, nextVariableId) => {
                 if (nextScope === "global") {
-                  const selected = globalVariables.find((d) => d.id === nextVariableId)
+                  const selected = scalarGlobalVariables.find((d) => d.id === nextVariableId)
                   if (!selected) return
                   onUpdate({
                     scope: "global",
@@ -543,7 +747,9 @@ export function ActionBlock({
                   })
                 } else {
                   const selected = objectVariableOptions.find((o) => o.id === nextVariableId)
-                  const selectedObjectDefinition = selectedObjectVariables.find((definition) => definition.id === nextVariableId)
+                  const selectedObjectDefinition = scalarSelectedObjectVariables.find(
+                    (definition) => definition.id === nextVariableId
+                  )
                   if (!selected) return
                   onUpdate({
                     ...action,
@@ -578,7 +784,7 @@ export function ActionBlock({
             </select>
             <RightValuePicker
               value={action.value}
-              expectedType={action.operator === "set" ? changeVariableExpectedType : "number"}
+              expectedType={action.operator === "set" ? normalizedChangeVariableExpectedType : "number"}
               globalVariables={globalVariables}
               internalVariables={internalVariableOptions}
               allowOtherTarget={allowOtherTarget}
@@ -736,6 +942,66 @@ export function ActionBlock({
           <X className="h-3.5 w-3.5" />
         </Button>
       </div>
+      {isFlowAction(action) && (
+        <div className="mvp31-flow-branch basis-full mt-1 ml-9 rounded border border-slate-200 bg-white p-2">
+          <div className="mvp31-flow-branch-list flex flex-col gap-px bg-slate-200">
+            {nestedFlowActions.map((nestedActionEntry, nestedIndex) => (
+              <ActionBlock
+                key={nestedActionEntry.id}
+                action={nestedActionEntry}
+                index={nestedIndex}
+                isFirst={nestedIndex === 0}
+                isLast={nestedIndex === nestedFlowActions.length - 1}
+                onUpdate={(updatedAction) =>
+                  onUpdate({
+                    ...action,
+                    actions: nestedFlowActions.map((entry) =>
+                      entry.id === nestedActionEntry.id ? ({ id: nestedActionEntry.id, ...updatedAction } as typeof entry) : entry
+                    )
+                  })
+                }
+                onMoveUp={() => undefined}
+                onMoveDown={() => undefined}
+                onRemove={() =>
+                  onUpdate({
+                    ...action,
+                    actions: nestedFlowActions.filter((entry) => entry.id !== nestedActionEntry.id)
+                  })
+                }
+                onCopy={() => undefined}
+                onPaste={() => undefined}
+                canPaste={false}
+                selectableObjects={selectableObjects}
+                globalVariables={globalVariables}
+                objectVariablesByObjectId={objectVariablesByObjectId}
+                roomInstances={roomInstances}
+                allObjects={allObjects}
+                rooms={rooms}
+                selectedObjectVariables={selectedObjectVariables}
+                eventType={eventType}
+                collisionTargetName={collisionTargetName}
+                iterationVariables={flowIterationVariables}
+              />
+            ))}
+          </div>
+          <div className="mvp31-flow-branch-footer mt-2 flex items-center gap-2">
+            <select
+              className="h-7 rounded border border-slate-300 bg-white px-2 text-xs"
+              value={newNestedActionType}
+              onChange={(event) => setNewNestedActionType(event.target.value as ObjectActionType)}
+            >
+              {ACTION_REGISTRY.filter((entry) => entry.ui.editorVisible && entry.type !== "playSound").map((entry) => (
+                <option key={`nested-${entry.type}`} value={entry.type}>
+                  {entry.ui.label}
+                </option>
+              ))}
+            </select>
+            <Button size="sm" className="h-7 text-xs" onClick={addNestedFlowAction}>
+              Add nested action
+            </Button>
+          </div>
+        </div>
+      )}
       {contextMenu && (
         <div
           className="mvp17-action-context-menu fixed z-30 min-w-[180px] overflow-hidden rounded-md border border-slate-200 bg-white shadow-xl"

@@ -133,6 +133,14 @@ export function resolveTargetInstanceId(
 }
 
 export function isSameVariableValueType(left: RuntimeVariableValue, right: RuntimeVariableValue): boolean {
+  if (Array.isArray(left) || Array.isArray(right)) {
+    return Array.isArray(left) && Array.isArray(right)
+  }
+  const leftIsObject = typeof left === "object" && left !== null
+  const rightIsObject = typeof right === "object" && right !== null
+  if (leftIsObject || rightIsObject) {
+    return leftIsObject && rightIsObject
+  }
   return typeof left === typeof right
 }
 

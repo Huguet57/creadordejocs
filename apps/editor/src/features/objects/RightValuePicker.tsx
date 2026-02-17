@@ -1,9 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { Globe, Box, ChevronDown, Hash, Dices, Crosshair } from "lucide-react"
-import type { ValueExpression, VariableValue } from "@creadordejocs/project-format"
+import type { ValueExpression } from "@creadordejocs/project-format"
 import type { VariableOption, ObjectVariableOption } from "./VariablePicker.js"
 
 type LegacyVariableReference = { scope: "global" | "object"; variableId: string }
+type ValueSourceExpression = Extract<ValueExpression, { source: string }>
 type ValueSourceTarget = "self" | "other"
 type ValueAttribute = "x" | "y" | "rotation" | "instanceCount"
 
@@ -17,7 +18,7 @@ function isLegacyVariableReference(value: ValueExpression): value is LegacyVaria
 
 function isSourceValue(
   value: ValueExpression
-): value is Exclude<ValueExpression, VariableValue | LegacyVariableReference> {
+): value is ValueSourceExpression {
   return typeof value === "object" && value !== null && "source" in value
 }
 
@@ -26,9 +27,10 @@ type RightValuePickerProps = {
   expectedType: "number" | "string" | "boolean"
   globalVariables: VariableOption[]
   internalVariables: ObjectVariableOption[]
+  iterationVariables?: { name: string; type: "number" | "string" | "boolean" }[]
   filterByExpectedType?: boolean
   allowOtherTarget?: boolean
-  allowedSources?: ("literal" | "random" | "attribute" | "internalVariable" | "globalVariable")[]
+  allowedSources?: ("literal" | "random" | "attribute" | "internalVariable" | "globalVariable" | "iterationVariable")[]
   onChange: (nextValue: ValueExpression) => void
   variant?: "default" | "blue" | undefined
 }
@@ -49,6 +51,7 @@ export function RightValuePicker({
   expectedType,
   globalVariables,
   internalVariables,
+  iterationVariables = [],
   filterByExpectedType = true,
   allowOtherTarget = false,
   allowedSources = ["literal", "random", "attribute", "internalVariable", "globalVariable"],
@@ -169,13 +172,17 @@ export function RightValuePicker({
   const canPickAttributes = allowedSources.includes("attribute")
   const canPickInternal = allowedSources.includes("internalVariable")
   const canPickGlobal = allowedSources.includes("globalVariable")
+  const canPickIteration = allowedSources.includes("iterationVariable")
   const filteredGlobal = canPickGlobal
     ? globalVariables.filter((variable) => !filterByExpectedType || variable.type === expectedType)
     : []
   const filteredInternal = canPickInternal
     ? internalVariables.filter((variable) => !filterByExpectedType || variable.type === expectedType)
     : []
-  const hasVariables = filteredGlobal.length > 0 || filteredInternal.length > 0
+  const filteredIteration = canPickIteration
+    ? iterationVariables.filter((variable) => !filterByExpectedType || variable.type === expectedType)
+    : []
+  const hasVariables = filteredGlobal.length > 0 || filteredInternal.length > 0 || filteredIteration.length > 0
 
   const borderColor = variant === "blue" ? "border-blue-200" : "border-slate-300"
   const hoverBg = variant === "blue" ? "hover:bg-blue-50" : "hover:bg-slate-50"
@@ -204,6 +211,9 @@ export function RightValuePicker({
       const label = internalVariables.find((item) => item.id === value.variableId)?.label ?? "?"
       return `${value.target}.${label}`
     }
+    if (value.source === "iterationVariable") {
+      return `iter.${value.variableName}`
+    }
     return globalVariables.find((item) => item.id === value.variableId)?.name ?? "?"
   })()
 
@@ -220,6 +230,8 @@ export function RightValuePicker({
       ? Crosshair
       : value.source === "globalVariable"
       ? Globe
+      : value.source === "iterationVariable"
+      ? Hash
       : value.source === "internalVariable"
       ? Box
       : Hash
@@ -452,6 +464,31 @@ export function RightValuePicker({
                   <Box className="h-3 w-3 text-slate-400 shrink-0" />
                   <span className="flex-1 truncate">
                     {localTarget}.{variable.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {canPickIteration && filteredIteration.length > 0 && (
+            <div className="right-value-picker-iteration-section">
+              <div className="right-value-picker-section-header px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-50 border-b border-slate-100 border-t">
+                Iteration variables
+              </div>
+              {filteredIteration.map((variable) => (
+                <button
+                  key={`iter-${variable.name}`}
+                  type="button"
+                  className="right-value-picker-iteration-row flex items-center gap-2 w-full px-3 py-1.5 text-xs text-left hover:bg-blue-50 transition-colors"
+                  onClick={() => {
+                    onChange({ source: "iterationVariable", variableName: variable.name })
+                    setIsOpen(false)
+                  }}
+                >
+                  <Hash className="h-3 w-3 text-slate-400 shrink-0" />
+                  <span className="flex-1 truncate">{variable.name}</span>
+                  <span className="right-value-picker-type-badge text-[9px] px-1 py-0.5 rounded bg-slate-100 text-slate-400 shrink-0">
+                    {variable.type === "number" ? "num" : variable.type === "boolean" ? "bool" : "str"}
                   </span>
                 </button>
               ))}

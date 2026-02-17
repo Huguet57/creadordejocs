@@ -38,6 +38,9 @@ export const ACTION_ICON_MAP: Record<ActionType, LucideIcon> = {
   copyVariable: ArrowLeftRight,
   goToRoom: DoorOpen,
   restartRoom: RotateCcw,
-  wait: Hourglass
+  wait: Hourglass,
+  repeat: RotateCcw,
+  forEachList: ArrowLeftRight,
+  forEachMap: ArrowLeftRight
 }
 

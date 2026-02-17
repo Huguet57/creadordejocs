@@ -30,16 +30,24 @@ export type ActionContext = {
   startPosition: { x: number; y: number } | null
   collisionOtherInstanceId: string | null
   roomInstances: ProjectV1["rooms"][number]["instances"]
+  iterationLocals: Record<string, RuntimeVariableValue>
+  executeNestedActions: (
+    actions: RuntimeAction[],
+    result: RuntimeActionResult,
+    iterationLocals?: Record<string, RuntimeVariableValue>
+  ) => RuntimeActionResult
 }
 
 type RuntimeVariableType = "number" | "string" | "boolean"
 type LegacyVariableReference = { scope: "global" | "object"; variableId: string }
+type ValueSourceExpression = Extract<ValueExpressionOutput, { source: string }>
+const MAX_FLOW_ITERATIONS = 500
 
 function isLegacyVariableReference(value: ValueExpressionOutput): value is LegacyVariableReference {
   return typeof value === "object" && value !== null && "scope" in value && "variableId" in value
 }
 
-function isValueSource(value: ValueExpressionOutput): value is Exclude<ValueExpressionOutput, RuntimeVariableValue | LegacyVariableReference> {
+function isValueSource(value: ValueExpressionOutput): value is ValueSourceExpression {
   return typeof value === "object" && value !== null && "source" in value
 }
 
@@ -83,6 +91,10 @@ function resolveExpressionValue(
 
   if (expression.source === "globalVariable") {
     return result.runtime.globalVariables[expression.variableId]
+  }
+
+  if (expression.source === "iterationVariable") {
+    return ctx.iterationLocals[expression.variableName]
   }
 
   if (expression.source === "internalVariable") {
@@ -149,6 +161,63 @@ function resolveNumberValue(expression: ValueExpressionOutput, result: RuntimeAc
 function resolveStringValue(expression: ValueExpressionOutput, result: RuntimeActionResult, ctx: ActionContext): string | undefined {
   const resolved = resolveValueAsType(expression, "string", result, ctx)
   return typeof resolved === "string" ? resolved : undefined
+}
+
+function isScalarValue(value: unknown): value is number | string | boolean {
+  return typeof value === "number" || typeof value === "string" || typeof value === "boolean"
+}
+
+function isScalarListValue(value: RuntimeVariableValue | undefined): value is (number | string | boolean)[] {
+  return Array.isArray(value) && value.every((entry) => isScalarValue(entry))
+}
+
+function isScalarMapValue(value: RuntimeVariableValue | undefined): value is Record<string, number | string | boolean> {
+  return !!value && typeof value === "object" && !Array.isArray(value) && Object.values(value).every((entry) => isScalarValue(entry))
+}
+
+function isRuntimeActionEntry(value: unknown): value is RuntimeAction {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "id" in value &&
+    typeof (value as { id?: unknown }).id === "string" &&
+    "type" in value &&
+    typeof (value as { type?: unknown }).type === "string"
+  )
+}
+
+function resolveFlowVariableValue(
+  action: Extract<RuntimeAction, { type: "forEachList" | "forEachMap" }>,
+  result: RuntimeActionResult,
+  ctx: ActionContext
+): RuntimeVariableValue | undefined {
+  if (action.scope === "global") {
+    return result.runtime.globalVariables[action.variableId]
+  }
+  const targetInstanceId = resolveTargetInstanceId(
+    result.instance,
+    action.target ?? "self",
+    action.targetInstanceId ?? null,
+    ctx.collisionOtherInstanceId
+  )
+  if (!targetInstanceId) {
+    return undefined
+  }
+  return result.runtime.objectInstanceVariables[targetInstanceId]?.[action.variableId]
+}
+
+function mergeIterationActionResult(
+  previousResult: RuntimeActionResult,
+  iterationResult: RuntimeActionResult
+): RuntimeActionResult {
+  return {
+    ...iterationResult,
+    spawned: [...previousResult.spawned, ...iterationResult.spawned],
+    destroyedInstanceIds: [...new Set([...previousResult.destroyedInstanceIds, ...iterationResult.destroyedInstanceIds])],
+    scoreDelta: previousResult.scoreDelta + iterationResult.scoreDelta,
+    gameOverMessage: iterationResult.gameOverMessage ?? previousResult.gameOverMessage,
+    playedSoundIds: [...previousResult.playedSoundIds, ...iterationResult.playedSoundIds]
+  }
 }
 
 function wouldCollideWithSolid(
@@ -799,6 +868,72 @@ function executeActionFallback(
       }
     }
   }
+  if (action.type === "repeat") {
+    const countValue = resolveNumberValue(action.count, result, ctx)
+    if (countValue === undefined) {
+      return { result }
+    }
+    const totalIterations = Math.max(0, Math.min(MAX_FLOW_ITERATIONS, Math.floor(countValue)))
+    let nextResult = result
+    const nestedActions = action.actions.filter(isRuntimeActionEntry)
+    for (let index = 0; index < totalIterations; index += 1) {
+      const iterationResult = ctx.executeNestedActions(nestedActions, nextResult, {
+        ...ctx.iterationLocals,
+        index
+      })
+      nextResult = mergeIterationActionResult(nextResult, iterationResult)
+      if (iterationResult.halted) {
+        return { result: nextResult, halt: true }
+      }
+    }
+    return { result: nextResult }
+  }
+  if (action.type === "forEachList") {
+    const listValue = resolveFlowVariableValue(action, result, ctx)
+    if (!isScalarListValue(listValue)) {
+      return { result }
+    }
+    let nextResult = result
+    const totalIterations = Math.min(listValue.length, MAX_FLOW_ITERATIONS)
+    const nestedActions = action.actions.filter(isRuntimeActionEntry)
+    for (let index = 0; index < totalIterations; index += 1) {
+      const itemValue = listValue[index]
+      if (itemValue === undefined) {
+        continue
+      }
+      const iterationResult = ctx.executeNestedActions(nestedActions, nextResult, {
+        ...ctx.iterationLocals,
+        [action.itemLocalVarName]: itemValue,
+        ...(action.indexLocalVarName ? { [action.indexLocalVarName]: index } : {})
+      })
+      nextResult = mergeIterationActionResult(nextResult, iterationResult)
+      if (iterationResult.halted) {
+        return { result: nextResult, halt: true }
+      }
+    }
+    return { result: nextResult }
+  }
+  if (action.type === "forEachMap") {
+    const mapValue = resolveFlowVariableValue(action, result, ctx)
+    if (!isScalarMapValue(mapValue)) {
+      return { result }
+    }
+    let nextResult = result
+    const nestedActions = action.actions.filter(isRuntimeActionEntry)
+    const entries = Object.entries(mapValue).slice(0, MAX_FLOW_ITERATIONS)
+    for (const [key, value] of entries) {
+      const iterationResult = ctx.executeNestedActions(nestedActions, nextResult, {
+        ...ctx.iterationLocals,
+        [action.keyLocalVarName]: key,
+        [action.valueLocalVarName]: value
+      })
+      nextResult = mergeIterationActionResult(nextResult, iterationResult)
+      if (iterationResult.halted) {
+        return { result: nextResult, halt: true }
+      }
+    }
+    return { result: nextResult }
+  }
   return { result }
 }
 
@@ -831,7 +966,10 @@ export const ACTION_RUNTIME_REGISTRY: ActionRuntimeRegistry = {
   copyVariable: (action, result, ctx) => executeActionFallback(action, result, ctx),
   goToRoom: (action, result, ctx) => executeActionFallback(action, result, ctx),
   restartRoom: (action, result, ctx) => executeActionFallback(action, result, ctx),
-  wait: (action, result, ctx) => executeActionFallback(action, result, ctx)
+  wait: (action, result, ctx) => executeActionFallback(action, result, ctx),
+  repeat: (action, result, ctx) => executeActionFallback(action, result, ctx),
+  forEachList: (action, result, ctx) => executeActionFallback(action, result, ctx),
+  forEachMap: (action, result, ctx) => executeActionFallback(action, result, ctx)
 }
 
 function dispatchAction<K extends RuntimeAction["type"]>(
@@ -840,6 +978,9 @@ function dispatchAction<K extends RuntimeAction["type"]>(
   ctx: ActionContext
 ): { result: RuntimeActionResult; halt?: boolean } {
   const executor = ACTION_RUNTIME_REGISTRY[action.type]
+  if (!executor) {
+    return { result }
+  }
   return executor(action, result, ctx)
 }
 

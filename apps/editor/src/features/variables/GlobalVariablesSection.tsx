@@ -1,6 +1,6 @@
 import { Plus, X } from "lucide-react"
 import { useMemo, useState } from "react"
-import type { VariableType, VariableValue } from "@creadordejocs/project-format"
+import type { VariableItemType, VariableType, VariableValue } from "@creadordejocs/project-format"
 import type { EditorController } from "../editor-state/use-editor-controller.js"
 import { Button } from "../../components/ui/button.js"
 
@@ -8,7 +8,7 @@ type GlobalVariablesSectionProps = {
   controller: EditorController
 }
 
-function parseInitialValue(type: VariableType, rawValue: string): VariableValue {
+function parseInitialValue(type: VariableType, rawValue: string, itemType: VariableItemType = "number"): VariableValue {
   if (type === "number") {
     const parsed = Number(rawValue)
     return Number.isFinite(parsed) ? parsed : 0
@@ -16,19 +16,46 @@ function parseInitialValue(type: VariableType, rawValue: string): VariableValue 
   if (type === "boolean") {
     return rawValue === "true"
   }
+  if (type === "list") {
+    try {
+      const parsed: unknown = JSON.parse(rawValue)
+      if (!Array.isArray(parsed)) return []
+      return parsed.filter((entry): entry is string | number | boolean => typeof entry === itemType)
+    } catch {
+      return []
+    }
+  }
+  if (type === "map") {
+    try {
+      const parsed: unknown = JSON.parse(rawValue)
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {}
+      return Object.fromEntries(
+        Object.entries(parsed as Record<string, unknown>).filter(([, value]) => typeof value === itemType)
+      ) as Record<string, string | number | boolean>
+    } catch {
+      return {}
+    }
+  }
   return rawValue
 }
 
 function formatInputValue(type: VariableType, value: VariableValue): string {
+  if (typeof value === "number" || typeof value === "string") {
+    return String(value)
+  }
   if (type === "boolean") {
     return value ? "true" : "false"
   }
-  return String(value)
+  if (type === "list" || type === "map") {
+    return JSON.stringify(value)
+  }
+  return ""
 }
 
 export function GlobalVariablesSection({ controller }: GlobalVariablesSectionProps) {
   const [newVariableName, setNewVariableName] = useState("")
   const [newVariableType, setNewVariableType] = useState<VariableType>("number")
+  const [newVariableItemType, setNewVariableItemType] = useState<VariableItemType>("number")
   const [newVariableRawValue, setNewVariableRawValue] = useState("0")
 
   const globalVariables = controller.project.variables.global
@@ -71,12 +98,17 @@ export function GlobalVariablesSection({ controller }: GlobalVariablesSectionPro
                 value={definition.type}
                 disabled
               >
-                <option value={definition.type}>{definition.type}</option>
+                <option value={definition.type}>
+                  {definition.type}
+                  {(definition.type === "list" || definition.type === "map") && "itemType" in definition && definition.itemType
+                    ? `<${definition.itemType}>`
+                    : ""}
+                </option>
               </select>
               {definition.type === "boolean" ? (
                 <select
                   className="h-8 rounded-md border border-slate-300 bg-white px-2 text-xs text-slate-900"
-                  value={String(definition.initialValue)}
+                  value={definition.initialValue ? "true" : "false"}
                   onChange={(event) =>
                     controller.updateGlobalVariable(definition.id, definition.name, event.target.value === "true")
                   }
@@ -84,6 +116,22 @@ export function GlobalVariablesSection({ controller }: GlobalVariablesSectionPro
                   <option value="true">true</option>
                   <option value="false">false</option>
                 </select>
+              ) : definition.type === "list" || definition.type === "map" ? (
+                <textarea
+                  className="min-h-14 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-900"
+                  value={formatInputValue(definition.type, definition.initialValue)}
+                  onChange={(event) =>
+                    controller.updateGlobalVariable(
+                      definition.id,
+                      definition.name,
+                      parseInitialValue(
+                        definition.type,
+                        event.target.value,
+                        "itemType" in definition ? (definition.itemType as VariableItemType) : "number"
+                      )
+                    )
+                  }
+                />
               ) : (
                 <input
                   className="h-8 rounded-md border border-slate-300 bg-white px-2 text-xs text-slate-900"
@@ -93,7 +141,11 @@ export function GlobalVariablesSection({ controller }: GlobalVariablesSectionPro
                     controller.updateGlobalVariable(
                       definition.id,
                       definition.name,
-                      parseInitialValue(definition.type, event.target.value)
+                      parseInitialValue(
+                        definition.type,
+                        event.target.value,
+                        "itemType" in definition ? (definition.itemType as VariableItemType) : "number"
+                      )
                     )
                   }
                 />
@@ -126,13 +178,36 @@ export function GlobalVariablesSection({ controller }: GlobalVariablesSectionPro
             onChange={(event) => {
               const nextType = event.target.value as VariableType
               setNewVariableType(nextType)
-              setNewVariableRawValue(nextType === "boolean" ? "false" : nextType === "number" ? "0" : "")
+              setNewVariableRawValue(
+                nextType === "boolean"
+                  ? "false"
+                  : nextType === "number"
+                    ? "0"
+                    : nextType === "list"
+                      ? "[]"
+                      : nextType === "map"
+                        ? "{}"
+                        : ""
+              )
             }}
           >
             <option value="number">number</option>
             <option value="string">string</option>
             <option value="boolean">boolean</option>
+            <option value="list">list</option>
+            <option value="map">map</option>
           </select>
+          {(newVariableType === "list" || newVariableType === "map") && (
+            <select
+              className="h-8 rounded-md border border-slate-300 bg-white px-2 text-xs text-slate-900"
+              value={newVariableItemType}
+              onChange={(event) => setNewVariableItemType(event.target.value as VariableItemType)}
+            >
+              <option value="number">number</option>
+              <option value="string">string</option>
+              <option value="boolean">boolean</option>
+            </select>
+          )}
           {newVariableType === "boolean" ? (
             <select
               className="h-8 rounded-md border border-slate-300 bg-white px-2 text-xs text-slate-900"
@@ -142,6 +217,13 @@ export function GlobalVariablesSection({ controller }: GlobalVariablesSectionPro
               <option value="true">true</option>
               <option value="false">false</option>
             </select>
+          ) : newVariableType === "list" || newVariableType === "map" ? (
+            <textarea
+              className="min-h-14 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-900"
+              value={newVariableRawValue}
+              onChange={(event) => setNewVariableRawValue(event.target.value)}
+              placeholder={newVariableType === "list" ? "Initial JSON list" : "Initial JSON map"}
+            />
           ) : (
             <input
               className="h-8 rounded-md border border-slate-300 bg-white px-2 text-xs text-slate-900"
@@ -157,7 +239,8 @@ export function GlobalVariablesSection({ controller }: GlobalVariablesSectionPro
               controller.addGlobalVariable(
                 newVariableName,
                 newVariableType,
-                parseInitialValue(newVariableType, newVariableRawValue)
+                parseInitialValue(newVariableType, newVariableRawValue, newVariableItemType),
+                newVariableType === "list" || newVariableType === "map" ? newVariableItemType : undefined
               )
             }
             disabled={!newVariableName.trim() || globalNames.has(newVariableName.trim().toLocaleLowerCase())}

@@ -99,9 +99,11 @@ function getLeftValueExpectedType(
   globalVariables: ProjectV1["variables"]["global"],
   selectedObjectVariables: ProjectV1["variables"]["global"]
 ): "number" | "string" | "boolean" {
+  const asScalarType = (type: ProjectV1["variables"]["global"][number]["type"] | undefined): "number" | "string" | "boolean" =>
+    type === "string" || type === "boolean" || type === "number" ? type : "number"
   if (isLegacyConditionLeft(left)) {
     const source = left.scope === "global" ? globalVariables : selectedObjectVariables
-    return source.find((variable) => variable.id === left.variableId)?.type ?? "number"
+    return asScalarType(source.find((variable) => variable.id === left.variableId)?.type)
   }
   if (!isSourceConditionLeft(left)) {
     return "number"
@@ -110,10 +112,10 @@ function getLeftValueExpectedType(
     return "number"
   }
   if (left.source === "globalVariable") {
-    return globalVariables.find((variable) => variable.id === left.variableId)?.type ?? "number"
+    return asScalarType(globalVariables.find((variable) => variable.id === left.variableId)?.type)
   }
   if (left.source === "internalVariable") {
-    return selectedObjectVariables.find((variable) => variable.id === left.variableId)?.type ?? "number"
+    return asScalarType(selectedObjectVariables.find((variable) => variable.id === left.variableId)?.type)
   }
   return "number"
 }
@@ -175,7 +177,17 @@ export function IfBlock({
   onDropOnAction,
   onDragEndAction
 }: IfBlockProps) {
-  const defaultIfCondition = buildDefaultIfCondition(globalVariables, selectedObjectVariables)
+  const scalarGlobalVariables = globalVariables.filter(
+    (variableEntry): variableEntry is Extract<typeof globalVariables[number], { type: "number" | "string" | "boolean" }> =>
+      variableEntry.type === "number" || variableEntry.type === "string" || variableEntry.type === "boolean"
+  )
+  const scalarSelectedObjectVariables = selectedObjectVariables.filter(
+    (
+      variableEntry
+    ): variableEntry is Extract<typeof selectedObjectVariables[number], { type: "number" | "string" | "boolean" }> =>
+      variableEntry.type === "number" || variableEntry.type === "string" || variableEntry.type === "boolean"
+  )
+  const defaultIfCondition = buildDefaultIfCondition(scalarGlobalVariables, scalarSelectedObjectVariables)
   const fallbackComparisonCondition = getFallbackComparisonCondition(defaultIfCondition)
   const isSingleCondition = isComparisonIfCondition(item.condition)
   const compoundCondition = isCompoundIfCondition(item.condition) ? item.condition : null
@@ -196,7 +208,7 @@ export function IfBlock({
     return () => window.removeEventListener("mousedown", closeContextMenu)
   }, [contextMenu])
 
-  const objectVarOptionsForPicker: ObjectVariableOption[] = selectedObjectVariables.map((v) => ({
+  const objectVarOptionsForPicker: ObjectVariableOption[] = scalarSelectedObjectVariables.map((v) => ({
     id: v.id,
     label: v.name,
     type: v.type,

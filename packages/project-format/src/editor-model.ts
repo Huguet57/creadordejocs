@@ -65,6 +65,7 @@ export type IfCondition = Extract<ObjectEventItem, { type: "if" }>["condition"]
 export type VariableDefinition = ProjectV1["variables"]["global"][number]
 export type VariableType = VariableDefinition["type"]
 export type VariableValue = VariableDefinition["initialValue"]
+export type VariableItemType = "number" | "string" | "boolean"
 export type ValueExpression = ValueExpressionOutput
 export type SpriteFolder = NonNullable<ProjectV1["resources"]["spriteFolders"]>[number]
 export type SpriteResource = ProjectV1["resources"]["sprites"][number]
@@ -187,6 +188,7 @@ export type AddGlobalVariableInput = {
   name: string
   type: VariableType
   initialValue: VariableValue
+  itemType?: VariableItemType
 }
 
 export type UpdateGlobalVariableInput = {
@@ -204,6 +206,7 @@ export type AddObjectVariableInput = {
   name: string
   type: VariableType
   initialValue: VariableValue
+  itemType?: VariableItemType
 }
 
 export type UpdateObjectVariableInput = {
@@ -583,6 +586,7 @@ function buildVariableDefinition(input: {
   name: string
   type: VariableType
   initialValue: VariableValue
+  itemType?: VariableItemType
 }): VariableDefinition {
   if (input.type === "number") {
     return {
@@ -600,11 +604,40 @@ function buildVariableDefinition(input: {
       initialValue: typeof input.initialValue === "string" ? input.initialValue : ""
     }
   }
+  if (input.type === "boolean") {
+    return {
+      id: input.id,
+      name: input.name,
+      type: "boolean",
+      initialValue: typeof input.initialValue === "boolean" ? input.initialValue : false
+    }
+  }
+  if (input.type === "list") {
+    const itemType = input.itemType ?? "number"
+    const listValue = Array.isArray(input.initialValue)
+      ? input.initialValue.filter((entry): entry is number | string | boolean => typeof entry === itemType)
+      : []
+    return {
+      id: input.id,
+      name: input.name,
+      type: "list",
+      itemType,
+      initialValue: listValue
+    }
+  }
+  const itemType = input.itemType ?? "number"
+  const mapValue =
+    input.initialValue && typeof input.initialValue === "object" && !Array.isArray(input.initialValue)
+      ? Object.fromEntries(
+          Object.entries(input.initialValue as Record<string, unknown>).filter(([, value]) => typeof value === itemType)
+        ) as Record<string, string | number | boolean>
+      : ({} as Record<string, string | number | boolean>)
   return {
     id: input.id,
     name: input.name,
-    type: "boolean",
-    initialValue: typeof input.initialValue === "boolean" ? input.initialValue : false
+    type: "map",
+    itemType,
+    initialValue: mapValue
   }
 }
 
@@ -1540,7 +1573,8 @@ export function addGlobalVariable(
             id: variableId,
             name: trimmedName,
             type: input.type,
-            initialValue: input.initialValue
+            initialValue: input.initialValue,
+            ...(input.itemType ? { itemType: input.itemType } : {})
           })
         ]
       }
@@ -1563,7 +1597,10 @@ export function updateGlobalVariable(project: ProjectV1, input: UpdateGlobalVari
     id: existing.id,
     name: trimmedName,
     type: existing.type,
-    initialValue: input.initialValue
+    initialValue: input.initialValue,
+    ...(existing.type === "list" || existing.type === "map"
+      ? { itemType: existing.itemType as VariableItemType }
+      : {})
   })
   return {
     ...project,
@@ -1610,7 +1647,8 @@ export function addObjectVariable(
               id: variableId,
               name: trimmedName,
               type: input.type,
-              initialValue: input.initialValue
+              initialValue: input.initialValue,
+              ...(input.itemType ? { itemType: input.itemType } : {})
             })
           ]
         }
@@ -1634,7 +1672,10 @@ export function updateObjectVariable(project: ProjectV1, input: UpdateObjectVari
     id: existing.id,
     name: trimmedName,
     type: existing.type,
-    initialValue: input.initialValue
+    initialValue: input.initialValue,
+    ...(existing.type === "list" || existing.type === "map"
+      ? { itemType: existing.itemType as VariableItemType }
+      : {})
   })
   return {
     ...project,

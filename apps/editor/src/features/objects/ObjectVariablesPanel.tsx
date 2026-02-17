@@ -1,6 +1,6 @@
 import { Plus, X } from "lucide-react"
 import { useCallback, useMemo, useState, type KeyboardEvent } from "react"
-import type { VariableType, VariableValue } from "@creadordejocs/project-format"
+import type { VariableItemType, VariableType, VariableValue } from "@creadordejocs/project-format"
 import { Button } from "../../components/ui/button.js"
 import { ObjectCard } from "./ObjectCard.js"
 
@@ -16,9 +16,16 @@ type ObjectVariablesPanelProps = {
     id: string
     name: string
     type: VariableType
+    itemType?: VariableItemType
     initialValue: VariableValue
   }[]
-  onAddVariable: (objectId: string, name: string, type: VariableType, initialValue: VariableValue) => void
+  onAddVariable: (
+    objectId: string,
+    name: string,
+    type: VariableType,
+    initialValue: VariableValue,
+    itemType?: VariableItemType
+  ) => void
   onUpdateVariable: (objectId: string, variableId: string, name: string, initialValue: VariableValue) => void
   onRemoveVariable: (objectId: string, variableId: string) => void
   onUpdateObjectNumber: (key: "width" | "height", value: number) => void
@@ -26,7 +33,7 @@ type ObjectVariablesPanelProps = {
   onSpriteClick: () => void
 }
 
-function parseInitialValue(type: VariableType, rawValue: string): VariableValue {
+function parseInitialValue(type: VariableType, rawValue: string, itemType: VariableItemType = "number"): VariableValue {
   if (type === "number") {
     const parsed = Number(rawValue)
     return Number.isFinite(parsed) ? parsed : 0
@@ -34,14 +41,44 @@ function parseInitialValue(type: VariableType, rawValue: string): VariableValue 
   if (type === "boolean") {
     return rawValue === "true"
   }
+  if (type === "list") {
+    try {
+      const parsed: unknown = JSON.parse(rawValue)
+      if (!Array.isArray(parsed)) {
+        return []
+      }
+      return parsed.filter((entry): entry is string | number | boolean => typeof entry === itemType)
+    } catch {
+      return []
+    }
+  }
+  if (type === "map") {
+    try {
+      const parsed: unknown = JSON.parse(rawValue)
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        return {}
+      }
+      return Object.fromEntries(
+        Object.entries(parsed as Record<string, unknown>).filter(([, value]) => typeof value === itemType)
+      ) as Record<string, string | number | boolean>
+    } catch {
+      return {}
+    }
+  }
   return rawValue
 }
 
 function formatInputValue(type: VariableType, value: VariableValue): string {
+  if (typeof value === "number" || typeof value === "string") {
+    return String(value)
+  }
   if (type === "boolean") {
     return value ? "true" : "false"
   }
-  return String(value)
+  if (type === "list" || type === "map") {
+    return JSON.stringify(value)
+  }
+  return ""
 }
 
 export function ObjectVariablesPanel({
@@ -63,6 +100,7 @@ export function ObjectVariablesPanel({
   const [isAdding, setIsAdding] = useState(false)
   const [newVariableName, setNewVariableName] = useState("")
   const [newVariableType, setNewVariableType] = useState<VariableType>("number")
+  const [newVariableItemType, setNewVariableItemType] = useState<VariableItemType>("number")
   const [newVariableRawValue, setNewVariableRawValue] = useState("0")
 
   const variableNames = useMemo(
@@ -84,9 +122,16 @@ export function ObjectVariablesPanel({
 
   const handleAdd = () => {
     if (!canAdd) return
-    onAddVariable(objectId, newVariableName, newVariableType, parseInitialValue(newVariableType, newVariableRawValue))
+    onAddVariable(
+      objectId,
+      newVariableName,
+      newVariableType,
+      parseInitialValue(newVariableType, newVariableRawValue, newVariableItemType),
+      newVariableType === "list" || newVariableType === "map" ? newVariableItemType : undefined
+    )
     setNewVariableName("")
     setNewVariableType("number")
+    setNewVariableItemType("number")
     setNewVariableRawValue("0")
     setIsAdding(false)
   }
@@ -164,11 +209,16 @@ export function ObjectVariablesPanel({
                     }
                   />
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] text-slate-400">{definition.type}</span>
+                    <span className="text-[10px] text-slate-400">
+                      {definition.type}
+                      {(definition.type === "list" || definition.type === "map") && definition.itemType
+                        ? `<${definition.itemType}>`
+                        : ""}
+                    </span>
                     {definition.type === "boolean" ? (
                       <select
                         className="h-5 rounded border border-slate-200 bg-slate-50 px-1 text-[10px] text-slate-600 focus:outline-none"
-                        value={String(definition.initialValue)}
+                        value={definition.initialValue ? "true" : "false"}
                         onChange={(event) =>
                           onUpdateVariable(objectId, definition.id, definition.name, event.target.value === "true")
                         }
@@ -176,6 +226,19 @@ export function ObjectVariablesPanel({
                         <option value="true">true</option>
                         <option value="false">false</option>
                       </select>
+                    ) : definition.type === "list" || definition.type === "map" ? (
+                      <textarea
+                        className="min-h-14 w-full rounded border border-slate-200 bg-slate-50 px-1 py-1 text-[10px] text-slate-600 focus:outline-none"
+                        value={formatInputValue(definition.type, definition.initialValue)}
+                        onChange={(event) =>
+                          onUpdateVariable(
+                            objectId,
+                            definition.id,
+                            definition.name,
+                            parseInitialValue(definition.type, event.target.value, definition.itemType ?? "number")
+                          )
+                        }
+                      />
                     ) : (
                       <input
                         className="h-5 w-16 rounded border border-slate-200 bg-slate-50 px-1 text-[10px] text-slate-600 focus:outline-none"
@@ -186,7 +249,7 @@ export function ObjectVariablesPanel({
                             objectId,
                             definition.id,
                             definition.name,
-                            parseInitialValue(definition.type, event.target.value)
+                            parseInitialValue(definition.type, event.target.value, definition.itemType ?? "number")
                           )
                         }
                       />
@@ -242,13 +305,36 @@ export function ObjectVariablesPanel({
                   onChange={(event) => {
                     const nextType = event.target.value as VariableType
                     setNewVariableType(nextType)
-                    setNewVariableRawValue(nextType === "boolean" ? "false" : nextType === "number" ? "0" : "")
+                    setNewVariableRawValue(
+                      nextType === "boolean"
+                        ? "false"
+                        : nextType === "number"
+                          ? "0"
+                          : nextType === "list"
+                            ? "[]"
+                            : nextType === "map"
+                              ? "{}"
+                              : ""
+                    )
                   }}
                 >
                   <option value="number">number</option>
                   <option value="string">string</option>
                   <option value="boolean">boolean</option>
+                  <option value="list">list</option>
+                  <option value="map">map</option>
                 </select>
+                {(newVariableType === "list" || newVariableType === "map") && (
+                  <select
+                    className="h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 focus:outline-none"
+                    value={newVariableItemType}
+                    onChange={(event) => setNewVariableItemType(event.target.value as VariableItemType)}
+                  >
+                    <option value="number">number</option>
+                    <option value="string">string</option>
+                    <option value="boolean">boolean</option>
+                  </select>
+                )}
                 {newVariableType === "boolean" ? (
                   <select
                     className="h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 focus:outline-none"
@@ -258,6 +344,13 @@ export function ObjectVariablesPanel({
                     <option value="true">true</option>
                     <option value="false">false</option>
                   </select>
+                ) : newVariableType === "list" || newVariableType === "map" ? (
+                  <textarea
+                    className="min-h-14 w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-900 focus:outline-none"
+                    value={newVariableRawValue}
+                    onChange={(event) => setNewVariableRawValue(event.target.value)}
+                    placeholder={newVariableType === "list" ? 'Example: [1,2,3]' : 'Example: {"hp":10}'}
+                  />
                 ) : (
                   <input
                     className="h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 focus:outline-none"

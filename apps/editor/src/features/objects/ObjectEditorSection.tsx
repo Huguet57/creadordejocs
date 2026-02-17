@@ -137,6 +137,16 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
     }))
   }, [resolvedSpriteSources, selectedObject, sprites])
   const globalVariablesWithSystem = [...controller.project.variables.global, ...SYSTEM_MOUSE_GLOBALS]
+  const scalarGlobalVariables = controller.project.variables.global.filter(
+    (variableEntry): variableEntry is Extract<typeof controller.project.variables.global[number], { type: "number" | "string" | "boolean" }> =>
+      variableEntry.type === "number" || variableEntry.type === "string" || variableEntry.type === "boolean"
+  )
+  const scalarSelectedObjectVariables = selectedObjectVariableDefinitions.filter(
+    (variableEntry): variableEntry is Extract<
+      typeof selectedObjectVariableDefinitions[number],
+      { type: "number" | "string" | "boolean" }
+    > => variableEntry.type === "number" || variableEntry.type === "string" || variableEntry.type === "boolean"
+  )
 
   const defaultActionFromType = (type: ObjectActionType): ObjectActionDraft | null => {
     const actionDraft = createEditorDefaultAction(type, {
@@ -181,7 +191,7 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
 
   const defaultIfCondition = (): IfCondition => {
     return (
-      buildDefaultIfCondition(controller.project.variables.global, selectedObjectVariableDefinitions) ?? {
+      buildDefaultIfCondition(scalarGlobalVariables, scalarSelectedObjectVariables) ?? {
         left: { scope: "global", variableId: "" },
         operator: "==",
         right: 0
@@ -211,8 +221,8 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
             visible={selectedObject.visible ?? true}
             solid={selectedObject.solid ?? false}
             variables={selectedObjectVariableDefinitions}
-            onAddVariable={(objectId, name, type, initialValue) =>
-              controller.addObjectVariable(objectId, name, type, initialValue)
+            onAddVariable={(objectId, name, type, initialValue, itemType) =>
+              controller.addObjectVariable(objectId, name, type, initialValue, itemType)
             }
             onUpdateVariable={(objectId, variableId, name, initialValue) =>
               controller.updateObjectVariable(objectId, variableId, name, initialValue)

@@ -148,10 +148,9 @@ function isLegacyVariableReference(
   return typeof value === "object" && value !== null && "scope" in value && "variableId" in value
 }
 
-function isValueSource(value: ValueExpressionOutput): value is Exclude<
-  ValueExpressionOutput,
-  RuntimeVariableValue | { scope: "global" | "object"; variableId: string }
-> {
+type ValueSourceExpression = Extract<ValueExpressionOutput, { source: string }>
+
+function isValueSource(value: ValueExpressionOutput): value is ValueSourceExpression {
   return typeof value === "object" && value !== null && "source" in value
 }
 
@@ -160,7 +159,8 @@ function resolveConditionExpressionValue(
   instance: ProjectV1["rooms"][number]["instances"][number],
   runtime: RuntimeState,
   collisionOtherInstanceId: string | null,
-  roomInstances: ProjectV1["rooms"][number]["instances"]
+  roomInstances: ProjectV1["rooms"][number]["instances"],
+  iterationLocals: Record<string, RuntimeVariableValue>
 ): RuntimeVariableValue | undefined {
   if (typeof expression === "number" || typeof expression === "string" || typeof expression === "boolean") {
     return expression
@@ -187,6 +187,10 @@ function resolveConditionExpressionValue(
 
   if (expression.source === "globalVariable") {
     return runtime.globalVariables[expression.variableId]
+  }
+
+  if (expression.source === "iterationVariable") {
+    return iterationLocals[expression.variableName]
   }
 
   if (expression.source === "internalVariable") {
@@ -256,21 +260,36 @@ function evaluateIfCondition(
   instance: ProjectV1["rooms"][number]["instances"][number],
   runtime: RuntimeState,
   collisionOtherInstanceId: string | null,
-  roomInstances: ProjectV1["rooms"][number]["instances"]
+  roomInstances: ProjectV1["rooms"][number]["instances"],
+  iterationLocals: Record<string, RuntimeVariableValue> = {}
 ): boolean {
   if (!isComparisonCondition(condition)) {
     if (condition.logic === "AND") {
       return condition.conditions.every((entry) =>
-        evaluateIfCondition(entry, instance, runtime, collisionOtherInstanceId, roomInstances)
+        evaluateIfCondition(entry, instance, runtime, collisionOtherInstanceId, roomInstances, iterationLocals)
       )
     }
     return condition.conditions.some((entry) =>
-      evaluateIfCondition(entry, instance, runtime, collisionOtherInstanceId, roomInstances)
+      evaluateIfCondition(entry, instance, runtime, collisionOtherInstanceId, roomInstances, iterationLocals)
     )
   }
 
-  const leftValue = resolveConditionExpressionValue(condition.left, instance, runtime, collisionOtherInstanceId, roomInstances)
-  const rightValue = resolveConditionExpressionValue(condition.right, instance, runtime, collisionOtherInstanceId, roomInstances)
+  const leftValue = resolveConditionExpressionValue(
+    condition.left,
+    instance,
+    runtime,
+    collisionOtherInstanceId,
+    roomInstances,
+    iterationLocals
+  )
+  const rightValue = resolveConditionExpressionValue(
+    condition.right,
+    instance,
+    runtime,
+    collisionOtherInstanceId,
+    roomInstances,
+    iterationLocals
+  )
   if (leftValue === undefined || rightValue === undefined || !isSameVariableValueType(leftValue, rightValue)) {
     return false
   }
@@ -389,14 +408,27 @@ function runEventActions(
   runtime: RuntimeState,
   startPosition: { x: number; y: number } | null = null,
   collisionOtherInstanceId: string | null = null,
-  roomInstances: ProjectV1["rooms"][number]["instances"] = []
+  roomInstances: ProjectV1["rooms"][number]["instances"] = [],
+  iterationLocals: Record<string, RuntimeVariableValue> = {}
 ): RuntimeActionResult {
   let result = getDefaultRuntimeActionResult(instance, runtime)
   const actionContext: ActionContext = {
     project,
     startPosition,
     collisionOtherInstanceId,
-    roomInstances
+    roomInstances,
+    iterationLocals,
+    executeNestedActions: (nestedActions, nestedResult, nestedIterationLocals = iterationLocals) =>
+      runEventActions(
+        project,
+        nestedResult.instance,
+        nestedActions,
+        nestedResult.runtime,
+        startPosition,
+        collisionOtherInstanceId,
+        roomInstances,
+        nestedIterationLocals
+      )
   }
   for (const actionEntry of actions) {
     const actionExecution = executeAction(actionEntry, result, actionContext)
@@ -416,7 +448,8 @@ function runEventItems(
   runtime: RuntimeState,
   startPosition: { x: number; y: number } | null = null,
   collisionOtherInstanceId: string | null = null,
-  roomInstances: ProjectV1["rooms"][number]["instances"] = []
+  roomInstances: ProjectV1["rooms"][number]["instances"] = [],
+  iterationLocals: Record<string, RuntimeVariableValue> = {}
 ): RuntimeActionResult {
   let result = getDefaultRuntimeActionResult(instance, runtime)
   for (const itemEntry of items) {
@@ -428,7 +461,8 @@ function runEventItems(
         result.runtime,
         startPosition,
         collisionOtherInstanceId,
-        roomInstances
+        roomInstances,
+        iterationLocals
       )
       result = {
         ...actionResult,
@@ -448,7 +482,8 @@ function runEventItems(
       result.instance,
       result.runtime,
       collisionOtherInstanceId,
-      roomInstances
+      roomInstances,
+      iterationLocals
     )
     const branchResult = runEventItems(
       project,
@@ -457,7 +492,8 @@ function runEventItems(
       result.runtime,
       startPosition,
       collisionOtherInstanceId,
-      roomInstances
+      roomInstances,
+      iterationLocals
     )
     result = {
       ...branchResult,

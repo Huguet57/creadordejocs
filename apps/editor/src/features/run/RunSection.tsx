@@ -33,6 +33,18 @@ function isEditableTarget(target: EventTarget | null): boolean {
   return tag === "input" || tag === "textarea" || target.isContentEditable
 }
 
+function formatRuntimeVariableValue(
+  value: string | number | boolean | (string | number | boolean)[] | Record<string, string | number | boolean> | undefined
+): string {
+  if (value === undefined) {
+    return "–"
+  }
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return String(value)
+  }
+  return JSON.stringify(value)
+}
+
 export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
   const isPlayMode = mode === "play"
   const { runtimeState } = controller
@@ -232,7 +244,7 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
                     <div key={variableEntry.id} className="mvp16-run-global-var-row flex items-center justify-between">
                       <span className="mvp16-run-global-var-name text-xs text-slate-500">{variableEntry.name}</span>
                       <span className="mvp16-run-global-var-value text-xs font-medium text-slate-800">
-                        {variableEntry.value === undefined ? "–" : String(variableEntry.value)}
+                        {formatRuntimeVariableValue(variableEntry.value)}
                       </span>
                     </div>
                   ))}

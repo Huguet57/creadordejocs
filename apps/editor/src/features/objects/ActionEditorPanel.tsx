@@ -109,6 +109,16 @@ export function ActionEditorPanel({
     : null
   const isMouseButtonEvent = activeEvent?.type === "Mouse"
   const mouseModeValue: ObjectMouseMode = activeEvent?.mouseMode ?? "down"
+  const scalarGlobalVariables = globalVariables.filter(
+    (variableEntry): variableEntry is Extract<typeof globalVariables[number], { type: "number" | "string" | "boolean" }> =>
+      variableEntry.type === "number" || variableEntry.type === "string" || variableEntry.type === "boolean"
+  )
+  const scalarSelectedObjectVariables = selectedObjectVariables.filter(
+    (
+      variableEntry
+    ): variableEntry is Extract<typeof selectedObjectVariables[number], { type: "number" | "string" | "boolean" }> =>
+      variableEntry.type === "number" || variableEntry.type === "string" || variableEntry.type === "boolean"
+  )
 
   useEffect(() => {
     if (!backgroundContextMenu) {
@@ -167,7 +177,7 @@ export function ActionEditorPanel({
     setActionPickerTarget(null)
   }
 
-  const defaultIfCondition = buildDefaultIfCondition(globalVariables, selectedObjectVariables)
+  const defaultIfCondition = buildDefaultIfCondition(scalarGlobalVariables, scalarSelectedObjectVariables)
   const getCanonicalDropTarget = (
     hoveredActionId: string,
     hoveredPosition: "top" | "bottom"

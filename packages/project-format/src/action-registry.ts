@@ -1,16 +1,29 @@
 import { z } from "zod"
 
-type VariableValueSchema = z.ZodUnion<[z.ZodNumber, z.ZodString, z.ZodBoolean]>
-type VariableValue = number | string | boolean
+type ScalarVariableValue = number | string | boolean
+type VariableValueSchema = z.ZodType<ScalarVariableValue>
 
 export type ActionType = (typeof ACTION_REGISTRY)[number]["type"]
 
 export type ActionCategoryId = "movement" | "objects" | "game" | "variables" | "rooms" | "flow"
 export type ActionVariableDefinition = {
   id: string
-  type: "number" | "string" | "boolean"
-  initialValue: VariableValue
-}
+} & (
+  | {
+      type: "number" | "string" | "boolean"
+      initialValue: ScalarVariableValue
+    }
+  | {
+      type: "list"
+      itemType: "number" | "string" | "boolean"
+      initialValue: ScalarVariableValue[]
+    }
+  | {
+      type: "map"
+      itemType: "number" | "string" | "boolean"
+      initialValue: Record<string, ScalarVariableValue>
+    }
+)
 export type ActionDefaultsContext = {
   selectableTargetObjectIds: string[]
   globalVariables: ActionVariableDefinition[]
@@ -102,6 +115,18 @@ export const ACTION_REGISTRY = [
   {
     type: "wait",
     ui: { label: "Esperar", shortLabel: "Esperar", categoryId: "flow", editorVisible: true }
+  },
+  {
+    type: "repeat",
+    ui: { label: "Repetir", shortLabel: "Repetir", categoryId: "flow", editorVisible: true }
+  },
+  {
+    type: "forEachList",
+    ui: { label: "Per cada llista", shortLabel: "Each llista", categoryId: "flow", editorVisible: true }
+  },
+  {
+    type: "forEachMap",
+    ui: { label: "Per cada mapa", shortLabel: "Each mapa", categoryId: "flow", editorVisible: true }
   }
 ] as const satisfies readonly { type: string; ui: ActionUiMeta }[]
 
@@ -135,7 +160,8 @@ export function createObjectActionSchema<
   const valueOrSource = z.union([deps.valueSourceSchema, deps.legacyVariableReferenceSchema, deps.variableValueSchema])
   const numberOrSource = z.union([z.number(), deps.valueSourceSchema, deps.legacyVariableReferenceSchema])
   const stringOrSource = z.union([z.string().min(1), deps.valueSourceSchema, deps.legacyVariableReferenceSchema])
-
+  const flowScopeSchema = z.enum(["global", "object"])
+  const flowTargetSchema = z.enum(["self", "other", "instanceId"])
   return z.discriminatedUnion("type", [
     z.object({
       id: z.string().min(1),
@@ -253,6 +279,34 @@ export function createObjectActionSchema<
       id: z.string().min(1),
       type: z.literal("wait"),
       durationMs: z.union([z.number().int().min(1), deps.valueSourceSchema, deps.legacyVariableReferenceSchema])
+    }),
+    z.object({
+      id: z.string().min(1),
+      type: z.literal("repeat"),
+      count: z.union([z.number().int().min(0), deps.valueSourceSchema, deps.legacyVariableReferenceSchema]),
+      actions: z.array(z.any()).default([])
+    }),
+    z.object({
+      id: z.string().min(1),
+      type: z.literal("forEachList"),
+      scope: flowScopeSchema,
+      variableId: z.string().min(1),
+      target: flowTargetSchema.nullable().optional(),
+      targetInstanceId: z.string().nullable().optional(),
+      itemLocalVarName: z.string().min(1),
+      indexLocalVarName: z.string().min(1).optional(),
+      actions: z.array(z.any()).default([])
+    }),
+    z.object({
+      id: z.string().min(1),
+      type: z.literal("forEachMap"),
+      scope: flowScopeSchema,
+      variableId: z.string().min(1),
+      target: flowTargetSchema.nullable().optional(),
+      targetInstanceId: z.string().nullable().optional(),
+      keyLocalVarName: z.string().min(1),
+      valueLocalVarName: z.string().min(1),
+      actions: z.array(z.any()).default([])
     })
   ])
 }
@@ -341,6 +395,57 @@ export function createEditorDefaultAction(type: ActionType, ctx: ActionDefaultsC
   }
   if (type === "restartRoom") return { type: "restartRoom" }
   if (type === "wait") return { type: "wait", durationMs: 500 }
+  if (type === "repeat") return { type: "repeat", count: 3, actions: [] }
+  if (type === "forEachList") {
+    const firstGlobalList = ctx.globalVariables.find((entry) => entry.type === "list")
+    if (firstGlobalList) {
+      return {
+        type: "forEachList",
+        scope: "global",
+        variableId: firstGlobalList.id,
+        itemLocalVarName: "item",
+        indexLocalVarName: "index",
+        actions: []
+      }
+    }
+    const firstObjectList = ctx.objectVariables.find((entry) => entry.type === "list")
+    if (!firstObjectList) return null
+    return {
+      type: "forEachList",
+      scope: "object",
+      variableId: firstObjectList.id,
+      target: "self",
+      targetInstanceId: null,
+      itemLocalVarName: "item",
+      indexLocalVarName: "index",
+      actions: []
+    }
+  }
+  if (type === "forEachMap") {
+    const firstGlobalMap = ctx.globalVariables.find((entry) => entry.type === "map")
+    if (firstGlobalMap) {
+      return {
+        type: "forEachMap",
+        scope: "global",
+        variableId: firstGlobalMap.id,
+        keyLocalVarName: "key",
+        valueLocalVarName: "value",
+        actions: []
+      }
+    }
+    const firstObjectMap = ctx.objectVariables.find((entry) => entry.type === "map")
+    if (!firstObjectMap) return null
+    return {
+      type: "forEachMap",
+      scope: "object",
+      variableId: firstObjectMap.id,
+      target: "self",
+      targetInstanceId: null,
+      keyLocalVarName: "key",
+      valueLocalVarName: "value",
+      actions: []
+    }
+  }
   if (type === "destroySelf") return { type: "destroySelf" }
   if (type === "destroyOther") return { type: "destroyOther" }
   if (type === "changeScore") return { type: "changeScore", delta: 1 }
