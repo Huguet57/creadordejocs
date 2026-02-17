@@ -7,8 +7,10 @@ import {
   addGlobalVariable as addGlobalVariableModel,
   addObjectVariable as addObjectVariableModel,
   createSpriteFolder as createSpriteFolderModel,
+  createObjectFolder as createObjectFolderModel,
   deleteSprite as deleteSpriteModel,
   deleteSpriteFolder as deleteSpriteFolderModel,
+  deleteObjectFolder as deleteObjectFolderModel,
   addRoomInstance,
   createEmptyProjectV1,
   createRoom,
@@ -18,9 +20,12 @@ import {
   moveObjectEventAction as moveObjectEventActionModel,
   moveSpriteFolder as moveSpriteFolderModel,
   moveSpriteToFolder as moveSpriteToFolderModel,
+  moveObjectFolder as moveObjectFolderModel,
+  moveObjectToFolder as moveObjectToFolderModel,
   moveRoomInstance,
   renameSprite as renameSpriteModel,
   renameSpriteFolder as renameSpriteFolderModel,
+  renameObjectFolder as renameObjectFolderModel,
   removeRoomInstance,
   quickCreateObject,
   quickCreateSound,
@@ -520,6 +525,53 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       pushProjectChange(next, `Delete sprite folder: ${folderEntry.name}`)
       return true
     },
+    createObjectFolder(name: string, parentId: string | null = null) {
+      const result = createObjectFolderModel(project, name, parentId)
+      if (!result.folderId) {
+        return null
+      }
+      pushProjectChange(result.project, `Create object folder: ${name.trim()}`)
+      return result.folderId
+    },
+    renameObjectFolder(folderId: string, name: string) {
+      const next = renameObjectFolderModel(project, folderId, name)
+      if (next === project) {
+        return false
+      }
+      pushProjectChange(next, "Rename object folder")
+      return true
+    },
+    moveObjectFolder(folderId: string, newParentId: string | null) {
+      const next = moveObjectFolderModel(project, folderId, newParentId)
+      if (next === project) {
+        return false
+      }
+      pushProjectChange(next, "Move object folder")
+      return true
+    },
+    moveObjectToFolder(objectId: string, folderId: string | null) {
+      const next = moveObjectToFolderModel(project, objectId, folderId)
+      if (next === project) {
+        return false
+      }
+      pushProjectChange(next, "Move object to folder")
+      return true
+    },
+    deleteObjectFolder(folderId: string) {
+      const folderEntry = (project.resources.objectFolders ?? []).find((entry) => entry.id === folderId)
+      if (!folderEntry) {
+        return false
+      }
+      const next = deleteObjectFolderModel(project, folderId)
+      if (next === project) {
+        return false
+      }
+      pushProjectChange(next, `Delete object folder: ${folderEntry.name}`)
+      if (selectedObject && !next.objects.some((entry) => entry.id === selectedObject.id)) {
+        setActiveObjectId(null)
+      }
+      return true
+    },
     renameSprite(spriteId: string, name: string) {
       const next = renameSpriteModel(project, spriteId, name)
       if (next === project) {
@@ -584,12 +636,13 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       const next = quickCreateSound(project, name.trim()).project
       pushProjectChange(next, `Create sound: ${name.trim()}`)
     },
-    addObject(name: string) {
+    addObject(name: string, folderId: string | null = null) {
       const trimmedName = name.trim()
       if (!trimmedName) return
       const createdSprite = quickCreateSpriteWithSize(project, trimmedName, 32, 32)
       const result = quickCreateObject(createdSprite.project, {
         name: trimmedName,
+        folderId,
         spriteId: createdSprite.spriteId,
         x: 64,
         y: 64,

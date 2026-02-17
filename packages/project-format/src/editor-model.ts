@@ -3,6 +3,7 @@ import { generateUUID } from "./generate-id.js"
 
 export type CreateObjectInput = {
   name: string
+  folderId?: string | null
   spriteId?: string | null
   x?: number
   y?: number
@@ -68,6 +69,7 @@ export type VariableValue = VariableDefinition["initialValue"]
 export type VariableItemType = "number" | "string" | "boolean"
 export type ValueExpression = ValueExpressionOutput
 export type SpriteFolder = NonNullable<ProjectV1["resources"]["spriteFolders"]>[number]
+export type ObjectFolder = NonNullable<ProjectV1["resources"]["objectFolders"]>[number]
 export type SpriteResource = ProjectV1["resources"]["sprites"][number]
 
 export type AddObjectEventInput = {
@@ -576,7 +578,7 @@ function hasSpriteNameConflict(
 }
 
 function hasFolderNameConflict(
-  folders: SpriteFolder[],
+  folders: { id: string; name: string; parentId?: string | null | undefined }[],
   parentId: string | null,
   candidateName: string,
   ignoreFolderId?: string
@@ -592,6 +594,10 @@ function hasFolderNameConflict(
 
 function getSpriteFolders(project: ProjectV1): SpriteFolder[] {
   return project.resources.spriteFolders ?? []
+}
+
+function getObjectFolders(project: ProjectV1): ObjectFolder[] {
+  return project.resources.objectFolders ?? []
 }
 
 function hasVariableNameConflict(definitions: VariableDefinition[], candidateName: string, ignoreId?: string): boolean {
@@ -735,6 +741,7 @@ export function quickCreateObject(
         {
           id: objectId,
           name: input.name,
+          folderId: input.folderId ?? null,
           spriteId: input.spriteId ?? null,
           x: input.x ?? 0,
           y: input.y ?? 0,
@@ -1033,6 +1040,185 @@ export function moveSpriteToFolder(project: ProjectV1, spriteId: string, folderI
               folderId: normalizedFolderId
             }
           : entry
+      )
+    }
+  }
+}
+
+export function createObjectFolder(
+  project: ProjectV1,
+  name: string,
+  parentId: string | null = null
+): { project: ProjectV1; folderId: string | null } {
+  const trimmedName = name.trim()
+  if (!trimmedName) {
+    return { project, folderId: null }
+  }
+  const normalizedParentId = parentId ?? null
+  const objectFolders = getObjectFolders(project)
+  if (normalizedParentId && !objectFolders.some((entry) => entry.id === normalizedParentId)) {
+    return { project, folderId: null }
+  }
+  if (hasFolderNameConflict(objectFolders, normalizedParentId, trimmedName)) {
+    return { project, folderId: null }
+  }
+  const folderId = makeId("object-folder")
+  return {
+    project: {
+      ...project,
+      resources: {
+        ...project.resources,
+        objectFolders: [
+          ...objectFolders,
+          {
+            id: folderId,
+            name: trimmedName,
+            parentId: normalizedParentId
+          }
+        ]
+      }
+    },
+    folderId
+  }
+}
+
+export function renameObjectFolder(project: ProjectV1, folderId: string, name: string): ProjectV1 {
+  const trimmedName = name.trim()
+  if (!trimmedName) {
+    return project
+  }
+  const objectFolders = getObjectFolders(project)
+  const folderEntry = objectFolders.find((entry) => entry.id === folderId)
+  if (!folderEntry) {
+    return project
+  }
+  const parentId = folderEntry.parentId ?? null
+  if (hasFolderNameConflict(objectFolders, parentId, trimmedName, folderId)) {
+    return project
+  }
+  return {
+    ...project,
+    resources: {
+      ...project.resources,
+      objectFolders: objectFolders.map((entry) =>
+        entry.id === folderId
+          ? {
+              ...entry,
+              name: trimmedName
+            }
+          : entry
+      )
+    }
+  }
+}
+
+export function moveObjectFolder(project: ProjectV1, folderId: string, newParentId: string | null): ProjectV1 {
+  const objectFolders = getObjectFolders(project)
+  const normalizedParent = newParentId ?? null
+  const folderEntry = objectFolders.find((entry) => entry.id === folderId)
+  if (!folderEntry) {
+    return project
+  }
+  if ((folderEntry.parentId ?? null) === normalizedParent) {
+    return project
+  }
+  if (normalizedParent && !objectFolders.some((entry) => entry.id === normalizedParent)) {
+    return project
+  }
+  if (normalizedParent) {
+    const ancestors = new Set<string>()
+    let current: string | null = normalizedParent
+    while (current) {
+      if (current === folderId) {
+        return project
+      }
+      if (ancestors.has(current)) {
+        break
+      }
+      ancestors.add(current)
+      const parent = objectFolders.find((entry) => entry.id === current)
+      current = parent?.parentId ?? null
+    }
+  }
+  return {
+    ...project,
+    resources: {
+      ...project.resources,
+      objectFolders: objectFolders.map((entry) =>
+        entry.id === folderId
+          ? {
+              ...entry,
+              parentId: normalizedParent
+            }
+          : entry
+      )
+    }
+  }
+}
+
+export function moveObjectToFolder(project: ProjectV1, objectId: string, folderId: string | null): ProjectV1 {
+  const normalizedFolderId = folderId ?? null
+  const hasObject = project.objects.some((entry) => entry.id === objectId)
+  if (!hasObject) {
+    return project
+  }
+  const objectFolders = getObjectFolders(project)
+  if (normalizedFolderId && !objectFolders.some((entry) => entry.id === normalizedFolderId)) {
+    return project
+  }
+  return {
+    ...project,
+    objects: project.objects.map((entry) =>
+      entry.id === objectId
+        ? {
+            ...entry,
+            folderId: normalizedFolderId
+          }
+        : entry
+    )
+  }
+}
+
+export function deleteObjectFolder(project: ProjectV1, folderId: string): ProjectV1 {
+  const objectFolders = getObjectFolders(project)
+  const hasFolder = objectFolders.some((entry) => entry.id === folderId)
+  if (!hasFolder) {
+    return project
+  }
+  const deletedBranchIds = new Set<string>([folderId])
+  let hasNewDescendants = true
+  while (hasNewDescendants) {
+    hasNewDescendants = false
+    for (const folderEntry of objectFolders) {
+      if (folderEntry.parentId && deletedBranchIds.has(folderEntry.parentId) && !deletedBranchIds.has(folderEntry.id)) {
+        deletedBranchIds.add(folderEntry.id)
+        hasNewDescendants = true
+      }
+    }
+  }
+
+  const deletedObjectIds = new Set(
+    project.objects
+      .filter((entry) => entry.folderId && deletedBranchIds.has(entry.folderId))
+      .map((entry) => entry.id)
+  )
+  const remainingObjects = project.objects.filter((entry) => !deletedObjectIds.has(entry.id))
+
+  return {
+    ...project,
+    resources: {
+      ...project.resources,
+      objectFolders: objectFolders.filter((entry) => !deletedBranchIds.has(entry.id))
+    },
+    objects: remainingObjects,
+    rooms: project.rooms.map((roomEntry) => ({
+      ...roomEntry,
+      instances: roomEntry.instances.filter((instanceEntry) => !deletedObjectIds.has(instanceEntry.objectId))
+    })),
+    variables: {
+      ...project.variables,
+      objectByObjectId: Object.fromEntries(
+        Object.entries(project.variables.objectByObjectId).filter(([objectId]) => !deletedObjectIds.has(objectId))
       )
     }
   }

@@ -5,19 +5,24 @@ import {
   addObjectEventAction,
   addObjectEventIfAction,
   addObjectEventIfBlock,
+  createObjectFolder,
   createSpriteFolder,
   createEmptyProjectV1,
   createRoom,
   deleteSprite,
+  deleteObjectFolder,
   deleteSpriteFolder,
   moveObjectEventAction,
   moveObjectEventItem,
+  moveObjectFolder,
+  moveObjectToFolder,
   cloneObjectEventItemForPaste,
   insertObjectEventItem,
   moveSpriteFolder,
   moveSpriteToFolder,
   moveRoomInstance,
   renameSprite,
+  renameObjectFolder,
   renameSpriteFolder,
   removeObjectEventIfAction,
   removeObjectEventIfBlock,
@@ -243,6 +248,103 @@ describe("editor model helpers", () => {
     expect(
       (movedToRoot.resources.spriteFolders ?? []).find((entry) => entry.id === folderB.folderId)?.parentId
     ).toBeNull()
+  })
+
+  it("creates and renames object folders with sibling uniqueness", () => {
+    const initial = createEmptyProjectV1("Object folders")
+    const withRootFolder = createObjectFolder(initial, "Enemies")
+    const rootFolderId = withRootFolder.folderId
+    if (!rootFolderId) {
+      throw new Error("Expected root object folder")
+    }
+    const withChildFolder = createObjectFolder(withRootFolder.project, "Ground", rootFolderId)
+    const childFolderId = withChildFolder.folderId
+    if (!childFolderId) {
+      throw new Error("Expected child object folder")
+    }
+
+    const duplicate = createObjectFolder(withChildFolder.project, "enemies")
+    expect(duplicate.folderId).toBeNull()
+
+    const withSibling = createObjectFolder(withChildFolder.project, "Bosses")
+    if (!withSibling.folderId) {
+      throw new Error("Expected sibling object folder")
+    }
+    const renamed = renameObjectFolder(withSibling.project, withSibling.folderId, "Special")
+    expect((renamed.resources.objectFolders ?? []).find((entry) => entry.id === withSibling.folderId)?.name).toBe("Special")
+  })
+
+  it("moves object folders and object entries", () => {
+    const initial = createEmptyProjectV1("Object folder moves")
+    const folderA = createObjectFolder(initial, "A")
+    const folderB = createObjectFolder(folderA.project, "B")
+    const folderC = createObjectFolder(folderB.project, "C", folderB.folderId ?? null)
+    if (!folderA.folderId || !folderB.folderId || !folderC.folderId) {
+      throw new Error("Expected folders")
+    }
+
+    const movedB = moveObjectFolder(folderC.project, folderB.folderId, folderA.folderId)
+    expect((movedB.resources.objectFolders ?? []).find((entry) => entry.id === folderB.folderId)?.parentId).toBe(folderA.folderId)
+    const cyclic = moveObjectFolder(movedB, folderA.folderId, folderC.folderId)
+    expect((cyclic.resources.objectFolders ?? []).find((entry) => entry.id === folderA.folderId)?.parentId).toBeNull()
+
+    const objectResult = quickCreateObject(movedB, { name: "Enemy" })
+    const movedObject = moveObjectToFolder(objectResult.project, objectResult.objectId, folderB.folderId)
+    expect(movedObject.objects.find((entry) => entry.id === objectResult.objectId)?.folderId).toBe(folderB.folderId)
+  })
+
+  it("deletes object folder subtree and removes nested objects + room instances", () => {
+    const initial = createEmptyProjectV1("Delete object folder subtree")
+    const rootFolder = createObjectFolder(initial, "Enemies")
+    const rootFolderId = rootFolder.folderId
+    if (!rootFolderId) {
+      throw new Error("Expected root object folder")
+    }
+    const childFolder = createObjectFolder(rootFolder.project, "Ground", rootFolderId)
+    const childFolderId = childFolder.folderId
+    if (!childFolderId) {
+      throw new Error("Expected child object folder")
+    }
+    const nestedFolder = createObjectFolder(childFolder.project, "Fast", childFolderId)
+    const nestedFolderId = nestedFolder.folderId
+    if (!nestedFolderId) {
+      throw new Error("Expected nested object folder")
+    }
+
+    const withObjA = quickCreateObject(nestedFolder.project, { name: "Slime", folderId: rootFolderId })
+    const withObjB = quickCreateObject(withObjA.project, { name: "Bat", folderId: nestedFolderId })
+    const withObjC = quickCreateObject(withObjB.project, { name: "Coin" })
+    const roomResult = createRoom(withObjC.project, "Main")
+    const withInstanceA = addRoomInstance(roomResult.project, {
+      roomId: roomResult.roomId,
+      objectId: withObjA.objectId,
+      x: 10,
+      y: 10
+    })
+    const withInstanceB = addRoomInstance(withInstanceA.project, {
+      roomId: roomResult.roomId,
+      objectId: withObjB.objectId,
+      x: 20,
+      y: 20
+    })
+    const withInstanceC = addRoomInstance(withInstanceB.project, {
+      roomId: roomResult.roomId,
+      objectId: withObjC.objectId,
+      x: 30,
+      y: 30
+    })
+
+    const afterDelete = deleteObjectFolder(withInstanceC.project, rootFolderId)
+
+    expect((afterDelete.resources.objectFolders ?? []).find((entry) => entry.id === rootFolderId)).toBeUndefined()
+    expect((afterDelete.resources.objectFolders ?? []).find((entry) => entry.id === childFolderId)).toBeUndefined()
+    expect((afterDelete.resources.objectFolders ?? []).find((entry) => entry.id === nestedFolderId)).toBeUndefined()
+    expect(afterDelete.objects.some((entry) => entry.id === withObjA.objectId)).toBe(false)
+    expect(afterDelete.objects.some((entry) => entry.id === withObjB.objectId)).toBe(false)
+    expect(afterDelete.objects.some((entry) => entry.id === withObjC.objectId)).toBe(true)
+    expect(afterDelete.rooms.find((entry) => entry.id === roomResult.roomId)?.instances).toHaveLength(1)
+    expect(afterDelete.variables.objectByObjectId[withObjA.objectId]).toBeUndefined()
+    expect(afterDelete.variables.objectByObjectId[withObjB.objectId]).toBeUndefined()
   })
 
   it("deletes a sprite and clears object sprite references", () => {

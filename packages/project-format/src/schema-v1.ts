@@ -33,6 +33,12 @@ const SpriteFolderSchema = z.object({
   parentId: z.string().nullable().optional()
 })
 
+const ObjectFolderSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  parentId: z.string().nullable().optional()
+})
+
 const SoundResourceSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
@@ -43,6 +49,7 @@ const SoundResourceSchema = z.object({
 
 const ProjectResourcesSchema = z.object({
   spriteFolders: z.array(SpriteFolderSchema).optional(),
+  objectFolders: z.array(ObjectFolderSchema).optional(),
   sprites: z.array(SpriteResourceSchema),
   sounds: z.array(SoundResourceSchema)
 })
@@ -458,6 +465,7 @@ const ObjectEventSchema = z
 const ObjectSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
+  folderId: z.string().nullable().optional(),
   spriteId: z.string().nullable(),
   x: z.number(),
   y: z.number(),
@@ -531,6 +539,7 @@ export function createEmptyProjectV1(name: string): ProjectV1 {
     },
     resources: {
       spriteFolders: [],
+      objectFolders: [],
       sprites: [],
       sounds: []
     },

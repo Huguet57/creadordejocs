@@ -250,12 +250,18 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
     <div className="mvp15-object-editor-container flex h-[600px] w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
       <ObjectListPanel
         objects={projectObjects}
+        objectFolders={controller.project.resources.objectFolders ?? []}
         activeObjectId={controller.activeObjectId}
         spriteSources={resolvedSpriteSources}
         onSelectObject={handleSelectObject}
         onOpenInNewTab={(id) => setOpenTabIds((prev) => (prev.includes(id) ? prev : [...prev, id]))}
-        onAddObject={(name) => controller.addObject(name)}
+        onAddObject={(name, folderId) => controller.addObject(name, folderId)}
         onDeleteObject={handleDeleteObjectById}
+        onCreateFolder={(name, parentId) => controller.createObjectFolder(name, parentId)}
+        onRenameFolder={(folderId, name) => controller.renameObjectFolder(folderId, name)}
+        onDeleteFolder={(folderId) => controller.deleteObjectFolder(folderId)}
+        onMoveFolder={(folderId, newParentId) => controller.moveObjectFolder(folderId, newParentId)}
+        onMoveObjectToFolder={(objectId, folderId) => controller.moveObjectToFolder(objectId, folderId)}
       />
 
       <div className="objtabs-editor-area flex min-w-0 flex-1 flex-col border-l border-slate-200">

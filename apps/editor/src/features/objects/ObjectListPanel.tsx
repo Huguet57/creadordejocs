@@ -21,15 +21,7 @@ import {
 import { Button } from "../../components/ui/button.js"
 import type { ProjectV1 } from "@creadordejocs/project-format"
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-type ObjectFolder = {
-  id: string
-  name: string
-  parentId: string | null
-}
+type ObjectFolder = NonNullable<ProjectV1["resources"]["objectFolders"]>[number]
 
 type ContextMenuState = {
   x: number
@@ -42,21 +34,18 @@ type DragItem = { type: "object"; id: string } | { type: "folder"; id: string } 
 
 type ObjectListPanelProps = {
   objects: ProjectV1["objects"]
+  objectFolders: ObjectFolder[]
   activeObjectId: string | null
   spriteSources: Record<string, string>
   onSelectObject: (id: string) => void
   onOpenInNewTab: (id: string) => void
-  onAddObject: (name: string) => void
+  onAddObject: (name: string, folderId: string | null) => void
   onDeleteObject: (id: string) => void
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-let nextFolderId = 1
-function generateFolderId(): string {
-  return `objfolder-${nextFolderId++}-${Date.now().toString(36)}`
+  onCreateFolder: (name: string, parentId: string | null) => string | null
+  onRenameFolder: (folderId: string, name: string) => boolean
+  onDeleteFolder: (folderId: string) => boolean
+  onMoveFolder: (folderId: string, newParentId: string | null) => boolean
+  onMoveObjectToFolder: (objectId: string, folderId: string | null) => boolean
 }
 
 function isDescendantOf(folderId: string, ancestorId: string, folders: ObjectFolder[]): boolean {
@@ -73,35 +62,32 @@ function isDescendantOf(folderId: string, ancestorId: string, folders: ObjectFol
   return false
 }
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
-
 export function ObjectListPanel({
   objects,
+  objectFolders,
   activeObjectId,
   spriteSources,
   onSelectObject,
   onOpenInNewTab,
   onAddObject,
-  onDeleteObject
+  onDeleteObject,
+  onCreateFolder,
+  onRenameFolder,
+  onDeleteFolder,
+  onMoveFolder,
+  onMoveObjectToFolder
 }: ObjectListPanelProps) {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [isAdding, setIsAdding] = useState(false)
   const [addingInFolderId, setAddingInFolderId] = useState<string | null>(null)
-  const [pendingNewObjectFolderId, setPendingNewObjectFolderId] = useState<string | null>(null)
   const [newObjectName, setNewObjectName] = useState("Objecte nou")
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null)
   const contextMenuRef = useRef<HTMLDivElement>(null)
 
-  // Folder state (visual-only, not persisted)
-  const [folders, setFolders] = useState<ObjectFolder[]>([])
-  const [objectFolderMap, setObjectFolderMap] = useState<Record<string, string | null>>({})
   const [expandedFolderIds, setExpandedFolderIds] = useState<Set<string>>(new Set())
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null)
   const [renamingValue, setRenamingValue] = useState("")
 
-  // Drag-and-drop state
   const dragItemRef = useRef<DragItem>(null)
   const [dropTargetFolderId, setDropTargetFolderId] = useState<string | null>(null)
   const [dropTargetIsRoot, setDropTargetIsRoot] = useState(false)
@@ -121,19 +107,6 @@ export function ObjectListPanel({
     }
   }
 
-  // Clean up objectFolderMap when objects are removed
-  useEffect(() => {
-    const currentIds = new Set(objects.map((o) => o.id))
-    setObjectFolderMap((prev) => {
-      const cleaned = Object.fromEntries(Object.entries(prev).filter(([id]) => currentIds.has(id)))
-      return Object.keys(cleaned).length === Object.keys(prev).length ? prev : cleaned
-    })
-  }, [objects])
-
-  // -------------------------------------------------------------------------
-  // Object add
-  // -------------------------------------------------------------------------
-
   const startAddingObject = (inFolderId: string | null = null) => {
     setAddingInFolderId(inFolderId)
     setNewObjectName("Objecte nou")
@@ -142,107 +115,43 @@ export function ObjectListPanel({
 
   const handleAddObject = () => {
     if (!newObjectName.trim()) return
-    const targetFolderId = addingInFolderId
-    onAddObject(newObjectName)
-    setPendingNewObjectFolderId(targetFolderId)
+    onAddObject(newObjectName, addingInFolderId)
     setNewObjectName("Objecte nou")
     setIsAdding(false)
     setAddingInFolderId(null)
   }
 
-  // Assign the actual newly-created object(s) to the folder target.
-  const prevObjectIdsRef = useRef<Set<string>>(new Set(objects.map((o) => o.id)))
-  useEffect(() => {
-    const previousIds = prevObjectIdsRef.current
-    const currentIds = new Set(objects.map((o) => o.id))
-    const addedObjectIds = objects.map((o) => o.id).filter((id) => !previousIds.has(id))
-
-    if (pendingNewObjectFolderId && addedObjectIds.length > 0) {
-      setObjectFolderMap((prev) => {
-        const next = { ...prev }
-        for (const objectId of addedObjectIds) {
-          next[objectId] = pendingNewObjectFolderId
-        }
-        return next
-      })
-      setPendingNewObjectFolderId(null)
-    } else if (!pendingNewObjectFolderId && addedObjectIds.length > 0) {
-      // Explicitly clear folder mapping for new root objects.
-      setObjectFolderMap((prev) => {
-        const next = { ...prev }
-        for (const objectId of addedObjectIds) {
-          next[objectId] = null
-        }
-        return next
-      })
-    }
-
-    prevObjectIdsRef.current = currentIds
-  }, [objects, pendingNewObjectFolderId])
-
-  useEffect(() => {
-    if (!isAdding) {
-      // If creation is cancelled before object is created, clear pending target.
-      if (pendingNewObjectFolderId && objects.length === prevObjectIdsRef.current.size) {
-        setPendingNewObjectFolderId(null)
-      }
-    }
-  }, [isAdding, objects.length, pendingNewObjectFolderId])
-
-  // -------------------------------------------------------------------------
-  // Folder CRUD
-  // -------------------------------------------------------------------------
-
   const createFolder = (parentId: string | null) => {
-    const id = generateFolderId()
-    setFolders((prev) => [...prev, { id, name: "New folder", parentId }])
-    setExpandedFolderIds((prev) => new Set(prev).add(id))
-    setRenamingFolderId(id)
-    setRenamingValue("New folder")
+    const createdFolderId = onCreateFolder("New folder", parentId)
+    if (!createdFolderId) return
+    setExpandedFolderIds((prev) => new Set(prev).add(createdFolderId))
     if (parentId) {
       setExpandedFolderIds((prev) => new Set(prev).add(parentId))
     }
+    setRenamingFolderId(createdFolderId)
+    setRenamingValue("New folder")
   }
 
   const renameFolder = (folderId: string, name: string) => {
     const trimmed = name.trim()
     if (!trimmed) return
-    setFolders((prev) => prev.map((f) => (f.id === folderId ? { ...f, name: trimmed } : f)))
+    const renamed = onRenameFolder(folderId, trimmed)
+    if (!renamed) return
+    setRenamingFolderId(null)
   }
 
   const deleteFolder = (folderId: string) => {
-    const folder = folders.find((f) => f.id === folderId)
-    if (!folder) return
-    const parentId = folder.parentId
-    setFolders((prev) =>
-      prev.filter((f) => f.id !== folderId).map((f) => (f.parentId === folderId ? { ...f, parentId } : f))
-    )
-    setObjectFolderMap((prev) => {
-      const next = { ...prev }
-      for (const [objectId, objFolderId] of Object.entries(next)) {
-        if (objFolderId === folderId) {
-          next[objectId] = parentId
-        }
-      }
-      return next
-    })
+    onDeleteFolder(folderId)
   }
 
   const toggleFolder = (folderId: string) => {
     setExpandedFolderIds((prev) => {
       const next = new Set(prev)
-      if (next.has(folderId)) {
-        next.delete(folderId)
-      } else {
-        next.add(folderId)
-      }
+      if (next.has(folderId)) next.delete(folderId)
+      else next.add(folderId)
       return next
     })
   }
-
-  // -------------------------------------------------------------------------
-  // Context menu
-  // -------------------------------------------------------------------------
 
   const openContextMenu = (e: MouseEvent, objectId: string | null, folderId: string | null) => {
     e.preventDefault()
@@ -270,10 +179,6 @@ export function ObjectListPanel({
     }
   }, [contextMenu])
 
-  // -------------------------------------------------------------------------
-  // Drag & Drop
-  // -------------------------------------------------------------------------
-
   const handleDragStart = (e: DragEvent, item: DragItem) => {
     dragItemRef.current = item
     e.dataTransfer.effectAllowed = "move"
@@ -297,7 +202,7 @@ export function ObjectListPanel({
 
     const dragged = dragItemRef.current
     if (!dragged) return
-    if (dragged.type === "folder" && (dragged.id === folderId || isDescendantOf(folderId, dragged.id, folders))) {
+    if (dragged.type === "folder" && (dragged.id === folderId || isDescendantOf(folderId, dragged.id, objectFolders))) {
       e.dataTransfer.dropEffect = "none"
       return
     }
@@ -317,13 +222,13 @@ export function ObjectListPanel({
     e.stopPropagation()
     const dragged = dragItemRef.current
     if (!dragged) return
-    if (dragged.type === "folder" && (dragged.id === folderId || isDescendantOf(folderId, dragged.id, folders))) return
-
-    if (dragged.type === "object") {
-      setObjectFolderMap((prev) => ({ ...prev, [dragged.id]: folderId }))
-    } else {
-      setFolders((prev) => prev.map((f) => (f.id === dragged.id ? { ...f, parentId: folderId } : f)))
+    if (dragged.type === "folder" && (dragged.id === folderId || isDescendantOf(folderId, dragged.id, objectFolders))) {
+      return
     }
+
+    if (dragged.type === "object") onMoveObjectToFolder(dragged.id, folderId)
+    else onMoveFolder(dragged.id, folderId)
+
     setExpandedFolderIds((prev) => new Set(prev).add(folderId))
     handleDragEnd()
   }
@@ -343,11 +248,8 @@ export function ObjectListPanel({
     e.preventDefault()
     const dragged = dragItemRef.current
     if (!dragged) return
-    if (dragged.type === "object") {
-      setObjectFolderMap((prev) => ({ ...prev, [dragged.id]: null }))
-    } else {
-      setFolders((prev) => prev.map((f) => (f.id === dragged.id ? { ...f, parentId: null } : f)))
-    }
+    if (dragged.type === "object") onMoveObjectToFolder(dragged.id, null)
+    else onMoveFolder(dragged.id, null)
     handleDragEnd()
   }
 
@@ -362,16 +264,12 @@ export function ObjectListPanel({
     }
   }
 
-  // -------------------------------------------------------------------------
-  // Tree rendering
-  // -------------------------------------------------------------------------
-
   const getChildFolders = (parentId: string | null) =>
-    folders.filter((f) => f.parentId === parentId).sort((a, b) => a.name.localeCompare(b.name))
+    objectFolders.filter((f) => (f.parentId ?? null) === parentId).sort((a, b) => a.name.localeCompare(b.name))
 
   const getChildObjects = (folderId: string | null) =>
     objects
-      .filter((o) => (objectFolderMap[o.id] ?? null) === folderId)
+      .filter((o) => (o.folderId ?? null) === folderId)
       .sort((a, b) => a.name.localeCompare(b.name))
 
   function renderTree(parentId: string | null, depth: number) {
@@ -388,9 +286,7 @@ export function ObjectListPanel({
             <div key={folder.id}>
               <div
                 className={`objlist-folder-row group flex cursor-pointer items-center rounded py-1 pr-2 transition-colors ${
-                  isDropTarget
-                    ? "bg-blue-50 ring-1 ring-blue-300"
-                    : "hover:bg-slate-100"
+                  isDropTarget ? "bg-blue-50 ring-1 ring-blue-300" : "hover:bg-slate-100"
                 }`}
                 style={{ paddingLeft: `${depth * 16 + 4}px` }}
                 draggable={!isRenaming}
@@ -413,17 +309,11 @@ export function ObjectListPanel({
                     onChange={(e: ChangeEvent<HTMLInputElement>) => setRenamingValue(e.target.value)}
                     onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
                       blockUndoShortcuts(e)
-                      if (e.key === "Enter") {
-                        renameFolder(folder.id, renamingValue)
-                        setRenamingFolderId(null)
-                      }
+                      if (e.key === "Enter") renameFolder(folder.id, renamingValue)
                       if (e.key === "Escape") setRenamingFolderId(null)
                       e.stopPropagation()
                     }}
-                    onBlur={() => {
-                      renameFolder(folder.id, renamingValue)
-                      setRenamingFolderId(null)
-                    }}
+                    onBlur={() => renameFolder(folder.id, renamingValue)}
                     onClick={(e) => e.stopPropagation()}
                   />
                 ) : (
@@ -443,15 +333,14 @@ export function ObjectListPanel({
             </div>
           )
         })}
+
         {childObjects.map((objectEntry) => {
           const isActive = activeObjectId === objectEntry.id
           return (
             <div
               key={objectEntry.id}
               className={`objlist-item group flex cursor-pointer items-center rounded py-1.5 pr-2 transition-colors ${
-                isActive
-                  ? "bg-white shadow-sm ring-1 ring-blue-200"
-                  : "hover:bg-slate-100"
+                isActive ? "bg-white shadow-sm ring-1 ring-blue-200" : "hover:bg-slate-100"
               }`}
               style={{ paddingLeft: `${depth * 16 + 8}px` }}
               draggable
@@ -478,11 +367,9 @@ export function ObjectListPanel({
             </div>
           )
         })}
+
         {isAdding && addingInFolderId === parentId && (
-          <div
-            className="objlist-add-form-inline flex gap-1.5 py-1 pr-2"
-            style={{ paddingLeft: `${depth * 16 + 8}px` }}
-          >
+          <div className="objlist-add-form-inline flex gap-1.5 py-1 pr-2" style={{ paddingLeft: `${depth * 16 + 8}px` }}>
             <input
               ref={inputCallbackRef}
               value={newObjectName}
@@ -490,17 +377,15 @@ export function ObjectListPanel({
               onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
                 blockUndoShortcuts(e)
                 if (e.key === "Enter") handleAddObject()
-                if (e.key === "Escape") { setIsAdding(false); setAddingInFolderId(null) }
+                if (e.key === "Escape") {
+                  setIsAdding(false)
+                  setAddingInFolderId(null)
+                }
               }}
               className="flex h-7 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
               placeholder="Name..."
             />
-            <Button
-              size="sm"
-              className="objlist-add-confirm h-7 w-7 shrink-0 px-0"
-              onClick={handleAddObject}
-              title="Add object"
-            >
+            <Button size="sm" className="objlist-add-confirm h-7 w-7 shrink-0 px-0" onClick={handleAddObject} title="Add object">
               <Plus className="h-3.5 w-3.5" />
             </Button>
           </div>
@@ -508,10 +393,6 @@ export function ObjectListPanel({
       </>
     )
   }
-
-  // -------------------------------------------------------------------------
-  // Context menu rendering
-  // -------------------------------------------------------------------------
 
   function renderContextMenu() {
     if (!contextMenu) return null
@@ -528,7 +409,10 @@ export function ObjectListPanel({
             <button
               type="button"
               className="objlist-ctx-open flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-slate-700 transition-colors hover:bg-slate-100"
-              onClick={() => { onSelectObject(objectId); closeContextMenu() }}
+              onClick={() => {
+                onSelectObject(objectId)
+                closeContextMenu()
+              }}
             >
               <Box className="h-3.5 w-3.5 text-slate-400" />
               Open
@@ -536,7 +420,10 @@ export function ObjectListPanel({
             <button
               type="button"
               className="objlist-ctx-open-tab flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-slate-700 transition-colors hover:bg-slate-100"
-              onClick={() => { onOpenInNewTab(objectId); closeContextMenu() }}
+              onClick={() => {
+                onOpenInNewTab(objectId)
+                closeContextMenu()
+              }}
             >
               <Plus className="h-3.5 w-3.5 text-slate-400" />
               Open in a new tab
@@ -545,7 +432,10 @@ export function ObjectListPanel({
             <button
               type="button"
               className="objlist-ctx-delete flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-red-600 transition-colors hover:bg-red-50"
-              onClick={() => { onDeleteObject(objectId); closeContextMenu() }}
+              onClick={() => {
+                onDeleteObject(objectId)
+                closeContextMenu()
+              }}
             >
               <Trash2 className="h-3.5 w-3.5" />
               Delete
@@ -557,8 +447,11 @@ export function ObjectListPanel({
               type="button"
               className="objlist-ctx-rename flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-slate-700 transition-colors hover:bg-slate-100"
               onClick={() => {
-                const f = folders.find((fo) => fo.id === folderId)
-                if (f) { setRenamingFolderId(folderId); setRenamingValue(f.name) }
+                const folder = objectFolders.find((entry) => entry.id === folderId)
+                if (folder) {
+                  setRenamingFolderId(folderId)
+                  setRenamingValue(folder.name)
+                }
                 closeContextMenu()
               }}
             >
@@ -568,7 +461,10 @@ export function ObjectListPanel({
             <button
               type="button"
               className="objlist-ctx-subfolder flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-slate-700 transition-colors hover:bg-slate-100"
-              onClick={() => { createFolder(folderId); closeContextMenu() }}
+              onClick={() => {
+                createFolder(folderId)
+                closeContextMenu()
+              }}
             >
               <FolderPlus className="h-3.5 w-3.5 text-slate-400" />
               New subfolder
@@ -577,9 +473,9 @@ export function ObjectListPanel({
               type="button"
               className="objlist-ctx-add-in-folder flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-slate-700 transition-colors hover:bg-slate-100"
               onClick={() => {
-                closeContextMenu()
                 setExpandedFolderIds((prev) => new Set(prev).add(folderId))
                 startAddingObject(folderId)
+                closeContextMenu()
               }}
             >
               <Plus className="h-3.5 w-3.5 text-slate-400" />
@@ -589,7 +485,10 @@ export function ObjectListPanel({
             <button
               type="button"
               className="objlist-ctx-delete-folder flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-red-600 transition-colors hover:bg-red-50"
-              onClick={() => { deleteFolder(folderId); closeContextMenu() }}
+              onClick={() => {
+                deleteFolder(folderId)
+                closeContextMenu()
+              }}
             >
               <Trash2 className="h-3.5 w-3.5" />
               Delete folder
@@ -600,7 +499,10 @@ export function ObjectListPanel({
             <button
               type="button"
               className="objlist-ctx-new flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-slate-700 transition-colors hover:bg-slate-100"
-              onClick={() => { closeContextMenu(); startAddingObject(null) }}
+              onClick={() => {
+                startAddingObject(null)
+                closeContextMenu()
+              }}
             >
               <Plus className="h-3.5 w-3.5 text-slate-400" />
               New object
@@ -608,7 +510,10 @@ export function ObjectListPanel({
             <button
               type="button"
               className="objlist-ctx-new-folder flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-slate-700 transition-colors hover:bg-slate-100"
-              onClick={() => { createFolder(null); closeContextMenu() }}
+              onClick={() => {
+                createFolder(null)
+                closeContextMenu()
+              }}
             >
               <FolderPlus className="h-3.5 w-3.5 text-slate-400" />
               New folder
@@ -618,10 +523,6 @@ export function ObjectListPanel({
       </div>
     )
   }
-
-  // -------------------------------------------------------------------------
-  // Render
-  // -------------------------------------------------------------------------
 
   return (
     <aside
@@ -643,7 +544,10 @@ export function ObjectListPanel({
             <button
               type="button"
               className="objlist-add-btn-collapsed inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
-              onClick={() => { setIsCollapsed(false); startAddingObject(null) }}
+              onClick={() => {
+                setIsCollapsed(false)
+                startAddingObject(null)
+              }}
               title="Add object"
             >
               <Plus className="h-4 w-4" />
@@ -682,24 +586,20 @@ export function ObjectListPanel({
       </div>
 
       {!isCollapsed && (
-        <>
-          <div
-            className={`flex-1 overflow-y-auto p-2 ${dropTargetIsRoot ? "bg-blue-50/50" : ""}`}
-            onContextMenu={(e) => openContextMenu(e, null, null)}
-            onDragOver={handleRootDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleRootDrop}
-          >
-            <div className="flex flex-col gap-0.5">
-              {objects.length === 0 && folders.length === 0 && !isAdding && (
-                <p className="px-2 py-4 text-center text-xs text-slate-400">
-                  Right-click or press + to add
-                </p>
-              )}
-              {renderTree(null, 0)}
-            </div>
+        <div
+          className={`flex-1 overflow-y-auto p-2 ${dropTargetIsRoot ? "bg-blue-50/50" : ""}`}
+          onContextMenu={(e) => openContextMenu(e, null, null)}
+          onDragOver={handleRootDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleRootDrop}
+        >
+          <div className="flex flex-col gap-0.5">
+            {objects.length === 0 && objectFolders.length === 0 && !isAdding && (
+              <p className="px-2 py-4 text-center text-xs text-slate-400">Right-click or press + to add</p>
+            )}
+            {renderTree(null, 0)}
           </div>
-        </>
+        </div>
       )}
 
       {renderContextMenu()}
