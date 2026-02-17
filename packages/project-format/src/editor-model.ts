@@ -1,4 +1,4 @@
-import type { ProjectV1, ValueExpressionOutput } from "./schema-v1.js"
+import type { ProjectV1, ValueExpressionOutput, ObjectControlBlockItem } from "./schema-v1.js"
 import { generateUUID } from "./generate-id.js"
 
 export type CreateObjectInput = {
@@ -257,32 +257,86 @@ function toActionItem(action: ObjectActionDraft): Extract<ObjectEventItem, { typ
   }
 }
 
+function getBlockBranches(item: ObjectEventItem): ObjectEventItem[][] {
+  if (item.type === "if") return [item.thenActions, item.elseActions]
+  if (item.type === "repeat" || item.type === "forEachList" || item.type === "forEachMap") return [item.actions]
+  return []
+}
+
+function isControlBlock(item: ObjectEventItem): boolean {
+  return item.type === "if" || item.type === "repeat" || item.type === "forEachList" || item.type === "forEachMap"
+}
+
+function withUpdatedBranches(item: ObjectEventItem, branches: ObjectEventItem[][]): ObjectEventItem {
+  if (item.type === "if") {
+    return { ...item, thenActions: branches[0] ?? [], elseActions: branches[1] ?? [] }
+  }
+  if (item.type === "repeat" || item.type === "forEachList" || item.type === "forEachMap") {
+    return { ...item, actions: branches[0] ?? [] }
+  }
+  return item
+}
+
+function updateBlockInItems(
+  items: ObjectEventItem[],
+  blockId: string,
+  updater: (block: ObjectEventItem) => ObjectEventItem
+): { items: ObjectEventItem[]; updated: boolean } {
+  let updated = false
+  const nextItems = items.map((itemEntry) => {
+    if (!isControlBlock(itemEntry)) {
+      return itemEntry
+    }
+    if (itemEntry.id === blockId) {
+      updated = true
+      return updater(itemEntry)
+    }
+    const branches = getBlockBranches(itemEntry)
+    const branchResults = branches.map((branch) => updateBlockInItems(branch, blockId, updater))
+    if (!branchResults.some((result) => result.updated)) {
+      return itemEntry
+    }
+    updated = true
+    return withUpdatedBranches(
+      itemEntry,
+      branchResults.map((result) => result.items)
+    )
+  })
+  return { items: nextItems, updated }
+}
+
 function updateIfBlockInItems(
   items: ObjectEventItem[],
   ifBlockId: string,
   updater: (ifBlock: ObjectIfBlock) => ObjectIfBlock
 ): { items: ObjectEventItem[]; updated: boolean } {
+  return updateBlockInItems(items, ifBlockId, (block) => updater(block as ObjectIfBlock))
+}
+
+function removeBlockFromItems(
+  items: ObjectEventItem[],
+  blockId: string
+): { items: ObjectEventItem[]; updated: boolean } {
   let updated = false
-  const nextItems = items.map((itemEntry) => {
-    if (itemEntry.type !== "if") {
-      return itemEntry
+  const nextItems: ObjectEventItem[] = []
+  for (const itemEntry of items) {
+    if (!isControlBlock(itemEntry)) {
+      nextItems.push(itemEntry)
+      continue
     }
-    if (itemEntry.id === ifBlockId) {
+    if (itemEntry.id === blockId) {
       updated = true
-      return updater(itemEntry)
+      continue
     }
-    const thenResult = updateIfBlockInItems(itemEntry.thenActions, ifBlockId, updater)
-    const elseResult = updateIfBlockInItems(itemEntry.elseActions, ifBlockId, updater)
-    if (!thenResult.updated && !elseResult.updated) {
-      return itemEntry
+    const branches = getBlockBranches(itemEntry)
+    const branchResults = branches.map((branch) => removeBlockFromItems(branch, blockId))
+    if (branchResults.some((result) => result.updated)) {
+      updated = true
+      nextItems.push(withUpdatedBranches(itemEntry, branchResults.map((r) => r.items)))
+      continue
     }
-    updated = true
-    return {
-      ...itemEntry,
-      thenActions: thenResult.items,
-      elseActions: elseResult.items
-    }
-  })
+    nextItems.push(itemEntry)
+  }
   return { items: nextItems, updated }
 }
 
@@ -290,31 +344,7 @@ function removeIfBlockFromItems(
   items: ObjectEventItem[],
   ifBlockId: string
 ): { items: ObjectEventItem[]; updated: boolean } {
-  let updated = false
-  const nextItems: ObjectEventItem[] = []
-  for (const itemEntry of items) {
-    if (itemEntry.type !== "if") {
-      nextItems.push(itemEntry)
-      continue
-    }
-    if (itemEntry.id === ifBlockId) {
-      updated = true
-      continue
-    }
-    const thenResult = removeIfBlockFromItems(itemEntry.thenActions, ifBlockId)
-    const elseResult = removeIfBlockFromItems(itemEntry.elseActions, ifBlockId)
-    if (thenResult.updated || elseResult.updated) {
-      updated = true
-      nextItems.push({
-        ...itemEntry,
-        thenActions: thenResult.items,
-        elseActions: elseResult.items
-      })
-      continue
-    }
-    nextItems.push(itemEntry)
-  }
-  return { items: nextItems, updated }
+  return removeBlockFromItems(items, ifBlockId)
 }
 
 function moveActionInItems(
@@ -339,26 +369,19 @@ function moveActionInItems(
 
   let updated = false
   const nextItems = items.map((itemEntry) => {
-    if (itemEntry.type !== "if" || updated) {
+    if (!isControlBlock(itemEntry) || updated) {
       return itemEntry
     }
-    const thenResult = moveActionInItems(itemEntry.thenActions, actionId, direction)
-    if (thenResult.updated) {
-      updated = true
-      return {
-        ...itemEntry,
-        thenActions: thenResult.items
+    const branches = getBlockBranches(itemEntry)
+    for (let branchIndex = 0; branchIndex < branches.length; branchIndex++) {
+      const branchResult = moveActionInItems(branches[branchIndex]!, actionId, direction)
+      if (branchResult.updated) {
+        updated = true
+        const updatedBranches = branches.map((b, i) => (i === branchIndex ? branchResult.items : b))
+        return withUpdatedBranches(itemEntry, updatedBranches)
       }
     }
-    const elseResult = moveActionInItems(itemEntry.elseActions, actionId, direction)
-    if (!elseResult.updated) {
-      return itemEntry
-    }
-    updated = true
-    return {
-      ...itemEntry,
-      elseActions: elseResult.items
-    }
+    return itemEntry
   })
   return { items: nextItems, updated }
 }
@@ -378,23 +401,26 @@ function removeActionItemFromItems(
       removedItem = itemEntry
       continue
     }
-    if (!removedItem && itemEntry.type === "if") {
-      const thenResult = removeActionItemFromItems(itemEntry.thenActions, actionId)
-      if (thenResult.removed) {
-        removedItem = thenResult.removedItem
-        nextItems.push({
-          ...itemEntry,
-          thenActions: thenResult.items
-        })
-        continue
+    if (!removedItem && isControlBlock(itemEntry)) {
+      const branches = getBlockBranches(itemEntry)
+      let found = false
+      const updatedBranches: ObjectEventItem[][] = []
+      for (const branch of branches) {
+        if (found) {
+          updatedBranches.push(branch)
+          continue
+        }
+        const branchResult = removeActionItemFromItems(branch, actionId)
+        if (branchResult.removed) {
+          removedItem = branchResult.removedItem
+          found = true
+          updatedBranches.push(branchResult.items)
+        } else {
+          updatedBranches.push(branch)
+        }
       }
-      const elseResult = removeActionItemFromItems(itemEntry.elseActions, actionId)
-      if (elseResult.removed) {
-        removedItem = elseResult.removedItem
-        nextItems.push({
-          ...itemEntry,
-          elseActions: elseResult.items
-        })
+      if (found) {
+        nextItems.push(withUpdatedBranches(itemEntry, updatedBranches))
         continue
       }
     }
@@ -447,34 +473,29 @@ function insertActionItemIntoItems(
   }
   let inserted = false
   const nextItems = items.map((itemEntry) => {
-    if (itemEntry.type !== "if" || inserted) {
+    if (!isControlBlock(itemEntry) || inserted) {
       return itemEntry
     }
     if (itemEntry.id === input.targetIfBlockId) {
-      const targetContainer = input.targetBranch === "then" ? itemEntry.thenActions : itemEntry.elseActions
+      const branches = getBlockBranches(itemEntry)
+      const branchIndex = input.targetBranch === "else" ? 1 : 0
+      const targetContainer = branches[branchIndex]
+      if (!targetContainer) return itemEntry
       const insertionResult = insertActionItemInContainer(targetContainer, input.item, input.targetActionId, input.position)
       if (!insertionResult.inserted) {
         return itemEntry
       }
       inserted = true
-      return input.targetBranch === "then"
-        ? { ...itemEntry, thenActions: insertionResult.items }
-        : { ...itemEntry, elseActions: insertionResult.items }
+      const updatedBranches = branches.map((b, i) => (i === branchIndex ? insertionResult.items : b))
+      return withUpdatedBranches(itemEntry, updatedBranches)
     }
-    const thenResult = insertActionItemIntoItems(itemEntry.thenActions, input)
-    if (thenResult.inserted) {
-      inserted = true
-      return {
-        ...itemEntry,
-        thenActions: thenResult.items
-      }
-    }
-    const elseResult = insertActionItemIntoItems(itemEntry.elseActions, input)
-    if (elseResult.inserted) {
-      inserted = true
-      return {
-        ...itemEntry,
-        elseActions: elseResult.items
+    const branches = getBlockBranches(itemEntry)
+    for (let branchIdx = 0; branchIdx < branches.length; branchIdx++) {
+      const branchResult = insertActionItemIntoItems(branches[branchIdx]!, input)
+      if (branchResult.inserted) {
+        inserted = true
+        const updatedBranches = branches.map((b, i) => (i === branchIdx ? branchResult.items : b))
+        return withUpdatedBranches(itemEntry, updatedBranches)
       }
     }
     return itemEntry
@@ -514,20 +535,19 @@ function insertEventItemAfterItemInItems(
 
   let inserted = false
   const nextItems = items.map((entry) => {
-    if (entry.type !== "if" || inserted) {
+    if (!isControlBlock(entry) || inserted) {
       return entry
     }
-    const thenResult = insertEventItemAfterItemInItems(entry.thenActions, anchorItemId, item)
-    if (thenResult.inserted) {
-      inserted = true
-      return { ...entry, thenActions: thenResult.items }
+    const branches = getBlockBranches(entry)
+    for (let branchIdx = 0; branchIdx < branches.length; branchIdx++) {
+      const branchResult = insertEventItemAfterItemInItems(branches[branchIdx]!, anchorItemId, item)
+      if (branchResult.inserted) {
+        inserted = true
+        const updatedBranches = branches.map((b, i) => (i === branchIdx ? branchResult.items : b))
+        return withUpdatedBranches(entry, updatedBranches)
+      }
     }
-    const elseResult = insertEventItemAfterItemInItems(entry.elseActions, anchorItemId, item)
-    if (!elseResult.inserted) {
-      return entry
-    }
-    inserted = true
-    return { ...entry, elseActions: elseResult.items }
+    return entry
   })
   return { items: nextItems, inserted }
 }
@@ -1282,13 +1302,21 @@ export function cloneObjectEventItemForPaste(item: ObjectEventItem): ObjectEvent
       }
     }
   }
-  return {
-    id: makeId("if"),
-    type: "if",
-    condition: cloneIfCondition(item.condition),
-    thenActions: item.thenActions.map((entry) => cloneObjectEventItemForPaste(entry)),
-    elseActions: item.elseActions.map((entry) => cloneObjectEventItemForPaste(entry))
+  if (item.type === "if") {
+    return {
+      id: makeId("if"),
+      type: "if",
+      condition: cloneIfCondition(item.condition),
+      thenActions: item.thenActions.map((entry) => cloneObjectEventItemForPaste(entry)),
+      elseActions: item.elseActions.map((entry) => cloneObjectEventItemForPaste(entry))
+    }
   }
+  const cloned = JSON.parse(JSON.stringify(item)) as ObjectEventItem
+  if (cloned.type === "repeat" || cloned.type === "forEachList" || cloned.type === "forEachMap") {
+    cloned.id = makeId("block")
+    cloned.actions = cloned.actions.map((entry) => cloneObjectEventItemForPaste(entry))
+  }
+  return cloned
 }
 
 export function insertObjectEventItem(project: ProjectV1, input: InsertObjectEventItemInput): ProjectV1 {
@@ -1324,6 +1352,225 @@ export function insertObjectEventItem(project: ProjectV1, input: InsertObjectEve
         })
       }
     })
+  }
+}
+
+export type AddObjectEventBlockInput = {
+  objectId: string
+  eventId: string
+  block: ObjectControlBlockItem
+  parentBlockId?: string
+  parentBranch?: "then" | "else"
+}
+
+export type AddBlockActionInput = {
+  objectId: string
+  eventId: string
+  blockId: string
+  branch?: "then" | "else"
+  action: ObjectActionDraft
+}
+
+export type UpdateBlockActionInput = {
+  objectId: string
+  eventId: string
+  blockId: string
+  branch?: "then" | "else"
+  actionId: string
+  action: ObjectActionDraft
+}
+
+export type RemoveBlockActionInput = {
+  objectId: string
+  eventId: string
+  blockId: string
+  branch?: "then" | "else"
+  actionId: string
+}
+
+export type RemoveObjectEventBlockInput = {
+  objectId: string
+  eventId: string
+  blockId: string
+}
+
+export type UpdateObjectEventBlockInput = {
+  objectId: string
+  eventId: string
+  blockId: string
+  updates: Partial<ObjectControlBlockItem>
+}
+
+export function addObjectEventBlock(project: ProjectV1, input: AddObjectEventBlockInput): ProjectV1 {
+  const parentBranch = input.parentBranch ?? "then"
+  return {
+    ...project,
+    objects: project.objects.map((objectEntry) =>
+      objectEntry.id === input.objectId
+        ? {
+            ...objectEntry,
+            events: objectEntry.events.map((eventEntry) =>
+              eventEntry.id === input.eventId
+                ? {
+                    ...eventEntry,
+                    items:
+                      input.parentBlockId === undefined
+                        ? [...eventEntry.items, input.block]
+                        : updateBlockInItems(eventEntry.items, input.parentBlockId, (block) => {
+                            const branches = getBlockBranches(block)
+                            const branchIndex = parentBranch === "else" ? 1 : 0
+                            const updatedBranches = branches.map((b, i) =>
+                              i === branchIndex ? [...b, input.block] : b
+                            )
+                            return withUpdatedBranches(block, updatedBranches)
+                          }).items
+                  }
+                : eventEntry
+            )
+          }
+        : objectEntry
+    )
+  }
+}
+
+export function removeObjectEventBlock(project: ProjectV1, input: RemoveObjectEventBlockInput): ProjectV1 {
+  return {
+    ...project,
+    objects: project.objects.map((objectEntry) =>
+      objectEntry.id === input.objectId
+        ? {
+            ...objectEntry,
+            events: objectEntry.events.map((eventEntry) =>
+              eventEntry.id === input.eventId
+                ? { ...eventEntry, items: removeBlockFromItems(eventEntry.items, input.blockId).items }
+                : eventEntry
+            )
+          }
+        : objectEntry
+    )
+  }
+}
+
+export function updateObjectEventBlock(project: ProjectV1, input: UpdateObjectEventBlockInput): ProjectV1 {
+  return {
+    ...project,
+    objects: project.objects.map((objectEntry) =>
+      objectEntry.id === input.objectId
+        ? {
+            ...objectEntry,
+            events: objectEntry.events.map((eventEntry) =>
+              eventEntry.id === input.eventId
+                ? {
+                    ...eventEntry,
+                    items: updateBlockInItems(eventEntry.items, input.blockId, (block) => ({
+                      ...block,
+                      ...input.updates,
+                      id: block.id,
+                      type: block.type
+                    } as ObjectEventItem)).items
+                  }
+                : eventEntry
+            )
+          }
+        : objectEntry
+    )
+  }
+}
+
+export function addBlockAction(project: ProjectV1, input: AddBlockActionInput): ProjectV1 {
+  const branch = input.branch ?? "then"
+  const nextActionItem = toActionItem(input.action)
+  return {
+    ...project,
+    objects: project.objects.map((objectEntry) =>
+      objectEntry.id === input.objectId
+        ? {
+            ...objectEntry,
+            events: objectEntry.events.map((eventEntry) =>
+              eventEntry.id === input.eventId
+                ? {
+                    ...eventEntry,
+                    items: updateBlockInItems(eventEntry.items, input.blockId, (block) => {
+                      const branches = getBlockBranches(block)
+                      const branchIndex = branch === "else" ? 1 : 0
+                      const updatedBranches = branches.map((b, i) =>
+                        i === branchIndex ? [...b, nextActionItem] : b
+                      )
+                      return withUpdatedBranches(block, updatedBranches)
+                    }).items
+                  }
+                : eventEntry
+            )
+          }
+        : objectEntry
+    )
+  }
+}
+
+export function updateBlockAction(project: ProjectV1, input: UpdateBlockActionInput): ProjectV1 {
+  const branch = input.branch ?? "then"
+  const nextAction = { id: input.actionId, ...input.action } as ObjectAction
+  return {
+    ...project,
+    objects: project.objects.map((objectEntry) =>
+      objectEntry.id === input.objectId
+        ? {
+            ...objectEntry,
+            events: objectEntry.events.map((eventEntry) =>
+              eventEntry.id === input.eventId
+                ? {
+                    ...eventEntry,
+                    items: updateBlockInItems(eventEntry.items, input.blockId, (block) => {
+                      const branches = getBlockBranches(block)
+                      const branchIndex = branch === "else" ? 1 : 0
+                      const updatedBranches = branches.map((b, i) =>
+                        i === branchIndex
+                          ? b.map((entry) =>
+                              entry.type === "action" && entry.action.id === input.actionId
+                                ? { ...entry, action: nextAction }
+                                : entry
+                            )
+                          : b
+                      )
+                      return withUpdatedBranches(block, updatedBranches)
+                    }).items
+                  }
+                : eventEntry
+            )
+          }
+        : objectEntry
+    )
+  }
+}
+
+export function removeBlockAction(project: ProjectV1, input: RemoveBlockActionInput): ProjectV1 {
+  const branch = input.branch ?? "then"
+  return {
+    ...project,
+    objects: project.objects.map((objectEntry) =>
+      objectEntry.id === input.objectId
+        ? {
+            ...objectEntry,
+            events: objectEntry.events.map((eventEntry) =>
+              eventEntry.id === input.eventId
+                ? {
+                    ...eventEntry,
+                    items: updateBlockInItems(eventEntry.items, input.blockId, (block) => {
+                      const branches = getBlockBranches(block)
+                      const branchIndex = branch === "else" ? 1 : 0
+                      const updatedBranches = branches.map((b, i) =>
+                        i === branchIndex
+                          ? b.filter((entry) => entry.type !== "action" || entry.action.id !== input.actionId)
+                          : b
+                      )
+                      return withUpdatedBranches(block, updatedBranches)
+                    }).items
+                  }
+                : eventEntry
+            )
+          }
+        : objectEntry
+    )
   }
 }
 

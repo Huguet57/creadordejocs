@@ -228,7 +228,40 @@ export type ObjectIfItem = {
   elseActions: ObjectEventItemType[]
 }
 
-export type ObjectEventItemType = ObjectActionItem | ObjectIfItem
+export type ObjectRepeatItem = {
+  id: string
+  type: "repeat"
+  count: ValueExpressionOutput
+  actions: ObjectEventItemType[]
+}
+
+export type ObjectForEachListItem = {
+  id: string
+  type: "forEachList"
+  scope: "global" | "object"
+  variableId: string
+  target?: string | undefined
+  targetInstanceId?: string | null | undefined
+  itemLocalVarName: string
+  indexLocalVarName?: string | undefined
+  actions: ObjectEventItemType[]
+}
+
+export type ObjectForEachMapItem = {
+  id: string
+  type: "forEachMap"
+  scope: "global" | "object"
+  variableId: string
+  target?: string | undefined
+  targetInstanceId?: string | null | undefined
+  keyLocalVarName: string
+  valueLocalVarName: string
+  actions: ObjectEventItemType[]
+}
+
+export type ObjectControlBlockItem = ObjectIfItem | ObjectRepeatItem | ObjectForEachListItem | ObjectForEachMapItem
+
+export type ObjectEventItemType = ObjectActionItem | ObjectControlBlockItem
 
 const ObjectActionItemSchema = z.object({
   id: z.string().min(1),
@@ -236,15 +269,102 @@ const ObjectActionItemSchema = z.object({
   action: ObjectActionSchema
 })
 
+function wrapRawActionsAsEventItems(rawActions: unknown[]): ObjectEventItemType[] {
+  return rawActions
+    .filter(
+      (a): a is Record<string, unknown> =>
+        typeof a === "object" && a !== null && "id" in a && "type" in a
+    )
+    .map(
+      (a): ObjectEventItemType => ({
+        id: `migrated-${String(a.id)}`,
+        type: "action",
+        action: a as ObjectActionOutput
+      })
+    )
+}
+
+function promoteLegacyFlowAction(actionEntry: ObjectActionOutput, idPrefix: string): ObjectEventItemType | null {
+  const action = actionEntry as Record<string, unknown>
+  if (actionEntry.type === "repeat") {
+    return {
+      id: `${idPrefix}${actionEntry.id}`,
+      type: "repeat",
+      count: action.count as ValueExpressionOutput,
+      actions: wrapRawActionsAsEventItems(Array.isArray(action.actions) ? (action.actions as unknown[]) : [])
+    }
+  }
+  if (actionEntry.type === "forEachList") {
+    const result: ObjectForEachListItem = {
+      id: `${idPrefix}${actionEntry.id}`,
+      type: "forEachList",
+      scope: (action.scope as "global" | "object") ?? "global",
+      variableId: typeof action.variableId === "string" ? action.variableId : "",
+      itemLocalVarName: typeof action.itemLocalVarName === "string" ? action.itemLocalVarName : "item",
+      actions: wrapRawActionsAsEventItems(Array.isArray(action.actions) ? (action.actions as unknown[]) : [])
+    }
+    if (typeof action.target === "string") result.target = action.target
+    if (action.targetInstanceId !== undefined) result.targetInstanceId = action.targetInstanceId as string | null
+    if (typeof action.indexLocalVarName === "string") result.indexLocalVarName = action.indexLocalVarName
+    return result
+  }
+  if (actionEntry.type === "forEachMap") {
+    const result: ObjectForEachMapItem = {
+      id: `${idPrefix}${actionEntry.id}`,
+      type: "forEachMap",
+      scope: (action.scope as "global" | "object") ?? "global",
+      variableId: typeof action.variableId === "string" ? action.variableId : "",
+      keyLocalVarName: typeof action.keyLocalVarName === "string" ? action.keyLocalVarName : "key",
+      valueLocalVarName: typeof action.valueLocalVarName === "string" ? action.valueLocalVarName : "value",
+      actions: wrapRawActionsAsEventItems(Array.isArray(action.actions) ? (action.actions as unknown[]) : [])
+    }
+    if (typeof action.target === "string") result.target = action.target
+    if (action.targetInstanceId !== undefined) result.targetInstanceId = action.targetInstanceId as string | null
+    if (typeof action.indexLocalVarName === "string") {
+      // forEachMap doesn't have indexLocalVarName, so this is ignored
+    }
+    return result
+  }
+  return null
+}
+
+export function migrateFlowActionItems(items: ObjectEventItemType[]): ObjectEventItemType[] {
+  return items.map((item): ObjectEventItemType => {
+    if (item.type === "if") {
+      return {
+        ...item,
+        thenActions: migrateFlowActionItems(item.thenActions),
+        elseActions: migrateFlowActionItems(item.elseActions)
+      }
+    }
+    if (item.type === "repeat" || item.type === "forEachList" || item.type === "forEachMap") {
+      return { ...item, actions: migrateFlowActionItems(item.actions) }
+    }
+    if (item.type !== "action") return item
+    const promoted = promoteLegacyFlowAction(item.action, item.id.startsWith("flow-") ? "" : "")
+    if (promoted) {
+      promoted.id = item.id
+      return promoted
+    }
+    return item
+  })
+}
+
+const FlowScopeSchema = z.enum(["global", "object"])
+
 const ObjectEventItemSchema: z.ZodType<ObjectEventItemType, z.ZodTypeDef, unknown> = z.lazy(() => {
   const ObjectBranchEntrySchema: z.ZodType<ObjectEventItemType, z.ZodTypeDef, unknown> = z.lazy(() =>
     z.union([
       ObjectEventItemSchema,
-      ObjectActionSchema.transform((actionEntry) => ({
-        id: `legacy-item-${actionEntry.id}`,
-        type: "action" as const,
-        action: actionEntry
-      }))
+      ObjectActionSchema.transform((actionEntry): ObjectEventItemType => {
+        const promoted = promoteLegacyFlowAction(actionEntry, "flow-")
+        if (promoted) return promoted
+        return {
+          id: `legacy-item-${actionEntry.id}`,
+          type: "action" as const,
+          action: actionEntry
+        }
+      })
     ])
   )
   return z.discriminatedUnion("type", [
@@ -255,6 +375,34 @@ const ObjectEventItemSchema: z.ZodType<ObjectEventItemType, z.ZodTypeDef, unknow
       condition: IfConditionSchema,
       thenActions: z.array(ObjectBranchEntrySchema).default([]),
       elseActions: z.array(ObjectBranchEntrySchema).default([])
+    }),
+    z.object({
+      id: z.string().min(1),
+      type: z.literal("repeat"),
+      count: ValueExpressionSchema,
+      actions: z.array(ObjectBranchEntrySchema).default([])
+    }),
+    z.object({
+      id: z.string().min(1),
+      type: z.literal("forEachList"),
+      scope: FlowScopeSchema,
+      variableId: z.string(),
+      target: z.string().optional(),
+      targetInstanceId: z.string().nullable().optional(),
+      itemLocalVarName: z.string().default("item"),
+      indexLocalVarName: z.string().optional(),
+      actions: z.array(ObjectBranchEntrySchema).default([])
+    }),
+    z.object({
+      id: z.string().min(1),
+      type: z.literal("forEachMap"),
+      scope: FlowScopeSchema,
+      variableId: z.string(),
+      target: z.string().optional(),
+      targetInstanceId: z.string().nullable().optional(),
+      keyLocalVarName: z.string().default("key"),
+      valueLocalVarName: z.string().default("value"),
+      actions: z.array(ObjectBranchEntrySchema).default([])
     })
   ])
 })
@@ -283,16 +431,17 @@ const ObjectEventSchema = z
     actions: z.array(ObjectActionSchema).optional()
   })
   .transform(({ items, actions, mouseMode, ...eventEntry }) => {
+    const rawItems: ObjectEventItemType[] =
+      items ??
+      (actions ?? []).map((actionEntry) => ({
+        id: `item-${actionEntry.id}`,
+        type: "action" as const,
+        action: actionEntry
+      }))
     return {
       ...eventEntry,
       ...(eventEntry.type === "Mouse" ? { mouseMode: mouseMode ?? "down" } : {}),
-      items:
-        items ??
-        (actions ?? []).map((actionEntry) => ({
-          id: `item-${actionEntry.id}`,
-          type: "action" as const,
-          action: actionEntry
-        }))
+      items: migrateFlowActionItems(rawItems)
     }
   })
 

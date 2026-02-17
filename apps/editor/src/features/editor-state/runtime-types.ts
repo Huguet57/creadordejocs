@@ -1,4 +1,4 @@
-import type { ProjectV1 } from "@creadordejocs/project-format"
+import type { ProjectV1, ObjectEventItemType } from "@creadordejocs/project-format"
 import type { RuntimeToast } from "./message-toast-utils.js"
 
 export const ROOM_WIDTH = 832
@@ -18,7 +18,7 @@ export type RuntimeMouseInput = {
 }
 
 export type RuntimeVariableValue = ProjectV1["variables"]["global"][number]["initialValue"]
-export type RuntimeEventItem = ProjectV1["objects"][number]["events"][number]["items"][number]
+export type RuntimeEventItem = ObjectEventItemType
 export type RuntimeAction = Extract<RuntimeEventItem, { type: "action" }>["action"]
 
 export type RuntimeState = {

@@ -10,7 +10,15 @@ import {
   transitionEventLock
 } from "./event-lock-utils.js"
 import { advanceRuntimeToastQueue, type RuntimeToastState } from "./message-toast-utils.js"
-import { executeAction, type ActionContext } from "./action-handlers.js"
+import {
+  executeAction,
+  resolveNumberValue,
+  isScalarListValue,
+  isScalarMapValue,
+  mergeIterationActionResult,
+  MAX_FLOW_ITERATIONS,
+  type ActionContext
+} from "./action-handlers.js"
 import {
   BUILTIN_MOUSE_X_VARIABLE_ID,
   BUILTIN_MOUSE_Y_VARIABLE_ID,
@@ -441,6 +449,46 @@ function runEventActions(
   return result
 }
 
+function buildFlowItemActionContext(
+  project: ProjectV1,
+  _result: RuntimeActionResult,
+  startPosition: { x: number; y: number } | null,
+  collisionOtherInstanceId: string | null,
+  roomInstances: ProjectV1["rooms"][number]["instances"],
+  iterationLocals: Record<string, RuntimeVariableValue>
+): ActionContext {
+  return {
+    project,
+    startPosition,
+    collisionOtherInstanceId,
+    roomInstances,
+    iterationLocals,
+    executeNestedActions: (nestedActions, nestedResult, nestedIterationLocals = iterationLocals) =>
+      runEventActions(
+        project, nestedResult.instance, nestedActions, nestedResult.runtime,
+        startPosition, collisionOtherInstanceId, roomInstances, nestedIterationLocals
+      )
+  }
+}
+
+function resolveFlowItemVariableValue(
+  item: { scope: "global" | "object"; variableId: string; target?: string | undefined; targetInstanceId?: string | null | undefined },
+  result: RuntimeActionResult,
+  collisionOtherInstanceId: string | null
+): RuntimeVariableValue | undefined {
+  if (item.scope === "global") {
+    return result.runtime.globalVariables[item.variableId]
+  }
+  const targetInstanceId = resolveTargetInstanceId(
+    result.instance,
+    (item.target as "self" | "other" | "instanceId") ?? "self",
+    item.targetInstanceId ?? null,
+    collisionOtherInstanceId
+  )
+  if (!targetInstanceId) return undefined
+  return result.runtime.objectInstanceVariables[targetInstanceId]?.[item.variableId]
+}
+
 function runEventItems(
   project: ProjectV1,
   instance: ProjectV1["rooms"][number]["instances"][number],
@@ -477,31 +525,83 @@ function runEventItems(
       }
       continue
     }
-    const conditionMatched = evaluateIfCondition(
-      itemEntry.condition,
-      result.instance,
-      result.runtime,
-      collisionOtherInstanceId,
-      roomInstances,
-      iterationLocals
-    )
-    const branchResult = runEventItems(
-      project,
-      result.instance,
-      conditionMatched ? itemEntry.thenActions : itemEntry.elseActions,
-      result.runtime,
-      startPosition,
-      collisionOtherInstanceId,
-      roomInstances,
-      iterationLocals
-    )
-    result = {
-      ...branchResult,
-      spawned: [...result.spawned, ...branchResult.spawned],
-      destroyedInstanceIds: [...new Set([...result.destroyedInstanceIds, ...branchResult.destroyedInstanceIds])],
-      scoreDelta: result.scoreDelta + branchResult.scoreDelta,
-      gameOverMessage: branchResult.gameOverMessage ?? result.gameOverMessage,
-      playedSoundIds: [...result.playedSoundIds, ...branchResult.playedSoundIds]
+    if (itemEntry.type === "if") {
+      const conditionMatched = evaluateIfCondition(
+        itemEntry.condition,
+        result.instance,
+        result.runtime,
+        collisionOtherInstanceId,
+        roomInstances,
+        iterationLocals
+      )
+      const branchResult = runEventItems(
+        project,
+        result.instance,
+        conditionMatched ? itemEntry.thenActions : itemEntry.elseActions,
+        result.runtime,
+        startPosition,
+        collisionOtherInstanceId,
+        roomInstances,
+        iterationLocals
+      )
+      result = mergeIterationActionResult(result, branchResult)
+      continue
+    }
+    if (itemEntry.type === "repeat") {
+      const actionContext = buildFlowItemActionContext(project, result, startPosition, collisionOtherInstanceId, roomInstances, iterationLocals)
+      const countValue = resolveNumberValue(itemEntry.count, result, actionContext)
+      if (countValue === undefined) continue
+      const totalIterations = Math.max(0, Math.min(MAX_FLOW_ITERATIONS, Math.floor(countValue)))
+      for (let index = 0; index < totalIterations; index += 1) {
+        const iterResult = runEventItems(
+          project, result.instance, itemEntry.actions, result.runtime,
+          startPosition, collisionOtherInstanceId, roomInstances,
+          { ...iterationLocals, index }
+        )
+        result = mergeIterationActionResult(result, iterResult)
+        if (iterResult.halted) break
+      }
+      continue
+    }
+    if (itemEntry.type === "forEachList") {
+      const listValue = resolveFlowItemVariableValue(itemEntry, result, collisionOtherInstanceId)
+      if (!isScalarListValue(listValue)) continue
+      const totalIterations = Math.min(listValue.length, MAX_FLOW_ITERATIONS)
+      for (let index = 0; index < totalIterations; index += 1) {
+        const itemValue = listValue[index]
+        if (itemValue === undefined) continue
+        const locals: Record<string, RuntimeVariableValue> = {
+          ...iterationLocals,
+          [itemEntry.itemLocalVarName]: itemValue,
+          ...(itemEntry.indexLocalVarName ? { [itemEntry.indexLocalVarName]: index } : {})
+        }
+        const iterResult = runEventItems(
+          project, result.instance, itemEntry.actions, result.runtime,
+          startPosition, collisionOtherInstanceId, roomInstances, locals
+        )
+        result = mergeIterationActionResult(result, iterResult)
+        if (iterResult.halted) break
+      }
+      continue
+    }
+    if (itemEntry.type === "forEachMap") {
+      const mapValue = resolveFlowItemVariableValue(itemEntry, result, collisionOtherInstanceId)
+      if (!isScalarMapValue(mapValue)) continue
+      const entries = Object.entries(mapValue).slice(0, MAX_FLOW_ITERATIONS)
+      for (const [key, value] of entries) {
+        const locals: Record<string, RuntimeVariableValue> = {
+          ...iterationLocals,
+          [itemEntry.keyLocalVarName]: key,
+          [itemEntry.valueLocalVarName]: value
+        }
+        const iterResult = runEventItems(
+          project, result.instance, itemEntry.actions, result.runtime,
+          startPosition, collisionOtherInstanceId, roomInstances, locals
+        )
+        result = mergeIterationActionResult(result, iterResult)
+        if (iterResult.halted) break
+      }
+      continue
     }
   }
   return result

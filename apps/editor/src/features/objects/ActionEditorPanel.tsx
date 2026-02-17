@@ -19,10 +19,12 @@ import {
   type ObjectMouseMode
 } from "../editor-state/types.js"
 import { ActionBlock } from "./ActionBlock.js"
-import { IfBlock } from "./IfBlock.js"
+import { ControlBlock } from "./ControlBlock.js"
 import { ActionSelectorPanel } from "./ActionSelectorPanel.js"
+import { BlockSelectorPanel, type ControlBlockType } from "./BlockSelectorPanel.js"
 import type { ActionDropTarget } from "./action-dnd.js"
-import type { ProjectV1 } from "@creadordejocs/project-format"
+import type { ProjectV1, ObjectControlBlockItem } from "@creadordejocs/project-format"
+import { generateUUID } from "@creadordejocs/project-format"
 import { buildDefaultIfCondition } from "./if-condition-utils.js"
 
 type ActionEditorPanelProps = {
@@ -53,17 +55,23 @@ type ActionEditorPanelProps = {
   canPasteAction: boolean
   onCopyIfBlock: (ifBlockId: string) => void
   onPasteAfterIfBlock: (ifBlockId: string) => void
-  onAddIfBlock: (condition: IfCondition, parentIfBlockId?: string, parentBranch?: "then" | "else") => void
+  onAddBlock: (block: ObjectControlBlockItem, parentBlockId?: string, parentBranch?: "then" | "else") => void
+  onUpdateBlock: (blockId: string, updates: Partial<ObjectControlBlockItem>) => void
   onUpdateIfCondition: (ifBlockId: string, condition: IfCondition) => void
-  onRemoveIfBlock: (ifBlockId: string) => void
-  onAddIfAction: (ifBlockId: string, type: ObjectActionType, branch: "then" | "else") => void
-  onUpdateIfAction: (ifBlockId: string, actionId: string, action: ObjectActionDraft, branch: "then" | "else") => void
-  onRemoveIfAction: (ifBlockId: string, actionId: string, branch: "then" | "else") => void
+  onRemoveBlock: (blockId: string) => void
+  onAddBlockAction: (blockId: string, type: ObjectActionType, branch: "then" | "else") => void
+  onUpdateBlockAction: (blockId: string, actionId: string, action: ObjectActionDraft, branch: "then" | "else") => void
+  onRemoveBlockAction: (blockId: string, actionId: string, branch: "then" | "else") => void
 }
 
 type ActionPickerTarget =
   | { kind: "event" }
-  | { kind: "ifBranch"; ifBlockId: string; branch: "then" | "else" }
+  | { kind: "blockBranch"; blockId: string; branch: "then" | "else" }
+  | null
+
+type BlockPickerTarget =
+  | { kind: "event" }
+  | { kind: "blockBranch"; blockId: string; branch: "then" | "else" }
   | null
 
 export function ActionEditorPanel({
@@ -88,14 +96,16 @@ export function ActionEditorPanel({
   canPasteAction,
   onCopyIfBlock,
   onPasteAfterIfBlock,
-  onAddIfBlock,
+  onAddBlock,
+  onUpdateBlock,
   onUpdateIfCondition,
-  onRemoveIfBlock,
-  onAddIfAction,
-  onUpdateIfAction,
-  onRemoveIfAction
+  onRemoveBlock,
+  onAddBlockAction,
+  onUpdateBlockAction,
+  onRemoveBlockAction
 }: ActionEditorPanelProps) {
   const [actionPickerTarget, setActionPickerTarget] = useState<ActionPickerTarget>(null)
+  const [blockPickerTarget, setBlockPickerTarget] = useState<BlockPickerTarget>(null)
   const [backgroundContextMenu, setBackgroundContextMenu] = useState<{ x: number; y: number } | null>(null)
   const [isCollisionTargetMenuOpen, setIsCollisionTargetMenuOpen] = useState(false)
   const [draggedActionId, setDraggedActionId] = useState<string | null>(null)
@@ -172,9 +182,44 @@ export function ActionEditorPanel({
     if (actionPickerTarget.kind === "event") {
       onAddAction(type)
     } else {
-      onAddIfAction(actionPickerTarget.ifBlockId, type, actionPickerTarget.branch)
+      onAddBlockAction(actionPickerTarget.blockId, type, actionPickerTarget.branch)
     }
     setActionPickerTarget(null)
+  }
+
+  const handleSelectBlock = (type: ControlBlockType) => {
+    const block = createDefaultBlock(type)
+    if (!block) {
+      setBlockPickerTarget(null)
+      return
+    }
+    if (!blockPickerTarget || blockPickerTarget.kind === "event") {
+      onAddBlock(block)
+    } else {
+      onAddBlock(block, blockPickerTarget.blockId, blockPickerTarget.branch)
+    }
+    setBlockPickerTarget(null)
+  }
+
+  function createDefaultBlock(type: ControlBlockType): ObjectControlBlockItem | null {
+    if (type === "if") {
+      if (!defaultIfCondition) return null
+      return { id: `if-${generateUUID()}`, type: "if", condition: defaultIfCondition, thenActions: [], elseActions: [] }
+    }
+    if (type === "repeat") {
+      return { id: `repeat-${generateUUID()}`, type: "repeat", count: 3, actions: [] }
+    }
+    if (type === "forEachList") {
+      const firstList = globalVariables.find((v) => v.type === "list")
+      if (!firstList) return null
+      return { id: `forEach-${generateUUID()}`, type: "forEachList", scope: "global", variableId: firstList.id, itemLocalVarName: "item", indexLocalVarName: "index", actions: [] }
+    }
+    if (type === "forEachMap") {
+      const firstMap = globalVariables.find((v) => v.type === "map")
+      if (!firstMap) return null
+      return { id: `forEachMap-${generateUUID()}`, type: "forEachMap", scope: "global", variableId: firstMap.id, keyLocalVarName: "key", valueLocalVarName: "value", actions: [] }
+    }
+    return null
   }
 
   const defaultIfCondition = buildDefaultIfCondition(scalarGlobalVariables, scalarSelectedObjectVariables)
@@ -377,7 +422,7 @@ export function ActionEditorPanel({
         )}
       </div>
 
-      {!actionPickerTarget ? (
+      {!actionPickerTarget && !blockPickerTarget ? (
         <>
           <div
             className="flex-1 overflow-y-auto p-4"
@@ -501,63 +546,62 @@ export function ActionEditorPanel({
                     )
                   }
 
-                  return (
-                    <div key={item.id} className={itemContainerClassName}>
-                      <IfBlock
-                        item={item}
-                        selectableTargetObjects={selectableTargetObjects}
-                        globalVariables={globalVariables}
-                        selectedObjectVariables={selectedObjectVariables}
-                        objectVariablesByObjectId={objectVariablesByObjectId}
-                        roomInstances={roomInstances}
-                        allObjects={allObjects}
-                        rooms={rooms}
-                        eventType={activeEvent.type}
-                        collisionTargetName={collisionTargetName}
-                        onUpdateIfCondition={onUpdateIfCondition}
-                        onRemoveIfBlock={onRemoveIfBlock}
-                        onAddIfBlock={onAddIfBlock}
-                        onOpenActionPickerForBranch={(ifBlockId, branch) =>
-                          setActionPickerTarget({ kind: "ifBranch", ifBlockId, branch })
-                        }
-                        onMoveAction={onMoveAction}
-                        onCopyAction={onCopyAction}
-                        onPasteAfterAction={onPasteAfterAction}
-                        canPasteAction={canPasteAction}
-                        onCopyIfBlock={onCopyIfBlock}
-                        onPasteAfterIfBlock={onPasteAfterIfBlock}
-                        onUpdateIfAction={onUpdateIfAction}
-                        onRemoveIfAction={onRemoveIfAction}
-                        draggedActionId={draggedActionId}
-                        dropTarget={dropTarget}
-                        onDragStartAction={(actionId) => {
-                          setDraggedActionId(actionId)
-                          setDropTarget(null)
-                        }}
-                        onDragOverAction={(target) => {
-                          if (!draggedActionId) {
-                            return
+                  if (item.type === "if" || item.type === "repeat" || item.type === "forEachList" || item.type === "forEachMap") {
+                    return (
+                      <div key={item.id} className={itemContainerClassName}>
+                        <ControlBlock
+                          item={item}
+                          selectableTargetObjects={selectableTargetObjects}
+                          globalVariables={globalVariables}
+                          selectedObjectVariables={selectedObjectVariables}
+                          objectVariablesByObjectId={objectVariablesByObjectId}
+                          roomInstances={roomInstances}
+                          allObjects={allObjects}
+                          rooms={rooms}
+                          eventType={activeEvent.type}
+                          collisionTargetName={collisionTargetName}
+                          onUpdateBlock={onUpdateBlock}
+                          onUpdateIfCondition={onUpdateIfCondition}
+                          onRemoveBlock={onRemoveBlock}
+                          onAddBlock={onAddBlock}
+                          onOpenActionPickerForBranch={(blockId, branch) =>
+                            setActionPickerTarget({ kind: "blockBranch", blockId, branch })
                           }
-                          if (target.targetActionId && target.targetActionId === draggedActionId) {
-                            return
-                          }
-                          setDropTarget(target)
-                        }}
-                        onDropOnAction={(target) => {
-                          if (!draggedActionId) {
-                            return
-                          }
-                          moveActionToDropTarget(draggedActionId, target)
-                          setDraggedActionId(null)
-                          setDropTarget(null)
-                        }}
-                        onDragEndAction={() => {
-                          setDraggedActionId(null)
-                          setDropTarget(null)
-                        }}
-                      />
-                    </div>
-                  )
+                          onMoveAction={onMoveAction}
+                          onCopyAction={onCopyAction}
+                          onPasteAfterAction={onPasteAfterAction}
+                          canPasteAction={canPasteAction}
+                          onCopyBlock={onCopyIfBlock}
+                          onPasteAfterBlock={onPasteAfterIfBlock}
+                          onUpdateBlockAction={onUpdateBlockAction}
+                          onRemoveBlockAction={onRemoveBlockAction}
+                          draggedActionId={draggedActionId}
+                          dropTarget={dropTarget}
+                          onDragStartAction={(actionId) => {
+                            setDraggedActionId(actionId)
+                            setDropTarget(null)
+                          }}
+                          onDragOverAction={(target) => {
+                            if (!draggedActionId) return
+                            if (target.targetActionId && target.targetActionId === draggedActionId) return
+                            setDropTarget(target)
+                          }}
+                          onDropOnAction={(target) => {
+                            if (!draggedActionId) return
+                            moveActionToDropTarget(draggedActionId, target)
+                            setDraggedActionId(null)
+                            setDropTarget(null)
+                          }}
+                          onDragEndAction={() => {
+                            setDraggedActionId(null)
+                            setDropTarget(null)
+                          }}
+                        />
+                      </div>
+                    )
+                  }
+
+                  return null
                 })
               })()}
             </div>
@@ -598,20 +642,20 @@ export function ActionEditorPanel({
                 type="button"
                 variant="outline"
                 size="sm"
-                className="mvp16-if-add-block h-8 w-full justify-start text-xs"
-                disabled={!defaultIfCondition}
-                onClick={() => {
-                  if (defaultIfCondition) {
-                    onAddIfBlock(defaultIfCondition)
-                  }
-                }}
+                className="control-block-add-block h-8 w-full justify-start text-xs"
+                onClick={() => setBlockPickerTarget({ kind: "event" })}
               >
                 <Plus className="mr-2 h-3.5 w-3.5" />
-                Add if block
+                Add Block
               </Button>
             </div>
           </div>
         </>
+      ) : blockPickerTarget ? (
+        <BlockSelectorPanel
+          onSelectBlock={handleSelectBlock}
+          onClose={() => setBlockPickerTarget(null)}
+        />
       ) : (
         <ActionSelectorPanel
           classNamePrefix="mvp3-action-picker"

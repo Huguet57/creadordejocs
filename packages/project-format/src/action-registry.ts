@@ -118,15 +118,15 @@ export const ACTION_REGISTRY = [
   },
   {
     type: "repeat",
-    ui: { label: "Repetir", shortLabel: "Repetir", categoryId: "flow", editorVisible: true }
+    ui: { label: "Repetir", shortLabel: "Repetir", categoryId: "flow", editorVisible: false }
   },
   {
     type: "forEachList",
-    ui: { label: "Per cada llista", shortLabel: "Each llista", categoryId: "flow", editorVisible: true }
+    ui: { label: "Per cada llista", shortLabel: "Each llista", categoryId: "flow", editorVisible: false }
   },
   {
     type: "forEachMap",
-    ui: { label: "Per cada mapa", shortLabel: "Each mapa", categoryId: "flow", editorVisible: true }
+    ui: { label: "Per cada mapa", shortLabel: "Each mapa", categoryId: "flow", editorVisible: false }
   }
 ] as const satisfies readonly { type: string; ui: ActionUiMeta }[]
 

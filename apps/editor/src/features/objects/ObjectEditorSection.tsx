@@ -6,12 +6,11 @@ import {
   type ObjectEventItem
 } from "@creadordejocs/project-format"
 import { isSpriteCompatibleWithObjectSize, type EditorController } from "../editor-state/use-editor-controller.js"
-import { SYSTEM_MOUSE_GLOBALS, type IfCondition, type ObjectActionType } from "../editor-state/types.js"
+import { SYSTEM_MOUSE_GLOBALS, type ObjectActionType } from "../editor-state/types.js"
 import { ObjectListPanel } from "./ObjectListPanel.js"
 import { ObjectVariablesPanel } from "./ObjectVariablesPanel.js"
 import { EventListPanel } from "./EventListPanel.js"
 import { ActionEditorPanel } from "./ActionEditorPanel.js"
-import { buildDefaultIfCondition } from "./if-condition-utils.js"
 import { SpritePickerModal } from "../sprites/components/SpritePickerModal.js"
 import { resolveSpritePreviewSource } from "../sprites/utils/sprite-preview-source.js"
 import { resolveActiveEventMemoryForObject } from "./object-event-selection.js"
@@ -137,16 +136,6 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
     }))
   }, [resolvedSpriteSources, selectedObject, sprites])
   const globalVariablesWithSystem = [...controller.project.variables.global, ...SYSTEM_MOUSE_GLOBALS]
-  const scalarGlobalVariables = controller.project.variables.global.filter(
-    (variableEntry): variableEntry is Extract<typeof controller.project.variables.global[number], { type: "number" | "string" | "boolean" }> =>
-      variableEntry.type === "number" || variableEntry.type === "string" || variableEntry.type === "boolean"
-  )
-  const scalarSelectedObjectVariables = selectedObjectVariableDefinitions.filter(
-    (variableEntry): variableEntry is Extract<
-      typeof selectedObjectVariableDefinitions[number],
-      { type: "number" | "string" | "boolean" }
-    > => variableEntry.type === "number" || variableEntry.type === "string" || variableEntry.type === "boolean"
-  )
 
   const defaultActionFromType = (type: ObjectActionType): ObjectActionDraft | null => {
     const actionDraft = createEditorDefaultAction(type, {
@@ -187,16 +176,6 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
     if (action) {
       controller.addObjectEventAction(activeEvent.id, action)
     }
-  }
-
-  const defaultIfCondition = (): IfCondition => {
-    return (
-      buildDefaultIfCondition(scalarGlobalVariables, scalarSelectedObjectVariables) ?? {
-        left: { scope: "global", variableId: "" },
-        operator: "==",
-        right: 0
-      }
-    )
   }
 
   return (
@@ -348,9 +327,14 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
                 }
                 controller.insertObjectEventItem(activeEvent.id, cloneObjectEventItemForPaste(eventItemClipboard), ifBlockId)
               }}
-              onAddIfBlock={(condition, parentIfBlockId, parentBranch) => {
+              onAddBlock={(block, parentBlockId, parentBranch) => {
                 if (activeEvent) {
-                  controller.addObjectEventIfBlock(activeEvent.id, condition ?? defaultIfCondition(), parentIfBlockId, parentBranch)
+                  controller.addObjectEventBlock(activeEvent.id, block, parentBlockId, parentBranch)
+                }
+              }}
+              onUpdateBlock={(blockId, updates) => {
+                if (activeEvent) {
+                  controller.updateObjectEventBlock(activeEvent.id, blockId, updates)
                 }
               }}
               onUpdateIfCondition={(ifBlockId, condition) => {
@@ -358,26 +342,26 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
                   controller.updateObjectEventIfBlockCondition(activeEvent.id, ifBlockId, condition)
                 }
               }}
-              onRemoveIfBlock={(ifBlockId) => {
+              onRemoveBlock={(blockId) => {
                 if (activeEvent) {
-                  controller.removeObjectEventIfBlock(activeEvent.id, ifBlockId)
+                  controller.removeObjectEventBlock(activeEvent.id, blockId)
                 }
               }}
-              onAddIfAction={(ifBlockId, type, branch) => {
+              onAddBlockAction={(blockId, type, branch) => {
                 if (!activeEvent) return
                 const action = defaultActionFromType(type)
                 if (action) {
-                  controller.addObjectEventIfAction(activeEvent.id, ifBlockId, action, branch)
+                  controller.addBlockAction(activeEvent.id, blockId, action, branch)
                 }
               }}
-              onUpdateIfAction={(ifBlockId, actionId, action, branch) => {
+              onUpdateBlockAction={(blockId, actionId, action, branch) => {
                 if (activeEvent) {
-                  controller.updateObjectEventIfAction(activeEvent.id, ifBlockId, actionId, action, branch)
+                  controller.updateBlockAction(activeEvent.id, blockId, actionId, action, branch)
                 }
               }}
-              onRemoveIfAction={(ifBlockId, actionId, branch) => {
+              onRemoveBlockAction={(blockId, actionId, branch) => {
                 if (activeEvent) {
-                  controller.removeObjectEventIfAction(activeEvent.id, ifBlockId, actionId, branch)
+                  controller.removeBlockAction(activeEvent.id, blockId, actionId, branch)
                 }
               }}
             />

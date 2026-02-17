@@ -43,8 +43,15 @@ import {
   updateSoundAssetSource,
   updateSpriteAssetSource,
   updateSpritePixelsRgba,
+  addObjectEventBlock as addObjectEventBlockModel,
+  removeObjectEventBlock as removeObjectEventBlockModel,
+  updateObjectEventBlock as updateObjectEventBlockModel,
+  addBlockAction as addBlockActionModel,
+  updateBlockAction as updateBlockActionModel,
+  removeBlockAction as removeBlockActionModel,
   type ObjectActionDraft,
   type ObjectEventItem,
+  type ObjectControlBlockItem,
   type IfCondition,
   type VariableItemType,
   type VariableType,
@@ -839,6 +846,65 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       pushProjectChange(
         removeObjectEventIfActionModel(project, { objectId: selectedObject.id, eventId, ifBlockId, actionId, branch }),
         "Remove if block action"
+      )
+    },
+    addObjectEventBlock(
+      eventId: string,
+      block: ObjectControlBlockItem,
+      parentBlockId?: string,
+      parentBranch?: "then" | "else"
+    ) {
+      if (!selectedObject) return
+      pushProjectChange(
+        addObjectEventBlockModel(project, {
+          objectId: selectedObject.id,
+          eventId,
+          block,
+          ...(parentBlockId ? { parentBlockId } : {}),
+          ...(parentBranch ? { parentBranch } : {})
+        }),
+        "Add block"
+      )
+    },
+    removeObjectEventBlock(eventId: string, blockId: string) {
+      if (!selectedObject) return
+      pushProjectChange(
+        removeObjectEventBlockModel(project, { objectId: selectedObject.id, eventId, blockId }),
+        "Remove block"
+      )
+    },
+    updateObjectEventBlock(eventId: string, blockId: string, updates: Partial<ObjectControlBlockItem>) {
+      if (!selectedObject) return
+      pushProjectChange(
+        updateObjectEventBlockModel(project, { objectId: selectedObject.id, eventId, blockId, updates }),
+        "Update block"
+      )
+    },
+    addBlockAction(eventId: string, blockId: string, action: ObjectActionDraft, branch: "then" | "else" = "then") {
+      if (!selectedObject) return
+      pushProjectChange(
+        addBlockActionModel(project, { objectId: selectedObject.id, eventId, blockId, action, branch }),
+        "Add block action"
+      )
+    },
+    updateBlockAction(
+      eventId: string,
+      blockId: string,
+      actionId: string,
+      action: ObjectActionDraft,
+      branch: "then" | "else" = "then"
+    ) {
+      if (!selectedObject) return
+      pushProjectChange(
+        updateBlockActionModel(project, { objectId: selectedObject.id, eventId, blockId, actionId, action, branch }),
+        "Update block action"
+      )
+    },
+    removeBlockAction(eventId: string, blockId: string, actionId: string, branch: "then" | "else" = "then") {
+      if (!selectedObject) return
+      pushProjectChange(
+        removeBlockActionModel(project, { objectId: selectedObject.id, eventId, blockId, actionId, branch }),
+        "Remove block action"
       )
     },
     updateSelectedObjectProperty(

@@ -24,14 +24,18 @@ function projectHasIfBlocks(templateId: GameTemplateId): boolean {
 
 type EventItems = ReturnType<typeof createTemplateProject>["project"]["objects"][number]["events"][number]["items"]
 
+function getItemBranches(itemEntry: EventItems[number]): EventItems[] {
+  if (itemEntry.type === "if") return [itemEntry.thenActions, itemEntry.elseActions]
+  if (itemEntry.type === "repeat" || itemEntry.type === "forEachList" || itemEntry.type === "forEachMap") return [itemEntry.actions]
+  return []
+}
+
 function itemsContainActionType(items: EventItems, actionType: string): boolean {
   return items.some((itemEntry) => {
     if (itemEntry.type === "action") {
       return itemEntry.action.type === actionType
     }
-    return (
-      itemsContainActionType(itemEntry.thenActions, actionType) || itemsContainActionType(itemEntry.elseActions, actionType)
-    )
+    return getItemBranches(itemEntry).some((branch) => itemsContainActionType(branch, actionType))
   })
 }
 
@@ -40,8 +44,9 @@ function collectActionTypes(items: EventItems, target: Set<string>): void {
     if (itemEntry.type === "action") {
       target.add(itemEntry.action.type)
     } else {
-      collectActionTypes(itemEntry.thenActions, target)
-      collectActionTypes(itemEntry.elseActions, target)
+      for (const branch of getItemBranches(itemEntry)) {
+        collectActionTypes(branch, target)
+      }
     }
   }
 }
