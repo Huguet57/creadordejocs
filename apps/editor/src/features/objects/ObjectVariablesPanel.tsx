@@ -446,46 +446,35 @@ export function ObjectVariablesPanel({
               <label className="mvpv2-vars-add-field-label mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-slate-400">
                 Type
               </label>
-              <div className="grid grid-cols-2 gap-1.5">
-                {(["number", "string", "boolean", "list", "map"] as const).map((typeOption) => {
-                  const style = TYPE_STYLES[typeOption]
-                  const isSelected = newVariableType === typeOption
-                  return (
-                    <button
-                      key={typeOption}
-                      type="button"
-                      className={`mvpv2-vars-add-type-btn flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2.5 text-xs font-medium transition-colors ${
-                        isSelected
-                          ? `border-slate-400 ${style.badge} ring-1 ring-slate-300`
-                          : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
-                      }`}
-                      onClick={() => {
-                        setNewVariableType(typeOption)
-                        setNewVariableRawValue(
-                          typeOption === "boolean"
-                            ? "false"
-                            : typeOption === "number"
-                              ? "0"
-                              : typeOption === "list"
-                                ? "[]"
-                                : typeOption === "map"
-                                  ? "{}"
-                                  : ""
-                        )
-                      }}
-                    >
-                      {typeOption}
-                    </button>
-                  )
-                })}
-              </div>
-              {(newVariableType === "list" || newVariableType === "map") && (
-                <div className="mt-2">
-                  <label className="mvpv2-vars-add-subtype-label mb-1 block text-[10px] font-medium text-slate-500">
-                    Item type
-                  </label>
+              <div className="flex gap-1.5">
+                <select
+                  className="mvpv2-vars-add-type-select h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400"
+                  value={newVariableType}
+                  onChange={(event) => {
+                    const nextType = event.target.value as VariableType
+                    setNewVariableType(nextType)
+                    setNewVariableRawValue(
+                      nextType === "boolean"
+                        ? "false"
+                        : nextType === "number"
+                          ? "0"
+                          : nextType === "list"
+                            ? "[]"
+                            : nextType === "map"
+                              ? "{}"
+                              : ""
+                    )
+                  }}
+                >
+                  <option value="number">number</option>
+                  <option value="string">string</option>
+                  <option value="boolean">boolean</option>
+                  <option value="list">list</option>
+                  <option value="map">map</option>
+                </select>
+                {(newVariableType === "list" || newVariableType === "map") && (
                   <select
-                    className="mvpv2-vars-add-field-itemtype h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400"
+                    className="mvpv2-vars-add-itemtype-select h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400"
                     value={newVariableItemType}
                     onChange={(event) => setNewVariableItemType(event.target.value as VariableItemType)}
                   >
@@ -493,8 +482,8 @@ export function ObjectVariablesPanel({
                     <option value="string">string</option>
                     <option value="boolean">boolean</option>
                   </select>
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
             <div>
