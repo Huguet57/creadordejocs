@@ -15,6 +15,7 @@ import { buildDefaultIfCondition } from "./if-condition-utils.js"
 import { SpritePickerModal } from "../sprites/components/SpritePickerModal.js"
 import { resolveSpritePreviewSource } from "../sprites/utils/sprite-preview-source.js"
 import { resolveActiveEventMemoryForObject } from "./object-event-selection.js"
+import { EventSelectorPanel } from "./EventSelectorPanel.js"
 
 type ObjectEditorSectionProps = {
   controller: EditorController
@@ -64,6 +65,7 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
   const [resolvedSpriteSources, setResolvedSpriteSources] = useState<Record<string, string>>({})
   const [isSpritePickerOpen, setIsSpritePickerOpen] = useState(false)
   const [eventItemClipboard, setEventItemClipboard] = useState<ObjectEventItem | null>(null)
+  const [isEventSelectorOpen, setIsEventSelectorOpen] = useState(false)
 
   const sprites = controller.project.resources.sprites
 
@@ -162,6 +164,10 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
     }
   }, [selectedObject, selectNewestForObjectId])
 
+  useEffect(() => {
+    setIsEventSelectorOpen(false)
+  }, [selectedObject?.id])
+
   const activeEventId = selectedObject ? (activeEventIdByObjectId[selectedObject.id] ?? null) : null
   const activeEvent = selectedObject?.events.find((eventEntry) => eventEntry.id === activeEventId) ?? null
 
@@ -221,15 +227,13 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
             activeEventId={activeEventId}
             collisionTargets={selectableTargetObjects}
             onSelectEvent={(id) => {
+              setIsEventSelectorOpen(false)
               setActiveEventIdByObjectId((previous) => ({
                 ...previous,
                 [selectedObject.id]: id
               }))
             }}
-            onAddEvent={(type, key, keyboardMode, intervalMs) => {
-              controller.addObjectEvent(type, key ?? null, keyboardMode ?? null, null, intervalMs ?? null)
-              setSelectNewestForObjectId(selectedObject.id)
-            }}
+            onStartAddEvent={() => setIsEventSelectorOpen(true)}
             onRemoveEvent={(id) => {
               controller.removeObjectEvent(id)
               if (activeEventId === id) {
@@ -240,115 +244,126 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
               }
             }}
           />
-          
-          <ActionEditorPanel
-            selectedObject={selectedObject}
-            activeEvent={activeEvent}
-            selectableTargetObjects={selectableTargetObjects}
-            globalVariables={globalVariablesWithSystem}
-            selectedObjectVariables={selectedObjectVariableDefinitions}
-            objectVariablesByObjectId={controller.project.variables.objectByObjectId}
-            roomInstances={controller.activeRoom?.instances ?? []}
-            allObjects={controller.project.objects}
-            rooms={controller.project.rooms}
-            onUpdateEventConfig={(key, keyboardMode, targetId, intervalMs) => {
-              if (activeEvent) {
-                controller.updateObjectEventConfig(activeEvent.id, key, keyboardMode, targetId, intervalMs)
-              }
-            }}
-            onAddAction={handleAddAction}
-            onUpdateAction={(actionId, action) => {
-              if (activeEvent) {
-                controller.updateObjectEventAction(activeEvent.id, actionId, action)
-              }
-            }}
-            onMoveAction={(actionId, direction) => {
-              if (activeEvent) {
-                controller.moveObjectEventAction(activeEvent.id, actionId, direction)
-              }
-            }}
-            onMoveActionByDrop={(actionId, target) => {
-              if (activeEvent) {
-                controller.moveObjectEventItem(activeEvent.id, actionId, target)
-              }
-            }}
-            onRemoveAction={(actionId) => {
-              if (activeEvent) {
-                controller.removeObjectEventAction(activeEvent.id, actionId)
-              }
-            }}
-            onCopyAction={(actionId) => {
-              if (!activeEvent) {
-                return
-              }
-              const itemToCopy = findEventItemByActionId(activeEvent.items, actionId)
-              if (!itemToCopy) {
-                return
-              }
-              setEventItemClipboard(itemToCopy)
-            }}
-            onPasteAfterAction={(actionId) => {
-              if (!activeEvent || !eventItemClipboard) {
-                return
-              }
-              controller.insertObjectEventItem(activeEvent.id, cloneObjectEventItemForPaste(eventItemClipboard), actionId)
-            }}
-            onPasteAtEventEnd={() => {
-              if (!activeEvent || !eventItemClipboard) {
-                return
-              }
-              controller.insertObjectEventItem(activeEvent.id, cloneObjectEventItemForPaste(eventItemClipboard))
-            }}
-            canPasteAction={eventItemClipboard !== null}
-            onCopyIfBlock={(ifBlockId) => {
-              if (!activeEvent) {
-                return
-              }
-              const ifBlockToCopy = findEventItemById(activeEvent.items, ifBlockId)
-              if (ifBlockToCopy?.type !== "if") {
-                return
-              }
-              setEventItemClipboard(ifBlockToCopy)
-            }}
-            onPasteAfterIfBlock={(ifBlockId) => {
-              if (!activeEvent || !eventItemClipboard) {
-                return
-              }
-              controller.insertObjectEventItem(activeEvent.id, cloneObjectEventItemForPaste(eventItemClipboard), ifBlockId)
-            }}
-            onAddIfBlock={(condition, parentIfBlockId, parentBranch) => {
-              if (activeEvent) {
-                controller.addObjectEventIfBlock(activeEvent.id, condition ?? defaultIfCondition(), parentIfBlockId, parentBranch)
-              }
-            }}
-            onUpdateIfCondition={(ifBlockId, condition) => {
-              if (activeEvent) {
-                controller.updateObjectEventIfBlockCondition(activeEvent.id, ifBlockId, condition)
-              }
-            }}
-            onRemoveIfBlock={(ifBlockId) => {
-              if (activeEvent) {
-                controller.removeObjectEventIfBlock(activeEvent.id, ifBlockId)
-              }
-            }}
-            onAddIfAction={(ifBlockId, type, branch) => {
-              if (!activeEvent) return
-              const action = defaultActionFromType(type)
-              if (action) {
-                controller.addObjectEventIfAction(activeEvent.id, ifBlockId, action, branch)
-              }
-            }}
-            onUpdateIfAction={(ifBlockId, actionId, action, branch) => {
-              if (activeEvent) {
-                controller.updateObjectEventIfAction(activeEvent.id, ifBlockId, actionId, action, branch)
-              }
-            }}
-            onRemoveIfAction={(ifBlockId, actionId, branch) => {
-              if (activeEvent) {
-                controller.removeObjectEventIfAction(activeEvent.id, ifBlockId, actionId, branch)
-              }
-            }}
-          />
+          {isEventSelectorOpen ? (
+            <EventSelectorPanel
+              classNamePrefix="mvp24-event-picker"
+              onSelectEvent={(type, key, keyboardMode, intervalMs) => {
+                controller.addObjectEvent(type, key ?? null, keyboardMode ?? null, null, intervalMs ?? null)
+                setSelectNewestForObjectId(selectedObject.id)
+                setIsEventSelectorOpen(false)
+              }}
+              onClose={() => setIsEventSelectorOpen(false)}
+            />
+          ) : (
+            <ActionEditorPanel
+              selectedObject={selectedObject}
+              activeEvent={activeEvent}
+              selectableTargetObjects={selectableTargetObjects}
+              globalVariables={globalVariablesWithSystem}
+              selectedObjectVariables={selectedObjectVariableDefinitions}
+              objectVariablesByObjectId={controller.project.variables.objectByObjectId}
+              roomInstances={controller.activeRoom?.instances ?? []}
+              allObjects={controller.project.objects}
+              rooms={controller.project.rooms}
+              onUpdateEventConfig={(key, keyboardMode, targetId, intervalMs) => {
+                if (activeEvent) {
+                  controller.updateObjectEventConfig(activeEvent.id, key, keyboardMode, targetId, intervalMs)
+                }
+              }}
+              onAddAction={handleAddAction}
+              onUpdateAction={(actionId, action) => {
+                if (activeEvent) {
+                  controller.updateObjectEventAction(activeEvent.id, actionId, action)
+                }
+              }}
+              onMoveAction={(actionId, direction) => {
+                if (activeEvent) {
+                  controller.moveObjectEventAction(activeEvent.id, actionId, direction)
+                }
+              }}
+              onMoveActionByDrop={(actionId, target) => {
+                if (activeEvent) {
+                  controller.moveObjectEventItem(activeEvent.id, actionId, target)
+                }
+              }}
+              onRemoveAction={(actionId) => {
+                if (activeEvent) {
+                  controller.removeObjectEventAction(activeEvent.id, actionId)
+                }
+              }}
+              onCopyAction={(actionId) => {
+                if (!activeEvent) {
+                  return
+                }
+                const itemToCopy = findEventItemByActionId(activeEvent.items, actionId)
+                if (!itemToCopy) {
+                  return
+                }
+                setEventItemClipboard(itemToCopy)
+              }}
+              onPasteAfterAction={(actionId) => {
+                if (!activeEvent || !eventItemClipboard) {
+                  return
+                }
+                controller.insertObjectEventItem(activeEvent.id, cloneObjectEventItemForPaste(eventItemClipboard), actionId)
+              }}
+              onPasteAtEventEnd={() => {
+                if (!activeEvent || !eventItemClipboard) {
+                  return
+                }
+                controller.insertObjectEventItem(activeEvent.id, cloneObjectEventItemForPaste(eventItemClipboard))
+              }}
+              canPasteAction={eventItemClipboard !== null}
+              onCopyIfBlock={(ifBlockId) => {
+                if (!activeEvent) {
+                  return
+                }
+                const ifBlockToCopy = findEventItemById(activeEvent.items, ifBlockId)
+                if (ifBlockToCopy?.type !== "if") {
+                  return
+                }
+                setEventItemClipboard(ifBlockToCopy)
+              }}
+              onPasteAfterIfBlock={(ifBlockId) => {
+                if (!activeEvent || !eventItemClipboard) {
+                  return
+                }
+                controller.insertObjectEventItem(activeEvent.id, cloneObjectEventItemForPaste(eventItemClipboard), ifBlockId)
+              }}
+              onAddIfBlock={(condition, parentIfBlockId, parentBranch) => {
+                if (activeEvent) {
+                  controller.addObjectEventIfBlock(activeEvent.id, condition ?? defaultIfCondition(), parentIfBlockId, parentBranch)
+                }
+              }}
+              onUpdateIfCondition={(ifBlockId, condition) => {
+                if (activeEvent) {
+                  controller.updateObjectEventIfBlockCondition(activeEvent.id, ifBlockId, condition)
+                }
+              }}
+              onRemoveIfBlock={(ifBlockId) => {
+                if (activeEvent) {
+                  controller.removeObjectEventIfBlock(activeEvent.id, ifBlockId)
+                }
+              }}
+              onAddIfAction={(ifBlockId, type, branch) => {
+                if (!activeEvent) return
+                const action = defaultActionFromType(type)
+                if (action) {
+                  controller.addObjectEventIfAction(activeEvent.id, ifBlockId, action, branch)
+                }
+              }}
+              onUpdateIfAction={(ifBlockId, actionId, action, branch) => {
+                if (activeEvent) {
+                  controller.updateObjectEventIfAction(activeEvent.id, ifBlockId, actionId, action, branch)
+                }
+              }}
+              onRemoveIfAction={(ifBlockId, actionId, branch) => {
+                if (activeEvent) {
+                  controller.removeObjectEventIfAction(activeEvent.id, ifBlockId, actionId, branch)
+                }
+              }}
+            />
+          )}
         </>
       ) : (
         <div className="flex flex-1 items-center justify-center bg-slate-50 text-slate-400">

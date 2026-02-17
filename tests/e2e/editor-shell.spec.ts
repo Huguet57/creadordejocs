@@ -36,7 +36,7 @@ test("creates sprite, object and object listener", async ({ page }) => {
 
   // Add event
   await page.getByRole("button", { name: "Add Event" }).click()
-  await page.locator(".mvp3-event-list-panel button[title='Add event']").click()
+  await page.locator(".mvp24-event-picker-item").filter({ hasText: "Create" }).click()
   await expect(page.getByText("When")).toBeVisible()
 
   // Open the action picker and add a "move" action

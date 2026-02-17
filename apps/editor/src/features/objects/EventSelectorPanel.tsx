@@ -1,0 +1,167 @@
+import { Activity, Keyboard, Mouse, MousePointer2, MousePointerClick, Play, Plus, Scan, Swords, Timer, X } from "lucide-react"
+import { useState } from "react"
+import {
+  EVENT_CATEGORIES,
+  EVENT_DISPLAY_NAMES,
+  OBJECT_EVENT_KEYS,
+  type ObjectEventKey,
+  type ObjectEventType,
+  type ObjectKeyboardMode
+} from "../editor-state/types.js"
+
+type EventSelectorPanelProps = {
+  classNamePrefix: string
+  onSelectEvent: (
+    type: ObjectEventType,
+    key?: ObjectEventKey | null,
+    keyboardMode?: ObjectKeyboardMode | null,
+    intervalMs?: number | null
+  ) => void
+  onClose: () => void
+}
+
+const EVENT_ICON_MAP: Record<ObjectEventType, React.ElementType> = {
+  Create: Play,
+  Step: Activity,
+  Collision: Swords,
+  Keyboard,
+  OnDestroy: X,
+  OutsideRoom: Scan,
+  Timer,
+  MouseMove: MousePointer2,
+  MouseDown: Mouse,
+  MouseClick: MousePointerClick
+}
+
+const EVENT_TYPES_WITH_REQUIRED_CONFIG: ObjectEventType[] = ["Keyboard", "Timer"]
+
+export function EventSelectorPanel({ classNamePrefix, onSelectEvent, onClose }: EventSelectorPanelProps) {
+  const [selectedType, setSelectedType] = useState<ObjectEventType | null>(null)
+  const [eventKey, setEventKey] = useState<ObjectEventKey>("ArrowLeft")
+  const [keyboardMode, setKeyboardMode] = useState<ObjectKeyboardMode>("down")
+  const [timerIntervalMs, setTimerIntervalMs] = useState(1000)
+
+  const handleTypeSelection = (type: ObjectEventType) => {
+    if (EVENT_TYPES_WITH_REQUIRED_CONFIG.includes(type)) {
+      setSelectedType(type)
+      return
+    }
+    onSelectEvent(type, null, null, null)
+  }
+
+  const handleConfirmSelectedType = () => {
+    if (selectedType === "Keyboard") {
+      onSelectEvent("Keyboard", eventKey, keyboardMode, null)
+      return
+    }
+    if (selectedType === "Timer") {
+      onSelectEvent("Timer", null, null, timerIntervalMs)
+    }
+  }
+
+  return (
+    <div className={`${classNamePrefix}-panel flex flex-1 flex-col overflow-hidden bg-slate-50/50`}>
+      <div className={`${classNamePrefix}-panel-header flex items-center justify-between border-b border-slate-200 px-4 py-2`}>
+        <p className={`${classNamePrefix}-panel-title text-[10px] font-semibold uppercase tracking-wider text-slate-500`}>
+          Afegir event
+        </p>
+        <button
+          type="button"
+          className={`${classNamePrefix}-close inline-flex h-6 w-6 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700`}
+          onClick={onClose}
+          title="Cancel"
+          aria-label="Cancel add event"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+
+      <div className={`${classNamePrefix}-grid flex-1 space-y-4 overflow-y-auto p-4`}>
+        {EVENT_CATEGORIES.map((category) => (
+          <div key={category.id} className={`${classNamePrefix}-category`}>
+            <p className={`${classNamePrefix}-category-label mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400`}>
+              {category.label}
+            </p>
+            <div className="grid grid-cols-4 gap-2">
+              {category.types.map((type) => {
+                const Icon = EVENT_ICON_MAP[type] ?? Plus
+                const isSelected = selectedType === type
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    className={`${classNamePrefix}-item flex flex-col items-center justify-center gap-1.5 rounded-lg border px-2 py-3 text-slate-600 transition-colors ${
+                      isSelected
+                        ? "border-blue-300 bg-blue-50 text-blue-700"
+                        : "border-slate-200 bg-white hover:border-slate-400 hover:bg-slate-100 hover:text-slate-900"
+                    }`}
+                    onClick={() => handleTypeSelection(type)}
+                  >
+                    <Icon className="h-5 w-5" />
+                    <span className="text-center text-[10px] font-medium leading-tight">{EVENT_DISPLAY_NAMES[type]}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {selectedType && EVENT_TYPES_WITH_REQUIRED_CONFIG.includes(selectedType) && (
+        <div className={`${classNamePrefix}-config-panel border-t border-slate-200 bg-white p-3`}>
+          {selectedType === "Keyboard" && (
+            <div className={`${classNamePrefix}-keyboard-config grid grid-cols-[1fr_1fr_auto] items-center gap-2`}>
+              <select
+                className={`${classNamePrefix}-keyboard-key h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-none`}
+                value={eventKey}
+                onChange={(event) => setEventKey(event.target.value as ObjectEventKey)}
+              >
+                {OBJECT_EVENT_KEYS.map((key) => (
+                  <option key={key} value={key}>{key}</option>
+                ))}
+              </select>
+              <select
+                className={`${classNamePrefix}-keyboard-mode h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-none`}
+                value={keyboardMode}
+                onChange={(event) => setKeyboardMode(event.target.value as ObjectKeyboardMode)}
+              >
+                <option value="down">Held</option>
+                <option value="press">Pressed</option>
+              </select>
+              <button
+                type="button"
+                className={`${classNamePrefix}-confirm h-8 rounded bg-slate-900 px-3 text-xs font-medium text-white transition-colors hover:bg-slate-700`}
+                onClick={handleConfirmSelectedType}
+                title="Add event"
+                aria-label="Confirm add event"
+              >
+                Add
+              </button>
+            </div>
+          )}
+
+          {selectedType === "Timer" && (
+            <div className={`${classNamePrefix}-timer-config grid grid-cols-[1fr_auto] items-center gap-2`}>
+              <input
+                type="number"
+                min={1}
+                className={`${classNamePrefix}-timer-interval h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-none`}
+                value={timerIntervalMs}
+                onChange={(event) => setTimerIntervalMs(Math.max(1, Number(event.target.value) || 1))}
+              />
+              <button
+                type="button"
+                className={`${classNamePrefix}-confirm h-8 rounded bg-slate-900 px-3 text-xs font-medium text-white transition-colors hover:bg-slate-700`}
+                onClick={handleConfirmSelectedType}
+                title="Add event"
+                aria-label="Confirm add event"
+              >
+                Add
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}

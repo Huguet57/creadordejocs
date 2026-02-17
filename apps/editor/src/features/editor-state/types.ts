@@ -45,6 +45,39 @@ export const OBJECT_EVENT_TYPES: ObjectEventType[] = [
   "MouseClick"
 ]
 
+export const EVENT_DISPLAY_NAMES: Record<ObjectEventType, string> = {
+  Create: "Create",
+  Step: "Step",
+  Collision: "Collision",
+  Keyboard: "Keyboard",
+  OnDestroy: "On destroy",
+  OutsideRoom: "Outside room",
+  Timer: "Timer",
+  MouseMove: "Mouse move",
+  MouseDown: "Mouse down",
+  MouseClick: "Mouse click"
+}
+
+export type EventCategoryId = "lifecycle" | "input" | "collision"
+
+export const EVENT_CATEGORIES: { id: EventCategoryId; label: string; types: ObjectEventType[] }[] = [
+  {
+    id: "lifecycle",
+    label: "Lifecycle",
+    types: ["Create", "Step", "OnDestroy", "OutsideRoom", "Timer"]
+  },
+  {
+    id: "input",
+    label: "Input",
+    types: ["Keyboard", "MouseMove", "MouseDown", "MouseClick"]
+  },
+  {
+    id: "collision",
+    label: "Collision",
+    types: ["Collision"]
+  }
+]
+
 export const SYSTEM_MOUSE_GLOBALS = [
   { id: "__mouse_x", name: "mouse_x", type: "number" as const, initialValue: 0 },
   { id: "__mouse_y", name: "mouse_y", type: "number" as const, initialValue: 0 }
