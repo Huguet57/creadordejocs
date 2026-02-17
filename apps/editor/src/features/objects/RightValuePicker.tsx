@@ -9,7 +9,7 @@ type ValueSourceTarget = "self" | "other"
 type ValueAttribute = "x" | "y" | "rotation" | "instanceCount"
 
 function formatAttributeLabel(attribute: ValueAttribute): string {
-  return attribute === "instanceCount" ? "instance count" : attribute
+  return attribute === "instanceCount" ? "instance_count" : attribute
 }
 
 function isLegacyVariableReference(value: ValueExpression): value is LegacyVariableReference {
