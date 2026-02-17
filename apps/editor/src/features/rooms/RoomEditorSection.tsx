@@ -338,7 +338,16 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                 title={`Add ${obj.name} to room`}
                 disabled={!controller.activeRoom}
               >
-                <Box className={`h-3.5 w-3.5 ${placingObjectId === obj.id ? "text-blue-500" : "text-slate-400"}`} />
+                {obj.spriteId && resolvedSpriteSources[obj.spriteId] ? (
+                  <img
+                    src={resolvedSpriteSources[obj.spriteId]}
+                    alt=""
+                    className="mvp21-room-object-list-sprite-icon h-5 w-5 object-contain"
+                    style={{ imageRendering: "pixelated" }}
+                  />
+                ) : (
+                  <Box className={`h-3.5 w-3.5 ${placingObjectId === obj.id ? "text-blue-500" : "text-slate-400"}`} />
+                )}
                 <span className="truncate">{obj.name}</span>
                 <Plus className={`ml-auto h-3 w-3 ${placingObjectId === obj.id ? "text-blue-500" : "text-slate-300"}`} />
               </button>
