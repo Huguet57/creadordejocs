@@ -11,6 +11,8 @@ type SpriteOption = {
   height: number
   pixelsRgba: string[]
   previewSrc: string | null
+  isEmpty: boolean
+  objectNames: string[]
   isCompatible: boolean
   isExactSize: boolean
 }
@@ -171,7 +173,7 @@ export function SpritePickerModal({
       <button
         key={spriteEntry.id}
         type="button"
-        className={`mvp16-sprite-picker-tree-sprite-row flex h-9 w-full items-center gap-2 border px-2 text-left text-xs ${
+        className={`mvp16-sprite-picker-tree-sprite-row flex w-full items-center gap-2 border px-2 py-1.5 text-left text-xs ${
           rowIsDisabled
             ? "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400"
             : isSelected
@@ -181,11 +183,28 @@ export function SpritePickerModal({
         style={{ paddingLeft: `${depth * 14 + 10}px` }}
         onClick={() => setHighlightedSpriteId(spriteEntry.id)}
       >
-        <ImageIcon className={`h-3.5 w-3.5 ${isSelected ? "text-indigo-500" : "text-slate-400"}`} />
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-medium">{spriteEntry.name}</p>
-          <p className="truncate text-[10px] text-slate-400">
+        {spriteEntry.previewSrc ? (
+          <img
+            src={spriteEntry.previewSrc}
+            alt=""
+            className="mvp16-sprite-picker-tree-sprite-thumb h-5 w-5 shrink-0 object-contain"
+            style={{ imageRendering: "pixelated" }}
+          />
+        ) : (
+          <ImageIcon className={`h-3.5 w-3.5 shrink-0 ${isSelected ? "text-indigo-500" : "text-slate-400"}`} />
+        )}
+        <div className="min-w-0 flex-1 leading-tight">
+          <p className="truncate text-[12px] font-medium">{spriteEntry.name}</p>
+          <p className={`truncate text-[9px] ${rowIsDisabled ? "text-slate-400" : "text-slate-400"}`}>
             {spriteEntry.width} x {spriteEntry.height}
+            {spriteEntry.isEmpty && <span className="ml-1 text-amber-500">· buit</span>}
+            {spriteEntry.objectNames.length > 0 && (
+              <span className="ml-1 text-slate-400">
+                · {spriteEntry.objectNames[0]}
+                {spriteEntry.objectNames.length > 1 && ` +${spriteEntry.objectNames.length - 1} més`}
+              </span>
+            )}
+            {rowIsDisabled && <span className="ml-1 text-amber-500">· no compatible</span>}
           </p>
         </div>
       </button>
@@ -201,13 +220,20 @@ export function SpritePickerModal({
       <div key={folderEntry.id} className="mvp16-sprite-picker-tree-folder">
         <button
           type="button"
-          className="mvp16-sprite-picker-tree-folder-row flex h-9 w-full items-center gap-1 border border-transparent px-2 text-left text-xs text-slate-700 hover:border-slate-200 hover:bg-slate-50"
+          className="mvp16-sprite-picker-tree-folder-row flex w-full items-center gap-1 border border-transparent px-2 py-1.5 text-left text-xs text-slate-700 hover:border-slate-200 hover:bg-slate-50"
           style={{ paddingLeft: `${depth * 14 + 8}px` }}
           onClick={() => toggleFolder(folderEntry.id)}
         >
-          <ChevronRight className={`h-3.5 w-3.5 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
-          {isExpanded ? <FolderOpen className="h-3.5 w-3.5 text-amber-500" /> : <Folder className="h-3.5 w-3.5 text-amber-500" />}
-          <span className="truncate">{folderEntry.name}</span>
+          <ChevronRight className={`h-3.5 w-3.5 shrink-0 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
+          {isExpanded ? (
+            <FolderOpen className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+          ) : (
+            <Folder className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+          )}
+          <div className="min-w-0 flex-1 leading-tight">
+            <p className="truncate text-[12px]">{folderEntry.name}</p>
+            <p className="truncate text-[9px] text-slate-400">carpeta</p>
+          </div>
         </button>
         {isExpanded && (
           <div className="mvp16-sprite-picker-tree-folder-children">

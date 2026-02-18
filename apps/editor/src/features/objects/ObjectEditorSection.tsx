@@ -224,6 +224,15 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
       Math.round(typeof selectedObject.height === "number" && Number.isFinite(selectedObject.height) ? selectedObject.height : 32)
     )
 
+    const objectNamesBySpriteId = new Map<string, string[]>()
+    for (const objectEntry of projectObjects) {
+      const spriteId = objectEntry.spriteId
+      if (!spriteId) continue
+      const names = objectNamesBySpriteId.get(spriteId) ?? []
+      names.push(objectEntry.name)
+      objectNamesBySpriteId.set(spriteId, names)
+    }
+
     return sprites.map((spriteEntry) => ({
       id: spriteEntry.id,
       name: spriteEntry.name,
@@ -232,6 +241,8 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
       height: spriteEntry.height,
       pixelsRgba: spriteEntry.pixelsRgba,
       previewSrc: resolvedSpriteSources[spriteEntry.id] ?? null,
+      isEmpty: !hasVisibleSpritePixels(spriteEntry.pixelsRgba),
+      objectNames: objectNamesBySpriteId.get(spriteEntry.id) ?? [],
       isCompatible: isSpriteCompatibleWithObjectSize(
         selectedObject.width,
         selectedObject.height,
@@ -242,7 +253,7 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
         normalizedObjectWidth === Math.max(1, Math.round(spriteEntry.width)) &&
         normalizedObjectHeight === Math.max(1, Math.round(spriteEntry.height))
     }))
-  }, [resolvedSpriteSources, selectedObject, sprites])
+  }, [projectObjects, resolvedSpriteSources, selectedObject, sprites])
   const defaultActionFromType = (type: ObjectActionType): ObjectActionDraft | null => {
     const actionDraft = createEditorDefaultAction(type, {
       selectableTargetObjectIds: selectableTargetObjects.map((objectEntry) => objectEntry.id),
