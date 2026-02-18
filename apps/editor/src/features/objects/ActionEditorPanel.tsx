@@ -213,12 +213,13 @@ export function ActionEditorPanel({
     if (!actionPickerTarget) {
       return
     }
-    if (actionPickerTarget.kind === "event") {
+    const target = actionPickerTarget
+    setActionPickerTarget(null)
+    if (target.kind === "event") {
       onAddAction(type)
     } else {
-      onAddBlockAction(actionPickerTarget.blockId, type, actionPickerTarget.branch)
+      onAddBlockAction(target.blockId, type, target.branch)
     }
-    setActionPickerTarget(null)
   }
 
   const handleSelectBlock = (type: ControlBlockType) => {
@@ -227,12 +228,13 @@ export function ActionEditorPanel({
       setBlockPickerTarget(null)
       return
     }
-    if (!blockPickerTarget || blockPickerTarget.kind === "event") {
+    const target = blockPickerTarget
+    setBlockPickerTarget(null)
+    if (!target || target.kind === "event") {
       onAddBlock(block)
     } else {
-      onAddBlock(block, blockPickerTarget.blockId, blockPickerTarget.branch)
+      onAddBlock(block, target.blockId, target.branch)
     }
-    setBlockPickerTarget(null)
   }
 
   function createDefaultBlock(type: ControlBlockType): ObjectControlBlockItem | null {
