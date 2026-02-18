@@ -2,8 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { Play, RotateCcw } from "lucide-react"
 import type { ProjectV1 } from "@creadordejocs/project-format"
 import { Button } from "../../components/ui/button.js"
+import { DEFAULT_SPRITE_SPEED_MS } from "../editor-state/runtime-types.js"
 import type { RuntimeMouseButton, RuntimeState } from "../editor-state/runtime.js"
-import { resolveSpritePreviewSource } from "../sprites/utils/sprite-preview-source.js"
+import { resolveSpritePreviewSource, spritePixelsToDataUrl } from "../sprites/utils/sprite-preview-source.js"
 
 const ROOM_WIDTH = 832
 const ROOM_HEIGHT = 480
@@ -68,6 +69,18 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
     () => Object.fromEntries(sprites.map((spriteEntry) => [spriteEntry.id, spriteEntry])),
     [sprites]
   )
+
+  const resolvedSpriteFrameUrls = useMemo(() => {
+    const result: Record<string, string[]> = {}
+    for (const spriteEntry of sprites) {
+      if (spriteEntry.frames.length > 1) {
+        result[spriteEntry.id] = spriteEntry.frames.map((frame) =>
+          spritePixelsToDataUrl(frame.pixelsRgba, spriteEntry.width, spriteEntry.height)
+        )
+      }
+    }
+    return result
+  }, [sprites])
 
   useEffect(() => {
     let cancelled = false
@@ -341,8 +354,20 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
                   if (objectEntry?.visible === false) {
                     return null
                   }
-                  const spriteEntry = objectEntry?.spriteId ? spriteById[objectEntry.spriteId] : undefined
-                  const spriteSource = spriteEntry ? resolvedSpriteSources[spriteEntry.id] : undefined
+                  const effectiveSpriteId = runtimeState.spriteOverrideByInstanceId[instanceEntry.id] ?? objectEntry?.spriteId
+                  const spriteEntry = effectiveSpriteId ? spriteById[effectiveSpriteId] : undefined
+
+                  const frameUrls = spriteEntry ? resolvedSpriteFrameUrls[spriteEntry.id] : undefined
+                  let spriteSource: string | undefined
+                  if (frameUrls && frameUrls.length > 1) {
+                    const speedMs = runtimeState.spriteSpeedMsByInstanceId[instanceEntry.id] ?? DEFAULT_SPRITE_SPEED_MS
+                    const elapsed = runtimeState.spriteAnimationElapsedMsByInstanceId[instanceEntry.id] ?? 0
+                    const frameIndex = Math.floor(elapsed / speedMs) % frameUrls.length
+                    spriteSource = frameUrls[frameIndex]
+                  } else {
+                    spriteSource = spriteEntry ? resolvedSpriteSources[spriteEntry.id] : undefined
+                  }
+
                   return (
                     <div
                       key={instanceEntry.id}
@@ -360,6 +385,7 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
                           className="mvp15-run-instance-sprite h-full w-full object-contain"
                           src={spriteSource}
                           alt={spriteEntry?.name ?? objectEntry?.name ?? "Sprite"}
+                          style={{ imageRendering: "pixelated" }}
                         />
                       ) : (
                         objectEntry?.name.slice(0, 2).toUpperCase() ?? "??"

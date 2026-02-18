@@ -5,6 +5,7 @@ export const ROOM_WIDTH = 832
 export const ROOM_HEIGHT = 480
 export const INSTANCE_SIZE = 32
 export const RUNTIME_TICK_MS = 80
+export const DEFAULT_SPRITE_SPEED_MS = 100
 
 export type RuntimeMouseButton = "left" | "middle" | "right"
 export type RuntimeMouseInput = {
@@ -44,6 +45,9 @@ export type RuntimeState = {
   waitElapsedByInstanceActionId: Record<string, number>
   eventLocksByKey: Record<string, true>
   customEventQueue: CustomEventQueueEntry[]
+  spriteOverrideByInstanceId: Record<string, string>
+  spriteSpeedMsByInstanceId: Record<string, number>
+  spriteAnimationElapsedMsByInstanceId: Record<string, number>
 }
 
 export type RuntimeActionResult = {

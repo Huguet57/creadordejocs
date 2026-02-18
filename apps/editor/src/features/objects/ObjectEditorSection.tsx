@@ -260,7 +260,8 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
       globalVariables: controller.project.variables.global,
       objectVariables: selectedObjectVariableDefinitions,
       roomIds: controller.project.rooms.map((roomEntry) => roomEntry.id),
-      soundIds: controller.project.resources.sounds.map((soundEntry) => soundEntry.id)
+      soundIds: controller.project.resources.sounds.map((soundEntry) => soundEntry.id),
+      spriteIds: sprites.map((spriteEntry) => spriteEntry.id)
     })
     return actionDraft as ObjectActionDraft | null
   }
@@ -407,6 +408,7 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
                 selectedObject={selectedObject}
                 activeEvent={activeEvent}
                 selectableTargetObjects={selectableTargetObjects}
+                selectableSprites={sprites.map((s) => ({ id: s.id, name: s.name }))}
                 globalVariables={controller.project.variables.global}
                 selectedObjectVariables={selectedObjectVariableDefinitions}
                 objectVariablesByObjectId={controller.project.variables.objectByObjectId}

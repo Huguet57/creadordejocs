@@ -5223,3 +5223,209 @@ describe("runtime collection mutation actions", () => {
     expect(result.runtime.objectInstanceVariables["instance-actor"]?.["ov-list"]).toEqual([10, 20])
   })
 })
+
+function createSpriteActionProject(
+  rawActions: unknown[],
+  eventType: "Step" | "Collision" = "Step",
+  frameCount = 3
+): ProjectV1 {
+  const frames = Array.from({ length: frameCount }, (_, i) => ({
+    id: `frame-${i}`,
+    pixelsRgba: Array.from({ length: 64 }, () => `#${String(i).padStart(2, "0")}0000ff`)
+  }))
+  return {
+    version: 1,
+    metadata: {
+      id: "project-sprite-actions",
+      name: "Sprite action runtime tests",
+      locale: "ca",
+      createdAtIso: new Date().toISOString()
+    },
+    resources: {
+      sprites: [
+        { id: "sprite-a", name: "Sprite A", width: 8, height: 8, assetSource: "", imagePath: "", uploadStatus: "notConnected" as const, pixelsRgba: frames[0]?.pixelsRgba ?? [], frames },
+        { id: "sprite-b", name: "Sprite B", width: 8, height: 8, assetSource: "", imagePath: "", uploadStatus: "notConnected" as const, pixelsRgba: Array.from({ length: 64 }, () => "#ff0000ff"), frames: [{ id: "frame-only", pixelsRgba: Array.from({ length: 64 }, () => "#ff0000ff") }] }
+      ],
+      sounds: []
+    },
+    variables: { global: [], objectByObjectId: {} },
+    objects: [
+      {
+        id: "object-actor",
+        name: "Actor",
+        spriteId: "sprite-a",
+        x: 0,
+        y: 0,
+        speed: 0,
+        direction: 0,
+        events: [
+          {
+            id: "event-main",
+            type: eventType,
+            key: null,
+            keyboardMode: null,
+            targetObjectId: eventType === "Collision" ? "object-target" : null,
+            intervalMs: null,
+            items: rawActions.map((action, index) => ({
+              id: `item-${index}`,
+              type: "action",
+              action: action as never
+            }))
+          }
+        ]
+      },
+      {
+        id: "object-target",
+        name: "Target",
+        spriteId: "sprite-b",
+        x: 0,
+        y: 0,
+        speed: 0,
+        direction: 0,
+        events: []
+      }
+    ],
+    rooms: [
+      {
+        id: "room-main",
+        name: "Main",
+        instances: [
+          { id: "instance-actor", objectId: "object-actor", x: 0, y: 0 },
+          { id: "instance-target", objectId: "object-target", x: 0, y: 0 }
+        ]
+      }
+    ],
+    scenes: [],
+    metrics: {
+      appStart: 0,
+      projectLoad: 0,
+      runtimeErrors: 0,
+      tutorialCompletion: 0,
+      stuckRate: 0,
+      timeToFirstPlayableFunMs: null
+    }
+  }
+}
+
+describe("changeSprite action", () => {
+  it("overrides sprite for self instance", () => {
+    const project = createSpriteActionProject([
+      { id: "a-change-sprite", type: "changeSprite", spriteId: "sprite-b", target: "self" }
+    ])
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    expect(result.runtime.spriteOverrideByInstanceId["instance-actor"]).toBe("sprite-b")
+  })
+
+  it("overrides sprite for other instance in collision", () => {
+    const project = createSpriteActionProject(
+      [{ id: "a-change-sprite-other", type: "changeSprite", spriteId: "sprite-a", target: "other" }],
+      "Collision"
+    )
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    expect(result.runtime.spriteOverrideByInstanceId["instance-target"]).toBe("sprite-a")
+  })
+
+  it("resets animation elapsed on sprite change", () => {
+    const project = createSpriteActionProject([
+      { id: "a-change-sprite", type: "changeSprite", spriteId: "sprite-b", target: "self" }
+    ])
+    const initialRuntime = createInitialRuntimeState(project)
+    const runtimeWithElapsed = {
+      ...initialRuntime,
+      spriteAnimationElapsedMsByInstanceId: { "instance-actor": 250 }
+    }
+    const result = runRuntimeTick(project, "room-main", new Set(), runtimeWithElapsed)
+    expect(result.runtime.spriteAnimationElapsedMsByInstanceId["instance-actor"]).toBe(0)
+  })
+
+  it("does not affect other instances when targeting self", () => {
+    const project = createSpriteActionProject([
+      { id: "a-change-sprite", type: "changeSprite", spriteId: "sprite-b", target: "self" }
+    ])
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    expect(result.runtime.spriteOverrideByInstanceId["instance-target"]).toBeUndefined()
+  })
+})
+
+describe("setSpriteSpeed action", () => {
+  it("sets speed for self instance", () => {
+    const project = createSpriteActionProject([
+      { id: "a-set-speed", type: "setSpriteSpeed", speedMs: 200, target: "self" }
+    ])
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    expect(result.runtime.spriteSpeedMsByInstanceId["instance-actor"]).toBe(200)
+  })
+
+  it("sets speed for other instance in collision", () => {
+    const project = createSpriteActionProject(
+      [{ id: "a-set-speed-other", type: "setSpriteSpeed", speedMs: 50, target: "other" }],
+      "Collision"
+    )
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    expect(result.runtime.spriteSpeedMsByInstanceId["instance-target"]).toBe(50)
+  })
+
+  it("clamps speed to minimum 1ms", () => {
+    const project = createSpriteActionProject([
+      { id: "a-set-speed-zero", type: "setSpriteSpeed", speedMs: 0, target: "self" }
+    ])
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    expect(result.runtime.spriteSpeedMsByInstanceId["instance-actor"]).toBe(1)
+  })
+})
+
+describe("sprite animation", () => {
+  it("advances animation elapsed per tick for multi-frame sprites", () => {
+    const project = createSpriteActionProject([], "Step", 3)
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    // RUNTIME_TICK_MS is 80, so after one tick elapsed should be 80
+    expect(result.runtime.spriteAnimationElapsedMsByInstanceId["instance-actor"]).toBe(80)
+  })
+
+  it("does not advance for single-frame sprites", () => {
+    const project = createSpriteActionProject([], "Step", 3)
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    // instance-target has sprite-b which has only 1 frame
+    expect(result.runtime.spriteAnimationElapsedMsByInstanceId["instance-target"]).toBeUndefined()
+  })
+
+  it("wraps elapsed around total animation duration", () => {
+    const project = createSpriteActionProject([], "Step", 3)
+    const initialRuntime = createInitialRuntimeState(project)
+    // Default speed is 100ms, 3 frames = 300ms total. Set elapsed to 280ms so next tick wraps.
+    const runtimeNearEnd = {
+      ...initialRuntime,
+      spriteAnimationElapsedMsByInstanceId: { "instance-actor": 280 }
+    }
+    const result = runRuntimeTick(project, "room-main", new Set(), runtimeNearEnd)
+    // 280 + 80 = 360 -> 360 % 300 = 60
+    expect(result.runtime.spriteAnimationElapsedMsByInstanceId["instance-actor"]).toBe(60)
+  })
+
+  it("uses per-instance speed override when set", () => {
+    const project = createSpriteActionProject([], "Step", 3)
+    const initialRuntime = createInitialRuntimeState(project)
+    // Set custom speed of 200ms per frame. Total = 200 * 3 = 600ms.
+    const runtimeWithSpeed = {
+      ...initialRuntime,
+      spriteSpeedMsByInstanceId: { "instance-actor": 200 },
+      spriteAnimationElapsedMsByInstanceId: { "instance-actor": 560 }
+    }
+    const result = runRuntimeTick(project, "room-main", new Set(), runtimeWithSpeed)
+    // 560 + 80 = 640 -> 640 % 600 = 40
+    expect(result.runtime.spriteAnimationElapsedMsByInstanceId["instance-actor"]).toBe(40)
+  })
+
+  it("uses default 100ms speed when no override", () => {
+    const project = createSpriteActionProject([], "Step", 2)
+    const initialRuntime = createInitialRuntimeState(project)
+    // 2 frames at 100ms = 200ms total. Start at 160.
+    const runtimeNearEnd = {
+      ...initialRuntime,
+      spriteAnimationElapsedMsByInstanceId: { "instance-actor": 160 }
+    }
+    const result = runRuntimeTick(project, "room-main", new Set(), runtimeNearEnd)
+    // 160 + 80 = 240 -> 240 % 200 = 40
+    expect(result.runtime.spriteAnimationElapsedMsByInstanceId["instance-actor"]).toBe(40)
+  })
+})

@@ -4,7 +4,9 @@ export const caMessages = {
   spriteFrameAdd: "Afegeix fotograma",
   spriteFrameDuplicate: "Duplica fotograma",
   spriteFrameDelete: "Elimina fotograma",
-  spriteFrameLabel: "Fotograma"
+  spriteFrameLabel: "Fotograma",
+  actionChangeSprite: "Canviar sprite",
+  actionSetSpriteSpeed: "Velocitat sprite"
 } as const
 
 export type EditorMessageKey = keyof typeof caMessages

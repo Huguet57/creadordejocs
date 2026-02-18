@@ -31,6 +31,7 @@ export type ActionDefaultsContext = {
   objectVariables: ActionVariableDefinition[]
   roomIds: string[]
   soundIds: string[]
+  spriteIds: string[]
 }
 
 type ActionUiMeta = {
@@ -76,6 +77,14 @@ export const ACTION_REGISTRY = [
   {
     type: "spawnObject",
     ui: { label: "Crear objecte", shortLabel: "Crear obj.", categoryId: "objects", editorVisible: true }
+  },
+  {
+    type: "changeSprite",
+    ui: { label: "Canviar sprite", shortLabel: "Sprite", categoryId: "objects", editorVisible: true }
+  },
+  {
+    type: "setSpriteSpeed",
+    ui: { label: "Velocitat sprite", shortLabel: "Vel. sprite", categoryId: "objects", editorVisible: true }
   },
   {
     type: "changeScore",
@@ -406,6 +415,18 @@ export function createObjectActionSchema<
     }),
     z.object({
       id: z.string().min(1),
+      type: z.literal("changeSprite"),
+      spriteId: z.string().min(1),
+      target: z.enum(["self", "other"])
+    }),
+    z.object({
+      id: z.string().min(1),
+      type: z.literal("setSpriteSpeed"),
+      speedMs: numberOrSource,
+      target: z.enum(["self", "other"])
+    }),
+    z.object({
+      id: z.string().min(1),
       type: z.literal("emitCustomEvent"),
       eventName: z.string().min(1),
       payload: valueOrSource
@@ -730,6 +751,14 @@ export function createEditorDefaultAction(type: ActionType, ctx: ActionDefaultsC
     const soundId = ctx.soundIds[0]
     if (!soundId) return null
     return { type: "playSound", soundId }
+  }
+  if (type === "changeSprite") {
+    const spriteId = ctx.spriteIds[0]
+    if (!spriteId) return null
+    return { type: "changeSprite", spriteId, target: "self" }
+  }
+  if (type === "setSpriteSpeed") {
+    return { type: "setSpriteSpeed", speedMs: 100, target: "self" }
   }
   if (type === "emitCustomEvent") {
     return { type: "emitCustomEvent", eventName: "event", payload: 0 }

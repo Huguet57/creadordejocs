@@ -30,6 +30,7 @@ type ActionBlockProps = {
   onPaste: () => void
   canPaste: boolean
   selectableObjects: { id: string; name: string }[]
+  selectableSprites: { id: string; name: string }[]
   globalVariables: ProjectV1["variables"]["global"]
   objectVariablesByObjectId: ProjectV1["variables"]["objectByObjectId"]
   roomInstances: ProjectV1["rooms"][number]["instances"]
@@ -92,6 +93,7 @@ export function ActionBlock({
   onPaste,
   canPaste,
   selectableObjects,
+  selectableSprites,
   globalVariables,
   objectVariablesByObjectId,
   roomInstances,
@@ -1048,6 +1050,72 @@ export function ActionBlock({
                 onChange={(nextValue) => onUpdate({ ...action, payload: nextValue as typeof action.payload })}
               />
             </div>
+          </>
+        )}
+
+        {action.type === "changeSprite" && (
+          <>
+            <select
+              className="action-block-change-sprite-select h-7 rounded border border-slate-300 bg-white/50 px-2 text-xs focus:outline-none"
+              value={action.spriteId}
+              onChange={(e) => onUpdate({ ...action, spriteId: e.target.value })}
+            >
+              {selectableSprites.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+            {allowOtherTarget && (
+              <div className="flex gap-0.5 rounded border border-slate-200">
+                <button
+                  type="button"
+                  className={`px-1.5 py-0.5 text-[10px] rounded-l ${action.target === "self" ? "bg-indigo-100 text-indigo-700 font-medium" : "text-slate-500 hover:bg-slate-50"}`}
+                  onClick={() => onUpdate({ ...action, target: "self" })}
+                >
+                  self
+                </button>
+                <button
+                  type="button"
+                  className={`px-1.5 py-0.5 text-[10px] rounded-r ${action.target === "other" ? "bg-indigo-100 text-indigo-700 font-medium" : "text-slate-500 hover:bg-slate-50"}`}
+                  onClick={() => onUpdate({ ...action, target: "other" })}
+                >
+                  other
+                </button>
+              </div>
+            )}
+          </>
+        )}
+
+        {action.type === "setSpriteSpeed" && (
+          <>
+            <div className="flex items-center gap-1">
+              <label className="text-[10px] font-medium opacity-60">ms</label>
+              <RightValuePicker
+                value={action.speedMs}
+                expectedType="number"
+                globalVariables={globalVariables}
+                internalVariables={internalVariableOptions}
+                allowOtherTarget={allowOtherTarget}
+                onChange={(nextValue) => onUpdate({ ...action, speedMs: nextValue as typeof action.speedMs })}
+              />
+            </div>
+            {allowOtherTarget && (
+              <div className="flex gap-0.5 rounded border border-slate-200">
+                <button
+                  type="button"
+                  className={`px-1.5 py-0.5 text-[10px] rounded-l ${action.target === "self" ? "bg-indigo-100 text-indigo-700 font-medium" : "text-slate-500 hover:bg-slate-50"}`}
+                  onClick={() => onUpdate({ ...action, target: "self" })}
+                >
+                  self
+                </button>
+                <button
+                  type="button"
+                  className={`px-1.5 py-0.5 text-[10px] rounded-r ${action.target === "other" ? "bg-indigo-100 text-indigo-700 font-medium" : "text-slate-500 hover:bg-slate-50"}`}
+                  onClick={() => onUpdate({ ...action, target: "other" })}
+                >
+                  other
+                </button>
+              </div>
+            )}
           </>
         )}
       </div>

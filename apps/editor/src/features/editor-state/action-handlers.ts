@@ -3,6 +3,7 @@ import { buildWaitActionKey, removeWaitProgress } from "./event-lock-utils.js"
 import { enqueueRuntimeToast, type RuntimeToastState } from "./message-toast-utils.js"
 import { executeEmitCustomEvent } from "./action-handlers-custom-events.js"
 import {
+  DEFAULT_SPRITE_SPEED_MS,
   ROOM_HEIGHT,
   ROOM_WIDTH,
   RUNTIME_TICK_MS,
@@ -1274,6 +1275,57 @@ function executeActionFallback(
       }
     }
   }
+  if (action.type === "changeSprite") {
+    const targetInstanceId = resolveTargetInstanceId(
+      result.instance,
+      action.target,
+      null,
+      ctx.collisionOtherInstanceId
+    )
+    if (!targetInstanceId) {
+      return { result }
+    }
+    return {
+      result: {
+        ...result,
+        runtime: {
+          ...result.runtime,
+          spriteOverrideByInstanceId: {
+            ...result.runtime.spriteOverrideByInstanceId,
+            [targetInstanceId]: action.spriteId
+          },
+          spriteAnimationElapsedMsByInstanceId: {
+            ...result.runtime.spriteAnimationElapsedMsByInstanceId,
+            [targetInstanceId]: 0
+          }
+        }
+      }
+    }
+  }
+  if (action.type === "setSpriteSpeed") {
+    const speedMs = resolveNumberValue(action.speedMs, result, ctx) ?? DEFAULT_SPRITE_SPEED_MS
+    const targetInstanceId = resolveTargetInstanceId(
+      result.instance,
+      action.target,
+      null,
+      ctx.collisionOtherInstanceId
+    )
+    if (!targetInstanceId) {
+      return { result }
+    }
+    return {
+      result: {
+        ...result,
+        runtime: {
+          ...result.runtime,
+          spriteSpeedMsByInstanceId: {
+            ...result.runtime.spriteSpeedMsByInstanceId,
+            [targetInstanceId]: Math.max(1, speedMs)
+          }
+        }
+      }
+    }
+  }
   return { result }
 }
 
@@ -1314,6 +1366,8 @@ export const ACTION_RUNTIME_REGISTRY: ActionRuntimeRegistry = {
   goToRoom: (action, result, ctx) => executeActionFallback(action, result, ctx),
   restartRoom: (action, result, ctx) => executeActionFallback(action, result, ctx),
   wait: (action, result, ctx) => executeActionFallback(action, result, ctx),
+  changeSprite: (action, result, ctx) => executeActionFallback(action, result, ctx),
+  setSpriteSpeed: (action, result, ctx) => executeActionFallback(action, result, ctx),
   repeat: (_action, result) => ({ result }),
   forEachList: (_action, result) => ({ result }),
   forEachMap: (_action, result) => ({ result }),

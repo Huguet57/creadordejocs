@@ -20,6 +20,7 @@ import {
   type ActionContext
 } from "./action-handlers.js"
 import {
+  DEFAULT_SPRITE_SPEED_MS,
   ROOM_HEIGHT,
   ROOM_WIDTH,
   RUNTIME_TICK_MS,
@@ -69,13 +70,36 @@ function applyActionResultToRuntime(_runtime: RuntimeState, actionResult: Runtim
 }
 
 function clearRuntimeStateForRemovedInstances(runtime: RuntimeState, removedInstanceIds: string[]): RuntimeState {
+  let nextSpriteOverride = runtime.spriteOverrideByInstanceId
+  let nextSpriteSpeed = runtime.spriteSpeedMsByInstanceId
+  let nextSpriteElapsed = runtime.spriteAnimationElapsedMsByInstanceId
+  for (const instanceId of removedInstanceIds) {
+    if (instanceId in nextSpriteOverride) {
+      const { [instanceId]: _overrideRemoved, ...rest } = nextSpriteOverride
+      void _overrideRemoved
+      nextSpriteOverride = rest
+    }
+    if (instanceId in nextSpriteSpeed) {
+      const { [instanceId]: _speedRemoved, ...rest } = nextSpriteSpeed
+      void _speedRemoved
+      nextSpriteSpeed = rest
+    }
+    if (instanceId in nextSpriteElapsed) {
+      const { [instanceId]: _elapsedRemoved, ...rest } = nextSpriteElapsed
+      void _elapsedRemoved
+      nextSpriteElapsed = rest
+    }
+  }
   return {
     ...runtime,
     waitElapsedByInstanceActionId: filterWaitProgressByRemovedInstances(
       runtime.waitElapsedByInstanceActionId,
       removedInstanceIds
     ),
-    eventLocksByKey: filterEventLocksByRemovedInstances(runtime.eventLocksByKey, removedInstanceIds)
+    eventLocksByKey: filterEventLocksByRemovedInstances(runtime.eventLocksByKey, removedInstanceIds),
+    spriteOverrideByInstanceId: nextSpriteOverride,
+    spriteSpeedMsByInstanceId: nextSpriteSpeed,
+    spriteAnimationElapsedMsByInstanceId: nextSpriteElapsed
   }
 }
 
@@ -841,7 +865,10 @@ export function createInitialRuntimeState(project?: ProjectV1): RuntimeState {
     timerElapsedByEventId: {},
     waitElapsedByInstanceActionId: {},
     eventLocksByKey: {},
-    customEventQueue: []
+    customEventQueue: [],
+    spriteOverrideByInstanceId: {},
+    spriteSpeedMsByInstanceId: {},
+    spriteAnimationElapsedMsByInstanceId: {}
   }
 }
 
@@ -1058,22 +1085,63 @@ export function runRuntimeTick(
     runEventItems
   )
 
+  // Advance sprite animation for all alive instances with multi-frame sprites
+  let postAnimationRuntime = customEventResult.runtime
+  for (const instanceEntry of customEventResult.instances) {
+    const objectEntry = project.objects.find((candidate) => candidate.id === instanceEntry.objectId)
+    if (!objectEntry) continue
+    const effectiveSpriteId = postAnimationRuntime.spriteOverrideByInstanceId[instanceEntry.id] ?? objectEntry.spriteId
+    if (!effectiveSpriteId) continue
+    const spriteEntry = project.resources.sprites.find((candidate) => candidate.id === effectiveSpriteId)
+    if (!spriteEntry || spriteEntry.frames.length <= 1) continue
+
+    const speedMs = postAnimationRuntime.spriteSpeedMsByInstanceId[instanceEntry.id] ?? DEFAULT_SPRITE_SPEED_MS
+    const prevElapsed = postAnimationRuntime.spriteAnimationElapsedMsByInstanceId[instanceEntry.id] ?? 0
+    const nextElapsed = prevElapsed + RUNTIME_TICK_MS
+    const totalDuration = speedMs * spriteEntry.frames.length
+    postAnimationRuntime = {
+      ...postAnimationRuntime,
+      spriteAnimationElapsedMsByInstanceId: {
+        ...postAnimationRuntime.spriteAnimationElapsedMsByInstanceId,
+        [instanceEntry.id]: nextElapsed % totalDuration
+      }
+    }
+  }
+
   const keptStartPositions: RuntimeState["instanceStartPositions"] = {}
   const keptObjectVariableStates: RuntimeState["objectInstanceVariables"] = {}
+  const keptSpriteOverrides: RuntimeState["spriteOverrideByInstanceId"] = {}
+  const keptSpriteSpeed: RuntimeState["spriteSpeedMsByInstanceId"] = {}
+  const keptSpriteElapsed: RuntimeState["spriteAnimationElapsedMsByInstanceId"] = {}
   for (const instanceEntry of customEventResult.instances) {
-    keptStartPositions[instanceEntry.id] = getInstanceStartPosition(customEventResult.runtime, instanceEntry)
-    keptObjectVariableStates[instanceEntry.id] = customEventResult.runtime.objectInstanceVariables[instanceEntry.id] ?? {}
+    keptStartPositions[instanceEntry.id] = getInstanceStartPosition(postAnimationRuntime, instanceEntry)
+    keptObjectVariableStates[instanceEntry.id] = postAnimationRuntime.objectInstanceVariables[instanceEntry.id] ?? {}
+    const overrideSpriteId = postAnimationRuntime.spriteOverrideByInstanceId[instanceEntry.id]
+    if (overrideSpriteId !== undefined) {
+      keptSpriteOverrides[instanceEntry.id] = overrideSpriteId
+    }
+    const speedOverride = postAnimationRuntime.spriteSpeedMsByInstanceId[instanceEntry.id]
+    if (speedOverride !== undefined) {
+      keptSpriteSpeed[instanceEntry.id] = speedOverride
+    }
+    const elapsed = postAnimationRuntime.spriteAnimationElapsedMsByInstanceId[instanceEntry.id]
+    if (elapsed !== undefined) {
+      keptSpriteElapsed[instanceEntry.id] = elapsed
+    }
   }
   const aliveInstanceIds = new Set(Object.keys(keptStartPositions))
   const compactedRuntime: RuntimeState = {
-    ...customEventResult.runtime,
+    ...postAnimationRuntime,
     instanceStartPositions: keptStartPositions,
     objectInstanceVariables: keptObjectVariableStates,
     waitElapsedByInstanceActionId: filterWaitProgressByAliveInstances(
-      customEventResult.runtime.waitElapsedByInstanceActionId,
+      postAnimationRuntime.waitElapsedByInstanceActionId,
       aliveInstanceIds
     ),
-    eventLocksByKey: filterEventLocksByAliveInstances(customEventResult.runtime.eventLocksByKey, aliveInstanceIds),
+    eventLocksByKey: filterEventLocksByAliveInstances(postAnimationRuntime.eventLocksByKey, aliveInstanceIds),
+    spriteOverrideByInstanceId: keptSpriteOverrides,
+    spriteSpeedMsByInstanceId: keptSpriteSpeed,
+    spriteAnimationElapsedMsByInstanceId: keptSpriteElapsed,
     nextRoomId: null,
     restartRoomRequested: false
   }

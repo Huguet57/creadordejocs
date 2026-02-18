@@ -35,6 +35,7 @@ type ActionEditorPanelProps = {
   selectedObject: ProjectV1["objects"][0] | null
   activeEvent: ObjectEventEntry | null
   selectableTargetObjects: { id: string; name: string; spriteSrc: string | null }[]
+  selectableSprites: { id: string; name: string }[]
   globalVariables: ProjectV1["variables"]["global"]
   selectedObjectVariables: ProjectV1["variables"]["global"]
   objectVariablesByObjectId: ProjectV1["variables"]["objectByObjectId"]
@@ -82,6 +83,7 @@ export function ActionEditorPanel({
   selectedObject,
   activeEvent,
   selectableTargetObjects,
+  selectableSprites,
   globalVariables,
   selectedObjectVariables,
   objectVariablesByObjectId,
@@ -574,6 +576,7 @@ export function ActionEditorPanel({
                           onPaste={() => onPasteAfterAction(item.action.id)}
                           canPaste={canPasteAction}
                           selectableObjects={selectableTargetObjects}
+                          selectableSprites={selectableSprites}
                           globalVariables={globalVariables}
                           objectVariablesByObjectId={objectVariablesByObjectId}
                           roomInstances={roomInstances}
@@ -628,6 +631,7 @@ export function ActionEditorPanel({
                         <ControlBlock
                           item={item}
                           selectableTargetObjects={selectableTargetObjects}
+                          selectableSprites={selectableSprites}
                           globalVariables={globalVariables}
                           selectedObjectVariables={selectedObjectVariables}
                           objectVariablesByObjectId={objectVariablesByObjectId}

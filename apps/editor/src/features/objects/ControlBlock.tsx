@@ -19,6 +19,7 @@ import type { ActionDropTarget } from "./action-dnd.js"
 type ControlBlockProps = {
   item: ObjectControlBlockItem
   selectableTargetObjects: { id: string; name: string }[]
+  selectableSprites: { id: string; name: string }[]
   globalVariables: ProjectV1["variables"]["global"]
   selectedObjectVariables: ProjectV1["variables"]["global"]
   objectVariablesByObjectId: ProjectV1["variables"]["objectByObjectId"]
@@ -135,6 +136,7 @@ function getNextLocalVariableName(baseName: string, existingNames: string[]): st
 export function ControlBlock({
   item,
   selectableTargetObjects,
+  selectableSprites,
   globalVariables,
   selectedObjectVariables,
   objectVariablesByObjectId,
@@ -330,6 +332,7 @@ export function ControlBlock({
               onPaste={() => onPasteAfterAction(branchItem.action.id)}
               canPaste={canPasteAction}
               selectableObjects={selectableTargetObjects}
+              selectableSprites={selectableSprites}
               globalVariables={globalVariables}
               objectVariablesByObjectId={objectVariablesByObjectId}
               roomInstances={roomInstances}
@@ -370,6 +373,7 @@ export function ControlBlock({
             <ControlBlock
               item={branchItem}
               selectableTargetObjects={selectableTargetObjects}
+              selectableSprites={selectableSprites}
               globalVariables={globalVariables}
               selectedObjectVariables={selectedObjectVariables}
               objectVariablesByObjectId={objectVariablesByObjectId}
