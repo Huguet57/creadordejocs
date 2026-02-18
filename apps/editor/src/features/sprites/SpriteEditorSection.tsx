@@ -259,6 +259,7 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
         onAddSprite={(name, width, height, folderId) => controller.addSprite(name, width, height, folderId)}
         onCreateFolder={(name, parentId) => controller.createSpriteFolder(name, parentId)}
         onRenameSprite={(spriteId, name) => controller.renameSprite(spriteId, name)}
+        onDuplicateSprite={(spriteId) => controller.duplicateSprite(spriteId)}
         onDeleteSprite={handleDeleteSprite}
         onMoveSpriteToFolder={(spriteId, folderId) => controller.moveSpriteToFolder(spriteId, folderId)}
         onRenameFolder={(folderId, name) => controller.renameSpriteFolder(folderId, name)}

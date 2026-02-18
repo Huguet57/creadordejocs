@@ -719,6 +719,38 @@ export function quickCreateSpriteWithSize(
   }
 }
 
+export function duplicateSprite(
+  project: ProjectV1,
+  spriteId: string
+): { project: ProjectV1; spriteId: string } | null {
+  const source = project.resources.sprites.find((entry) => entry.id === spriteId)
+  if (!source) return null
+  const newSpriteId = makeId("sprite")
+  return {
+    project: {
+      ...project,
+      resources: {
+        ...project.resources,
+        sprites: [
+          ...project.resources.sprites,
+          {
+            id: newSpriteId,
+            name: `${source.name} (copy)`,
+            folderId: source.folderId,
+            imagePath: "",
+            assetSource: source.assetSource,
+            uploadStatus: source.uploadStatus,
+            width: source.width,
+            height: source.height,
+            pixelsRgba: [...source.pixelsRgba]
+          }
+        ]
+      }
+    },
+    spriteId: newSpriteId
+  }
+}
+
 export function quickCreateSound(
   project: ProjectV1,
   name: string

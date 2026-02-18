@@ -9,6 +9,7 @@ import {
   createSpriteFolder as createSpriteFolderModel,
   createObjectFolder as createObjectFolderModel,
   deleteSprite as deleteSpriteModel,
+  duplicateSprite as duplicateSpriteModel,
   deleteSpriteFolder as deleteSpriteFolderModel,
   deleteObjectFolder as deleteObjectFolderModel,
   deleteRoom as deleteRoomModel,
@@ -503,6 +504,13 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       const result = quickCreateSpriteWithSize(project, name.trim(), width, height)
       const next = folderId ? moveSpriteToFolderModel(result.project, result.spriteId, folderId) : result.project
       pushProjectChange(next, `Create sprite: ${name.trim()}`)
+      setActiveSpriteId(result.spriteId)
+      return result.spriteId
+    },
+    duplicateSprite(spriteId: string) {
+      const result = duplicateSpriteModel(project, spriteId)
+      if (!result) return null
+      pushProjectChange(result.project, "Duplicate sprite")
       setActiveSpriteId(result.spriteId)
       return result.spriteId
     },

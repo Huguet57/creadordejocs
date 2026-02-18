@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronLeft, ChevronRight, FolderPlus, Image, Pencil, Plus, Trash2, X } from "lucide-react"
+import { ChevronDown, ChevronLeft, ChevronRight, Copy, FolderPlus, Image, Pencil, Plus, Trash2, X } from "lucide-react"
 import {
   useCallback,
   useEffect,
@@ -46,6 +46,7 @@ type SpriteListPanelProps = {
   onAddSprite: (name: string, width: number, height: number, folderId: string | null) => void
   onCreateFolder: (name: string, parentId: string | null) => string | null
   onRenameSprite: (spriteId: string, name: string) => boolean
+  onDuplicateSprite: (spriteId: string) => void
   onDeleteSprite: (spriteId: string) => boolean
   onMoveSpriteToFolder: (spriteId: string, folderId: string | null) => boolean
   onRenameFolder: (folderId: string, name: string) => boolean
@@ -70,6 +71,7 @@ export function SpriteListPanel({
   onAddSprite,
   onCreateFolder,
   onRenameSprite,
+  onDuplicateSprite,
   onDeleteSprite,
   onMoveSpriteToFolder,
   onRenameFolder,
@@ -622,6 +624,17 @@ export function SpriteListPanel({
             >
               <Pencil className="h-3.5 w-3.5 text-slate-400" />
               Rename
+            </button>
+            <button
+              type="button"
+              className="mvp16-sprite-ctx-duplicate flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-slate-700 transition-colors hover:bg-slate-100"
+              onClick={() => {
+                onDuplicateSprite(spriteId)
+                closeContextMenu()
+              }}
+            >
+              <Copy className="h-3.5 w-3.5 text-slate-400" />
+              Duplicate
             </button>
             <div className="my-1 border-t border-slate-100" />
             <button
