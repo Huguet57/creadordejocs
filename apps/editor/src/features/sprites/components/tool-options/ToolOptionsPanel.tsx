@@ -154,22 +154,27 @@ export function ToolOptionsPanel({
 
   if (activeTool === "eraser") {
     return (
-      <div className="mvp16-sprite-tool-options-eraser flex flex-col gap-2">
-        <label className="mvp16-sprite-tool-options-eraser-radius flex flex-col gap-1 text-[10px] text-slate-600">
-          <span className="font-medium">Radi: {toolOptions.eraser.radius}</span>
-          <input
-            type="range"
-            min={1}
-            max={5}
-            value={toolOptions.eraser.radius}
-            onChange={(event) => onUpdateToolOptions("eraser", { radius: Number(event.target.value) })}
-          />
-        </label>
-        <p className="text-[10px] text-slate-400">
-          {toolOptions.eraser.radius === 1
-            ? "1 píxel"
-            : `${toolOptions.eraser.radius * 2 - 1}×${toolOptions.eraser.radius * 2 - 1} píxels`}
-        </p>
+      <div className="mvp16-sprite-tool-options-eraser flex flex-col gap-1.5">
+        <span className="text-[10px] font-medium text-slate-600">Mida</span>
+        <div className="grid grid-cols-2 gap-1">
+          {[1, 2, 3, 4, 5].map((radius) => {
+            const size = radius * 2 - 1
+            return (
+              <button
+                key={radius}
+                type="button"
+                className={`flex h-7 items-center justify-center rounded text-[10px] font-medium ${
+                  toolOptions.eraser.radius === radius
+                    ? "bg-indigo-100 text-indigo-700"
+                    : "text-slate-500 hover:bg-slate-100"
+                }`}
+                onClick={() => onUpdateToolOptions("eraser", { radius })}
+              >
+                {size}×{size}px
+              </button>
+            )
+          })}
+        </div>
       </div>
     )
   }
