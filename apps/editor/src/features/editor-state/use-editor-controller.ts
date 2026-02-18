@@ -203,10 +203,35 @@ export function countSpriteAssignments(project: ProjectV1, spriteId: string): nu
   return project.objects.reduce((count, objectEntry) => count + (objectEntry.spriteId === spriteId ? 1 : 0), 0)
 }
 
+function eventItemsReferenceSprite(items: readonly ObjectEventItem[], spriteId: string): boolean {
+  for (const item of items) {
+    if (item.type === "action") {
+      if (item.action.type === "changeSprite" && item.action.spriteId === spriteId) return true
+    } else if (item.type === "if") {
+      if (eventItemsReferenceSprite(item.thenActions, spriteId)) return true
+      if (eventItemsReferenceSprite(item.elseActions, spriteId)) return true
+    } else {
+      if (eventItemsReferenceSprite(item.actions, spriteId)) return true
+    }
+  }
+  return false
+}
+
 export function spriteAssignedObjectNames(project: ProjectV1, spriteId: string): string[] {
-  return project.objects
-    .filter((objectEntry) => objectEntry.spriteId === spriteId)
-    .map((objectEntry) => objectEntry.name)
+  const names: string[] = []
+  for (const obj of project.objects) {
+    if (obj.spriteId === spriteId) {
+      names.push(obj.name)
+      continue
+    }
+    for (const event of obj.events) {
+      if (eventItemsReferenceSprite(event.items, spriteId)) {
+        names.push(obj.name)
+        break
+      }
+    }
+  }
+  return names
 }
 
 function createInitialEditorState(): { project: ProjectV1; roomId: string } {

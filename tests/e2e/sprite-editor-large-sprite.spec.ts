@@ -28,9 +28,9 @@ test("handles large sprites with import, zoom and canvas scroll", async ({ page 
   const sliderMax = await zoomSlider.getAttribute("max")
   await zoomSlider.evaluate((element, max) => {
     const input = element as HTMLInputElement
-    input.value = max!
+    const descriptor = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!
+    descriptor.set!.call(input, max)
     input.dispatchEvent(new Event("input", { bubbles: true }))
-    input.dispatchEvent(new Event("change", { bubbles: true }))
   }, sliderMax)
 
   const viewport = page.getByTestId("sprite-canvas-viewport")
