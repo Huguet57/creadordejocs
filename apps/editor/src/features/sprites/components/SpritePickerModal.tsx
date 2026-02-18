@@ -1,4 +1,4 @@
-import { Box, ChevronRight, Folder, FolderOpen, Image as ImageIcon } from "lucide-react"
+import { Box, ChevronRight, Folder, FolderOpen, Image as ImageIcon, X } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { Button } from "../../../components/ui/button.js"
 import { normalizePixelGrid } from "../utils/sprite-grid.js"
@@ -64,6 +64,19 @@ export function SpritePickerModal({
       return firstCompatible?.id ?? availableSprites[0]?.id ?? null
     })
   }, [availableSprites, isOpen, selectedObjectSpriteId, spriteFolders])
+
+  useEffect(() => {
+    if (!isOpen) return
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose()
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown)
+    }
+  }, [isOpen, onClose])
 
   const folderChildrenByParent = useMemo(() => {
     const map = new Map<string | null, SpriteFolderOption[]>()
@@ -210,9 +223,23 @@ export function SpritePickerModal({
   const rootSprites = spritesByFolder.get(null) ?? []
 
   return (
-    <div className="mvp16-sprite-picker-overlay fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-      <div className="mvp16-sprite-picker-modal w-full max-w-4xl rounded-lg border border-slate-200 bg-white shadow-xl">
-        <div className="mvp16-sprite-picker-header border-b border-slate-200 px-4 py-3">
+    <div
+      className="mvp16-sprite-picker-overlay fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="mvp16-sprite-picker-modal w-full max-w-4xl rounded-lg border border-slate-200 bg-white shadow-xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="mvp16-sprite-picker-header relative border-b border-slate-200 px-4 py-3">
+          <button
+            type="button"
+            aria-label="Tancar modal de sprites"
+            className="mvp16-sprite-picker-close-button absolute right-3 top-3 inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent text-slate-500 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-700"
+            onClick={onClose}
+          >
+            <X className="h-4 w-4" />
+          </button>
           <h2 className="text-sm font-semibold text-slate-900">Sprite per {objectName}</h2>
           <p className="text-xs text-slate-500">
             Selecciona un sprite ({objectWidth} x {objectHeight}) o un de ratio compatible per escalar-lo.
@@ -275,10 +302,7 @@ export function SpritePickerModal({
           </section>
         </div>
 
-        <div className="mvp16-sprite-picker-footer flex items-center justify-between gap-2 border-t border-slate-200 px-4 py-3">
-          <Button variant="outline" size="sm" className="h-8" onClick={onClose}>
-            Tancar
-          </Button>
+        <div className="mvp16-sprite-picker-footer flex items-center justify-end gap-2 border-t border-slate-200 px-4 py-3">
           <div className="mvp16-sprite-picker-footer-actions flex items-center gap-2">
             <Button variant="outline" size="sm" className="mvp16-sprite-picker-new-button h-8" onClick={onCreateNewSprite}>
               + Nou Sprite
