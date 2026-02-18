@@ -411,7 +411,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
           onPinTab={handlePinRoom}
         />
 
-        <div className="flex flex-1 flex-col bg-slate-50/50">
+        <div className="flex min-h-0 flex-1 flex-col bg-slate-50/50">
           {!controller.activeRoom ? (
             <div className="flex h-full items-center justify-center text-slate-400">
               <p>Select or create a room</p>
@@ -466,7 +466,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                   <span className="w-12 text-right text-slate-500">{zoomPercent}%</span>
                 </div>
               </div>
-              <div className="flex-1 overflow-auto">
+              <div className="min-h-0 flex-1 overflow-auto">
               <div className="p-3">
                 <div
                   className={`mvp15-room-canvas mvp18-room-grid-canvas relative border border-slate-200 bg-white ${
