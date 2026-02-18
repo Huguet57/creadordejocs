@@ -624,7 +624,7 @@ describe("runtime regressions", () => {
     )
     expect(downReleaseConflict.project.rooms[0]?.instances[0]?.y).toBe(6)
     expect(downReleaseConflict.runtime.spriteOverrideByInstanceId["instance-player"]).toBe("sprite-up")
-    expect(downReleaseConflict.runtime.spriteSpeedMsByInstanceId["instance-player"]).toBe(1)
+    expect(downReleaseConflict.runtime.spriteSpeedMsByInstanceId["instance-player"]).toBe(0)
 
     const postRelease = runRuntimeTick(
       downReleaseConflict.project,
@@ -635,7 +635,7 @@ describe("runtime regressions", () => {
       new Set(["ArrowUp"])
     )
     expect(postRelease.project.rooms[0]?.instances[0]?.y).toBe(6)
-    expect(postRelease.runtime.spriteSpeedMsByInstanceId["instance-player"]).toBe(1)
+    expect(postRelease.runtime.spriteSpeedMsByInstanceId["instance-player"]).toBe(0)
   })
 
   it("runs MouseMove on ticks where pointer moved", () => {
@@ -5619,12 +5619,12 @@ describe("setSpriteSpeed action", () => {
     expect(result.runtime.spriteSpeedMsByInstanceId["instance-target"]).toBe(50)
   })
 
-  it("clamps speed to minimum 1ms", () => {
+  it("allows speed 0 to pause animation", () => {
     const project = createSpriteActionProject([
       { id: "a-set-speed-zero", type: "setSpriteSpeed", speedMs: 0, target: "self" }
     ])
     const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
-    expect(result.runtime.spriteSpeedMsByInstanceId["instance-actor"]).toBe(1)
+    expect(result.runtime.spriteSpeedMsByInstanceId["instance-actor"]).toBe(0)
   })
 })
 
@@ -5681,6 +5681,18 @@ describe("sprite animation", () => {
     const result = runRuntimeTick(project, "room-main", new Set(), runtimeNearEnd)
     // 160 + 80 = 240 -> 240 % 200 = 40
     expect(result.runtime.spriteAnimationElapsedMsByInstanceId["instance-actor"]).toBe(40)
+  })
+
+  it("does not advance elapsed when speed override is 0", () => {
+    const project = createSpriteActionProject([], "Step", 3)
+    const initialRuntime = createInitialRuntimeState(project)
+    const pausedRuntime = {
+      ...initialRuntime,
+      spriteSpeedMsByInstanceId: { "instance-actor": 0 },
+      spriteAnimationElapsedMsByInstanceId: { "instance-actor": 160 }
+    }
+    const result = runRuntimeTick(project, "room-main", new Set(), pausedRuntime)
+    expect(result.runtime.spriteAnimationElapsedMsByInstanceId["instance-actor"]).toBe(160)
   })
 })
 

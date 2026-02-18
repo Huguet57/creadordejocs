@@ -1400,7 +1400,7 @@ function executeActionFallback(
     if (!targetInstanceId) {
       return { result }
     }
-    const clampedSpeed = Math.max(1, speedMs)
+    const clampedSpeed = Math.max(0, speedMs)
     const currentSpeed = result.runtime.spriteSpeedMsByInstanceId[targetInstanceId]
     if (currentSpeed === clampedSpeed) {
       return { result }

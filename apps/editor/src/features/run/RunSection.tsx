@@ -407,8 +407,12 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
                   if (frameUrls && frameUrls.length > 1) {
                     const speedMs = runtimeState.spriteSpeedMsByInstanceId[instanceEntry.id] ?? DEFAULT_SPRITE_SPEED_MS
                     const elapsed = runtimeState.spriteAnimationElapsedMsByInstanceId[instanceEntry.id] ?? 0
-                    const frameIndex = Math.floor(elapsed / speedMs) % frameUrls.length
-                    spriteSource = frameUrls[frameIndex]
+                    if (speedMs <= 0) {
+                      spriteSource = frameUrls[0]
+                    } else {
+                      const frameIndex = Math.floor(elapsed / speedMs) % frameUrls.length
+                      spriteSource = frameUrls[frameIndex] ?? frameUrls[0]
+                    }
                   } else {
                     spriteSource = spriteEntry ? resolvedSpriteSources[spriteEntry.id] : undefined
                   }

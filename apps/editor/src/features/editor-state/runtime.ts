@@ -795,6 +795,7 @@ export function runRuntimeTick(
     if (!spriteEntry || spriteEntry.frames.length <= 1) continue
 
     const speedMs = postAnimationRuntime.spriteSpeedMsByInstanceId[instanceEntry.id] ?? DEFAULT_SPRITE_SPEED_MS
+    if (speedMs <= 0) continue
     const prevElapsed = postAnimationRuntime.spriteAnimationElapsedMsByInstanceId[instanceEntry.id] ?? 0
     const nextElapsed = prevElapsed + RUNTIME_TICK_MS
     const totalDuration = speedMs * spriteEntry.frames.length
