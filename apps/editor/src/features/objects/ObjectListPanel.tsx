@@ -312,7 +312,7 @@ export function ObjectListPanel({
                 onClick={() => toggleFolder(folder.id)}
                 onContextMenu={(e) => openContextMenu(e, null, folder.id)}
               >
-                <span className="objlist-folder-chevron mr-0.5 shrink-0 text-slate-400">
+                <span className="objlist-folder-chevron mr-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center text-slate-400">
                   {isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                 </span>
                 {isRenaming ? (
@@ -389,7 +389,7 @@ export function ObjectListPanel({
 
         {creatingFolderParentId === parentId && (
           <div className="objlist-create-folder-inline flex py-1 pr-2" style={{ paddingLeft: `${depth * 16 + 4}px` }}>
-            <span className="objlist-create-folder-chevron mr-0.5 inline-flex h-7 items-center text-slate-400">
+            <span className="objlist-create-folder-chevron mr-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center text-slate-400">
               <ChevronRight className="h-3.5 w-3.5" />
             </span>
             <input

@@ -357,7 +357,7 @@ export function SpriteListPanel({
           return (
             <div key={folderEntry.id}>
               <div
-                className={`mvp16-sprite-folder-row group flex cursor-pointer items-center rounded py-1 pr-2 transition-colors ${
+                className={`mvp16-sprite-folder-row group flex min-h-[34px] cursor-pointer items-center rounded py-1 pr-2 transition-colors ${
                   isDropTarget ? "bg-blue-50 ring-1 ring-blue-300" : "hover:bg-slate-100"
                 }`}
                 style={{ paddingLeft: `${depth * 16 + 4}px` }}
@@ -370,7 +370,7 @@ export function SpriteListPanel({
                 onClick={() => toggleFolder(folderEntry.id)}
                 onContextMenu={(event) => openContextMenu(event, null, folderEntry.id)}
               >
-                <span className="mvp16-sprite-folder-chevron mr-0.5 shrink-0 text-slate-400">
+                <span className="mvp16-sprite-folder-chevron mr-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center text-slate-400">
                   {isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                 </span>
                 {isRenaming ? (
@@ -389,16 +389,18 @@ export function SpriteListPanel({
                     onClick={(event) => event.stopPropagation()}
                   />
                 ) : (
-                  <span
-                    className="truncate text-sm text-slate-600"
-                    onDoubleClick={(event) => {
-                      event.stopPropagation()
-                      setRenamingFolderId(folderEntry.id)
-                      setRenameValue(folderEntry.name)
-                    }}
-                  >
-                    {folderEntry.name}
-                  </span>
+                  <div className="mvp16-sprite-folder-label-wrap flex min-h-[34px] min-w-0 flex-1 items-center">
+                    <span
+                      className="truncate text-[12px] leading-tight text-slate-600"
+                      onDoubleClick={(event) => {
+                        event.stopPropagation()
+                        setRenamingFolderId(folderEntry.id)
+                        setRenameValue(folderEntry.name)
+                      }}
+                    >
+                      {folderEntry.name}
+                    </span>
+                  </div>
                 )}
               </div>
               {isExpanded && renderTree(folderEntry.id, depth + 1)}
@@ -476,7 +478,7 @@ export function SpriteListPanel({
 
         {creatingFolderParentId === parentId && (
           <div className="mvp16-sprite-create-folder-inline flex py-1 pr-2" style={{ paddingLeft: `${depth * 16 + 4}px` }}>
-            <span className="mvp16-sprite-create-folder-chevron mr-0.5 inline-flex h-7 items-center text-slate-400">
+            <span className="mvp16-sprite-create-folder-chevron mr-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center text-slate-400">
               <ChevronRight className="h-3.5 w-3.5" />
             </span>
             <input
