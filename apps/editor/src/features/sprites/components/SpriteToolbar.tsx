@@ -143,7 +143,7 @@ export function SpriteToolbar({
             title="Rotate clockwise"
           >
             <RotateCw className="h-4 w-4" />
-            Rot ↻
+            Rot +90°
           </button>
           <button
             type="button"
@@ -152,7 +152,7 @@ export function SpriteToolbar({
             title="Rotate counter-clockwise"
           >
             <RotateCcw className="h-4 w-4" />
-            Rot ↺
+            Rot -90°
           </button>
         </div>
       </div>
