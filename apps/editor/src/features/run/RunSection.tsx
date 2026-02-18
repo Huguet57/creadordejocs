@@ -7,7 +7,6 @@ import { resolveSpritePreviewSource } from "../sprites/utils/sprite-preview-sour
 
 const ROOM_WIDTH = 832
 const ROOM_HEIGHT = 480
-const START_RUN_KEY_CODE = "Space"
 
 type RunSectionProps = {
   controller: RunSectionController
@@ -94,7 +93,7 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.code !== START_RUN_KEY_CODE || event.repeat) {
+      if (event.repeat) {
         return
       }
       if (isEditableTarget(event.target)) {
@@ -142,6 +141,9 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
     }
     const onMouseDown = (event: MouseEvent): void => {
       if (!controller.isRunning) {
+        if (controller.activeRoom) {
+          controller.run()
+        }
         return
       }
       const point = toRoomCoordinates(event)
