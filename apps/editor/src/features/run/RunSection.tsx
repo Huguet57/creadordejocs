@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Play, Square } from "lucide-react"
+import { Play, RotateCcw } from "lucide-react"
 import type { ProjectV1 } from "@creadordejocs/project-format"
 import { Button } from "../../components/ui/button.js"
 import type { RuntimeMouseButton, RuntimeState } from "../editor-state/runtime.js"
@@ -195,8 +195,8 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
               >
                 {controller.isRunning ? (
                   <>
-                    <Square className="mr-2 h-3.5 w-3.5" />
-                    Stop
+                    <RotateCcw className="mr-2 h-3.5 w-3.5" />
+                    Reset
                   </>
                 ) : (
                   <>
@@ -224,7 +224,7 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
                     data-testid="run-game-state"
                     className={`text-xs font-medium ${runtimeState.gameOver ? "text-red-600" : "text-green-600"}`}
                   >
-                    {runtimeState.gameOver ? "Game Over" : "Running"}
+                    {runtimeState.gameOver ? "Ha acabat el joc" : "Running"}
                   </span>
                 </div>
                 {runtimeState.gameOver && runtimeState.message && (
@@ -295,8 +295,8 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
               >
                 {controller.isRunning ? (
                   <>
-                    <Square className="mr-2 h-3.5 w-3.5" />
-                    Stop
+                    <RotateCcw className="mr-2 h-3.5 w-3.5" />
+                    Reset
                   </>
                 ) : (
                   <>
