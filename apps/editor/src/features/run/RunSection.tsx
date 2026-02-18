@@ -319,8 +319,8 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
                 {!controller.isRunning && (
                   <div className="mvp19-run-start-overlay pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-slate-900/30">
                     <div className="mvp19-run-start-overlay-card rounded-md border border-slate-200 bg-white/95 px-4 py-2 text-center shadow-sm">
-                      <p className="text-xs font-semibold text-slate-800">Prem Space per iniciar el run</p>
-                      <p className="text-[11px] text-slate-500">També pots clicar el botó Run</p>
+                      <p className="text-xs font-semibold text-slate-800">Prem qualsevol tecla per començar</p>
+                      <p className="text-[11px] text-slate-500">També pots clicar amb el mouse</p>
                     </div>
                   </div>
                 )}
