@@ -45,6 +45,7 @@ type SpriteListPanelProps = {
   onOpenInNewTab: (spriteId: string) => void
   onAddSprite: (name: string, width: number, height: number, folderId: string | null) => void
   onCreateFolder: (name: string, parentId: string | null) => string | null
+  onRenameSprite: (spriteId: string, name: string) => boolean
   onDeleteSprite: (spriteId: string) => boolean
   onMoveSpriteToFolder: (spriteId: string, folderId: string | null) => boolean
   onRenameFolder: (folderId: string, name: string) => boolean
@@ -68,6 +69,7 @@ export function SpriteListPanel({
   onOpenInNewTab,
   onAddSprite,
   onCreateFolder,
+  onRenameSprite,
   onDeleteSprite,
   onMoveSpriteToFolder,
   onRenameFolder,
@@ -85,6 +87,7 @@ export function SpriteListPanel({
 
   const [expandedFolderIds, setExpandedFolderIds] = useState<Set<string>>(() => new Set())
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null)
+  const [renamingSpriteId, setRenamingSpriteId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState("")
   const [creatingFolderParentId, setCreatingFolderParentId] = useState<string | null | undefined>(undefined)
   const [newFolderName, setNewFolderName] = useState("")
@@ -173,6 +176,25 @@ export function SpriteListPanel({
     const renamed = onRenameFolder(folderId, trimmed)
     if (!renamed) return
     setRenamingFolderId(null)
+  }
+
+  const startRenameSprite = (spriteId: string) => {
+    const spriteEntry = sprites.find((entry) => entry.id === spriteId)
+    if (!spriteEntry) return
+    setRenamingSpriteId(spriteId)
+    setRenameValue(spriteEntry.name)
+    setContextMenu(null)
+  }
+
+  const commitRenameSprite = () => {
+    if (!renamingSpriteId) return
+    const trimmed = renameValue.trim()
+    if (!trimmed) {
+      setRenamingSpriteId(null)
+      return
+    }
+    onRenameSprite(renamingSpriteId, trimmed)
+    setRenamingSpriteId(null)
   }
 
   const deleteFolder = (folderId: string) => {
@@ -386,6 +408,7 @@ export function SpriteListPanel({
 
         {childSprites.map((spriteEntry) => {
           const isActive = activeSpriteId === spriteEntry.id
+          const isRenaming = renamingSpriteId === spriteEntry.id
           return (
             <div
               key={spriteEntry.id}
@@ -393,7 +416,7 @@ export function SpriteListPanel({
                 isActive ? "bg-blue-50" : "hover:bg-slate-100"
               }`}
               style={{ paddingLeft: `${depth * 16 + 8}px` }}
-              draggable
+              draggable={!isRenaming}
               onDragStart={(event) => handleDragStart(event, { type: "sprite", id: spriteEntry.id })}
               onDragEnd={handleDragEnd}
               onClick={() => onSelectSprite(spriteEntry.id)}
@@ -411,18 +434,41 @@ export function SpriteListPanel({
                 ) : (
                   <Image className="h-3.5 w-3.5 shrink-0 text-slate-400" />
                 )}
-                <div className="flex min-w-0 flex-1 flex-col gap-0">
-                  <span className="truncate text-[12px] leading-tight text-slate-600">{spriteEntry.name}</span>
-                  <span className="truncate text-[9px] leading-tight text-slate-400">
-                    {spriteEntry.width} x {spriteEntry.height}
-                    {spriteEntry.isEmpty && <span className="ml-1 text-amber-400">· buit</span>}
-                    {spriteEntry.objectNames.length > 0 && (
-                      <span className="ml-1 text-slate-400">
-                        · {spriteEntry.objectNames[0]}{spriteEntry.objectNames.length > 1 && ` +${spriteEntry.objectNames.length - 1} més`}
-                      </span>
-                    )}
-                  </span>
-                </div>
+                {isRenaming ? (
+                  <input
+                    ref={renameInputCallbackRef}
+                    className="mvp16-sprite-rename-input h-5 w-full rounded border border-slate-300 bg-white px-1 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-400"
+                    value={renameValue}
+                    onChange={(event: ChangeEvent<HTMLInputElement>) => setRenameValue(event.target.value)}
+                    onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
+                      blockUndoShortcuts(event)
+                      if (event.key === "Enter") commitRenameSprite()
+                      if (event.key === "Escape") setRenamingSpriteId(null)
+                      event.stopPropagation()
+                    }}
+                    onBlur={commitRenameSprite}
+                    onClick={(event) => event.stopPropagation()}
+                  />
+                ) : (
+                  <div
+                    className="flex min-w-0 flex-1 flex-col gap-0"
+                    onDoubleClick={(event) => {
+                      event.stopPropagation()
+                      startRenameSprite(spriteEntry.id)
+                    }}
+                  >
+                    <span className="truncate text-[12px] leading-tight text-slate-600">{spriteEntry.name}</span>
+                    <span className="truncate text-[9px] leading-tight text-slate-400">
+                      {spriteEntry.width} x {spriteEntry.height}
+                      {spriteEntry.isEmpty && <span className="ml-1 text-amber-400">· buit</span>}
+                      {spriteEntry.objectNames.length > 0 && (
+                        <span className="ml-1 text-slate-400">
+                          · {spriteEntry.objectNames[0]}{spriteEntry.objectNames.length > 1 && ` +${spriteEntry.objectNames.length - 1} més`}
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           )
@@ -561,6 +607,17 @@ export function SpriteListPanel({
             >
               <Plus className="h-3.5 w-3.5 text-slate-400" />
               Open in a new tab
+            </button>
+            <button
+              type="button"
+              className="mvp16-sprite-ctx-rename flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-slate-700 transition-colors hover:bg-slate-100"
+              onClick={() => {
+                startRenameSprite(spriteId)
+                closeContextMenu()
+              }}
+            >
+              <Pencil className="h-3.5 w-3.5 text-slate-400" />
+              Rename
             </button>
             <div className="my-1 border-t border-slate-100" />
             <button

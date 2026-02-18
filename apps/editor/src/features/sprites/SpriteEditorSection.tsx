@@ -238,6 +238,7 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
         onOpenInNewTab={handlePinSprite}
         onAddSprite={(name, width, height, folderId) => controller.addSprite(name, width, height, folderId)}
         onCreateFolder={(name, parentId) => controller.createSpriteFolder(name, parentId)}
+        onRenameSprite={(spriteId, name) => controller.renameSprite(spriteId, name)}
         onDeleteSprite={handleDeleteSprite}
         onMoveSpriteToFolder={(spriteId, folderId) => controller.moveSpriteToFolder(spriteId, folderId)}
         onRenameFolder={(folderId, name) => controller.renameSpriteFolder(folderId, name)}
