@@ -11,9 +11,12 @@ import {
   deleteSprite as deleteSpriteModel,
   deleteSpriteFolder as deleteSpriteFolderModel,
   deleteObjectFolder as deleteObjectFolderModel,
+  deleteRoom as deleteRoomModel,
+  deleteRoomFolder as deleteRoomFolderModel,
   addRoomInstance,
   createEmptyProjectV1,
   createRoom,
+  createRoomFolder as createRoomFolderModel,
   incrementMetric,
   insertObjectEventItem as insertObjectEventItemModel,
   moveObjectEventItem as moveObjectEventItemModel,
@@ -23,9 +26,13 @@ import {
   moveObjectFolder as moveObjectFolderModel,
   moveObjectToFolder as moveObjectToFolderModel,
   moveRoomInstance,
+  moveRoomFolder as moveRoomFolderModel,
+  moveRoomToFolder as moveRoomToFolderModel,
   renameSprite as renameSpriteModel,
   renameSpriteFolder as renameSpriteFolderModel,
   renameObjectFolder as renameObjectFolderModel,
+  renameRoom as renameRoomModel,
+  renameRoomFolder as renameRoomFolderModel,
   removeRoomInstance,
   quickCreateObject,
   quickCreateSound,
@@ -685,11 +692,59 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
     removeObjectVariable(objectId: string, variableId: string) {
       pushProjectChange(removeObjectVariableModel(project, { objectId, variableId }), "Remove object variable")
     },
-    addRoom(name: string) {
+    addRoom(name: string, folderId: string | null = null) {
       if (!name.trim()) return
-      const result = createRoom(project, name.trim())
+      const result = createRoom(project, name.trim(), folderId)
       pushProjectChange(result.project, `Create room: ${name.trim()}`)
       setActiveRoomId(result.roomId)
+    },
+    renameRoom(roomId: string, name: string) {
+      const next = renameRoomModel(project, roomId, name)
+      if (next === project) return false
+      pushProjectChange(next, "Rename room")
+      return true
+    },
+    deleteRoom(roomId: string) {
+      const next = deleteRoomModel(project, roomId)
+      if (next === project) return false
+      pushProjectChange(next, "Delete room")
+      if (activeRoomId === roomId) {
+        setActiveRoomId(next.rooms[0]?.id ?? "")
+      }
+      return true
+    },
+    createRoomFolder(name: string, parentId: string | null = null) {
+      const result = createRoomFolderModel(project, name, parentId)
+      if (!result.folderId) return null
+      pushProjectChange(result.project, `Create room folder: ${name.trim()}`)
+      return result.folderId
+    },
+    renameRoomFolder(folderId: string, name: string) {
+      const next = renameRoomFolderModel(project, folderId, name)
+      if (next === project) return false
+      pushProjectChange(next, "Rename room folder")
+      return true
+    },
+    moveRoomFolder(folderId: string, newParentId: string | null) {
+      const next = moveRoomFolderModel(project, folderId, newParentId)
+      if (next === project) return false
+      pushProjectChange(next, "Move room folder")
+      return true
+    },
+    deleteRoomFolder(folderId: string) {
+      const next = deleteRoomFolderModel(project, folderId)
+      if (next === project) return false
+      pushProjectChange(next, "Delete room folder")
+      if (!next.rooms.some((r) => r.id === activeRoomId)) {
+        setActiveRoomId(next.rooms[0]?.id ?? "")
+      }
+      return true
+    },
+    moveRoomToFolder(roomId: string, folderId: string | null) {
+      const next = moveRoomToFolderModel(project, roomId, folderId)
+      if (next === project) return false
+      pushProjectChange(next, "Move room to folder")
+      return true
     },
     updateSpriteSource(spriteId: string, source: string) {
       pushProjectChange(updateSpriteAssetSource(project, spriteId, source))

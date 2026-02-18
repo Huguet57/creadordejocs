@@ -71,6 +71,8 @@ export type VariableItemType = "number" | "string" | "boolean"
 export type ValueExpression = ValueExpressionOutput
 export type SpriteFolder = NonNullable<ProjectV1["resources"]["spriteFolders"]>[number]
 export type ObjectFolder = NonNullable<ProjectV1["resources"]["objectFolders"]>[number]
+export type RoomFolder = NonNullable<ProjectV1["resources"]["roomFolders"]>[number]
+export type RoomEntry = ProjectV1["rooms"][number]
 export type SpriteResource = ProjectV1["resources"]["sprites"][number]
 
 export type AddObjectEventInput = {
@@ -605,6 +607,10 @@ function getObjectFolders(project: ProjectV1): ObjectFolder[] {
   return project.resources.objectFolders ?? []
 }
 
+function getRoomFolders(project: ProjectV1): RoomFolder[] {
+  return project.resources.roomFolders ?? []
+}
+
 function hasVariableNameConflict(definitions: VariableDefinition[], candidateName: string, ignoreId?: string): boolean {
   const normalizedCandidate = normalizeVariableName(candidateName)
   return definitions.some(
@@ -764,12 +770,16 @@ export function quickCreateObject(
   }
 }
 
-export function createRoom(project: ProjectV1, name: string): { project: ProjectV1; roomId: string } {
+export function createRoom(
+  project: ProjectV1,
+  name: string,
+  folderId: string | null = null
+): { project: ProjectV1; roomId: string } {
   const roomId = makeId("room")
   return {
     project: {
       ...project,
-      rooms: [...project.rooms, { id: roomId, name, instances: [] }]
+      rooms: [...project.rooms, { id: roomId, name, folderId: folderId ?? null, instances: [] }]
     },
     roomId
   }
@@ -2200,4 +2210,194 @@ export function addInstanceForObject(
   input: AddInstanceInput
 ): { project: ProjectV1; instanceId: string } {
   return addRoomInstance(project, input)
+}
+
+export function renameRoom(project: ProjectV1, roomId: string, name: string): ProjectV1 {
+  const trimmedName = name.trim()
+  if (!trimmedName) {
+    return project
+  }
+  const hasRoom = project.rooms.some((entry) => entry.id === roomId)
+  if (!hasRoom) {
+    return project
+  }
+  return {
+    ...project,
+    rooms: project.rooms.map((entry) =>
+      entry.id === roomId ? { ...entry, name: trimmedName } : entry
+    )
+  }
+}
+
+export function deleteRoom(project: ProjectV1, roomId: string): ProjectV1 {
+  const hasRoom = project.rooms.some((entry) => entry.id === roomId)
+  if (!hasRoom) {
+    return project
+  }
+  return {
+    ...project,
+    rooms: project.rooms.filter((entry) => entry.id !== roomId)
+  }
+}
+
+export function createRoomFolder(
+  project: ProjectV1,
+  name: string,
+  parentId: string | null = null
+): { project: ProjectV1; folderId: string | null } {
+  const trimmedName = name.trim()
+  if (!trimmedName) {
+    return { project, folderId: null }
+  }
+  const normalizedParentId = parentId ?? null
+  const roomFolders = getRoomFolders(project)
+  if (normalizedParentId && !roomFolders.some((entry) => entry.id === normalizedParentId)) {
+    return { project, folderId: null }
+  }
+  if (hasFolderNameConflict(roomFolders, normalizedParentId, trimmedName)) {
+    return { project, folderId: null }
+  }
+  const folderId = makeId("room-folder")
+  return {
+    project: {
+      ...project,
+      resources: {
+        ...project.resources,
+        roomFolders: [
+          ...roomFolders,
+          {
+            id: folderId,
+            name: trimmedName,
+            parentId: normalizedParentId
+          }
+        ]
+      }
+    },
+    folderId
+  }
+}
+
+export function renameRoomFolder(project: ProjectV1, folderId: string, name: string): ProjectV1 {
+  const trimmedName = name.trim()
+  if (!trimmedName) {
+    return project
+  }
+  const roomFolders = getRoomFolders(project)
+  const folderEntry = roomFolders.find((entry) => entry.id === folderId)
+  if (!folderEntry) {
+    return project
+  }
+  const parentId = folderEntry.parentId ?? null
+  if (hasFolderNameConflict(roomFolders, parentId, trimmedName, folderId)) {
+    return project
+  }
+  return {
+    ...project,
+    resources: {
+      ...project.resources,
+      roomFolders: roomFolders.map((entry) =>
+        entry.id === folderId
+          ? {
+              ...entry,
+              name: trimmedName
+            }
+          : entry
+      )
+    }
+  }
+}
+
+export function moveRoomFolder(project: ProjectV1, folderId: string, newParentId: string | null): ProjectV1 {
+  const roomFolders = getRoomFolders(project)
+  const normalizedParent = newParentId ?? null
+  const folderEntry = roomFolders.find((entry) => entry.id === folderId)
+  if (!folderEntry) {
+    return project
+  }
+  if ((folderEntry.parentId ?? null) === normalizedParent) {
+    return project
+  }
+  if (normalizedParent && !roomFolders.some((entry) => entry.id === normalizedParent)) {
+    return project
+  }
+  if (normalizedParent) {
+    const ancestors = new Set<string>()
+    let current: string | null = normalizedParent
+    while (current) {
+      if (current === folderId) {
+        return project
+      }
+      if (ancestors.has(current)) {
+        break
+      }
+      ancestors.add(current)
+      const parent = roomFolders.find((entry) => entry.id === current)
+      current = parent?.parentId ?? null
+    }
+  }
+  return {
+    ...project,
+    resources: {
+      ...project.resources,
+      roomFolders: roomFolders.map((entry) =>
+        entry.id === folderId
+          ? {
+              ...entry,
+              parentId: normalizedParent
+            }
+          : entry
+      )
+    }
+  }
+}
+
+export function deleteRoomFolder(project: ProjectV1, folderId: string): ProjectV1 {
+  const roomFolders = getRoomFolders(project)
+  const hasFolder = roomFolders.some((entry) => entry.id === folderId)
+  if (!hasFolder) {
+    return project
+  }
+  const deletedBranchIds = new Set<string>([folderId])
+  let hasNewDescendants = true
+  while (hasNewDescendants) {
+    hasNewDescendants = false
+    for (const folderEntry of roomFolders) {
+      if (folderEntry.parentId && deletedBranchIds.has(folderEntry.parentId) && !deletedBranchIds.has(folderEntry.id)) {
+        deletedBranchIds.add(folderEntry.id)
+        hasNewDescendants = true
+      }
+    }
+  }
+
+  return {
+    ...project,
+    resources: {
+      ...project.resources,
+      roomFolders: roomFolders.filter((entry) => !deletedBranchIds.has(entry.id))
+    },
+    rooms: project.rooms.filter((entry) => !entry.folderId || !deletedBranchIds.has(entry.folderId))
+  }
+}
+
+export function moveRoomToFolder(project: ProjectV1, roomId: string, folderId: string | null): ProjectV1 {
+  const normalizedFolderId = folderId ?? null
+  const hasRoom = project.rooms.some((entry) => entry.id === roomId)
+  if (!hasRoom) {
+    return project
+  }
+  const roomFolders = getRoomFolders(project)
+  if (normalizedFolderId && !roomFolders.some((entry) => entry.id === normalizedFolderId)) {
+    return project
+  }
+  return {
+    ...project,
+    rooms: project.rooms.map((entry) =>
+      entry.id === roomId
+        ? {
+            ...entry,
+            folderId: normalizedFolderId
+          }
+        : entry
+    )
+  }
 }

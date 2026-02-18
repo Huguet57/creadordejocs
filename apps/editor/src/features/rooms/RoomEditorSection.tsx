@@ -1,18 +1,18 @@
 import {
-  useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
-  type ChangeEvent,
-  type KeyboardEvent as ReactKeyboardEvent,
+  type DragEvent as ReactDragEvent,
   type MouseEvent as ReactMouseEvent
 } from "react"
-import { Box, EyeOff, Grid3X3, Plus, X } from "lucide-react"
+import { EyeOff, X } from "lucide-react"
 import type { EditorController } from "../editor-state/use-editor-controller.js"
-import { Button } from "../../components/ui/button.js"
 import { getPositionCountsByCoordinate, getPositionKey, wouldOverlapSolid } from "./room-placement-utils.js"
 import { resolveSpritePreviewSource } from "../sprites/utils/sprite-preview-source.js"
+import { RoomListPanel } from "./RoomListPanel.js"
+import { RoomObjectPickerPanel } from "./RoomObjectPickerPanel.js"
+import { RoomTabBar } from "./RoomTabBar.js"
 
 const ROOM_WIDTH = 832
 const ROOM_HEIGHT = 480
@@ -74,8 +74,6 @@ type RoomEditorSectionProps = {
 }
 
 export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
-  const [isAddingRoom, setIsAddingRoom] = useState(false)
-  const [roomName, setRoomName] = useState("Sala nova")
   const [resolvedSpriteSources, setResolvedSpriteSources] = useState<Record<string, string>>({})
   const [dragPreview, setDragPreview] = useState<RoomDragPreview | null>(null)
   const [draggingInstanceId, setDraggingInstanceId] = useState<string | null>(null)
@@ -84,8 +82,14 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
   const [placementGhost, setPlacementGhost] = useState<RoomPlacementGhost | null>(null)
   const [showGrid, setShowGrid] = useState(true)
   const transparentDragImageRef = useRef<HTMLDivElement | null>(null)
-  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Tab state (VSCode-like: preview + pinned)
+  const [openTabs, setOpenTabs] = useState<{ id: string; pinned: boolean }[]>([])
+  const instanceCountRef = useRef<number>(0)
+
   const sprites = controller.project.resources.sprites
+  const projectRooms = controller.project.rooms
+
   const spriteById = useMemo(
     () => Object.fromEntries(sprites.map((spriteEntry) => [spriteEntry.id, spriteEntry])),
     [sprites]
@@ -99,10 +103,41 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
     [controller.activeRoom]
   )
 
-  const resetIdleTimer = () => {
-    if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
-    idleTimerRef.current = setTimeout(() => setIsAddingRoom(false), 5000)
-  }
+  // Clean up tabs when rooms are removed
+  useEffect(() => {
+    const currentRoomIds = new Set(projectRooms.map((r) => r.id))
+    setOpenTabs((prev) => {
+      const cleaned = prev.filter((tabEntry) => currentRoomIds.has(tabEntry.id))
+      return cleaned.length === prev.length ? prev : cleaned
+    })
+  }, [projectRooms])
+
+  // Ensure active room is visible in tabs
+  useEffect(() => {
+    if (controller.activeRoomId) {
+      const activeId = controller.activeRoomId
+      setOpenTabs((prev) => {
+        if (prev.some((tabEntry) => tabEntry.id === activeId)) {
+          return prev
+        }
+        return [...prev.filter((tabEntry) => tabEntry.pinned), { id: activeId, pinned: false }]
+      })
+    }
+  }, [controller.activeRoomId])
+
+  // Auto-promote to pinned when instances change
+  useEffect(() => {
+    const currentCount = controller.activeRoom?.instances.length ?? 0
+    if (controller.activeRoomId && instanceCountRef.current !== currentCount && instanceCountRef.current !== 0) {
+      const activeId = controller.activeRoomId
+      setOpenTabs((prev) =>
+        prev.map((tabEntry) =>
+          tabEntry.id === activeId && !tabEntry.pinned ? { ...tabEntry, pinned: true } : tabEntry
+        )
+      )
+    }
+    instanceCountRef.current = currentCount
+  }, [controller.activeRoom?.instances.length, controller.activeRoomId])
 
   useEffect(() => {
     return () => {
@@ -112,15 +147,6 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
       }
     }
   }, [])
-
-  useEffect(() => {
-    if (isAddingRoom) {
-      resetIdleTimer()
-    }
-    return () => {
-      if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
-    }
-  }, [isAddingRoom])
 
   useEffect(() => {
     let cancelled = false
@@ -168,21 +194,75 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
     }
   }, [controller.activeRoom, objectById, placingObjectId])
 
-  const inputCallbackRef = useCallback((node: HTMLInputElement | null) => {
-    if (node) node.select()
-  }, [])
+  const handleSelectRoom = (id: string) => {
+    controller.setActiveRoomId(id)
+    setOpenTabs((prev) => {
+      const existing = prev.find((tabEntry) => tabEntry.id === id)
+      const pinnedTabs = prev.filter((tabEntry) => tabEntry.pinned)
+      if (existing?.pinned) {
+        return [...pinnedTabs]
+      }
+      return [...pinnedTabs, { id, pinned: false }]
+    })
+  }
 
-  const blockUndoShortcuts = (event: ReactKeyboardEvent<HTMLInputElement>): void => {
-    if ((event.metaKey || event.ctrlKey) && (event.key.toLowerCase() === "z" || event.key.toLowerCase() === "y")) {
-      event.preventDefault()
+  const handlePinRoom = (id: string) => {
+    controller.setActiveRoomId(id)
+    setOpenTabs((prev) => {
+      const tabIndex = prev.findIndex((tabEntry) => tabEntry.id === id)
+      if (tabIndex === -1) {
+        return [...prev, { id, pinned: true }]
+      }
+      return prev.map((tabEntry, index) => (index === tabIndex ? { ...tabEntry, pinned: true } : tabEntry))
+    })
+  }
+
+  const handleCloseTab = (tabId: string) => {
+    const currentIndex = openTabs.findIndex((tabEntry) => tabEntry.id === tabId)
+    const remainingTabs = openTabs.filter((tabEntry) => tabEntry.id !== tabId)
+    setOpenTabs(remainingTabs)
+
+    if (controller.activeRoomId === tabId) {
+      const nextTabId =
+        remainingTabs.length > 0 ? (remainingTabs[Math.min(currentIndex, remainingTabs.length - 1)]?.id ?? null) : null
+      controller.setActiveRoomId(nextTabId ?? "")
     }
   }
 
-  const handleAddRoom = () => {
-    if (!roomName.trim()) return
-    controller.addRoom(roomName)
-    setRoomName("Sala nova")
-    setIsAddingRoom(false)
+  const handleDeleteRoom = (roomId: string) => {
+    const currentIndex = openTabs.findIndex((tabEntry) => tabEntry.id === roomId)
+    const remainingTabs = openTabs.filter((tabEntry) => tabEntry.id !== roomId)
+
+    controller.deleteRoom(roomId)
+
+    setOpenTabs(remainingTabs)
+    if (controller.activeRoomId === roomId && remainingTabs.length > 0) {
+      const nextTabId = remainingTabs[Math.min(currentIndex, remainingTabs.length - 1)]?.id ?? null
+      controller.setActiveRoomId(nextTabId ?? "")
+    }
+  }
+
+  const handleObjectPickerDragStart = (event: ReactDragEvent, objectId: string) => {
+    event.dataTransfer.setData(OBJECT_DRAG_DATA_KEY, objectId)
+    event.dataTransfer.effectAllowed = "copy"
+    if (!transparentDragImageRef.current) {
+      const element = document.createElement("div")
+      element.style.width = "1px"
+      element.style.height = "1px"
+      element.style.position = "fixed"
+      element.style.top = "-1000px"
+      element.style.left = "-1000px"
+      element.style.opacity = "0.01"
+      document.body.appendChild(element)
+      transparentDragImageRef.current = element
+    }
+    event.dataTransfer.setDragImage(transparentDragImageRef.current, 0, 0)
+    setDraggingObjectId(objectId)
+  }
+
+  const handleObjectPickerDragEnd = () => {
+    setDraggingObjectId(null)
+    setPlacementGhost(null)
   }
 
   const updatePlacementGhost = (event: ReactMouseEvent<HTMLDivElement>) => {
@@ -240,179 +320,68 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
     controller.addInstanceToActiveRoom(placingObjectId, placementGhost.x, placementGhost.y)
   }
 
+  const tabData = useMemo(
+    () =>
+      openTabs
+        .map((tabEntry) => {
+          const room = projectRooms.find((r) => r.id === tabEntry.id)
+          if (!room) return null
+          return {
+            id: room.id,
+            name: room.name,
+            pinned: tabEntry.pinned
+          }
+        })
+        .filter((t): t is NonNullable<typeof t> => t !== null),
+    [openTabs, projectRooms]
+  )
+
   return (
     <div className="mvp15-room-editor-container flex h-[600px] w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-      {/* Left panel: Rooms list */}
-      <aside className="mvp3-room-list-panel flex w-[200px] flex-col border-r border-slate-200 bg-slate-50">
-        <div className="flex items-center justify-between border-b border-slate-200 p-3">
-          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Rooms</span>
-        </div>
+      {/* Left panel: Room list with folders */}
+      <RoomListPanel
+        rooms={projectRooms}
+        roomFolders={controller.project.resources.roomFolders ?? []}
+        activeRoomId={controller.activeRoomId}
+        onSelectRoom={handleSelectRoom}
+        onPinRoom={handlePinRoom}
+        onOpenInNewTab={handlePinRoom}
+        onAddRoom={(name, folderId) => controller.addRoom(name, folderId)}
+        onRenameRoom={(roomId, name) => controller.renameRoom(roomId, name)}
+        onDeleteRoom={handleDeleteRoom}
+        onCreateFolder={(name, parentId) => controller.createRoomFolder(name, parentId)}
+        onRenameFolder={(folderId, name) => controller.renameRoomFolder(folderId, name)}
+        onDeleteFolder={(folderId) => controller.deleteRoomFolder(folderId)}
+        onMoveFolder={(folderId, newParentId) => controller.moveRoomFolder(folderId, newParentId)}
+        onMoveRoomToFolder={(roomId, folderId) => controller.moveRoomToFolder(roomId, folderId)}
+      />
 
-        <div className="flex-1 overflow-y-auto p-2">
-          <div className="flex flex-col gap-1">
-            {controller.project.rooms.length === 0 && (
-              <p className="px-2 py-4 text-center text-xs text-slate-400">No rooms yet</p>
-            )}
-            {controller.project.rooms.map((room) => (
-              <button
-                key={room.id}
-                type="button"
-                className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm transition-colors ${
-                  controller.activeRoomId === room.id
-                    ? "bg-white font-medium text-slate-900 shadow-sm ring-1 ring-slate-200"
-                    : "text-slate-600 hover:bg-slate-100"
-                }`}
-                onClick={() => controller.setActiveRoomId(room.id)}
-              >
-                <Grid3X3 className={`h-3.5 w-3.5 ${controller.activeRoomId === room.id ? "text-blue-500" : "text-slate-400"}`} />
-                <span className="truncate">{room.name}</span>
-              </button>
-            ))}
-          </div>
-        </div>
+      {/* Middle panel: Object picker with folders */}
+      <RoomObjectPickerPanel
+        objects={controller.project.objects}
+        objectFolders={controller.project.resources.objectFolders ?? []}
+        resolvedSpriteSources={resolvedSpriteSources}
+        placingObjectId={placingObjectId}
+        hasActiveRoom={Boolean(controller.activeRoom)}
+        onTogglePlacement={(objectId) => {
+          setPlacingObjectId((current) => (current === objectId ? null : objectId))
+          setPlacementGhost(null)
+        }}
+        onDragStart={handleObjectPickerDragStart}
+        onDragEnd={handleObjectPickerDragEnd}
+        showGrid={showGrid}
+        onToggleGrid={setShowGrid}
+      />
 
-        <div className="border-t border-slate-200 bg-white p-3">
-          {isAddingRoom ? (
-            <div className="flex gap-2">
-              <input
-                ref={inputCallbackRef}
-                value={roomName}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                  setRoomName(e.target.value)
-                  resetIdleTimer()
-                }}
-                onKeyDown={(e: ReactKeyboardEvent<HTMLInputElement>) => {
-                  blockUndoShortcuts(e)
-                  resetIdleTimer()
-                  if (e.key === "Enter") handleAddRoom()
-                  if (e.key === "Escape") setIsAddingRoom(false)
-                }}
-                className="flex h-8 w-full rounded-md border border-slate-300 bg-white px-3 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
-                placeholder="Room name..."
-              />
-              <Button
-                size="sm"
-                className="h-8 w-8 shrink-0 px-0"
-                onClick={handleAddRoom}
-                title="Add room"
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full h-8 text-xs"
-              onClick={() => setIsAddingRoom(true)}
-            >
-              <Plus className="mr-2 h-3.5 w-3.5" />
-              Add Room
-            </Button>
-          )}
-        </div>
-      </aside>
-
-      {/* Middle panel: Object picker + Options */}
-      <aside className="mvp3-room-object-picker flex w-[180px] flex-col border-r border-slate-200 bg-slate-50">
-        <div className="flex items-center justify-between border-b border-slate-200 p-3">
-          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Add objects</span>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-2">
-          <div className="flex flex-col gap-1">
-            {controller.project.objects.length === 0 && (
-              <p className="px-2 py-4 text-center text-xs text-slate-400">No objects</p>
-            )}
-            {controller.project.objects.map((obj) => (
-              <button
-                key={obj.id}
-                type="button"
-                className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm transition-colors ${
-                  placingObjectId === obj.id
-                    ? "bg-white font-medium text-slate-900 ring-1 ring-slate-300"
-                    : "text-slate-600 hover:bg-slate-100"
-                }`}
-                onClick={() => {
-                  setPlacingObjectId((current) => (current === obj.id ? null : obj.id))
-                  setPlacementGhost(null)
-                }}
-                draggable={Boolean(controller.activeRoom)}
-                onDragStart={(event) => {
-                  event.dataTransfer.setData(OBJECT_DRAG_DATA_KEY, obj.id)
-                  event.dataTransfer.effectAllowed = "copy"
-                  if (!transparentDragImageRef.current) {
-                    const element = document.createElement("div")
-                    element.style.width = "1px"
-                    element.style.height = "1px"
-                    element.style.position = "fixed"
-                    element.style.top = "-1000px"
-                    element.style.left = "-1000px"
-                    element.style.opacity = "0.01"
-                    document.body.appendChild(element)
-                    transparentDragImageRef.current = element
-                  }
-                  event.dataTransfer.setDragImage(transparentDragImageRef.current, 0, 0)
-                  setDraggingObjectId(obj.id)
-                }}
-                onDragEnd={() => {
-                  setDraggingObjectId(null)
-                  setPlacementGhost(null)
-                }}
-                title={`Add ${obj.name} to room`}
-                disabled={!controller.activeRoom}
-              >
-                {obj.spriteId && resolvedSpriteSources[obj.spriteId] ? (
-                  <img
-                    src={resolvedSpriteSources[obj.spriteId]}
-                    alt=""
-                    className="mvp21-room-object-list-sprite-icon h-5 w-5 object-contain"
-                    style={{ imageRendering: "pixelated" }}
-                  />
-                ) : (
-                  <Box
-                    className={`mvp22-room-object-list-fallback-icon h-3.5 w-3.5 ${
-                      placingObjectId === obj.id ? "text-blue-500" : "text-slate-400"
-                    }`}
-                  />
-                )}
-                <span className="truncate">{obj.name}</span>
-                <Plus className={`ml-auto h-3 w-3 ${placingObjectId === obj.id ? "text-blue-500" : "text-slate-300"}`} />
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="mvp19-room-options border-t border-slate-200">
-          <div className="flex items-center justify-between border-b border-slate-200 p-3">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Options</span>
-          </div>
-          <div className="p-3">
-            <label className="mvp19-room-grid-toggle flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={showGrid}
-                onChange={(e) => setShowGrid(e.target.checked)}
-                className="h-3.5 w-3.5 rounded border-slate-300 text-blue-500 focus:ring-blue-400"
-              />
-              <span className="text-xs text-slate-600">Show grid</span>
-            </label>
-          </div>
-        </div>
-      </aside>
-
-      {/* Right panel: Canvas */}
-      <div className="flex flex-1 flex-col">
-        <div className="flex h-12 items-center justify-between border-b border-slate-200 px-4">
-          <h3 className="text-sm text-slate-800">
-            Room: <span className="font-semibold text-slate-900">{controller.activeRoom?.name ?? "none"}</span>
-          </h3>
-          {controller.activeRoom && (
-            <span className="text-xs text-slate-400">
-              {controller.activeRoom.instances.length} instance{controller.activeRoom.instances.length !== 1 ? "s" : ""}
-            </span>
-          )}
-        </div>
+      {/* Right panel: Tab bar + Canvas */}
+      <div className="roomtabs-editor-area flex min-w-0 flex-1 flex-col border-l border-slate-200">
+        <RoomTabBar
+          tabs={tabData}
+          activeTabId={controller.activeRoomId}
+          onSelectTab={(id) => controller.setActiveRoomId(id)}
+          onCloseTab={handleCloseTab}
+          onPinTab={handlePinRoom}
+        />
 
         <div className="flex-1 overflow-auto bg-slate-50/50">
           {!controller.activeRoom ? (
