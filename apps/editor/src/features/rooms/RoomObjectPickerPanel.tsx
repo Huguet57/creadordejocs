@@ -1,13 +1,11 @@
 import {
   Box,
   ChevronDown,
-  ChevronLeft,
   ChevronRight,
   Plus
 } from "lucide-react"
 import { useMemo, useState, type DragEvent as ReactDragEvent } from "react"
 import type { ProjectV1 } from "@creadordejocs/project-format"
-import { EditorSidebarLayout } from "../shared/editor-sidebar/EditorSidebarLayout.js"
 import { buildEntriesByFolder, buildFolderChildrenByParent } from "../shared/editor-sidebar/tree-utils.js"
 
 type ObjectFolder = NonNullable<ProjectV1["resources"]["objectFolders"]>[number]
@@ -38,7 +36,6 @@ export function RoomObjectPickerPanel({
   showGrid,
   onToggleGrid
 }: RoomObjectPickerPanelProps) {
-  const [isCollapsed, setIsCollapsed] = useState(false)
   const [expandedFolderIds, setExpandedFolderIds] = useState<Set<string>>(new Set())
 
   const foldersByParent = useMemo(() => buildFolderChildrenByParent<ObjectFolder>(objectFolders), [objectFolders])
@@ -120,65 +117,38 @@ export function RoomObjectPickerPanel({
   }
 
   return (
-    <EditorSidebarLayout
-      classNamePrefix="mvp3-room-object-picker"
-      isCollapsed={isCollapsed}
-      expandedWidthClass="w-[180px]"
-      header={
-        <div className={`room-objpicker-header flex items-center border-b border-slate-200 px-1.5 py-1.5 ${isCollapsed ? "justify-center" : "justify-between"}`}>
-          {isCollapsed ? (
-            <button
-              type="button"
-              className="room-objpicker-expand-btn inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
-              onClick={() => setIsCollapsed(false)}
-              title="Expand object picker"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          ) : (
-            <>
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider pl-1">Add objects</span>
-              <button
-                type="button"
-                className="room-objpicker-collapse-btn inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
-                onClick={() => setIsCollapsed(true)}
-                title="Collapse object picker"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-            </>
-          )}
-        </div>
-      }
-      body={
-        <div className="room-objpicker-body flex flex-1 flex-col overflow-hidden">
-          <div className="flex-1 overflow-y-auto p-2">
-            <div className="flex flex-col gap-0.5">
-              {objects.length === 0 && (
-                <p className="px-2 py-4 text-center text-xs text-slate-400">No objects</p>
-              )}
-              {renderTree(null, 0)}
-            </div>
-          </div>
+    <aside className="mvp3-room-object-picker-container flex w-[180px] shrink-0 flex-col overflow-hidden border-l border-slate-200 bg-slate-50">
+      <div className="room-objpicker-header flex items-center border-b border-slate-200 p-3">
+        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Add objects</span>
+      </div>
 
-          <div className="mvp19-room-options border-t border-slate-200">
-            <div className="flex items-center justify-between border-b border-slate-200 p-3">
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Options</span>
-            </div>
-            <div className="p-3">
-              <label className="mvp19-room-grid-toggle flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={showGrid}
-                  onChange={(e) => onToggleGrid(e.target.checked)}
-                  className="h-3.5 w-3.5 rounded border-slate-300 text-blue-500 focus:ring-blue-400"
-                />
-                <span className="text-xs text-slate-600">Show grid</span>
-              </label>
-            </div>
+      <div className="room-objpicker-body flex flex-1 flex-col overflow-hidden">
+        <div className="flex-1 overflow-y-auto p-2">
+          <div className="flex flex-col gap-0.5">
+            {objects.length === 0 && (
+              <p className="px-2 py-4 text-center text-xs text-slate-400">No objects</p>
+            )}
+            {renderTree(null, 0)}
           </div>
         </div>
-      }
-    />
+
+        <div className="mvp19-room-options border-t border-slate-200">
+          <div className="flex items-center justify-between border-b border-slate-200 p-3">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Options</span>
+          </div>
+          <div className="p-3">
+            <label className="mvp19-room-grid-toggle flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showGrid}
+                onChange={(e) => onToggleGrid(e.target.checked)}
+                className="h-3.5 w-3.5 rounded border-slate-300 text-blue-500 focus:ring-blue-400"
+              />
+              <span className="text-xs text-slate-600">Show grid</span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </aside>
   )
 }
