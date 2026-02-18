@@ -81,6 +81,17 @@ describe("schema v1 room folders", () => {
     expect(parsed.rooms[0]!.folderId).toBe("rf-1")
   })
 
+  it("parses rooms with width and height", () => {
+    const project = createEmptyProjectV1("Room size")
+    project.rooms = [
+      { id: "room-1", name: "Level 1", width: 1200, height: 700, instances: [] } as typeof project.rooms[number]
+    ]
+
+    const parsed = ProjectSchemaV1.parse(project)
+    expect(parsed.rooms[0]!.width).toBe(1200)
+    expect(parsed.rooms[0]!.height).toBe(700)
+  })
+
   it("parses a legacy project without roomFolders", () => {
     const project = createEmptyProjectV1("Legacy")
     // Explicitly remove roomFolders to simulate legacy data
@@ -98,5 +109,16 @@ describe("schema v1 room folders", () => {
 
     const parsed = ProjectSchemaV1.parse(project)
     expect(parsed.rooms[0]!.folderId).toBeUndefined()
+  })
+
+  it("parses a legacy room without width and height", () => {
+    const project = createEmptyProjectV1("Legacy room size")
+    project.rooms = [
+      { id: "room-1", name: "Sala 1", folderId: null, instances: [] } as typeof project.rooms[number]
+    ]
+
+    const parsed = ProjectSchemaV1.parse(project)
+    expect(parsed.rooms[0]!.width).toBeUndefined()
+    expect(parsed.rooms[0]!.height).toBeUndefined()
   })
 })

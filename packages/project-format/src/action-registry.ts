@@ -147,6 +147,14 @@ export const ACTION_REGISTRY = [
     ui: { label: "Anar a sala", shortLabel: "Anar a sala", categoryId: "rooms", editorVisible: true }
   },
   {
+    type: "teleportWindow",
+    ui: { label: "Teleport window", shortLabel: "Teleport win", categoryId: "rooms", editorVisible: true }
+  },
+  {
+    type: "moveWindow",
+    ui: { label: "Moure window", shortLabel: "Moure win", categoryId: "rooms", editorVisible: true }
+  },
+  {
     type: "restartRoom",
     ui: { label: "Reiniciar sala", shortLabel: "Reiniciar", categoryId: "rooms", editorVisible: true }
   },
@@ -375,6 +383,19 @@ export function createObjectActionSchema<
       id: z.string().min(1),
       type: z.literal("goToRoom"),
       roomId: z.string().min(1)
+    }),
+    z.object({
+      id: z.string().min(1),
+      type: z.literal("teleportWindow"),
+      mode: z.enum(["position", "self"]),
+      x: numberOrSource.nullable().default(null),
+      y: numberOrSource.nullable().default(null)
+    }),
+    z.object({
+      id: z.string().min(1),
+      type: z.literal("moveWindow"),
+      dx: numberOrSource,
+      dy: numberOrSource
     }),
     z.object({
       id: z.string().min(1),
@@ -684,6 +705,8 @@ export function createEditorDefaultAction(type: ActionType, ctx: ActionDefaultsC
     if (!firstRoom) return null
     return { type: "goToRoom", roomId: firstRoom }
   }
+  if (type === "teleportWindow") return { type: "teleportWindow", mode: "position", x: 0, y: 0 }
+  if (type === "moveWindow") return { type: "moveWindow", dx: 0, dy: 0 }
   if (type === "restartRoom") return { type: "restartRoom" }
   if (type === "wait") return { type: "wait", durationMs: 500 }
   if (type === "repeat") return { type: "repeat", count: 3, actions: [] }
@@ -765,4 +788,3 @@ export function createEditorDefaultAction(type: ActionType, ctx: ActionDefaultsC
   }
   return null
 }
-

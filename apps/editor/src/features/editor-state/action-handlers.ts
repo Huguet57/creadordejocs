@@ -4,11 +4,12 @@ import { enqueueRuntimeToast, type RuntimeToastState } from "./message-toast-uti
 import { executeEmitCustomEvent } from "./action-handlers-custom-events.js"
 import {
   DEFAULT_SPRITE_SPEED_MS,
-  ROOM_HEIGHT,
-  ROOM_WIDTH,
+  WINDOW_HEIGHT,
+  WINDOW_WIDTH,
   RUNTIME_TICK_MS,
   applyGlobalNumericOperation,
   applyObjectNumericOperation,
+  clampWindowToRoom,
   clampValue,
   getInstanceHeight,
   getInstanceWidth,
@@ -27,6 +28,9 @@ import {
 
 export type ActionContext = {
   project: ProjectV1
+  roomId: string
+  roomWidth: number
+  roomHeight: number
   startPosition: { x: number; y: number } | null
   collisionOtherInstanceId: string | null
   roomInstances: ProjectV1["rooms"][number]["instances"]
@@ -491,8 +495,8 @@ function executeActionFallback(
     }
   }
   if (action.type === "clampToRoom") {
-    const maxX = ROOM_WIDTH - getInstanceWidth(ctx.project, result.instance)
-    const maxY = ROOM_HEIGHT - getInstanceHeight(ctx.project, result.instance)
+    const maxX = Math.max(0, ctx.roomWidth - getInstanceWidth(ctx.project, result.instance))
+    const maxY = Math.max(0, ctx.roomHeight - getInstanceHeight(ctx.project, result.instance))
     return {
       result: {
         ...result,
@@ -546,6 +550,74 @@ function executeActionFallback(
       }
     }
     return { result }
+  }
+  if (action.type === "teleportWindow") {
+    const currentWindow = clampWindowToRoom(
+      result.runtime.windowByRoomId[ctx.roomId]?.x ?? 0,
+      result.runtime.windowByRoomId[ctx.roomId]?.y ?? 0,
+      ctx.roomWidth,
+      ctx.roomHeight
+    )
+    let targetWindow = currentWindow
+    if (action.mode === "position") {
+      const resolvedX = action.x === null ? currentWindow.x : resolveNumberValue(action.x, result, ctx)
+      const resolvedY = action.y === null ? currentWindow.y : resolveNumberValue(action.y, result, ctx)
+      targetWindow = clampWindowToRoom(
+        resolvedX ?? currentWindow.x,
+        resolvedY ?? currentWindow.y,
+        ctx.roomWidth,
+        ctx.roomHeight
+      )
+    } else {
+      const centerX = result.instance.x + getInstanceWidth(ctx.project, result.instance) / 2
+      const centerY = result.instance.y + getInstanceHeight(ctx.project, result.instance) / 2
+      targetWindow = clampWindowToRoom(
+        centerX - WINDOW_WIDTH / 2,
+        centerY - WINDOW_HEIGHT / 2,
+        ctx.roomWidth,
+        ctx.roomHeight
+      )
+    }
+    return {
+      result: {
+        ...result,
+        runtime: {
+          ...result.runtime,
+          windowByRoomId: {
+            ...result.runtime.windowByRoomId,
+            [ctx.roomId]: targetWindow
+          }
+        }
+      }
+    }
+  }
+  if (action.type === "moveWindow") {
+    const currentWindow = clampWindowToRoom(
+      result.runtime.windowByRoomId[ctx.roomId]?.x ?? 0,
+      result.runtime.windowByRoomId[ctx.roomId]?.y ?? 0,
+      ctx.roomWidth,
+      ctx.roomHeight
+    )
+    const dx = resolveNumberValue(action.dx, result, ctx) ?? 0
+    const dy = resolveNumberValue(action.dy, result, ctx) ?? 0
+    const targetWindow = clampWindowToRoom(
+      currentWindow.x + dx,
+      currentWindow.y + dy,
+      ctx.roomWidth,
+      ctx.roomHeight
+    )
+    return {
+      result: {
+        ...result,
+        runtime: {
+          ...result.runtime,
+          windowByRoomId: {
+            ...result.runtime.windowByRoomId,
+            [ctx.roomId]: targetWindow
+          }
+        }
+      }
+    }
   }
   if (action.type === "destroySelf") {
     return {
@@ -1384,6 +1456,8 @@ export const ACTION_RUNTIME_REGISTRY: ActionRuntimeRegistry = {
   mapDelete: (action, result, ctx) => executeActionFallback(action, result, ctx),
   mapClear: (action, result, ctx) => executeActionFallback(action, result, ctx),
   goToRoom: (action, result, ctx) => executeActionFallback(action, result, ctx),
+  teleportWindow: (action, result, ctx) => executeActionFallback(action, result, ctx),
+  moveWindow: (action, result, ctx) => executeActionFallback(action, result, ctx),
   restartRoom: (action, result, ctx) => executeActionFallback(action, result, ctx),
   wait: (action, result, ctx) => executeActionFallback(action, result, ctx),
   changeSprite: (action, result, ctx) => executeActionFallback(action, result, ctx),

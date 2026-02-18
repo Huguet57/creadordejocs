@@ -506,6 +506,79 @@ export function ActionBlock({
           </>
         )}
 
+        {action.type === "teleportWindow" && (
+          <>
+            <select
+              className="action-block-teleport-window-mode h-7 rounded border border-slate-300 bg-white/50 px-2 text-xs"
+              value={action.mode}
+              onChange={(event) =>
+                onUpdate({
+                  ...action,
+                  mode: event.target.value as "position" | "self",
+                  x: event.target.value === "position" ? (action.x ?? 0) : null,
+                  y: event.target.value === "position" ? (action.y ?? 0) : null
+                })
+              }
+            >
+              <option value="position">Position</option>
+              <option value="self">Self</option>
+            </select>
+            {action.mode === "position" && (
+              <>
+                <div className="flex items-center gap-1">
+                  <label className="text-[10px] font-medium opacity-60">X</label>
+                  <RightValuePicker
+                    value={action.x ?? asLiteralValue(0)}
+                    expectedType="number"
+                    globalVariables={globalVariables}
+                    internalVariables={internalVariableOptions}
+                    allowOtherTarget={allowOtherTarget}
+                    onChange={(nextValue) => onUpdate({ ...action, x: nextValue as typeof action.x })}
+                  />
+                </div>
+                <div className="flex items-center gap-1">
+                  <label className="text-[10px] font-medium opacity-60">Y</label>
+                  <RightValuePicker
+                    value={action.y ?? asLiteralValue(0)}
+                    expectedType="number"
+                    globalVariables={globalVariables}
+                    internalVariables={internalVariableOptions}
+                    allowOtherTarget={allowOtherTarget}
+                    onChange={(nextValue) => onUpdate({ ...action, y: nextValue as typeof action.y })}
+                  />
+                </div>
+              </>
+            )}
+          </>
+        )}
+
+        {action.type === "moveWindow" && (
+          <>
+            <div className="flex items-center gap-1">
+              <label className="text-[10px] font-medium opacity-60">DX</label>
+              <RightValuePicker
+                value={action.dx}
+                expectedType="number"
+                globalVariables={globalVariables}
+                internalVariables={internalVariableOptions}
+                allowOtherTarget={allowOtherTarget}
+                onChange={(nextValue) => onUpdate({ ...action, dx: nextValue as typeof action.dx })}
+              />
+            </div>
+            <div className="flex items-center gap-1">
+              <label className="text-[10px] font-medium opacity-60">DY</label>
+              <RightValuePicker
+                value={action.dy}
+                expectedType="number"
+                globalVariables={globalVariables}
+                internalVariables={internalVariableOptions}
+                allowOtherTarget={allowOtherTarget}
+                onChange={(nextValue) => onUpdate({ ...action, dy: nextValue as typeof action.dy })}
+              />
+            </div>
+          </>
+        )}
+
         {action.type === "endGame" && (
           <div className="flex items-center gap-1 flex-1">
             <label className="text-[10px] font-medium opacity-60">Msg</label>

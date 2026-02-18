@@ -518,6 +518,8 @@ const RoomSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   folderId: z.string().nullable().optional(),
+  width: z.number().int().min(1).optional(),
+  height: z.number().int().min(1).optional(),
   instances: z.array(RoomInstanceSchema)
 })
 

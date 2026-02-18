@@ -8,7 +8,10 @@ import {
   renameRoomFolder,
   moveRoomFolder,
   deleteRoomFolder,
-  moveRoomToFolder
+  moveRoomToFolder,
+  quickCreateObject,
+  addRoomInstance,
+  updateRoomSize
 } from "./editor-model.js"
 
 function projectWithRoom(name: string, folderId: string | null = null) {
@@ -32,12 +35,59 @@ describe("createRoom with folderId", () => {
     expect(room!.folderId).toBe(folderResult.folderId)
   })
 
+  it("creates rooms with default dimensions", () => {
+    const project = createEmptyProjectV1("test")
+    const roomResult = createRoom(project, "Level 1")
+    const room = roomResult.project.rooms.find((r) => r.id === roomResult.roomId)
+    expect(room).toBeDefined()
+    expect(room!.width).toBe(832)
+    expect(room!.height).toBe(480)
+  })
+
   it("creates a room with null folderId by default", () => {
     const result = projectWithRoom("Sala 1")
 
     const room = result.project.rooms.find((r) => r.id === result.roomId)
     expect(room).toBeDefined()
     expect(room!.folderId).toBeNull()
+  })
+})
+
+describe("updateRoomSize", () => {
+  it("applies minimum room size and rounds dimensions", () => {
+    const base = createRoom(createEmptyProjectV1("test"), "Room")
+    const next = updateRoomSize(base.project, { roomId: base.roomId, width: 200.2, height: 100.9 })
+    const room = next.rooms.find((entry) => entry.id === base.roomId)
+    expect(room).toBeDefined()
+    expect(room!.width).toBe(832)
+    expect(room!.height).toBe(480)
+  })
+
+  it("clamps instances inside room bounds when reducing size", () => {
+    const initial = createEmptyProjectV1("test")
+    const objectResult = quickCreateObject(initial, {
+      name: "Player",
+      width: 64,
+      height: 32
+    })
+    const roomResult = createRoom(objectResult.project, "Room")
+    const withInstance = addRoomInstance(roomResult.project, {
+      roomId: roomResult.roomId,
+      objectId: objectResult.objectId,
+      x: 1800,
+      y: 1000
+    }).project
+
+    const resized = updateRoomSize(withInstance, {
+      roomId: roomResult.roomId,
+      width: 900,
+      height: 500
+    })
+    const room = resized.rooms.find((entry) => entry.id === roomResult.roomId)
+    const instance = room?.instances[0]
+    expect(instance).toBeDefined()
+    expect(instance!.x).toBe(836)
+    expect(instance!.y).toBe(468)
   })
 })
 

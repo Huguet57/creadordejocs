@@ -2,12 +2,17 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { Play, RotateCcw } from "lucide-react"
 import type { ProjectV1 } from "@creadordejocs/project-format"
 import { Button } from "../../components/ui/button.js"
-import { DEFAULT_SPRITE_SPEED_MS } from "../editor-state/runtime-types.js"
+import {
+  DEFAULT_SPRITE_SPEED_MS,
+  WINDOW_HEIGHT,
+  WINDOW_WIDTH,
+  clampValue,
+  clampWindowToRoom,
+  resolveRoomDimensions
+} from "../editor-state/runtime-types.js"
 import type { RuntimeMouseButton, RuntimeState } from "../editor-state/runtime.js"
 import { resolveSpritePreviewSource, spritePixelsToDataUrl } from "../sprites/utils/sprite-preview-source.js"
-
-const ROOM_WIDTH = 832
-const ROOM_HEIGHT = 480
+import { isInstanceVisibleInWindow, mapPointerToWorldCoordinates, toScreenCoordinates } from "./run-window-utils.js"
 
 type RunSectionProps = {
   controller: RunSectionController
@@ -50,10 +55,21 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
   const { runtimeState } = controller
   const [resolvedSpriteSources, setResolvedSpriteSources] = useState<Record<string, string>>({})
   const canvasRef = useRef<HTMLDivElement>(null)
+  const activeRoomDimensions = useMemo(
+    () => resolveRoomDimensions(controller.activeRoom),
+    [controller.activeRoom]
+  )
+  const windowPosition = useMemo(() => {
+    if (!controller.activeRoom) {
+      return { x: 0, y: 0 }
+    }
+    const stored = runtimeState.windowByRoomId?.[controller.activeRoom.id] ?? { x: 0, y: 0 }
+    return clampWindowToRoom(stored.x, stored.y, activeRoomDimensions.width, activeRoomDimensions.height)
+  }, [controller.activeRoom, runtimeState.windowByRoomId, activeRoomDimensions.width, activeRoomDimensions.height])
   const rawMouseX = runtimeState.mouse.x
   const rawMouseY = runtimeState.mouse.y
-  const mouseX = Math.round(Math.max(0, Math.min(ROOM_WIDTH, rawMouseX)))
-  const mouseY = Math.round(Math.max(0, Math.min(ROOM_HEIGHT, rawMouseY)))
+  const mouseX = Math.round(clampValue(rawMouseX, 0, activeRoomDimensions.width))
+  const mouseY = Math.round(clampValue(rawMouseY, 0, activeRoomDimensions.height))
   const userGlobalVariableEntries = controller.project.variables.global.map((variableEntry) => ({
     id: variableEntry.id,
     name: variableEntry.name,
@@ -130,14 +146,18 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
     if (!canvasElement) {
       return
     }
-    const toRoomCoordinates = (event: MouseEvent): { x: number; y: number } => {
+    const toWorldCoordinates = (event: MouseEvent): { x: number; y: number } => {
       const rect = canvasElement.getBoundingClientRect()
-      const relativeX = event.clientX - rect.left
-      const relativeY = event.clientY - rect.top
-      return {
-        x: Math.max(0, Math.min(ROOM_WIDTH, relativeX)),
-        y: Math.max(0, Math.min(ROOM_HEIGHT, relativeY))
-      }
+      return mapPointerToWorldCoordinates({
+        clientX: event.clientX,
+        clientY: event.clientY,
+        rectLeft: rect.left,
+        rectTop: rect.top,
+        windowX: windowPosition.x,
+        windowY: windowPosition.y,
+        roomWidth: activeRoomDimensions.width,
+        roomHeight: activeRoomDimensions.height
+      })
     }
     const toMouseButton = (event: MouseEvent): "left" | "middle" | "right" | null => {
       if (event.button === 0) return "left"
@@ -149,7 +169,7 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
       if (!controller.isRunning) {
         return
       }
-      const point = toRoomCoordinates(event)
+      const point = toWorldCoordinates(event)
       controller.updateRuntimeMousePosition(point.x, point.y)
     }
     const onMouseDown = (event: MouseEvent): void => {
@@ -159,7 +179,7 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
         }
         return
       }
-      const point = toRoomCoordinates(event)
+      const point = toWorldCoordinates(event)
       controller.updateRuntimeMousePosition(point.x, point.y)
       const button = toMouseButton(event)
       if (button) {
@@ -170,7 +190,7 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
       if (!controller.isRunning) {
         return
       }
-      const point = toRoomCoordinates(event)
+      const point = toWorldCoordinates(event)
       controller.updateRuntimeMousePosition(point.x, point.y)
       const button = toMouseButton(event)
       if (button) {
@@ -188,7 +208,7 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
       canvasElement.removeEventListener("mouseup", onMouseUp)
       canvasElement.removeEventListener("mouseleave", onMouseUp)
     }
-  }, [controller])
+  }, [controller, windowPosition.x, windowPosition.y, activeRoomDimensions.width, activeRoomDimensions.height])
 
   return (
     <div className={`mvp15-run-container flex w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm ${isPlayMode ? "min-h-[560px]" : "h-[600px]"}`}>
@@ -325,11 +345,11 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
               <p>Create a room first to run the game</p>
             </div>
           ) : (
-            <div className="mvp17-run-canvas-wrapper relative" style={{ width: ROOM_WIDTH }}>
+            <div className="mvp17-run-canvas-wrapper relative" style={{ width: WINDOW_WIDTH }}>
               <div
                 ref={canvasRef}
                 className="mvp15-run-canvas relative overflow-hidden border-b border-slate-200 bg-white"
-                style={{ width: ROOM_WIDTH, height: ROOM_HEIGHT }}
+                style={{ width: WINDOW_WIDTH, height: WINDOW_HEIGHT }}
               >
                 {!controller.isRunning && (
                   <div className="mvp19-run-start-overlay pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-slate-900/30">
@@ -343,17 +363,27 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
                   const objectEntry = controller.project.objects.find((entry) => entry.id === instanceEntry.objectId)
                   const instanceWidth = objectEntry?.width ?? 32
                   const instanceHeight = objectEntry?.height ?? 32
-                  const isOutsideRoom =
-                    instanceEntry.x < 0 ||
-                    instanceEntry.y < 0 ||
-                    instanceEntry.x > ROOM_WIDTH - instanceWidth ||
-                    instanceEntry.y > ROOM_HEIGHT - instanceHeight
-                  if (isOutsideRoom) {
+                  if (
+                    !isInstanceVisibleInWindow({
+                      instanceX: instanceEntry.x,
+                      instanceY: instanceEntry.y,
+                      instanceWidth,
+                      instanceHeight,
+                      windowX: windowPosition.x,
+                      windowY: windowPosition.y
+                    })
+                  ) {
                     return null
                   }
                   if (objectEntry?.visible === false) {
                     return null
                   }
+                  const screenPosition = toScreenCoordinates(
+                    instanceEntry.x,
+                    instanceEntry.y,
+                    windowPosition.x,
+                    windowPosition.y
+                  )
                   const effectiveSpriteId = runtimeState.spriteOverrideByInstanceId[instanceEntry.id] ?? objectEntry?.spriteId
                   const spriteEntry = effectiveSpriteId ? spriteById[effectiveSpriteId] : undefined
 
@@ -373,8 +403,8 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
                       key={instanceEntry.id}
                       className={`mvp15-run-instance absolute flex items-center justify-center overflow-hidden text-[10px] ${spriteSource ? "" : "bg-indigo-500 text-white"}`}
                       style={{
-                        left: instanceEntry.x,
-                        top: instanceEntry.y,
+                        left: screenPosition.x,
+                        top: screenPosition.y,
                         width: instanceWidth,
                         height: instanceHeight,
                         transform: `rotate(${instanceEntry.rotation ?? 0}deg)`

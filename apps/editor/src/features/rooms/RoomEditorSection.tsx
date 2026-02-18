@@ -8,14 +8,13 @@ import {
 } from "react"
 import { EyeOff, X } from "lucide-react"
 import type { EditorController } from "../editor-state/use-editor-controller.js"
+import { WINDOW_HEIGHT, WINDOW_WIDTH, resolveRoomDimensions } from "../editor-state/runtime-types.js"
 import { getPositionCountsByCoordinate, getPositionKey, wouldOverlapSolid } from "./room-placement-utils.js"
 import { resolveSpritePreviewSource } from "../sprites/utils/sprite-preview-source.js"
 import { RoomListPanel } from "./RoomListPanel.js"
 import { RoomObjectPickerPanel } from "./RoomObjectPickerPanel.js"
 import { RoomTabBar } from "./RoomTabBar.js"
 
-const ROOM_WIDTH = 832
-const ROOM_HEIGHT = 480
 const ROOM_GRID_SIZE = 32
 const DRAG_SNAP_SIZE = 4
 const DEFAULT_INSTANCE_SIZE = 32
@@ -54,9 +53,11 @@ export function calculateRoomDragPosition(params: {
   instanceWidth: number
   instanceHeight: number
   snapSize: number
+  zoom?: number
 }): { x: number; y: number } {
-  const rawX = params.clientX - params.rectLeft - params.instanceWidth / 2
-  const rawY = params.clientY - params.rectTop - params.instanceHeight / 2
+  const zoom = params.zoom && Number.isFinite(params.zoom) && params.zoom > 0 ? params.zoom : 1
+  const rawX = (params.clientX - params.rectLeft) / zoom - params.instanceWidth / 2
+  const rawY = (params.clientY - params.rectTop) / zoom - params.instanceHeight / 2
   const maxX = params.roomWidth - params.instanceWidth
   const maxY = params.roomHeight - params.instanceHeight
   const clampedX = Math.max(0, Math.min(maxX, rawX))
@@ -81,6 +82,9 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
   const [placingObjectId, setPlacingObjectId] = useState<string | null>(null)
   const [placementGhost, setPlacementGhost] = useState<RoomPlacementGhost | null>(null)
   const [showGrid, setShowGrid] = useState(true)
+  const [roomWidthInput, setRoomWidthInput] = useState<string>(String(WINDOW_WIDTH))
+  const [roomHeightInput, setRoomHeightInput] = useState<string>(String(WINDOW_HEIGHT))
+  const [zoomPercent, setZoomPercent] = useState<number>(100)
   const transparentDragImageRef = useRef<HTMLDivElement | null>(null)
 
   // Tab state (VSCode-like: preview + pinned)
@@ -102,6 +106,13 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
     () => getPositionCountsByCoordinate(controller.activeRoom?.instances ?? []),
     [controller.activeRoom]
   )
+  const activeRoomDimensions = useMemo(
+    () => resolveRoomDimensions(controller.activeRoom),
+    [controller.activeRoom]
+  )
+  const activeRoomWidth = activeRoomDimensions.width
+  const activeRoomHeight = activeRoomDimensions.height
+  const zoom = zoomPercent / 100
 
   // Clean up tabs when rooms are removed
   useEffect(() => {
@@ -194,6 +205,11 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
     }
   }, [controller.activeRoom, objectById, placingObjectId])
 
+  useEffect(() => {
+    setRoomWidthInput(String(activeRoomWidth))
+    setRoomHeightInput(String(activeRoomHeight))
+  }, [controller.activeRoom?.id, activeRoomWidth, activeRoomHeight])
+
   const handleSelectRoom = (id: string) => {
     controller.setActiveRoomId(id)
     setOpenTabs((prev) => {
@@ -242,6 +258,17 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
     }
   }
 
+  const commitRoomSize = (nextWidthRaw: string, nextHeightRaw: string) => {
+    if (!controller.activeRoom) {
+      return
+    }
+    const parsedWidth = Number.parseInt(nextWidthRaw, 10)
+    const parsedHeight = Number.parseInt(nextHeightRaw, 10)
+    const safeWidth = Number.isFinite(parsedWidth) ? parsedWidth : activeRoomWidth
+    const safeHeight = Number.isFinite(parsedHeight) ? parsedHeight : activeRoomHeight
+    controller.updateRoomSize(controller.activeRoom.id, safeWidth, safeHeight)
+  }
+
   const handleObjectPickerDragStart = (event: ReactDragEvent, objectId: string) => {
     event.dataTransfer.setData(OBJECT_DRAG_DATA_KEY, objectId)
     event.dataTransfer.effectAllowed = "copy"
@@ -283,11 +310,12 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
       clientY: event.clientY,
       rectLeft: rect.left,
       rectTop: rect.top,
-      roomWidth: ROOM_WIDTH,
-      roomHeight: ROOM_HEIGHT,
+      roomWidth: activeRoomWidth,
+      roomHeight: activeRoomHeight,
       instanceWidth,
       instanceHeight,
-      snapSize: DRAG_SNAP_SIZE
+      snapSize: DRAG_SNAP_SIZE,
+      zoom
     })
     const isBlocked = wouldOverlapSolid({
       project: controller.project,
@@ -389,58 +417,146 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
               <p>Select or create a room</p>
             </div>
           ) : (
-            <div className="space-y-3">
-              <div
-                className={`mvp15-room-canvas mvp18-room-grid-canvas relative border-b border-slate-200 bg-white ${
-                  placingObjectId ? "cursor-crosshair" : ""
-                }`}
-                style={{
-                  width: ROOM_WIDTH,
-                  height: ROOM_HEIGHT,
-                  ...(showGrid
-                    ? {
-                        backgroundImage:
-                          "linear-gradient(to right, rgb(226 232 240 / 0.8) 1px, transparent 1px), linear-gradient(to bottom, rgb(226 232 240 / 0.8) 1px, transparent 1px)",
-                        backgroundSize: `${ROOM_GRID_SIZE}px ${ROOM_GRID_SIZE}px`
+            <div className="flex min-w-max flex-col">
+              <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 bg-white px-3 py-2">
+                <label className="flex items-center gap-2 text-xs text-slate-600">
+                  <span className="font-medium text-slate-500">Width</span>
+                  <input
+                    type="number"
+                    min={WINDOW_WIDTH}
+                    step={1}
+                    className="h-7 w-24 rounded border border-slate-300 bg-white px-2 text-xs focus:outline-none"
+                    value={roomWidthInput}
+                    onChange={(event) => setRoomWidthInput(event.target.value)}
+                    onBlur={() => commitRoomSize(roomWidthInput, roomHeightInput)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.currentTarget.blur()
                       }
-                    : {})
-                }}
-                onMouseMove={(event) => {
-                  if (!placingObjectId) {
-                    return
-                  }
-                  updatePlacementGhost(event)
-                }}
-                onMouseLeave={() => {
-                  setPlacementGhost(null)
-                }}
-                onClick={handleRoomCanvasClick}
-                onDragOver={(event) => {
-                  event.preventDefault()
-                  if (!controller.activeRoom) return
-                  const draggedObjectId = event.dataTransfer.getData(OBJECT_DRAG_DATA_KEY) || draggingObjectId
-                  if (draggedObjectId) {
-                    const objectEntry = objectById[draggedObjectId]
-                    if (!objectEntry) {
-                      setPlacementGhost(null)
+                    }}
+                  />
+                </label>
+                <label className="flex items-center gap-2 text-xs text-slate-600">
+                  <span className="font-medium text-slate-500">Height</span>
+                  <input
+                    type="number"
+                    min={WINDOW_HEIGHT}
+                    step={1}
+                    className="h-7 w-24 rounded border border-slate-300 bg-white px-2 text-xs focus:outline-none"
+                    value={roomHeightInput}
+                    onChange={(event) => setRoomHeightInput(event.target.value)}
+                    onBlur={() => commitRoomSize(roomWidthInput, roomHeightInput)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.currentTarget.blur()
+                      }
+                    }}
+                  />
+                </label>
+                <div className="ml-auto flex items-center gap-2 text-xs text-slate-600">
+                  <span className="font-medium text-slate-500">Zoom</span>
+                  <input
+                    type="range"
+                    min={25}
+                    max={300}
+                    step={5}
+                    value={zoomPercent}
+                    onChange={(event) => setZoomPercent(Number.parseInt(event.target.value, 10) || 100)}
+                  />
+                  <span className="w-12 text-right text-slate-500">{zoomPercent}%</span>
+                </div>
+              </div>
+              <div className="p-3">
+                <div
+                  className={`mvp15-room-canvas mvp18-room-grid-canvas relative border border-slate-200 bg-white ${
+                    placingObjectId ? "cursor-crosshair" : ""
+                  }`}
+                  style={{
+                    width: activeRoomWidth * zoom,
+                    height: activeRoomHeight * zoom,
+                    ...(showGrid
+                      ? {
+                          backgroundImage:
+                            "linear-gradient(to right, rgb(226 232 240 / 0.8) 1px, transparent 1px), linear-gradient(to bottom, rgb(226 232 240 / 0.8) 1px, transparent 1px)",
+                          backgroundSize: `${ROOM_GRID_SIZE * zoom}px ${ROOM_GRID_SIZE * zoom}px`
+                        }
+                      : {})
+                  }}
+                  onMouseMove={(event) => {
+                    if (!placingObjectId) {
                       return
                     }
-                    const instanceWidth = objectEntry.width ?? DEFAULT_INSTANCE_SIZE
-                    const instanceHeight = objectEntry.height ?? DEFAULT_INSTANCE_SIZE
+                    updatePlacementGhost(event)
+                  }}
+                  onMouseLeave={() => {
+                    setPlacementGhost(null)
+                  }}
+                  onClick={handleRoomCanvasClick}
+                  onDragOver={(event) => {
+                    event.preventDefault()
+                    if (!controller.activeRoom) return
+                    const draggedObjectId = event.dataTransfer.getData(OBJECT_DRAG_DATA_KEY) || draggingObjectId
+                    if (draggedObjectId) {
+                      const objectEntry = objectById[draggedObjectId]
+                      if (!objectEntry) {
+                        setPlacementGhost(null)
+                        return
+                      }
+                      const instanceWidth = objectEntry.width ?? DEFAULT_INSTANCE_SIZE
+                      const instanceHeight = objectEntry.height ?? DEFAULT_INSTANCE_SIZE
+                      const rect = event.currentTarget.getBoundingClientRect()
+                      const position = calculateRoomDragPosition({
+                        clientX: event.clientX,
+                        clientY: event.clientY,
+                        rectLeft: rect.left,
+                        rectTop: rect.top,
+                        roomWidth: activeRoomWidth,
+                        roomHeight: activeRoomHeight,
+                        instanceWidth,
+                        instanceHeight,
+                        snapSize: DRAG_SNAP_SIZE,
+                        zoom
+                      })
+                      setPlacementGhost({
+                        objectId: draggedObjectId,
+                        x: position.x,
+                        y: position.y,
+                        width: instanceWidth,
+                        height: instanceHeight,
+                        isBlocked: wouldOverlapSolid({
+                          project: controller.project,
+                          roomInstances: controller.activeRoom.instances,
+                          objectId: draggedObjectId,
+                          x: position.x,
+                          y: position.y
+                        })
+                      })
+                      return
+                    }
+                    if (!draggingInstanceId) return
+                    const instanceEntry = controller.activeRoom.instances.find((candidate) => candidate.id === draggingInstanceId)
+                    if (!instanceEntry) return
+                    const objectEntry = instanceEntry
+                      ? controller.project.objects.find((candidate) => candidate.id === instanceEntry.objectId)
+                      : null
+                    const instanceWidth = objectEntry?.width ?? DEFAULT_INSTANCE_SIZE
+                    const instanceHeight = objectEntry?.height ?? DEFAULT_INSTANCE_SIZE
                     const rect = event.currentTarget.getBoundingClientRect()
                     const position = calculateRoomDragPosition({
                       clientX: event.clientX,
                       clientY: event.clientY,
                       rectLeft: rect.left,
                       rectTop: rect.top,
-                      roomWidth: ROOM_WIDTH,
-                      roomHeight: ROOM_HEIGHT,
+                      roomWidth: activeRoomWidth,
+                      roomHeight: activeRoomHeight,
                       instanceWidth,
                       instanceHeight,
-                      snapSize: DRAG_SNAP_SIZE
+                      snapSize: DRAG_SNAP_SIZE,
+                      zoom
                     })
-                    setPlacementGhost({
-                      objectId: draggedObjectId,
+                    setDragPreview({
+                      instanceId: draggingInstanceId,
+                      objectId: instanceEntry.objectId,
                       x: position.x,
                       y: position.y,
                       width: instanceWidth,
@@ -448,91 +564,101 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                       isBlocked: wouldOverlapSolid({
                         project: controller.project,
                         roomInstances: controller.activeRoom.instances,
+                        objectId: instanceEntry.objectId,
+                        x: position.x,
+                        y: position.y,
+                        excludeInstanceId: draggingInstanceId
+                      })
+                    })
+                  }}
+                  onDragLeave={(event) => {
+                    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                      setDragPreview(null)
+                      setPlacementGhost(null)
+                    }
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault()
+                    if (!controller.activeRoom) return
+                    const draggedObjectId = event.dataTransfer.getData(OBJECT_DRAG_DATA_KEY) || draggingObjectId
+                    if (draggedObjectId) {
+                      const objectEntry = objectById[draggedObjectId]
+                      if (!objectEntry) {
+                        setPlacementGhost(null)
+                        setDraggingObjectId(null)
+                        return
+                      }
+                      const instanceWidth = objectEntry.width ?? DEFAULT_INSTANCE_SIZE
+                      const instanceHeight = objectEntry.height ?? DEFAULT_INSTANCE_SIZE
+                      const rect = event.currentTarget.getBoundingClientRect()
+                      const position = calculateRoomDragPosition({
+                        clientX: event.clientX,
+                        clientY: event.clientY,
+                        rectLeft: rect.left,
+                        rectTop: rect.top,
+                        roomWidth: activeRoomWidth,
+                        roomHeight: activeRoomHeight,
+                        instanceWidth,
+                        instanceHeight,
+                        snapSize: DRAG_SNAP_SIZE,
+                        zoom
+                      })
+                      const isBlocked = wouldOverlapSolid({
+                        project: controller.project,
+                        roomInstances: controller.activeRoom.instances,
                         objectId: draggedObjectId,
                         x: position.x,
                         y: position.y
                       })
-                    })
-                    return
-                  }
-                  if (!draggingInstanceId) return
-                  const instanceEntry = controller.activeRoom.instances.find((candidate) => candidate.id === draggingInstanceId)
-                  if (!instanceEntry) return
-                  const objectEntry = instanceEntry
-                    ? controller.project.objects.find((candidate) => candidate.id === instanceEntry.objectId)
-                    : null
-                  const instanceWidth = objectEntry?.width ?? DEFAULT_INSTANCE_SIZE
-                  const instanceHeight = objectEntry?.height ?? DEFAULT_INSTANCE_SIZE
-                  const rect = event.currentTarget.getBoundingClientRect()
-                  const position = calculateRoomDragPosition({
-                    clientX: event.clientX,
-                    clientY: event.clientY,
-                    rectLeft: rect.left,
-                    rectTop: rect.top,
-                    roomWidth: ROOM_WIDTH,
-                    roomHeight: ROOM_HEIGHT,
-                    instanceWidth,
-                    instanceHeight,
-                    snapSize: DRAG_SNAP_SIZE
-                  })
-                  setDragPreview({
-                    instanceId: draggingInstanceId,
-                    objectId: instanceEntry.objectId,
-                    x: position.x,
-                    y: position.y,
-                    width: instanceWidth,
-                    height: instanceHeight,
-                    isBlocked: wouldOverlapSolid({
-                      project: controller.project,
-                      roomInstances: controller.activeRoom.instances,
-                      objectId: instanceEntry.objectId,
-                      x: position.x,
-                      y: position.y,
-                      excludeInstanceId: draggingInstanceId
-                    })
-                  })
-                }}
-                onDragLeave={(event) => {
-                  if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-                    setDragPreview(null)
-                    setPlacementGhost(null)
-                  }
-                }}
-                onDrop={(event) => {
-                  event.preventDefault()
-                  if (!controller.activeRoom) return
-                  const draggedObjectId = event.dataTransfer.getData(OBJECT_DRAG_DATA_KEY) || draggingObjectId
-                  if (draggedObjectId) {
-                    const objectEntry = objectById[draggedObjectId]
-                    if (!objectEntry) {
+                      if (isBlocked) {
+                        setPlacementGhost({
+                          objectId: draggedObjectId,
+                          x: position.x,
+                          y: position.y,
+                          width: instanceWidth,
+                          height: instanceHeight,
+                          isBlocked: true
+                        })
+                        return
+                      }
+                      controller.addInstanceToActiveRoom(draggedObjectId, position.x, position.y)
                       setPlacementGhost(null)
                       setDraggingObjectId(null)
                       return
                     }
-                    const instanceWidth = objectEntry.width ?? DEFAULT_INSTANCE_SIZE
-                    const instanceHeight = objectEntry.height ?? DEFAULT_INSTANCE_SIZE
+                    const instanceId = event.dataTransfer.getData("text/plain")
+                    const instanceEntry = controller.activeRoom.instances.find((candidate) => candidate.id === instanceId)
+                    if (!instanceEntry) return
+                    const objectEntry = instanceEntry
+                      ? controller.project.objects.find((candidate) => candidate.id === instanceEntry.objectId)
+                      : null
+                    const instanceWidth = objectEntry?.width ?? DEFAULT_INSTANCE_SIZE
+                    const instanceHeight = objectEntry?.height ?? DEFAULT_INSTANCE_SIZE
                     const rect = event.currentTarget.getBoundingClientRect()
                     const position = calculateRoomDragPosition({
                       clientX: event.clientX,
                       clientY: event.clientY,
                       rectLeft: rect.left,
                       rectTop: rect.top,
-                      roomWidth: ROOM_WIDTH,
-                      roomHeight: ROOM_HEIGHT,
+                      roomWidth: activeRoomWidth,
+                      roomHeight: activeRoomHeight,
                       instanceWidth,
                       instanceHeight,
-                      snapSize: DRAG_SNAP_SIZE
+                      snapSize: DRAG_SNAP_SIZE,
+                      zoom
                     })
                     const isBlocked = wouldOverlapSolid({
                       project: controller.project,
                       roomInstances: controller.activeRoom.instances,
-                      objectId: draggedObjectId,
+                      objectId: instanceEntry.objectId,
                       x: position.x,
-                      y: position.y
+                      y: position.y,
+                      excludeInstanceId: instanceId
                     })
                     if (isBlocked) {
-                      setPlacementGhost({
-                        objectId: draggedObjectId,
+                      setDragPreview({
+                        instanceId,
+                        objectId: instanceEntry.objectId,
                         x: position.x,
                         y: position.y,
                         width: instanceWidth,
@@ -541,158 +667,119 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                       })
                       return
                     }
-                    controller.addInstanceToActiveRoom(draggedObjectId, position.x, position.y)
-                    setPlacementGhost(null)
-                    setDraggingObjectId(null)
-                    return
-                  }
-                  const instanceId = event.dataTransfer.getData("text/plain")
-                  const instanceEntry = controller.activeRoom.instances.find((candidate) => candidate.id === instanceId)
-                  if (!instanceEntry) return
-                  const objectEntry = instanceEntry
-                    ? controller.project.objects.find((candidate) => candidate.id === instanceEntry.objectId)
-                    : null
-                  const instanceWidth = objectEntry?.width ?? DEFAULT_INSTANCE_SIZE
-                  const instanceHeight = objectEntry?.height ?? DEFAULT_INSTANCE_SIZE
-                  const rect = event.currentTarget.getBoundingClientRect()
-                  const position = calculateRoomDragPosition({
-                    clientX: event.clientX,
-                    clientY: event.clientY,
-                    rectLeft: rect.left,
-                    rectTop: rect.top,
-                    roomWidth: ROOM_WIDTH,
-                    roomHeight: ROOM_HEIGHT,
-                    instanceWidth,
-                    instanceHeight,
-                    snapSize: DRAG_SNAP_SIZE
-                  })
-                  const isBlocked = wouldOverlapSolid({
-                    project: controller.project,
-                    roomInstances: controller.activeRoom.instances,
-                    objectId: instanceEntry.objectId,
-                    x: position.x,
-                    y: position.y,
-                    excludeInstanceId: instanceId
-                  })
-                  if (isBlocked) {
-                    setDragPreview({
-                      instanceId,
-                      objectId: instanceEntry.objectId,
-                      x: position.x,
-                      y: position.y,
-                      width: instanceWidth,
-                      height: instanceHeight,
-                      isBlocked: true
-                    })
-                    return
-                  }
-                  controller.moveInstance(instanceId, position.x, position.y)
-                  setDragPreview(null)
-                  setDraggingInstanceId(null)
-                }}
-              >
-                {controller.activeRoom.instances.map((instanceEntry) => {
-                  const objectEntry = objectById[instanceEntry.objectId]
-                  const spriteEntry = objectEntry?.spriteId ? spriteById[objectEntry.spriteId] : undefined
-                  const spriteSource = spriteEntry ? resolvedSpriteSources[spriteEntry.id] : undefined
-                  const instanceWidth = objectEntry?.width ?? DEFAULT_INSTANCE_SIZE
-                  const instanceHeight = objectEntry?.height ?? DEFAULT_INSTANCE_SIZE
-                  const stackedCount = activeRoomPositionCounts.get(getPositionKey(instanceEntry.x, instanceEntry.y)) ?? 1
-                  const isInvisible = objectEntry?.visible === false
-                  return (
-                    <div
-                      key={instanceEntry.id}
-                      className={`mvp15-room-instance group absolute flex cursor-move items-center justify-center rounded text-[10px] ${spriteSource ? "" : isInvisible ? "border border-dashed border-blue-400 bg-blue-100 text-blue-400" : "bg-blue-500 text-white"} ${draggingInstanceId === instanceEntry.id ? "opacity-30" : isInvisible ? "opacity-50" : ""}`}
-                      style={{ left: instanceEntry.x, top: instanceEntry.y, width: instanceWidth, height: instanceHeight }}
-                      draggable
-                      onDragStart={(event) => {
-                        event.dataTransfer.setData("text/plain", instanceEntry.id)
-                        event.dataTransfer.effectAllowed = "move"
-                        if (!transparentDragImageRef.current) {
-                          const element = document.createElement("div")
-                          element.style.width = "1px"
-                          element.style.height = "1px"
-                          element.style.position = "fixed"
-                          element.style.top = "-1000px"
-                          element.style.left = "-1000px"
-                          element.style.opacity = "0.01"
-                          document.body.appendChild(element)
-                          transparentDragImageRef.current = element
-                        }
-                        event.dataTransfer.setDragImage(transparentDragImageRef.current, 0, 0)
-                        setDraggingInstanceId(instanceEntry.id)
-                      }}
-                      onDragEnd={() => {
-                        setDragPreview(null)
-                        setDraggingInstanceId(null)
-                      }}
-                      title={
-                        objectEntry
-                          ? `${objectEntry.name} (${Math.round(instanceEntry.x)}, ${Math.round(instanceEntry.y)})`
-                          : "Instance"
-                      }
-                    >
-                      {spriteSource ? (
-                        <img
-                          className={`mvp15-room-instance-sprite h-full w-full object-contain ${isInvisible ? "opacity-40" : ""}`}
-                          src={spriteSource}
-                          alt={spriteEntry?.name ?? objectEntry?.name ?? "Sprite"}
-                        />
-                      ) : (
-                        objectEntry?.name.slice(0, 2).toUpperCase() ?? "??"
-                      )}
-                      {isInvisible && (
-                        <EyeOff className="mvp20-room-instance-invisible-icon pointer-events-none absolute bottom-0 left-0 h-3 w-3 text-blue-500 opacity-80" />
-                      )}
-                      {stackedCount > 1 && (
-                        <span className="mvp20-room-instance-stack-badge pointer-events-none absolute -right-1 -top-1 z-20 flex h-4 min-w-4 items-center justify-center rounded-full bg-slate-800 px-1 text-[9px] font-semibold leading-none text-white">
-                          {stackedCount}
-                        </span>
-                      )}
-                      <button
-                        type="button"
-                        className={`absolute -right-1.5 -top-1.5 h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white ${draggingInstanceId ? "hidden" : "hidden group-hover:flex"}`}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          controller.removeInstance(instanceEntry.id)
+                    controller.moveInstance(instanceId, position.x, position.y)
+                    setDragPreview(null)
+                    setDraggingInstanceId(null)
+                  }}
+                >
+                  {controller.activeRoom.instances.map((instanceEntry) => {
+                    const objectEntry = objectById[instanceEntry.objectId]
+                    const spriteEntry = objectEntry?.spriteId ? spriteById[objectEntry.spriteId] : undefined
+                    const spriteSource = spriteEntry ? resolvedSpriteSources[spriteEntry.id] : undefined
+                    const instanceWidth = objectEntry?.width ?? DEFAULT_INSTANCE_SIZE
+                    const instanceHeight = objectEntry?.height ?? DEFAULT_INSTANCE_SIZE
+                    const stackedCount = activeRoomPositionCounts.get(getPositionKey(instanceEntry.x, instanceEntry.y)) ?? 1
+                    const isInvisible = objectEntry?.visible === false
+                    return (
+                      <div
+                        key={instanceEntry.id}
+                        className={`mvp15-room-instance group absolute flex cursor-move items-center justify-center rounded text-[10px] ${spriteSource ? "" : isInvisible ? "border border-dashed border-blue-400 bg-blue-100 text-blue-400" : "bg-blue-500 text-white"} ${draggingInstanceId === instanceEntry.id ? "opacity-30" : isInvisible ? "opacity-50" : ""}`}
+                        style={{
+                          left: instanceEntry.x * zoom,
+                          top: instanceEntry.y * zoom,
+                          width: instanceWidth * zoom,
+                          height: instanceHeight * zoom
                         }}
-                        title="Remove instance"
+                        draggable
+                        onDragStart={(event) => {
+                          event.dataTransfer.setData("text/plain", instanceEntry.id)
+                          event.dataTransfer.effectAllowed = "move"
+                          if (!transparentDragImageRef.current) {
+                            const element = document.createElement("div")
+                            element.style.width = "1px"
+                            element.style.height = "1px"
+                            element.style.position = "fixed"
+                            element.style.top = "-1000px"
+                            element.style.left = "-1000px"
+                            element.style.opacity = "0.01"
+                            document.body.appendChild(element)
+                            transparentDragImageRef.current = element
+                          }
+                          event.dataTransfer.setDragImage(transparentDragImageRef.current, 0, 0)
+                          setDraggingInstanceId(instanceEntry.id)
+                        }}
+                        onDragEnd={() => {
+                          setDragPreview(null)
+                          setDraggingInstanceId(null)
+                        }}
+                        title={
+                          objectEntry
+                            ? `${objectEntry.name} (${Math.round(instanceEntry.x)}, ${Math.round(instanceEntry.y)})`
+                            : "Instance"
+                        }
                       >
-                        <X className="h-2.5 w-2.5" />
-                      </button>
-                    </div>
-                  )
-                })}
-                {placementGhost && (
-                  <div
-                    className={`mvp20-room-placement-ghost pointer-events-none absolute z-10 rounded border-2 ${
-                      placementGhost.isBlocked
-                        ? "border-red-400 bg-red-400/20"
-                        : "border-blue-400 bg-blue-400/20"
-                    }`}
-                    style={{
-                      left: placementGhost.x,
-                      top: placementGhost.y,
-                      width: placementGhost.width,
-                      height: placementGhost.height
-                    }}
-                    aria-hidden
-                  />
-                )}
-                {dragPreview && (
-                  <div
-                    className={`mvp19-room-drag-ghost pointer-events-none absolute z-10 rounded border-2 ${
-                      dragPreview.isBlocked ? "border-red-400 bg-red-400/20" : "border-blue-400 bg-blue-400/20"
-                    }`}
-                    style={{
-                      left: dragPreview.x,
-                      top: dragPreview.y,
-                      width: dragPreview.width,
-                      height: dragPreview.height
-                    }}
-                    aria-hidden
-                  />
-                )}
+                        {spriteSource ? (
+                          <img
+                            className={`mvp15-room-instance-sprite h-full w-full object-contain ${isInvisible ? "opacity-40" : ""}`}
+                            src={spriteSource}
+                            alt={spriteEntry?.name ?? objectEntry?.name ?? "Sprite"}
+                          />
+                        ) : (
+                          objectEntry?.name.slice(0, 2).toUpperCase() ?? "??"
+                        )}
+                        {isInvisible && (
+                          <EyeOff className="mvp20-room-instance-invisible-icon pointer-events-none absolute bottom-0 left-0 h-3 w-3 text-blue-500 opacity-80" />
+                        )}
+                        {stackedCount > 1 && (
+                          <span className="mvp20-room-instance-stack-badge pointer-events-none absolute -right-1 -top-1 z-20 flex h-4 min-w-4 items-center justify-center rounded-full bg-slate-800 px-1 text-[9px] font-semibold leading-none text-white">
+                            {stackedCount}
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          className={`absolute -right-1.5 -top-1.5 h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white ${draggingInstanceId ? "hidden" : "hidden group-hover:flex"}`}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            controller.removeInstance(instanceEntry.id)
+                          }}
+                          title="Remove instance"
+                        >
+                          <X className="h-2.5 w-2.5" />
+                        </button>
+                      </div>
+                    )
+                  })}
+                  {placementGhost && (
+                    <div
+                      className={`mvp20-room-placement-ghost pointer-events-none absolute z-10 rounded border-2 ${
+                        placementGhost.isBlocked
+                          ? "border-red-400 bg-red-400/20"
+                          : "border-blue-400 bg-blue-400/20"
+                      }`}
+                      style={{
+                        left: placementGhost.x * zoom,
+                        top: placementGhost.y * zoom,
+                        width: placementGhost.width * zoom,
+                        height: placementGhost.height * zoom
+                      }}
+                      aria-hidden
+                    />
+                  )}
+                  {dragPreview && (
+                    <div
+                      className={`mvp19-room-drag-ghost pointer-events-none absolute z-10 rounded border-2 ${
+                        dragPreview.isBlocked ? "border-red-400 bg-red-400/20" : "border-blue-400 bg-blue-400/20"
+                      }`}
+                      style={{
+                        left: dragPreview.x * zoom,
+                        top: dragPreview.y * zoom,
+                        width: dragPreview.width * zoom,
+                        height: dragPreview.height * zoom
+                      }}
+                      aria-hidden
+                    />
+                  )}
+                </div>
               </div>
             </div>
           )}

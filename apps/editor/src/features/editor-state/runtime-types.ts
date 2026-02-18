@@ -1,8 +1,11 @@
 import type { ProjectV1, ObjectEventItemType } from "@creadordejocs/project-format"
 import type { RuntimeToast } from "./message-toast-utils.js"
 
-export const ROOM_WIDTH = 832
-export const ROOM_HEIGHT = 480
+export const WINDOW_WIDTH = 832
+export const WINDOW_HEIGHT = 480
+// Backwards-compatible aliases used by existing runtime/editor code.
+export const ROOM_WIDTH = WINDOW_WIDTH
+export const ROOM_HEIGHT = WINDOW_HEIGHT
 export const INSTANCE_SIZE = 32
 export const RUNTIME_TICK_MS = 80
 export const DEFAULT_SPRITE_SPEED_MS = 100
@@ -48,6 +51,7 @@ export type RuntimeState = {
   spriteOverrideByInstanceId: Record<string, string>
   spriteSpeedMsByInstanceId: Record<string, number>
   spriteAnimationElapsedMsByInstanceId: Record<string, number>
+  windowByRoomId: Record<string, { x: number; y: number }>
 }
 
 export type RuntimeActionResult = {
@@ -63,6 +67,35 @@ export type RuntimeActionResult = {
 
 export function clampValue(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value))
+}
+
+export function resolveRoomDimensions(
+  room: Pick<ProjectV1["rooms"][number], "width" | "height"> | null | undefined
+): { width: number; height: number } {
+  const resolvedWidth =
+    typeof room?.width === "number" && Number.isFinite(room.width) ? Math.round(room.width) : WINDOW_WIDTH
+  const resolvedHeight =
+    typeof room?.height === "number" && Number.isFinite(room.height) ? Math.round(room.height) : WINDOW_HEIGHT
+  return {
+    width: Math.max(WINDOW_WIDTH, resolvedWidth),
+    height: Math.max(WINDOW_HEIGHT, resolvedHeight)
+  }
+}
+
+export function clampWindowToRoom(
+  x: number,
+  y: number,
+  roomWidth: number,
+  roomHeight: number,
+  windowWidth = WINDOW_WIDTH,
+  windowHeight = WINDOW_HEIGHT
+): { x: number; y: number } {
+  const maxX = Math.max(0, roomWidth - windowWidth)
+  const maxY = Math.max(0, roomHeight - windowHeight)
+  return {
+    x: clampValue(x, 0, maxX),
+    y: clampValue(y, 0, maxY)
+  }
 }
 
 export function getObjectWidth(project: ProjectV1, objectId: string): number {

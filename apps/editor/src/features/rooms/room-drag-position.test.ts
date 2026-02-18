@@ -39,4 +39,21 @@ describe("room drag snapping", () => {
 
     expect(position).toEqual({ x: 800, y: 448 })
   })
+
+  it("maps pointer coordinates correctly when zoom is applied", () => {
+    const position = calculateRoomDragPosition({
+      clientX: 266,
+      clientY: 190,
+      rectLeft: 10,
+      rectTop: 20,
+      roomWidth: 832,
+      roomHeight: 480,
+      instanceWidth: 32,
+      instanceHeight: 32,
+      snapSize: 4,
+      zoom: 2
+    })
+
+    expect(position).toEqual({ x: 112, y: 68 })
+  })
 })

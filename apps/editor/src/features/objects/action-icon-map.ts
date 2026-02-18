@@ -53,6 +53,8 @@ export const ACTION_ICON_MAP: Record<ActionType, LucideIcon> = {
   mapDelete: Trash2,
   mapClear: Eraser,
   goToRoom: DoorOpen,
+  teleportWindow: Locate,
+  moveWindow: Move,
   restartRoom: RotateCcw,
   wait: Hourglass,
   repeat: RotateCcw,
@@ -60,4 +62,3 @@ export const ACTION_ICON_MAP: Record<ActionType, LucideIcon> = {
   forEachMap: ArrowLeftRight,
   emitCustomEvent: Send
 }
-

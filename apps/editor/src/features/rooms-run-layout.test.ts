@@ -83,6 +83,9 @@ describe("rooms and run canvas layout", () => {
 
     expect(markup).not.toContain("flex-1 overflow-auto p-4")
     expect(markup).toContain("mvp18-room-grid-canvas")
+    expect(markup).toContain("Width")
+    expect(markup).toContain("Height")
+    expect(markup).toContain("Zoom")
   })
 
   it("renders run canvas area without internal p-4", () => {

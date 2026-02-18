@@ -16,6 +16,8 @@ export type CreateObjectInput = {
 }
 
 const DEFAULT_SPRITE_SIZE = 32
+const DEFAULT_ROOM_WIDTH = 832
+const DEFAULT_ROOM_HEIGHT = 480
 const TRANSPARENT_RGBA = "#00000000"
 
 export type AddRoomInstanceInput = {
@@ -244,6 +246,20 @@ function normalizeSpriteDimension(value: number): number {
     return DEFAULT_SPRITE_SIZE
   }
   return Math.max(1, Math.round(value))
+}
+
+function normalizeRoomDimension(value: number, min: number): number {
+  if (!Number.isFinite(value)) {
+    return min
+  }
+  return Math.max(min, Math.round(value))
+}
+
+function resolveRoomDimension(value: number | undefined, fallback: number): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return fallback
+  }
+  return Math.max(fallback, Math.round(value))
 }
 
 function createTransparentPixels(width: number, height: number): string[] {
@@ -819,7 +835,17 @@ export function createRoom(
   return {
     project: {
       ...project,
-      rooms: [...project.rooms, { id: roomId, name, folderId: folderId ?? null, instances: [] }]
+      rooms: [
+        ...project.rooms,
+        {
+          id: roomId,
+          name,
+          folderId: folderId ?? null,
+          width: DEFAULT_ROOM_WIDTH,
+          height: DEFAULT_ROOM_HEIGHT,
+          instances: []
+        }
+      ]
     },
     roomId
   }
@@ -2392,6 +2418,83 @@ export function removeObjectVariable(project: ProjectV1, input: RemoveObjectVari
         [input.objectId]: currentDefinitions.filter((definition) => definition.id !== input.variableId)
       }
     }
+  }
+}
+
+export type UpdateRoomSizeInput = {
+  roomId: string
+  width: number
+  height: number
+}
+
+function getNormalizedObjectDimensionForRoomClamp(value: number | undefined): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return DEFAULT_SPRITE_SIZE
+  }
+  return Math.max(1, Math.round(value))
+}
+
+function clampInstanceInsideRoom(
+  project: ProjectV1,
+  instance: ProjectV1["rooms"][number]["instances"][number],
+  roomWidth: number,
+  roomHeight: number
+): ProjectV1["rooms"][number]["instances"][number] {
+  const objectEntry = project.objects.find((entry) => entry.id === instance.objectId)
+  const objectWidth = getNormalizedObjectDimensionForRoomClamp(objectEntry?.width)
+  const objectHeight = getNormalizedObjectDimensionForRoomClamp(objectEntry?.height)
+  const maxX = Math.max(0, roomWidth - objectWidth)
+  const maxY = Math.max(0, roomHeight - objectHeight)
+  const nextX = Math.max(0, Math.min(maxX, instance.x))
+  const nextY = Math.max(0, Math.min(maxY, instance.y))
+  if (nextX === instance.x && nextY === instance.y) {
+    return instance
+  }
+  return {
+    ...instance,
+    x: nextX,
+    y: nextY
+  }
+}
+
+export function updateRoomSize(project: ProjectV1, input: UpdateRoomSizeInput): ProjectV1 {
+  const nextWidth = normalizeRoomDimension(input.width, DEFAULT_ROOM_WIDTH)
+  const nextHeight = normalizeRoomDimension(input.height, DEFAULT_ROOM_HEIGHT)
+
+  let changed = false
+  const nextRooms = project.rooms.map((room) => {
+    if (room.id !== input.roomId) {
+      return room
+    }
+    const currentWidth = resolveRoomDimension(room.width, DEFAULT_ROOM_WIDTH)
+    const currentHeight = resolveRoomDimension(room.height, DEFAULT_ROOM_HEIGHT)
+    const nextInstances = room.instances.map((instance) => clampInstanceInsideRoom(project, instance, nextWidth, nextHeight))
+    const instancesChanged = nextInstances.some((instanceEntry, index) => instanceEntry !== room.instances[index])
+    const roomChanged =
+      room.width !== nextWidth ||
+      room.height !== nextHeight ||
+      currentWidth !== nextWidth ||
+      currentHeight !== nextHeight ||
+      instancesChanged
+    if (!roomChanged) {
+      return room
+    }
+    changed = true
+    return {
+      ...room,
+      width: nextWidth,
+      height: nextHeight,
+      instances: instancesChanged ? nextInstances : room.instances
+    }
+  })
+
+  if (!changed) {
+    return project
+  }
+
+  return {
+    ...project,
+    rooms: nextRooms
   }
 }
 
