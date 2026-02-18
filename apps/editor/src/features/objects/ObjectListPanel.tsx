@@ -375,7 +375,9 @@ export function ObjectListPanel({
                     style={{ imageRendering: "pixelated" }}
                   />
                 ) : (
-                  <Box className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                  <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center">
+                    <Box className="h-3.5 w-3.5 text-slate-400" />
+                  </span>
                 )}
                 <span className="truncate text-slate-600">
                   {objectEntry.name}
@@ -410,7 +412,10 @@ export function ObjectListPanel({
         )}
 
         {isAdding && addingInFolderId === parentId && (
-          <div className="objlist-add-form-inline flex py-1 pr-2" style={{ paddingLeft: `${depth * 16 + 8}px` }}>
+          <div className="objlist-add-form-inline -mx-2 flex items-center gap-2 px-2 py-1.5 pr-2" style={{ paddingLeft: `${depth * 16 + 8}px` }}>
+            <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center">
+              <Box className="h-3.5 w-3.5 text-slate-400" />
+            </span>
             <input
               ref={inputCallbackRef}
               value={newObjectName}
