@@ -113,6 +113,46 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
   const activeRoomWidth = activeRoomDimensions.width
   const activeRoomHeight = activeRoomDimensions.height
   const zoom = zoomPercent / 100
+  const activeRoomBackgroundSpriteId = controller.activeRoom?.backgroundSpriteId ?? null
+  const activeRoomBackgroundSprite = activeRoomBackgroundSpriteId ? spriteById[activeRoomBackgroundSpriteId] : undefined
+  const activeRoomBackgroundSource = activeRoomBackgroundSprite ? resolvedSpriteSources[activeRoomBackgroundSprite.id] : undefined
+
+  const roomCanvasBackgroundStyle = useMemo(() => {
+    const backgroundImages: string[] = []
+    const backgroundSizes: string[] = []
+    const backgroundRepeats: string[] = []
+    const backgroundPositions: string[] = []
+
+    if (showGrid) {
+      backgroundImages.push(
+        "linear-gradient(to right, rgb(226 232 240 / 0.8) 1px, transparent 1px)",
+        "linear-gradient(to bottom, rgb(226 232 240 / 0.8) 1px, transparent 1px)"
+      )
+      backgroundSizes.push(`${ROOM_GRID_SIZE * zoom}px ${ROOM_GRID_SIZE * zoom}px`, `${ROOM_GRID_SIZE * zoom}px ${ROOM_GRID_SIZE * zoom}px`)
+      backgroundRepeats.push("repeat", "repeat")
+      backgroundPositions.push("0 0", "0 0")
+    }
+
+    if (activeRoomBackgroundSource && activeRoomBackgroundSprite) {
+      backgroundImages.push(`url(${JSON.stringify(activeRoomBackgroundSource)})`)
+      backgroundSizes.push(
+        `${Math.max(1, Math.round(activeRoomBackgroundSprite.width * zoom))}px ${Math.max(1, Math.round(activeRoomBackgroundSprite.height * zoom))}px`
+      )
+      backgroundRepeats.push("repeat")
+      backgroundPositions.push("0 0")
+    }
+
+    if (backgroundImages.length === 0) {
+      return {}
+    }
+
+    return {
+      backgroundImage: backgroundImages.join(", "),
+      backgroundSize: backgroundSizes.join(", "),
+      backgroundRepeat: backgroundRepeats.join(", "),
+      backgroundPosition: backgroundPositions.join(", ")
+    }
+  }, [showGrid, zoom, activeRoomBackgroundSource, activeRoomBackgroundSprite])
 
   // Clean up tabs when rooms are removed
   useEffect(() => {
@@ -397,6 +437,19 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
         }}
         onDragStart={handleObjectPickerDragStart}
         onDragEnd={handleObjectPickerDragEnd}
+        roomWidthInput={roomWidthInput}
+        roomHeightInput={roomHeightInput}
+        onRoomWidthInputChange={setRoomWidthInput}
+        onRoomHeightInputChange={setRoomHeightInput}
+        onCommitRoomSize={() => commitRoomSize(roomWidthInput, roomHeightInput)}
+        backgroundSpriteId={activeRoomBackgroundSpriteId}
+        backgroundSprites={sprites}
+        onChangeBackgroundSprite={(spriteId) => {
+          if (!controller.activeRoom) {
+            return
+          }
+          controller.updateRoomBackground(controller.activeRoom.id, spriteId)
+        }}
         showGrid={showGrid}
         onToggleGrid={setShowGrid}
       />
@@ -418,41 +471,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
             </div>
           ) : (
             <>
-              <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 bg-white px-3 py-2">
-                <label className="flex items-center gap-2 text-xs text-slate-600">
-                  <span className="font-medium text-slate-500">Width</span>
-                  <input
-                    type="number"
-                    min={WINDOW_WIDTH}
-                    step={1}
-                    className="h-7 w-24 rounded border border-slate-300 bg-white px-2 text-xs focus:outline-none"
-                    value={roomWidthInput}
-                    onChange={(event) => setRoomWidthInput(event.target.value)}
-                    onBlur={() => commitRoomSize(roomWidthInput, roomHeightInput)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        event.currentTarget.blur()
-                      }
-                    }}
-                  />
-                </label>
-                <label className="flex items-center gap-2 text-xs text-slate-600">
-                  <span className="font-medium text-slate-500">Height</span>
-                  <input
-                    type="number"
-                    min={WINDOW_HEIGHT}
-                    step={1}
-                    className="h-7 w-24 rounded border border-slate-300 bg-white px-2 text-xs focus:outline-none"
-                    value={roomHeightInput}
-                    onChange={(event) => setRoomHeightInput(event.target.value)}
-                    onBlur={() => commitRoomSize(roomWidthInput, roomHeightInput)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        event.currentTarget.blur()
-                      }
-                    }}
-                  />
-                </label>
+              <div className="flex items-center border-b border-slate-200 bg-white px-3 py-2">
                 <div className="ml-auto flex items-center gap-2 text-xs text-slate-600">
                   <span className="font-medium text-slate-500">Zoom</span>
                   <input
@@ -475,13 +494,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                   style={{
                     width: activeRoomWidth * zoom,
                     height: activeRoomHeight * zoom,
-                    ...(showGrid
-                      ? {
-                          backgroundImage:
-                            "linear-gradient(to right, rgb(226 232 240 / 0.8) 1px, transparent 1px), linear-gradient(to bottom, rgb(226 232 240 / 0.8) 1px, transparent 1px)",
-                          backgroundSize: `${ROOM_GRID_SIZE * zoom}px ${ROOM_GRID_SIZE * zoom}px`
-                        }
-                      : {})
+                    ...roomCanvasBackgroundStyle
                   }}
                   onMouseMove={(event) => {
                     if (!placingObjectId) {

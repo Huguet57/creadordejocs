@@ -520,6 +520,7 @@ const RoomSchema = z.object({
   folderId: z.string().nullable().optional(),
   width: z.number().int().min(1).optional(),
   height: z.number().int().min(1).optional(),
+  backgroundSpriteId: z.string().nullable().optional(),
   instances: z.array(RoomInstanceSchema)
 })
 

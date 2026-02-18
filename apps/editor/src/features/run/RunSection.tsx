@@ -85,6 +85,9 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
     () => Object.fromEntries(sprites.map((spriteEntry) => [spriteEntry.id, spriteEntry])),
     [sprites]
   )
+  const activeRoomBackgroundSpriteId = controller.activeRoom?.backgroundSpriteId ?? null
+  const activeRoomBackgroundSprite = activeRoomBackgroundSpriteId ? spriteById[activeRoomBackgroundSpriteId] : undefined
+  const activeRoomBackgroundSource = activeRoomBackgroundSprite ? resolvedSpriteSources[activeRoomBackgroundSprite.id] : undefined
 
   const resolvedSpriteFrameUrls = useMemo(() => {
     const result: Record<string, string[]> = {}
@@ -209,6 +212,18 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
       canvasElement.removeEventListener("mouseleave", onMouseUp)
     }
   }, [controller, windowPosition.x, windowPosition.y, activeRoomDimensions.width, activeRoomDimensions.height])
+
+  const runCanvasBackgroundStyle = useMemo(() => {
+    if (!activeRoomBackgroundSprite || !activeRoomBackgroundSource) {
+      return {}
+    }
+    return {
+      backgroundImage: `url(${JSON.stringify(activeRoomBackgroundSource)})`,
+      backgroundRepeat: "repeat",
+      backgroundSize: `${Math.max(1, Math.round(activeRoomBackgroundSprite.width))}px ${Math.max(1, Math.round(activeRoomBackgroundSprite.height))}px`,
+      backgroundPosition: `${-windowPosition.x}px ${-windowPosition.y}px`
+    }
+  }, [activeRoomBackgroundSprite, activeRoomBackgroundSource, windowPosition.x, windowPosition.y])
 
   return (
     <div className={`mvp15-run-container flex w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm ${isPlayMode ? "min-h-[560px]" : "h-[600px]"}`}>
@@ -349,7 +364,7 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
               <div
                 ref={canvasRef}
                 className="mvp15-run-canvas relative overflow-hidden border-b border-slate-200 bg-white"
-                style={{ width: WINDOW_WIDTH, height: WINDOW_HEIGHT }}
+                style={{ width: WINDOW_WIDTH, height: WINDOW_HEIGHT, ...runCanvasBackgroundStyle }}
               >
                 {!controller.isRunning && (
                   <div className="mvp19-run-start-overlay pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-slate-900/30">

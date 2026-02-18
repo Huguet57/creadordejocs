@@ -55,6 +55,7 @@ import {
   updateObjectVariable as updateObjectVariableModel,
   updateObjectProperties,
   updateRoomSize as updateRoomSizeModel,
+  updateRoomBackgroundSprite as updateRoomBackgroundSpriteModel,
   updateObjectSpriteId,
   updateSoundAssetSource,
   updateSpriteAssetSource,
@@ -827,6 +828,15 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       const next = updateRoomSizeModel(project, { roomId, width, height })
       if (next === project) return false
       pushProjectChange(next, "Update room size")
+      return true
+    },
+    updateRoomBackground(roomId: string, backgroundSpriteId: string | null) {
+      if (backgroundSpriteId !== null && !project.resources.sprites.some((spriteEntry) => spriteEntry.id === backgroundSpriteId)) {
+        return false
+      }
+      const next = updateRoomBackgroundSpriteModel(project, { roomId, backgroundSpriteId })
+      if (next === project) return false
+      pushProjectChange(next, "Update room background")
       return true
     },
     updateSpriteSource(spriteId: string, source: string) {

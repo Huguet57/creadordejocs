@@ -10,8 +10,10 @@ import {
   deleteRoomFolder,
   moveRoomToFolder,
   quickCreateObject,
+  quickCreateSprite,
   addRoomInstance,
-  updateRoomSize
+  updateRoomSize,
+  updateRoomBackgroundSprite
 } from "./editor-model.js"
 
 function projectWithRoom(name: string, folderId: string | null = null) {
@@ -42,6 +44,7 @@ describe("createRoom with folderId", () => {
     expect(room).toBeDefined()
     expect(room!.width).toBe(832)
     expect(room!.height).toBe(480)
+    expect(room!.backgroundSpriteId).toBeNull()
   })
 
   it("creates a room with null folderId by default", () => {
@@ -88,6 +91,28 @@ describe("updateRoomSize", () => {
     expect(instance).toBeDefined()
     expect(instance!.x).toBe(836)
     expect(instance!.y).toBe(468)
+  })
+})
+
+describe("updateRoomBackgroundSprite", () => {
+  it("sets and clears room background sprite", () => {
+    const initial = createEmptyProjectV1("test")
+    const spriteResult = quickCreateSprite(initial, "Background")
+    const roomResult = createRoom(spriteResult.project, "Room")
+
+    const withBackground = updateRoomBackgroundSprite(roomResult.project, {
+      roomId: roomResult.roomId,
+      backgroundSpriteId: spriteResult.spriteId
+    })
+    const roomWithBackground = withBackground.rooms.find((entry) => entry.id === roomResult.roomId)
+    expect(roomWithBackground?.backgroundSpriteId).toBe(spriteResult.spriteId)
+
+    const cleared = updateRoomBackgroundSprite(withBackground, {
+      roomId: roomResult.roomId,
+      backgroundSpriteId: null
+    })
+    const roomCleared = cleared.rooms.find((entry) => entry.id === roomResult.roomId)
+    expect(roomCleared?.backgroundSpriteId).toBeNull()
   })
 })
 

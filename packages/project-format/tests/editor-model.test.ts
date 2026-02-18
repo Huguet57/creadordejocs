@@ -47,6 +47,7 @@ import {
   updateSpritePixelsRgba,
   updateSpriteAssetSource,
   updateObjectProperties,
+  updateRoomBackgroundSprite,
   addSpriteFrame,
   duplicateSpriteFrame,
   deleteSpriteFrame,
@@ -356,11 +357,17 @@ describe("editor model helpers", () => {
     const initial = createEmptyProjectV1("Sprite delete")
     const spriteResult = quickCreateSprite(initial, "Coin")
     const objectResult = quickCreateObject(spriteResult.project, { name: "Pickup", spriteId: spriteResult.spriteId })
-    const verifiedAssignment = updateObjectSpriteId(objectResult.project, objectResult.objectId, spriteResult.spriteId)
+    const roomResult = createRoom(objectResult.project, "Main")
+    const withRoomBackground = updateRoomBackgroundSprite(roomResult.project, {
+      roomId: roomResult.roomId,
+      backgroundSpriteId: spriteResult.spriteId
+    })
+    const verifiedAssignment = updateObjectSpriteId(withRoomBackground, objectResult.objectId, spriteResult.spriteId)
     const afterDelete = deleteSprite(verifiedAssignment, spriteResult.spriteId)
 
     expect(afterDelete.resources.sprites).toHaveLength(0)
     expect(afterDelete.objects.find((entry) => entry.id === objectResult.objectId)?.spriteId).toBeNull()
+    expect(afterDelete.rooms.find((entry) => entry.id === roomResult.roomId)?.backgroundSpriteId).toBeNull()
   })
 
   it("adds and edits object events", () => {

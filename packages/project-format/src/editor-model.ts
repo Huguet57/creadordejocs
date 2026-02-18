@@ -843,6 +843,7 @@ export function createRoom(
           folderId: folderId ?? null,
           width: DEFAULT_ROOM_WIDTH,
           height: DEFAULT_ROOM_HEIGHT,
+          backgroundSpriteId: null,
           instances: []
         }
       ]
@@ -1319,6 +1320,14 @@ export function deleteSprite(project: ProjectV1, spriteId: string): ProjectV1 {
             spriteId: null
           }
         : objectEntry
+    ),
+    rooms: project.rooms.map((roomEntry) =>
+      roomEntry.backgroundSpriteId === spriteId
+        ? {
+            ...roomEntry,
+            backgroundSpriteId: null
+          }
+        : roomEntry
     )
   }
 }
@@ -2427,6 +2436,11 @@ export type UpdateRoomSizeInput = {
   height: number
 }
 
+export type UpdateRoomBackgroundSpriteInput = {
+  roomId: string
+  backgroundSpriteId: string | null
+}
+
 function getNormalizedObjectDimensionForRoomClamp(value: number | undefined): number {
   if (typeof value !== "number" || !Number.isFinite(value)) {
     return DEFAULT_SPRITE_SIZE
@@ -2485,6 +2499,34 @@ export function updateRoomSize(project: ProjectV1, input: UpdateRoomSizeInput): 
       width: nextWidth,
       height: nextHeight,
       instances: instancesChanged ? nextInstances : room.instances
+    }
+  })
+
+  if (!changed) {
+    return project
+  }
+
+  return {
+    ...project,
+    rooms: nextRooms
+  }
+}
+
+export function updateRoomBackgroundSprite(project: ProjectV1, input: UpdateRoomBackgroundSpriteInput): ProjectV1 {
+  let changed = false
+  const nextRooms = project.rooms.map((room) => {
+    if (room.id !== input.roomId) {
+      return room
+    }
+    const nextBackgroundSpriteId = input.backgroundSpriteId ?? null
+    const currentBackgroundSpriteId = room.backgroundSpriteId ?? null
+    if (currentBackgroundSpriteId === nextBackgroundSpriteId) {
+      return room
+    }
+    changed = true
+    return {
+      ...room,
+      backgroundSpriteId: nextBackgroundSpriteId
     }
   })
 
