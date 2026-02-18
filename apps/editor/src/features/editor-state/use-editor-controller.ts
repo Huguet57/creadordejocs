@@ -188,6 +188,12 @@ export function countSpriteAssignments(project: ProjectV1, spriteId: string): nu
   return project.objects.reduce((count, objectEntry) => count + (objectEntry.spriteId === spriteId ? 1 : 0), 0)
 }
 
+export function spriteAssignedObjectNames(project: ProjectV1, spriteId: string): string[] {
+  return project.objects
+    .filter((objectEntry) => objectEntry.spriteId === spriteId)
+    .map((objectEntry) => objectEntry.name)
+}
+
 function createInitialEditorState(): { project: ProjectV1; roomId: string } {
   const loaded = loadProjectFromLocalStorage()
   if (loaded) {

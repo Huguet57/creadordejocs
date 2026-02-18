@@ -12,6 +12,8 @@ type SpriteListEntry = {
   width: number
   height: number
   isEmpty: boolean
+  previewDataUrl: string
+  objectNames: string[]
 }
 
 type SpriteFolderEntry = {
@@ -448,7 +450,16 @@ export function SpriteListPanel({
           })
         }}
       >
-        <Image className={`h-3.5 w-3.5 ${highlighted ? "text-indigo-500" : "text-slate-400"}`} />
+        {spriteEntry.previewDataUrl ? (
+          <img
+            src={spriteEntry.previewDataUrl}
+            alt=""
+            className="mvp16-sprite-tree-thumb h-5 w-5 shrink-0 object-contain"
+            style={{ imageRendering: "pixelated" }}
+          />
+        ) : (
+          <Image className={`h-3.5 w-3.5 shrink-0 ${highlighted ? "text-indigo-500" : "text-slate-400"}`} />
+        )}
         <div className="flex min-w-0 flex-1 flex-col">
           {isRenaming ? (
             <input
@@ -475,6 +486,11 @@ export function SpriteListPanel({
           <span className="truncate text-[10px] text-slate-400">
             {spriteEntry.width} x {spriteEntry.height}
             {spriteEntry.isEmpty && <span className="mvp16-sprite-empty-badge ml-1 text-amber-400">· buit</span>}
+            {spriteEntry.objectNames.length > 0 && (
+              <span className="mvp16-sprite-obj-count ml-1 text-slate-400">
+                · {spriteEntry.objectNames[0]}{spriteEntry.objectNames.length > 1 && ` +${spriteEntry.objectNames.length - 1} més`}
+              </span>
+            )}
           </span>
         </div>
       </button>

@@ -1,5 +1,6 @@
 import { useEffect, useState, type ChangeEvent } from "react"
 import type { EditorController } from "../editor-state/use-editor-controller.js"
+import { spriteAssignedObjectNames } from "../editor-state/use-editor-controller.js"
 import { SpriteCanvasGrid } from "./components/SpriteCanvasGrid.js"
 import { SpriteImportButton } from "./components/SpriteImportButton.js"
 import { SpriteImportCropModal } from "./components/SpriteImportCropModal.js"
@@ -10,6 +11,7 @@ import { useSpriteImport } from "./hooks/use-sprite-import.js"
 import { useSpritePixelActions } from "./hooks/use-sprite-pixel-actions.js"
 import { normalizePixelGrid } from "./utils/sprite-grid.js"
 import { hasVisibleSpritePixels } from "./utils/has-visible-pixels.js"
+import { spritePixelsToDataUrl } from "./utils/sprite-preview-source.js"
 
 type SpriteEditorSectionProps = {
   controller: EditorController
@@ -94,14 +96,21 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
   return (
     <div className="mvp16-sprite-editor-shell flex h-[600px] w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
       <SpriteListPanel
-        sprites={sprites.map((spriteEntry) => ({
-          id: spriteEntry.id,
-          name: spriteEntry.name,
-          folderId: spriteEntry.folderId ?? null,
-          width: spriteEntry.width,
-          height: spriteEntry.height,
-          isEmpty: !hasVisibleSpritePixels(spriteEntry.pixelsRgba)
-        }))}
+        sprites={sprites.map((spriteEntry) => {
+          const hasPixels = hasVisibleSpritePixels(spriteEntry.pixelsRgba)
+          return {
+            id: spriteEntry.id,
+            name: spriteEntry.name,
+            folderId: spriteEntry.folderId ?? null,
+            width: spriteEntry.width,
+            height: spriteEntry.height,
+            isEmpty: !hasPixels,
+            previewDataUrl: hasPixels
+              ? spritePixelsToDataUrl(spriteEntry.pixelsRgba, spriteEntry.width, spriteEntry.height)
+              : "",
+            objectNames: spriteAssignedObjectNames(controller.project, spriteEntry.id)
+          }
+        })}
         spriteFolders={(controller.project.resources.spriteFolders ?? []).map((folderEntry) => ({
           id: folderEntry.id,
           name: folderEntry.name,
