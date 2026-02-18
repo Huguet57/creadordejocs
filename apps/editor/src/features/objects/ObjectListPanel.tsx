@@ -299,7 +299,7 @@ export function ObjectListPanel({
           return (
             <div key={folder.id}>
               <div
-                className={`objlist-folder-row group flex cursor-pointer items-center rounded py-1 pr-2 transition-colors ${
+                className={`objlist-folder-row group -mx-2 flex cursor-pointer items-center px-2 py-1 pr-2 transition-colors ${
                   isDropTarget ? "bg-blue-50 ring-1 ring-blue-300" : "hover:bg-slate-100"
                 }`}
                 style={{ paddingLeft: `${depth * 16 + 4}px` }}

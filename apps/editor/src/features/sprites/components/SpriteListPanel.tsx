@@ -357,7 +357,7 @@ export function SpriteListPanel({
           return (
             <div key={folderEntry.id}>
               <div
-                className={`mvp16-sprite-folder-row group flex min-h-[34px] cursor-pointer items-center rounded py-1 pr-2 transition-colors ${
+                className={`mvp16-sprite-folder-row group -mx-2 flex min-h-[34px] cursor-pointer items-center px-2 py-1 pr-2 transition-colors ${
                   isDropTarget ? "bg-blue-50 ring-1 ring-blue-300" : "hover:bg-slate-100"
                 }`}
                 style={{ paddingLeft: `${depth * 16 + 4}px` }}
@@ -434,7 +434,9 @@ export function SpriteListPanel({
                     style={{ imageRendering: "pixelated" }}
                   />
                 ) : (
-                  <Image className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                  <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center">
+                    <Image className="h-3.5 w-3.5 text-slate-400" />
+                  </span>
                 )}
                 {isRenaming ? (
                   <input
