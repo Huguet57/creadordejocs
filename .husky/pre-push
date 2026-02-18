@@ -1,1 +1,2 @@
-npm run test:all
+npx -y node@20 ./node_modules/vitest/vitest.mjs run
+npx -y node@20 ./node_modules/@playwright/test/cli.js test

@@ -1,1 +1,3 @@
-npm run check:quick
+npx -y node@20 ./node_modules/eslint/bin/eslint.js .
+npx -y node@20 ./node_modules/typescript/bin/tsc -p tsconfig.eslint.json --pretty false --noEmit
+npx -y node@20 ./node_modules/vitest/vitest.mjs run
