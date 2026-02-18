@@ -920,29 +920,25 @@ export function deleteSpriteFolder(project: ProjectV1, folderId: string): Projec
       }
     }
   }
+
+  const deletedSpriteIds = new Set(
+    project.resources.sprites
+      .filter((entry) => entry.folderId && deletedBranchIds.has(entry.folderId))
+      .map((entry) => entry.id)
+  )
+
   return {
     ...project,
     resources: {
       ...project.resources,
-      spriteFolders: folders
-        .filter((entry) => entry.id !== folderId)
-        .map((entry) =>
-          entry.parentId === folderId
-            ? {
-                ...entry,
-                parentId: null
-              }
-            : entry
-        ),
-      sprites: project.resources.sprites.map((entry) =>
-        entry.folderId && deletedBranchIds.has(entry.folderId)
-          ? {
-              ...entry,
-              folderId: null
-            }
-          : entry
-      )
-    }
+      spriteFolders: folders.filter((entry) => !deletedBranchIds.has(entry.id)),
+      sprites: project.resources.sprites.filter((entry) => !deletedSpriteIds.has(entry.id))
+    },
+    objects: project.objects.map((entry) =>
+      entry.spriteId && deletedSpriteIds.has(entry.spriteId)
+        ? { ...entry, spriteId: null }
+        : entry
+    )
   }
 }
 

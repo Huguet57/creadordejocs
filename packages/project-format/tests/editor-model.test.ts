@@ -204,7 +204,7 @@ describe("editor model helpers", () => {
     )
   })
 
-  it("deletes folders and rehomes child sprites and nested folders to root", () => {
+  it("deletes folders cascading child sprites and nested folders", () => {
     const initial = createEmptyProjectV1("Folder delete")
     const rootFolderResult = createSpriteFolder(initial, "Characters")
     const rootFolderId = rootFolderResult.folderId
@@ -221,8 +221,8 @@ describe("editor model helpers", () => {
     const afterDelete = deleteSpriteFolder(spriteInChildFolder, rootFolderId)
 
     expect((afterDelete.resources.spriteFolders ?? []).find((entry) => entry.id === rootFolderId)).toBeUndefined()
-    expect((afterDelete.resources.spriteFolders ?? []).find((entry) => entry.id === childFolderId)?.parentId).toBeNull()
-    expect(afterDelete.resources.sprites.find((entry) => entry.id === spriteResult.spriteId)?.folderId).toBeNull()
+    expect((afterDelete.resources.spriteFolders ?? []).find((entry) => entry.id === childFolderId)).toBeUndefined()
+    expect(afterDelete.resources.sprites.find((entry) => entry.id === spriteResult.spriteId)).toBeUndefined()
   })
 
   it("moves a folder to a new parent and prevents cycles", () => {
