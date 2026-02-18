@@ -19,7 +19,7 @@ import { flipHorizontal, flipVertical, rotateCW, rotateCCW } from "./utils/sprit
 import { hasVisibleSpritePixels } from "./utils/has-visible-pixels.js"
 import { resolveSpritePreviewSource } from "./utils/sprite-preview-source.js"
 import { indicesInRect } from "./utils/sprite-tools/rect-select.js"
-import { clampZoom, computeFitZoom, computeMaxZoom, MIN_SPRITE_ZOOM } from "./utils/zoom.js"
+import { clampZoom, computeFitZoom, computeMaxZoom, computeZoomStep, MIN_SPRITE_ZOOM } from "./utils/zoom.js"
 
 type SpriteEditorSectionProps = {
   controller: EditorController
@@ -168,6 +168,8 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
     [selectedSprite?.width, selectedSprite?.height]
   )
 
+  const zoomStep = useMemo(() => computeZoomStep(maxZoom), [maxZoom])
+
   const previousSpriteIdRef = useRef<string | null>(null)
 
   useEffect(() => {
@@ -175,7 +177,7 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
     previousSpriteIdRef.current = selectedSprite.id
 
     if (!canvasViewportElement || typeof window === "undefined") {
-      setZoom(clampZoom(Math.max(1, Math.floor(maxZoom / 2)), MIN_SPRITE_ZOOM, maxZoom))
+      setZoom(clampZoom(Math.max(1, Math.floor(maxZoom / 2)), MIN_SPRITE_ZOOM, maxZoom, zoomStep))
       return
     }
 
@@ -192,10 +194,11 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
         spriteWidth: selectedSprite.width,
         spriteHeight: selectedSprite.height,
         minZoom: MIN_SPRITE_ZOOM,
-        maxZoom
+        maxZoom,
+        step: zoomStep
       })
     )
-  }, [selectedSprite?.id, selectedSprite?.width, selectedSprite?.height, maxZoom, canvasViewportElement, setZoom])
+  }, [selectedSprite?.id, selectedSprite?.width, selectedSprite?.height, maxZoom, zoomStep, canvasViewportElement, setZoom])
 
   useEffect(() => {
     if (!selectedSprite) {
@@ -404,10 +407,11 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
         spriteWidth: selectedSprite.width,
         spriteHeight: selectedSprite.height,
         minZoom: MIN_SPRITE_ZOOM,
-        maxZoom
+        maxZoom,
+        step: zoomStep
       })
     )
-  }, [canvasViewportElement, selectedSprite, setZoom, maxZoom])
+  }, [canvasViewportElement, selectedSprite, setZoom, maxZoom, zoomStep])
 
   return (
     <div className="mvp16-sprite-editor-shell flex h-[600px] w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
@@ -492,10 +496,10 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
                     type="range"
                     min={MIN_SPRITE_ZOOM}
                     max={maxZoom}
-                    step={1}
+                    step={zoomStep}
                     value={zoom}
                     onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                      setZoom(clampZoom(Number(event.target.value), MIN_SPRITE_ZOOM, maxZoom))
+                      setZoom(clampZoom(Number(event.target.value), MIN_SPRITE_ZOOM, maxZoom, zoomStep))
                     }
                   />
                 </label>

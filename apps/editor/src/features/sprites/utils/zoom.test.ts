@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { ABSOLUTE_MAX_MAX_ZOOM, ABSOLUTE_MIN_MAX_ZOOM, clampZoom, computeFitZoom, computeMaxZoom, MIN_SPRITE_ZOOM } from "./zoom.js"
+import { ABSOLUTE_MAX_MAX_ZOOM, ABSOLUTE_MIN_MAX_ZOOM, clampZoom, computeFitZoom, computeMaxZoom, computeZoomStep, MIN_SPRITE_ZOOM } from "./zoom.js"
 
 describe("clampZoom", () => {
   it("clamps to min when value is too low", () => {
@@ -10,8 +10,29 @@ describe("clampZoom", () => {
     expect(clampZoom(999, 1, 24)).toBe(24)
   })
 
-  it("rounds and keeps values inside range", () => {
+  it("rounds and keeps values inside range (integer step)", () => {
     expect(clampZoom(3.6)).toBe(4)
+  })
+
+  it("rounds to fractional step", () => {
+    expect(clampZoom(1.9, 1, 6, 0.25)).toBe(2)
+    expect(clampZoom(1.3, 1, 6, 0.25)).toBe(1.25)
+    expect(clampZoom(2.7, 1, 12, 0.5)).toBe(2.5)
+  })
+})
+
+describe("computeZoomStep", () => {
+  it("returns 0.25 for small max zoom (range <= 5)", () => {
+    expect(computeZoomStep(6)).toBe(0.25)
+  })
+
+  it("returns 0.5 for medium max zoom (range <= 11)", () => {
+    expect(computeZoomStep(12)).toBe(0.5)
+  })
+
+  it("returns 1 for large max zoom", () => {
+    expect(computeZoomStep(24)).toBe(1)
+    expect(computeZoomStep(40)).toBe(1)
   })
 })
 
@@ -57,6 +78,19 @@ describe("computeFitZoom", () => {
         spriteHeight: 200
       })
     ).toBe(MIN_SPRITE_ZOOM)
+  })
+
+  it("floors to fractional step for a tighter fit", () => {
+    // viewport 750x380, sprite 256x200 → ratios 2.93, 1.9 → floor(1.9/0.25)*0.25 = 1.75
+    expect(
+      computeFitZoom({
+        viewportWidth: 750,
+        viewportHeight: 380,
+        spriteWidth: 256,
+        spriteHeight: 200,
+        step: 0.25
+      })
+    ).toBe(1.75)
   })
 })
 
