@@ -520,10 +520,6 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       if (!folderEntry) {
         return false
       }
-      const confirmed = window.confirm(`Vols eliminar la carpeta "${folderEntry.name}"?`)
-      if (!confirmed) {
-        return false
-      }
       const next = deleteSpriteFolderModel(project, folderId)
       if (next === project) {
         return false
