@@ -411,13 +411,13 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
           onPinTab={handlePinRoom}
         />
 
-        <div className="flex-1 overflow-auto bg-slate-50/50">
+        <div className="flex flex-1 flex-col bg-slate-50/50">
           {!controller.activeRoom ? (
             <div className="flex h-full items-center justify-center text-slate-400">
               <p>Select or create a room</p>
             </div>
           ) : (
-            <div className="flex min-w-max flex-col">
+            <>
               <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 bg-white px-3 py-2">
                 <label className="flex items-center gap-2 text-xs text-slate-600">
                   <span className="font-medium text-slate-500">Width</span>
@@ -466,6 +466,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                   <span className="w-12 text-right text-slate-500">{zoomPercent}%</span>
                 </div>
               </div>
+              <div className="flex-1 overflow-auto">
               <div className="p-3">
                 <div
                   className={`mvp15-room-canvas mvp18-room-grid-canvas relative border border-slate-200 bg-white ${
@@ -672,6 +673,18 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                     setDraggingInstanceId(null)
                   }}
                 >
+                  {(activeRoomWidth > WINDOW_WIDTH || activeRoomHeight > WINDOW_HEIGHT) && (
+                    <div
+                      className="pointer-events-none absolute z-0 border-2 border-dashed border-amber-400/60"
+                      style={{
+                        left: 0,
+                        top: 0,
+                        width: WINDOW_WIDTH * zoom,
+                        height: WINDOW_HEIGHT * zoom
+                      }}
+                      aria-hidden
+                    />
+                  )}
                   {controller.activeRoom.instances.map((instanceEntry) => {
                     const objectEntry = objectById[instanceEntry.objectId]
                     const spriteEntry = objectEntry?.spriteId ? spriteById[objectEntry.spriteId] : undefined
@@ -781,7 +794,8 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                   )}
                 </div>
               </div>
-            </div>
+              </div>
+            </>
           )}
         </div>
       </div>
