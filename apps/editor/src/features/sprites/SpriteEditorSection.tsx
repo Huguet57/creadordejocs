@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react"
 import type { EditorController } from "../editor-state/use-editor-controller.js"
 import { spriteAssignedObjectNames } from "../editor-state/use-editor-controller.js"
+import { Button } from "../../components/ui/button.js"
 import { SpriteCanvasGrid, type SelectDragRect } from "./components/SpriteCanvasGrid.js"
 import { SpriteImportButton } from "./components/SpriteImportButton.js"
 import { SpriteImportCropModal } from "./components/SpriteImportCropModal.js"
@@ -18,6 +19,7 @@ import { flipHorizontal, flipVertical, rotateCW, rotateCCW } from "./utils/sprit
 import { hasVisibleSpritePixels } from "./utils/has-visible-pixels.js"
 import { resolveSpritePreviewSource } from "./utils/sprite-preview-source.js"
 import { indicesInRect } from "./utils/sprite-tools/rect-select.js"
+import { clampZoom, computeFitZoom, MAX_SPRITE_ZOOM, MIN_SPRITE_ZOOM } from "./utils/zoom.js"
 
 type SpriteEditorSectionProps = {
   controller: EditorController
@@ -47,6 +49,7 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
   const [selectDragRect, setSelectDragRect] = useState<SelectDragRect | null>(null)
   const [pickerPreviewColor, setPickerPreviewColor] = useState<string | null>(null)
   const [activeFrameId, setActiveFrameId] = useState<string | null>(null)
+  const [canvasViewportElement, setCanvasViewportElement] = useState<HTMLDivElement | null>(null)
 
   useEffect(() => {
     if (activeSpriteId && !spriteIds.includes(activeSpriteId)) {
@@ -351,6 +354,27 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
     }
   }, [activeTool, spriteMove, selectDragRect, selectedSprite?.width, selectedSprite?.height])
 
+  const handleFitZoom = useCallback(() => {
+    if (!selectedSprite || !canvasViewportElement || typeof window === "undefined") return
+
+    const viewportStyles = window.getComputedStyle(canvasViewportElement)
+    const horizontalPadding = Number.parseFloat(viewportStyles.paddingLeft) + Number.parseFloat(viewportStyles.paddingRight)
+    const verticalPadding = Number.parseFloat(viewportStyles.paddingTop) + Number.parseFloat(viewportStyles.paddingBottom)
+    const availableWidth = Math.max(1, canvasViewportElement.clientWidth - horizontalPadding)
+    const availableHeight = Math.max(1, canvasViewportElement.clientHeight - verticalPadding)
+
+    setZoom(
+      computeFitZoom({
+        viewportWidth: availableWidth,
+        viewportHeight: availableHeight,
+        spriteWidth: selectedSprite.width,
+        spriteHeight: selectedSprite.height,
+        minZoom: MIN_SPRITE_ZOOM,
+        maxZoom: MAX_SPRITE_ZOOM
+      })
+    )
+  }, [canvasViewportElement, selectedSprite, setZoom])
+
   return (
     <div className="mvp16-sprite-editor-shell flex h-[600px] w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
       <SpriteListPanel
@@ -384,7 +408,7 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
           onPinTab={handlePinSprite}
         />
         {selectedSprite ? (
-          <div className="sprtabs-editor-content flex min-h-0 flex-1 overflow-hidden">
+          <div className="sprtabs-editor-content flex min-h-0 min-w-0 flex-1 overflow-hidden">
             <SpriteToolbar
               activeTool={activeTool}
               activeColor={activeColor}
@@ -415,7 +439,7 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
                 controller.transformSpritePixels(selectedSprite.id, result.width, result.height, result.pixelsRgba)
               }}
             />
-            <div className="mvp16-sprite-editor-main flex flex-1 flex-col">
+            <div className="mvp16-sprite-editor-main flex min-h-0 min-w-0 flex-1 flex-col">
               <div className="mvp16-sprite-canvas-bar flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-2">
                 <label className="mvp16-sprite-grid-toggle flex items-center gap-1.5 text-xs text-slate-600">
                   <input
@@ -430,15 +454,30 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
                 <label className="mvp16-sprite-zoom flex items-center gap-2 text-xs text-slate-600">
                   Zoom
                   <input
+                    data-testid="sprite-zoom-slider"
                     type="range"
-                    min={4}
-                    max={24}
+                    min={MIN_SPRITE_ZOOM}
+                    max={MAX_SPRITE_ZOOM}
+                    step={1}
                     value={zoom}
-                    onChange={(event: ChangeEvent<HTMLInputElement>) => setZoom(Number(event.target.value))}
+                    onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                      setZoom(clampZoom(Number(event.target.value), MIN_SPRITE_ZOOM, MAX_SPRITE_ZOOM))
+                    }
                   />
                 </label>
 
-                <div className="ml-auto">
+                <div className="ml-auto flex shrink-0 items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 px-2 text-xs"
+                    data-testid="sprite-zoom-fit"
+                    onClick={handleFitZoom}
+                    disabled={!canvasViewportElement}
+                  >
+                    Fit
+                  </Button>
                   <SpriteImportButton
                     isImporting={spriteImport.isImporting}
                     onImportFile={(selectedFile) => {
@@ -503,6 +542,7 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
                   }
                 }}
                 onPointerUpOutside={handlePointerUpOutside}
+                onViewportElementChange={setCanvasViewportElement}
               />
             </div>
           </div>
