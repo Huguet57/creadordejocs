@@ -1,10 +1,11 @@
-import { useEffect, useState, type ChangeEvent } from "react"
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react"
 import type { EditorController } from "../editor-state/use-editor-controller.js"
 import { spriteAssignedObjectNames } from "../editor-state/use-editor-controller.js"
 import { SpriteCanvasGrid } from "./components/SpriteCanvasGrid.js"
 import { SpriteImportButton } from "./components/SpriteImportButton.js"
 import { SpriteImportCropModal } from "./components/SpriteImportCropModal.js"
 import { SpriteListPanel } from "./components/SpriteListPanel.js"
+import { SpriteTabBar } from "./components/SpriteTabBar.js"
 import { SpriteToolbar } from "./components/SpriteToolbar.js"
 import { useSpriteEditorState } from "./hooks/use-sprite-editor-state.js"
 import { useSpriteImport } from "./hooks/use-sprite-import.js"
@@ -20,6 +21,8 @@ type SpriteEditorSectionProps = {
 export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
   const sprites = controller.project.resources.sprites
   const spriteIds = sprites.map((spriteEntry) => spriteEntry.id)
+  const [openTabs, setOpenTabs] = useState<{ id: string; pinned: boolean }[]>([])
+  const spriteStateSignatureByIdRef = useRef<Record<string, string>>({})
   const spriteEditorState = useSpriteEditorState()
   const {
     activeTool,
@@ -57,6 +60,98 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
     }
   }, [activeTool])
 
+  useEffect(() => {
+    const currentSpriteIds = new Set(sprites.map((entry) => entry.id))
+    setOpenTabs((previous) => {
+      const cleaned = previous.filter((tabEntry) => currentSpriteIds.has(tabEntry.id))
+      return cleaned.length === previous.length ? previous : cleaned
+    })
+  }, [sprites])
+
+  useEffect(() => {
+    if (!activeSpriteId) return
+    setOpenTabs((previous) => {
+      if (previous.some((tabEntry) => tabEntry.id === activeSpriteId)) {
+        return previous
+      }
+      return [...previous.filter((tabEntry) => tabEntry.pinned), { id: activeSpriteId, pinned: false }]
+    })
+  }, [activeSpriteId])
+
+  useEffect(() => {
+    const currentSignatures: Record<string, string> = {}
+    for (const spriteEntry of sprites) {
+      currentSignatures[spriteEntry.id] = JSON.stringify({
+        name: spriteEntry.name,
+        width: spriteEntry.width,
+        height: spriteEntry.height,
+        pixelsRgba: spriteEntry.pixelsRgba
+      })
+    }
+
+    if (activeSpriteId) {
+      const previousSignature = spriteStateSignatureByIdRef.current[activeSpriteId]
+      const currentSignature = currentSignatures[activeSpriteId]
+      if (previousSignature && currentSignature && previousSignature !== currentSignature) {
+        setOpenTabs((previous) =>
+          previous.map((tabEntry) =>
+            tabEntry.id === activeSpriteId && !tabEntry.pinned ? { ...tabEntry, pinned: true } : tabEntry
+          )
+        )
+      }
+    }
+
+    spriteStateSignatureByIdRef.current = currentSignatures
+  }, [activeSpriteId, sprites])
+
+  const handleSelectSprite = (spriteId: string) => {
+    controller.setActiveSpriteId(spriteId)
+    setOpenTabs((previous) => {
+      const existing = previous.find((tabEntry) => tabEntry.id === spriteId)
+      const pinnedTabs = previous.filter((tabEntry) => tabEntry.pinned)
+      if (existing?.pinned) {
+        return [...pinnedTabs]
+      }
+      return [...pinnedTabs, { id: spriteId, pinned: false }]
+    })
+  }
+
+  const handlePinSprite = (spriteId: string) => {
+    controller.setActiveSpriteId(spriteId)
+    setOpenTabs((previous) => {
+      const tabIndex = previous.findIndex((tabEntry) => tabEntry.id === spriteId)
+      if (tabIndex === -1) {
+        return [...previous, { id: spriteId, pinned: true }]
+      }
+      return previous.map((tabEntry, index) => (index === tabIndex ? { ...tabEntry, pinned: true } : tabEntry))
+    })
+  }
+
+  const handleCloseTab = (tabId: string) => {
+    const currentIndex = openTabs.findIndex((tabEntry) => tabEntry.id === tabId)
+    const remainingTabs = openTabs.filter((tabEntry) => tabEntry.id !== tabId)
+    setOpenTabs(remainingTabs)
+
+    if (activeSpriteId === tabId) {
+      const nextTabId =
+        remainingTabs.length > 0 ? (remainingTabs[Math.min(currentIndex, remainingTabs.length - 1)]?.id ?? null) : null
+      controller.setActiveSpriteId(nextTabId)
+    }
+  }
+
+  const handleDeleteSprite = (spriteId: string): boolean => {
+    const currentIndex = openTabs.findIndex((tabEntry) => tabEntry.id === spriteId)
+    const remainingTabs = openTabs.filter((tabEntry) => tabEntry.id !== spriteId)
+    const deleted = controller.deleteSprite(spriteId)
+    if (!deleted) return false
+    setOpenTabs(remainingTabs)
+    if (activeSpriteId === spriteId && remainingTabs.length > 0) {
+      const nextTabId = remainingTabs[Math.min(currentIndex, remainingTabs.length - 1)]?.id ?? null
+      controller.setActiveSpriteId(nextTabId)
+    }
+    return true
+  }
+
   const selectedSprite =
     sprites.find((spriteEntry) => spriteEntry.id === activeSpriteId) ??
     sprites[0] ??
@@ -64,6 +159,41 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
   const selectedSpritePixels = selectedSprite
     ? normalizePixelGrid(selectedSprite.pixelsRgba, selectedSprite.width, selectedSprite.height)
     : []
+
+  const spriteListEntries = useMemo(
+    () =>
+      sprites.map((spriteEntry) => {
+        const hasPixels = hasVisibleSpritePixels(spriteEntry.pixelsRgba)
+        return {
+          id: spriteEntry.id,
+          name: spriteEntry.name,
+          folderId: spriteEntry.folderId ?? null,
+          width: spriteEntry.width,
+          height: spriteEntry.height,
+          isEmpty: !hasPixels,
+          previewDataUrl: hasPixels ? spritePixelsToDataUrl(spriteEntry.pixelsRgba, spriteEntry.width, spriteEntry.height) : "",
+          objectNames: spriteAssignedObjectNames(controller.project, spriteEntry.id)
+        }
+      }),
+    [controller.project, sprites]
+  )
+
+  const tabData = useMemo(
+    () =>
+      openTabs
+        .map((tabEntry) => {
+          const spriteEntry = spriteListEntries.find((entry) => entry.id === tabEntry.id)
+          if (!spriteEntry) return null
+          return {
+            id: spriteEntry.id,
+            name: spriteEntry.name,
+            previewSrc: spriteEntry.previewDataUrl || null,
+            pinned: tabEntry.pinned
+          }
+        })
+        .filter((entry): entry is NonNullable<typeof entry> => entry !== null),
+    [openTabs, spriteListEntries]
+  )
 
   const spriteImport = useSpriteImport({
     spriteId: selectedSprite?.id ?? "",
@@ -96,50 +226,44 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
   return (
     <div className="mvp16-sprite-editor-shell flex h-[600px] w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
       <SpriteListPanel
-        sprites={sprites.map((spriteEntry) => {
-          const hasPixels = hasVisibleSpritePixels(spriteEntry.pixelsRgba)
-          return {
-            id: spriteEntry.id,
-            name: spriteEntry.name,
-            folderId: spriteEntry.folderId ?? null,
-            width: spriteEntry.width,
-            height: spriteEntry.height,
-            isEmpty: !hasPixels,
-            previewDataUrl: hasPixels
-              ? spritePixelsToDataUrl(spriteEntry.pixelsRgba, spriteEntry.width, spriteEntry.height)
-              : "",
-            objectNames: spriteAssignedObjectNames(controller.project, spriteEntry.id)
-          }
-        })}
+        sprites={spriteListEntries}
         spriteFolders={(controller.project.resources.spriteFolders ?? []).map((folderEntry) => ({
           id: folderEntry.id,
           name: folderEntry.name,
           parentId: folderEntry.parentId ?? null
         }))}
         activeSpriteId={selectedSprite?.id ?? null}
-        onSelectSprite={(spriteId) => controller.setActiveSpriteId(spriteId)}
+        onSelectSprite={handleSelectSprite}
         onAddSprite={(name, width, height, folderId) => controller.addSprite(name, width, height, folderId)}
         onCreateFolder={(name, parentId) => controller.createSpriteFolder(name, parentId)}
         onRenameSprite={(spriteId, name) => controller.renameSprite(spriteId, name)}
-        onDeleteSprite={(spriteId) => controller.deleteSprite(spriteId)}
+        onDeleteSprite={handleDeleteSprite}
         onMoveSpriteToFolder={(spriteId, folderId) => controller.moveSpriteToFolder(spriteId, folderId)}
         onRenameFolder={(folderId, name) => controller.renameSpriteFolder(folderId, name)}
         onDeleteFolder={(folderId) => controller.deleteSpriteFolder(folderId)}
         onMoveFolderToParent={(folderId, newParentId) => controller.moveSpriteFolder(folderId, newParentId)}
       />
 
-      <SpriteToolbar
-        activeTool={activeTool}
-        activeColor={activeColor}
-        pickerPreviewColor={pickerPreviewColor}
-        spritePixels={selectedSpritePixels}
-        toolOptions={toolOptions}
-        onToolChange={setActiveTool}
-        onColorChange={setActiveColor}
-        onUpdateToolOptions={updateToolOptions}
-      />
-
-      <div className="mvp16-sprite-editor-main flex flex-1 flex-col">
+      <div className="sprtabs-editor-area flex min-w-0 flex-1 flex-col border-l border-slate-200">
+        <SpriteTabBar
+          tabs={tabData}
+          activeTabId={activeSpriteId}
+          onSelectTab={(id) => controller.setActiveSpriteId(id)}
+          onCloseTab={handleCloseTab}
+          onPinTab={handlePinSprite}
+        />
+        <div className="sprtabs-editor-content flex min-h-0 flex-1 overflow-hidden">
+          <SpriteToolbar
+            activeTool={activeTool}
+            activeColor={activeColor}
+            pickerPreviewColor={pickerPreviewColor}
+            spritePixels={selectedSpritePixels}
+            toolOptions={toolOptions}
+            onToolChange={setActiveTool}
+            onColorChange={setActiveColor}
+            onUpdateToolOptions={updateToolOptions}
+          />
+          <div className="mvp16-sprite-editor-main flex flex-1 flex-col">
         <div className="mvp16-sprite-canvas-bar flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-2">
           <label className="mvp16-sprite-grid-toggle flex items-center gap-1.5 text-xs text-slate-600">
             <input
@@ -212,6 +336,8 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
             Add a sprite to start painting pixels.
           </div>
         )}
+          </div>
+        </div>
       </div>
     </div>
   )

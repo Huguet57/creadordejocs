@@ -11,6 +11,7 @@ import {
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ChangeEvent,
@@ -20,8 +21,11 @@ import {
 } from "react"
 import { Button } from "../../components/ui/button.js"
 import type { ProjectV1 } from "@creadordejocs/project-format"
+import { EditorSidebarLayout } from "../shared/editor-sidebar/EditorSidebarLayout.js"
+import { buildEntriesByFolder, buildFolderChildrenByParent, isFolderDescendant } from "../shared/editor-sidebar/tree-utils.js"
 
 type ObjectFolder = NonNullable<ProjectV1["resources"]["objectFolders"]>[number]
+type ObjectEntry = ProjectV1["objects"][number]
 
 type ContextMenuState = {
   x: number
@@ -33,7 +37,7 @@ type ContextMenuState = {
 type DragItem = { type: "object"; id: string } | { type: "folder"; id: string } | null
 
 type ObjectListPanelProps = {
-  objects: ProjectV1["objects"]
+  objects: ObjectEntry[]
   objectFolders: ObjectFolder[]
   activeObjectId: string | null
   spriteSources: Record<string, string>
@@ -47,20 +51,6 @@ type ObjectListPanelProps = {
   onDeleteFolder: (folderId: string) => boolean
   onMoveFolder: (folderId: string, newParentId: string | null) => boolean
   onMoveObjectToFolder: (objectId: string, folderId: string | null) => boolean
-}
-
-function isDescendantOf(folderId: string, ancestorId: string, folders: ObjectFolder[]): boolean {
-  let current = folderId
-  const visited = new Set<string>()
-  while (current) {
-    if (visited.has(current)) return false
-    visited.add(current)
-    if (current === ancestorId) return true
-    const folder = folders.find((f) => f.id === current)
-    if (!folder?.parentId) return false
-    current = folder.parentId
-  }
-  return false
 }
 
 export function ObjectListPanel({
@@ -94,6 +84,9 @@ export function ObjectListPanel({
   const [dropTargetFolderId, setDropTargetFolderId] = useState<string | null>(null)
   const [dropTargetIsRoot, setDropTargetIsRoot] = useState(false)
   const autoExpandTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const foldersByParent = useMemo(() => buildFolderChildrenByParent<ObjectFolder>(objectFolders), [objectFolders])
+  const objectsByFolder = useMemo(() => buildEntriesByFolder<ObjectEntry>(objects), [objects])
 
   const inputCallbackRef = useCallback((node: HTMLInputElement | null) => {
     if (node) node.select()
@@ -204,7 +197,7 @@ export function ObjectListPanel({
 
     const dragged = dragItemRef.current
     if (!dragged) return
-    if (dragged.type === "folder" && (dragged.id === folderId || isDescendantOf(folderId, dragged.id, objectFolders))) {
+    if (dragged.type === "folder" && (dragged.id === folderId || isFolderDescendant(folderId, dragged.id, objectFolders))) {
       e.dataTransfer.dropEffect = "none"
       return
     }
@@ -224,7 +217,7 @@ export function ObjectListPanel({
     e.stopPropagation()
     const dragged = dragItemRef.current
     if (!dragged) return
-    if (dragged.type === "folder" && (dragged.id === folderId || isDescendantOf(folderId, dragged.id, objectFolders))) {
+    if (dragged.type === "folder" && (dragged.id === folderId || isFolderDescendant(folderId, dragged.id, objectFolders))) {
       return
     }
 
@@ -266,17 +259,9 @@ export function ObjectListPanel({
     }
   }
 
-  const getChildFolders = (parentId: string | null) =>
-    objectFolders.filter((f) => (f.parentId ?? null) === parentId).sort((a, b) => a.name.localeCompare(b.name))
-
-  const getChildObjects = (folderId: string | null) =>
-    objects
-      .filter((o) => (o.folderId ?? null) === folderId)
-      .sort((a, b) => a.name.localeCompare(b.name))
-
   function renderTree(parentId: string | null, depth: number) {
-    const childFolders = getChildFolders(parentId)
-    const childObjects = getChildObjects(parentId)
+    const childFolders = foldersByParent.get(parentId) ?? []
+    const childObjects = objectsByFolder.get(parentId) ?? []
 
     return (
       <>
@@ -336,8 +321,10 @@ export function ObjectListPanel({
           )
         })}
 
-        {childObjects.map((objectEntry) => {
+        {childObjects.map((objectEntry: ObjectEntry) => {
           const isActive = activeObjectId === objectEntry.id
+          const spriteId = typeof objectEntry.spriteId === "string" ? objectEntry.spriteId : null
+          const spriteSource = spriteId ? spriteSources[spriteId] : null
           return (
             <div
               key={objectEntry.id}
@@ -353,9 +340,9 @@ export function ObjectListPanel({
               onContextMenu={(e) => openContextMenu(e, objectEntry.id, null)}
             >
               <div className="flex flex-1 items-center gap-2 text-left text-sm min-w-0">
-                {objectEntry.spriteId && spriteSources[objectEntry.spriteId] ? (
+                {spriteSource ? (
                   <img
-                    src={spriteSources[objectEntry.spriteId]}
+                    src={spriteSource}
                     alt=""
                     className="objlist-sprite-icon h-5 w-5 shrink-0 object-contain"
                     style={{ imageRendering: "pixelated" }}
@@ -528,70 +515,70 @@ export function ObjectListPanel({
   }
 
   return (
-    <aside
-      className={`mvp3-object-list-panel flex shrink-0 flex-col bg-slate-50 overflow-hidden transition-[width] duration-200 ease-in-out ${
-        isCollapsed ? "w-10" : "w-[200px]"
-      }`}
-    >
-      <div className={`objlist-header flex items-center border-b border-slate-200 px-1.5 py-1.5 ${isCollapsed ? "justify-center" : "justify-between"}`}>
-        {isCollapsed ? (
-          <div className="flex flex-col items-center gap-1">
-            <button
-              type="button"
-              className="objlist-expand-btn inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
-              onClick={() => setIsCollapsed(false)}
-              title="Expand object list"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              className="objlist-add-btn-collapsed inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
-              onClick={() => {
-                setIsCollapsed(false)
-                startAddingObject(null)
-              }}
-              title="Add object"
-            >
-              <Plus className="h-4 w-4" />
-            </button>
-          </div>
-        ) : (
-          <>
-            <div className="flex items-center gap-0.5">
+    <EditorSidebarLayout
+      classNamePrefix="mvp3-object-list-panel"
+      isCollapsed={isCollapsed}
+      expandedWidthClass="w-[200px]"
+      header={
+        <div className={`objlist-header flex items-center border-b border-slate-200 px-1.5 py-1.5 ${isCollapsed ? "justify-center" : "justify-between"}`}>
+          {isCollapsed ? (
+            <div className="flex flex-col items-center gap-1">
               <button
                 type="button"
-                className="objlist-add-btn inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
-                onClick={() => startAddingObject(null)}
+                className="objlist-expand-btn inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
+                onClick={() => setIsCollapsed(false)}
+                title="Expand object list"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                className="objlist-add-btn-collapsed inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
+                onClick={() => {
+                  setIsCollapsed(false)
+                  startAddingObject(null)
+                }}
                 title="Add object"
               >
                 <Plus className="h-4 w-4" />
               </button>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center gap-0.5">
+                <button
+                  type="button"
+                  className="objlist-add-btn inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
+                  onClick={() => startAddingObject(null)}
+                  title="Add object"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  className="objlist-add-folder-btn inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
+                  onClick={() => createFolder(null)}
+                  title="New folder"
+                >
+                  <FolderPlus className="h-4 w-4" />
+                </button>
+              </div>
               <button
                 type="button"
-                className="objlist-add-folder-btn inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
-                onClick={() => createFolder(null)}
-                title="New folder"
+                className="objlist-collapse-btn inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
+                onClick={() => setIsCollapsed(true)}
+                title="Collapse object list"
               >
-                <FolderPlus className="h-4 w-4" />
+                <ChevronLeft className="h-4 w-4" />
               </button>
-            </div>
-            <button
-              type="button"
-              className="objlist-collapse-btn inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
-              onClick={() => setIsCollapsed(true)}
-              title="Collapse object list"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-          </>
-        )}
-      </div>
-
-      {!isCollapsed && (
+            </>
+          )}
+        </div>
+      }
+      body={
         <div
-          className={`flex-1 overflow-y-auto p-2 ${dropTargetIsRoot ? "bg-blue-50/50" : ""}`}
-          onContextMenu={(e) => openContextMenu(e, null, null)}
+          className={`objlist-tree-root flex-1 overflow-y-auto p-2 ${dropTargetIsRoot ? "bg-blue-50/50" : ""}`}
+          onContextMenu={(event) => openContextMenu(event, null, null)}
           onDragOver={handleRootDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleRootDrop}
@@ -603,9 +590,8 @@ export function ObjectListPanel({
             {renderTree(null, 0)}
           </div>
         </div>
-      )}
-
-      {renderContextMenu()}
-    </aside>
+      }
+      overlay={renderContextMenu()}
+    />
   )
 }

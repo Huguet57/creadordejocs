@@ -1,6 +1,8 @@
-import { ChevronRight, Folder, FolderOpen, Image, Pencil, Plus, Trash2 } from "lucide-react"
+import { ChevronLeft, ChevronRight, Folder, FolderOpen, Image, Pencil, Plus, Trash2 } from "lucide-react"
 import { useEffect, useMemo, useState, type ChangeEvent, type DragEvent, type KeyboardEvent, type MouseEvent } from "react"
 import { Button } from "../../../components/ui/button.js"
+import { EditorSidebarLayout } from "../../shared/editor-sidebar/EditorSidebarLayout.js"
+import { buildEntriesByFolder, buildFolderChildrenByParent, isFolderDescendant } from "../../shared/editor-sidebar/tree-utils.js"
 
 const DEFAULT_SPRITE_DIMENSION = 32
 const DND_MIME = "application/x-sprite-tree-node"
@@ -66,6 +68,7 @@ export function SpriteListPanel({
   onDeleteFolder,
   onMoveFolderToParent
 }: SpriteListPanelProps) {
+  const [isCollapsed, setIsCollapsed] = useState(false)
   const [isAdding, setIsAdding] = useState(false)
   const [newName, setNewName] = useState("")
   const [newWidth, setNewWidth] = useState(String(DEFAULT_SPRITE_DIMENSION))
@@ -95,7 +98,11 @@ export function SpriteListPanel({
     if (!event.dataTransfer.types.includes(DND_MIME)) {
       return
     }
-    if (draggedNode?.type === "folder" && draggedNode.id === targetFolderId) {
+    if (
+      draggedNode?.type === "folder" &&
+      targetFolderId !== null &&
+      (draggedNode.id === targetFolderId || isFolderDescendant(targetFolderId, draggedNode.id, spriteFolders))
+    ) {
       return
     }
     event.preventDefault()
@@ -122,7 +129,10 @@ export function SpriteListPanel({
       if (node.type === "sprite") {
         onMoveSpriteToFolder(node.id, targetFolderId)
       } else if (node.type === "folder") {
-        if (node.id !== targetFolderId) {
+        if (
+          node.id !== targetFolderId &&
+          (targetFolderId === null || !isFolderDescendant(targetFolderId, node.id, spriteFolders))
+        ) {
           onMoveFolderToParent(node.id, targetFolderId)
         }
       }
@@ -136,39 +146,8 @@ export function SpriteListPanel({
 
   const foldersById = useMemo(() => new Map(spriteFolders.map((folderEntry) => [folderEntry.id, folderEntry])), [spriteFolders])
 
-  const folderChildrenByParent = useMemo(() => {
-    const map = new Map<string | null, SpriteFolderEntry[]>()
-    for (const folderEntry of spriteFolders) {
-      const parentId = folderEntry.parentId ?? null
-      const current = map.get(parentId) ?? []
-      current.push(folderEntry)
-      map.set(parentId, current)
-    }
-    for (const [parentId, children] of map.entries()) {
-      map.set(
-        parentId,
-        [...children].sort((left, right) => left.name.localeCompare(right.name, "ca"))
-      )
-    }
-    return map
-  }, [spriteFolders])
-
-  const spritesByFolder = useMemo(() => {
-    const map = new Map<string | null, SpriteListEntry[]>()
-    for (const spriteEntry of sprites) {
-      const folderId = spriteEntry.folderId ?? null
-      const current = map.get(folderId) ?? []
-      current.push(spriteEntry)
-      map.set(folderId, current)
-    }
-    for (const [folderId, folderSprites] of map.entries()) {
-      map.set(
-        folderId,
-        [...folderSprites].sort((left, right) => left.name.localeCompare(right.name, "ca"))
-      )
-    }
-    return map
-  }, [sprites])
+  const folderChildrenByParent = useMemo(() => buildFolderChildrenByParent<SpriteFolderEntry>(spriteFolders), [spriteFolders])
+  const spritesByFolder = useMemo(() => buildEntriesByFolder<SpriteListEntry>(sprites), [sprites])
 
   const visibleNodes = useMemo(() => {
     const nodes: TreeNode[] = []
@@ -501,261 +480,303 @@ export function SpriteListPanel({
   const rootSprites = spritesByFolder.get(null) ?? []
 
   return (
-    <aside className="mvp16-sprite-tree-panel flex w-[280px] flex-col border-r border-slate-200 bg-slate-50">
-      <div className="mvp16-sprite-list-header flex items-center justify-between border-b border-slate-200 bg-white px-3 py-2.5">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Sprites</span>
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="mvp16-sprite-tree-header-action h-7 rounded-md border border-transparent px-2 text-[11px] hover:border-slate-200 hover:bg-slate-100"
-            onClick={() => setCreatingFolderParentId(selectedNode?.type === "folder" ? selectedNode.id : null)}
-          >
-            <Folder className="mr-1 h-3.5 w-3.5" />
-            Folder
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="mvp16-sprite-tree-header-action h-7 rounded-md border border-transparent px-2 text-[11px] hover:border-slate-200 hover:bg-slate-100"
-            onClick={() => setIsAdding(true)}
-          >
-            <Plus className="mr-1 h-3.5 w-3.5" />
-            Sprite
-          </Button>
-        </div>
-      </div>
-
-      <div
-        className={`mvp16-sprite-tree-items flex-1 overflow-y-auto p-2 transition-colors ${
-          dropTargetFolderId === null && draggedNode ? "bg-indigo-50/50" : "bg-slate-50"
-        }`}
-        tabIndex={0}
-        onDragOver={(event) => handleDragOver(event, null)}
-        onDragLeave={handleDragLeave}
-        onDrop={(event) => handleDrop(event, null)}
-        onKeyDown={(event) => {
-          if (renamingNode || creatingFolderParentId !== undefined) {
-            return
-          }
-          if (event.key === "ArrowDown") {
-            event.preventDefault()
-            navigateNode(1)
-            return
-          }
-          if (event.key === "ArrowUp") {
-            event.preventDefault()
-            navigateNode(-1)
-            return
-          }
-          if (event.key === "ArrowRight" && selectedNode?.type === "folder") {
-            event.preventDefault()
-            setExpandedFolderIds((previous) => new Set([...previous, selectedNode.id]))
-            return
-          }
-          if (event.key === "ArrowLeft" && selectedNode?.type === "folder") {
-            event.preventDefault()
-            setExpandedFolderIds((previous) => {
-              const next = new Set(previous)
-              next.delete(selectedNode.id)
-              return next
-            })
-            return
-          }
-          if (event.key === "F2" && selectedNode) {
-            event.preventDefault()
-            startRename(selectedNode)
-            return
-          }
-          if ((event.key === "Delete" || event.key === "Backspace") && selectedNode) {
-            event.preventDefault()
-            handleDeleteNode(selectedNode)
-          }
-        }}
-      >
-        {creatingFolderParentId !== undefined && (
-          <div className="mvp16-sprite-tree-folder-create mb-2 rounded-lg border border-slate-200 bg-white p-2.5 shadow-sm">
-            <div className="mb-2 flex items-center gap-1.5">
-              <Folder className="h-3.5 w-3.5 text-amber-500" />
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                New folder {creatingFolderParentId ? "inside selected folder" : "at root"}
-              </span>
-            </div>
-            <input
-              value={newFolderName}
-              onChange={(event: ChangeEvent<HTMLInputElement>) => setNewFolderName(event.target.value)}
-              autoFocus
-              onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
-                if (event.key === "Enter") {
-                  event.preventDefault()
-                  handleCreateFolder()
-                }
-                if (event.key === "Escape") {
-                  event.preventDefault()
-                  setCreatingFolderParentId(undefined)
-                }
-              }}
-              className="mvp16-sprite-tree-folder-create-input h-8 w-full rounded-md border border-slate-300 bg-white px-2.5 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
-            />
-            <div className="mt-2 flex items-center justify-end gap-1.5">
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-7 rounded-md px-2 text-[11px] text-slate-600 hover:bg-slate-100"
-                onClick={() => setCreatingFolderParentId(undefined)}
-              >
-                Cancel
-              </Button>
-              <Button size="sm" className="h-7 rounded-md px-2 text-[11px]" onClick={handleCreateFolder}>
-                Create
-              </Button>
-            </div>
-          </div>
-        )}
-        <div className="flex flex-col gap-1">
-          {sprites.length === 0 && spriteFolders.length === 0 && (
-            <p className="px-2 py-4 text-center text-xs text-slate-400">No sprites yet</p>
-          )}
-          {rootFolders.map((folderEntry) => renderFolderNode(folderEntry, 0))}
-          {rootSprites.map((spriteEntry) => renderSpriteNode(spriteEntry, 0))}
-        </div>
-      </div>
-
-      {contextMenu && (
-        <div
-          className="mvp16-sprite-tree-context-menu fixed z-30 max-h-[280px] min-w-[190px] overflow-y-auto rounded-md border border-slate-200 bg-white p-1 shadow-lg"
-          style={{ left: `${contextMenu.x}px`, top: `${contextMenu.y}px` }}
-          onMouseDown={(event) => event.stopPropagation()}
-        >
-          {contextMenu.node.type === "folder" ? (
-            <>
+    <EditorSidebarLayout
+      classNamePrefix="mvp16-sprite-tree-panel"
+      className="border-r border-slate-200"
+      isCollapsed={isCollapsed}
+      expandedWidthClass="w-[280px]"
+      header={
+        <div className={`mvp16-sprite-list-header flex items-center border-b border-slate-200 bg-white px-2 py-2 ${isCollapsed ? "justify-center" : "justify-between"}`}>
+          {isCollapsed ? (
+            <div className="flex flex-col items-center gap-1">
               <button
                 type="button"
-                className="mvp16-sprite-tree-context-item flex h-7 w-full items-center gap-2 rounded px-2 text-left text-xs hover:bg-slate-100"
+                className="mvp16-sprite-expand-btn inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
+                onClick={() => setIsCollapsed(false)}
+                title="Expand sprite list"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                className="mvp16-sprite-add-collapsed-btn inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
                 onClick={() => {
-                  setCreatingFolderParentId(contextMenu.node.id)
-                  setContextMenu(null)
+                  setIsCollapsed(false)
+                  setIsAdding(true)
                 }}
+                title="Add sprite"
               >
-                <Plus className="h-3.5 w-3.5" />
-                New Folder
+                <Plus className="h-4 w-4" />
               </button>
-              <button
-                type="button"
-                className="mvp16-sprite-tree-context-item flex h-7 w-full items-center gap-2 rounded px-2 text-left text-xs hover:bg-slate-100"
-                onClick={() => startRename(contextMenu.node)}
-              >
-                <Pencil className="h-3.5 w-3.5" />
-                Rename
-              </button>
-              <button
-                type="button"
-                className="mvp16-sprite-tree-context-item flex h-7 w-full items-center gap-2 rounded px-2 text-left text-xs text-rose-600 hover:bg-rose-50"
-                onClick={() => {
-                  handleDeleteNode(contextMenu.node)
-                  setContextMenu(null)
-                }}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                Delete
-              </button>
-            </>
+            </div>
           ) : (
             <>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="mvp16-sprite-tree-header-action h-7 rounded-md border border-transparent px-2 text-[11px] hover:border-slate-200 hover:bg-slate-100"
+                  onClick={() => setCreatingFolderParentId(selectedNode?.type === "folder" ? selectedNode.id : null)}
+                >
+                  <Folder className="mr-1 h-3.5 w-3.5" />
+                  Folder
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="mvp16-sprite-tree-header-action h-7 rounded-md border border-transparent px-2 text-[11px] hover:border-slate-200 hover:bg-slate-100"
+                  onClick={() => setIsAdding(true)}
+                >
+                  <Plus className="mr-1 h-3.5 w-3.5" />
+                  Sprite
+                </Button>
+              </div>
               <button
                 type="button"
-                className="mvp16-sprite-tree-context-item flex h-7 w-full items-center gap-2 rounded px-2 text-left text-xs hover:bg-slate-100"
-                onClick={() => startRename(contextMenu.node)}
+                className="mvp16-sprite-collapse-btn inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
+                onClick={() => setIsCollapsed(true)}
+                title="Collapse sprite list"
               >
-                <Pencil className="h-3.5 w-3.5" />
-                Rename
-              </button>
-              <button
-                type="button"
-                className="mvp16-sprite-tree-context-item flex h-7 w-full items-center gap-2 rounded px-2 text-left text-xs text-rose-600 hover:bg-rose-50"
-                onClick={() => {
-                  handleDeleteNode(contextMenu.node)
-                  setContextMenu(null)
-                }}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                Delete
+                <ChevronLeft className="h-4 w-4" />
               </button>
             </>
           )}
         </div>
-      )}
-
-      {isAdding && (
-        <div className="mvp16-sprite-list-footer border-t border-slate-200 bg-white p-3">
-          <div className="mvp16-sprite-list-add-form flex flex-col gap-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-700">Add Sprite</span>
-              <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">
-                {selectedNode?.type === "folder" ? foldersById.get(selectedNode.id)?.name ?? "Root" : "Root"}
-              </span>
+      }
+      body={
+        <div
+          className={`mvp16-sprite-tree-items flex-1 overflow-y-auto p-2 transition-colors ${
+            dropTargetFolderId === null && draggedNode ? "bg-indigo-50/50" : "bg-slate-50"
+          }`}
+          tabIndex={0}
+          onDragOver={(event) => handleDragOver(event, null)}
+          onDragLeave={handleDragLeave}
+          onDrop={(event) => handleDrop(event, null)}
+          onKeyDown={(event) => {
+            if (renamingNode || creatingFolderParentId !== undefined) {
+              return
+            }
+            if (event.key === "ArrowDown") {
+              event.preventDefault()
+              navigateNode(1)
+              return
+            }
+            if (event.key === "ArrowUp") {
+              event.preventDefault()
+              navigateNode(-1)
+              return
+            }
+            if (event.key === "ArrowRight" && selectedNode?.type === "folder") {
+              event.preventDefault()
+              setExpandedFolderIds((previous) => new Set([...previous, selectedNode.id]))
+              return
+            }
+            if (event.key === "ArrowLeft" && selectedNode?.type === "folder") {
+              event.preventDefault()
+              setExpandedFolderIds((previous) => {
+                const next = new Set(previous)
+                next.delete(selectedNode.id)
+                return next
+              })
+              return
+            }
+            if (event.key === "F2" && selectedNode) {
+              event.preventDefault()
+              startRename(selectedNode)
+              return
+            }
+            if ((event.key === "Delete" || event.key === "Backspace") && selectedNode) {
+              event.preventDefault()
+              handleDeleteNode(selectedNode)
+            }
+          }}
+        >
+          {creatingFolderParentId !== undefined && (
+            <div className="mvp16-sprite-tree-folder-create mb-2 rounded-lg border border-slate-200 bg-white p-2.5 shadow-sm">
+              <div className="mb-2 flex items-center gap-1.5">
+                <Folder className="h-3.5 w-3.5 text-amber-500" />
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                  New folder {creatingFolderParentId ? "inside selected folder" : "at root"}
+                </span>
+              </div>
+              <input
+                value={newFolderName}
+                onChange={(event: ChangeEvent<HTMLInputElement>) => setNewFolderName(event.target.value)}
+                autoFocus
+                onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault()
+                    handleCreateFolder()
+                  }
+                  if (event.key === "Escape") {
+                    event.preventDefault()
+                    setCreatingFolderParentId(undefined)
+                  }
+                }}
+                className="mvp16-sprite-tree-folder-create-input h-8 w-full rounded-md border border-slate-300 bg-white px-2.5 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+              />
+              <div className="mt-2 flex items-center justify-end gap-1.5">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 rounded-md px-2 text-[11px] text-slate-600 hover:bg-slate-100"
+                  onClick={() => setCreatingFolderParentId(undefined)}
+                >
+                  Cancel
+                </Button>
+                <Button size="sm" className="h-7 rounded-md px-2 text-[11px]" onClick={handleCreateFolder}>
+                  Create
+                </Button>
+              </div>
             </div>
-            <input
-              value={newName}
-              onChange={(event: ChangeEvent<HTMLInputElement>) => setNewName(event.target.value)}
-              placeholder="Sprite nou"
-              onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
-                if (event.key === "Enter") handleAdd()
-                if (event.key === "Escape") setIsAdding(false)
-              }}
-              className="mvp16-sprite-list-name-input flex h-8 w-full rounded-md border border-slate-300 bg-white px-3 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
-            />
-            <div className="mvp16-sprite-list-add-details flex items-end gap-2">
-              <label className="mvp16-sprite-list-dimension-field flex min-w-0 flex-1 flex-col gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                Width
-                <input
-                  type="number"
-                  min={1}
-                  step={1}
-                  value={newWidth}
-                  onChange={(event: ChangeEvent<HTMLInputElement>) => setNewWidth(event.target.value)}
-                  onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
-                    if (event.key === "Enter") handleAdd()
-                    if (event.key === "Escape") setIsAdding(false)
-                  }}
-                  className="mvp16-sprite-list-dimension-input h-8 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-normal text-slate-700 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
-                />
-              </label>
-              <label className="mvp16-sprite-list-dimension-field flex min-w-0 flex-1 flex-col gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                Height
-                <input
-                  type="number"
-                  min={1}
-                  step={1}
-                  value={newHeight}
-                  onChange={(event: ChangeEvent<HTMLInputElement>) => setNewHeight(event.target.value)}
-                  onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
-                    if (event.key === "Enter") handleAdd()
-                    if (event.key === "Escape") setIsAdding(false)
-                  }}
-                  className="mvp16-sprite-list-dimension-input h-8 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-normal text-slate-700 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
-                />
-              </label>
-              <Button size="sm" className="mvp16-sprite-list-submit-button h-8 w-8 shrink-0 px-0" onClick={handleAdd}>
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-            <div className="flex items-center justify-end gap-1.5">
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-7 rounded-md px-2 text-[11px] text-slate-600 hover:bg-slate-100"
-                onClick={() => setIsAdding(false)}
-              >
-                Cancel
-              </Button>
-              <Button size="sm" className="h-7 rounded-md px-2 text-[11px]" onClick={handleAdd}>
-                Create
-              </Button>
-            </div>
+          )}
+          <div className="flex flex-col gap-1">
+            {sprites.length === 0 && spriteFolders.length === 0 && (
+              <p className="px-2 py-4 text-center text-xs text-slate-400">No sprites yet</p>
+            )}
+            {rootFolders.map((folderEntry) => renderFolderNode(folderEntry, 0))}
+            {rootSprites.map((spriteEntry) => renderSpriteNode(spriteEntry, 0))}
           </div>
         </div>
-      )}
-    </aside>
+      }
+      footer={
+        isAdding ? (
+          <div className="mvp16-sprite-list-footer border-t border-slate-200 bg-white p-3">
+            <div className="mvp16-sprite-list-add-form flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-700">Add Sprite</span>
+                <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">
+                  {selectedNode?.type === "folder" ? foldersById.get(selectedNode.id)?.name ?? "Root" : "Root"}
+                </span>
+              </div>
+              <input
+                value={newName}
+                onChange={(event: ChangeEvent<HTMLInputElement>) => setNewName(event.target.value)}
+                placeholder="Sprite nou"
+                onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
+                  if (event.key === "Enter") handleAdd()
+                  if (event.key === "Escape") setIsAdding(false)
+                }}
+                className="mvp16-sprite-list-name-input flex h-8 w-full rounded-md border border-slate-300 bg-white px-3 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+              />
+              <div className="mvp16-sprite-list-add-details flex items-end gap-2">
+                <label className="mvp16-sprite-list-dimension-field flex min-w-0 flex-1 flex-col gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                  Width
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={newWidth}
+                    onChange={(event: ChangeEvent<HTMLInputElement>) => setNewWidth(event.target.value)}
+                    onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
+                      if (event.key === "Enter") handleAdd()
+                      if (event.key === "Escape") setIsAdding(false)
+                    }}
+                    className="mvp16-sprite-list-dimension-input h-8 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-normal text-slate-700 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+                  />
+                </label>
+                <label className="mvp16-sprite-list-dimension-field flex min-w-0 flex-1 flex-col gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                  Height
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={newHeight}
+                    onChange={(event: ChangeEvent<HTMLInputElement>) => setNewHeight(event.target.value)}
+                    onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
+                      if (event.key === "Enter") handleAdd()
+                      if (event.key === "Escape") setIsAdding(false)
+                    }}
+                    className="mvp16-sprite-list-dimension-input h-8 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-normal text-slate-700 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+                  />
+                </label>
+                <Button size="sm" className="mvp16-sprite-list-submit-button h-8 w-8 shrink-0 px-0" onClick={handleAdd}>
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="flex items-center justify-end gap-1.5">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 rounded-md px-2 text-[11px] text-slate-600 hover:bg-slate-100"
+                  onClick={() => setIsAdding(false)}
+                >
+                  Cancel
+                </Button>
+                <Button size="sm" className="h-7 rounded-md px-2 text-[11px]" onClick={handleAdd}>
+                  Create
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : null
+      }
+      overlay={
+        contextMenu ? (
+          <div
+            className="mvp16-sprite-tree-context-menu fixed z-30 max-h-[280px] min-w-[190px] overflow-y-auto rounded-md border border-slate-200 bg-white p-1 shadow-lg"
+            style={{ left: `${contextMenu.x}px`, top: `${contextMenu.y}px` }}
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            {contextMenu.node.type === "folder" ? (
+              <>
+                <button
+                  type="button"
+                  className="mvp16-sprite-tree-context-item flex h-7 w-full items-center gap-2 rounded px-2 text-left text-xs hover:bg-slate-100"
+                  onClick={() => {
+                    setCreatingFolderParentId(contextMenu.node.id)
+                    setContextMenu(null)
+                  }}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  New Folder
+                </button>
+                <button
+                  type="button"
+                  className="mvp16-sprite-tree-context-item flex h-7 w-full items-center gap-2 rounded px-2 text-left text-xs hover:bg-slate-100"
+                  onClick={() => startRename(contextMenu.node)}
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                  Rename
+                </button>
+                <button
+                  type="button"
+                  className="mvp16-sprite-tree-context-item flex h-7 w-full items-center gap-2 rounded px-2 text-left text-xs text-rose-600 hover:bg-rose-50"
+                  onClick={() => {
+                    handleDeleteNode(contextMenu.node)
+                    setContextMenu(null)
+                  }}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Delete
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="mvp16-sprite-tree-context-item flex h-7 w-full items-center gap-2 rounded px-2 text-left text-xs hover:bg-slate-100"
+                  onClick={() => startRename(contextMenu.node)}
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                  Rename
+                </button>
+                <button
+                  type="button"
+                  className="mvp16-sprite-tree-context-item flex h-7 w-full items-center gap-2 rounded px-2 text-left text-xs text-rose-600 hover:bg-rose-50"
+                  onClick={() => {
+                    handleDeleteNode(contextMenu.node)
+                    setContextMenu(null)
+                  }}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Delete
+                </button>
+              </>
+            )}
+          </div>
+        ) : null
+      }
+    />
   )
 }

@@ -1,34 +1,34 @@
-import { EditorTabBar } from "../shared/editor-tabs/EditorTabBar.js"
+import { EditorTabBar } from "../../shared/editor-tabs/EditorTabBar.js"
 
-type ObjectTab = {
+type SpriteTab = {
   id: string
   name: string
-  spriteSrc: string | null
+  previewSrc: string | null
   pinned: boolean
 }
 
-type ObjectTabBarProps = {
-  tabs: ObjectTab[]
+type SpriteTabBarProps = {
+  tabs: SpriteTab[]
   activeTabId: string | null
   onSelectTab: (id: string) => void
   onCloseTab: (id: string) => void
   onPinTab: (id: string) => void
 }
 
-export function ObjectTabBar({ tabs, activeTabId, onSelectTab, onCloseTab, onPinTab }: ObjectTabBarProps) {
+export function SpriteTabBar({ tabs, activeTabId, onSelectTab, onCloseTab, onPinTab }: SpriteTabBarProps) {
   return (
     <EditorTabBar
       tabs={tabs.map((tab) => ({
         id: tab.id,
         name: tab.name,
-        iconSrc: tab.spriteSrc,
+        iconSrc: tab.previewSrc,
         pinned: tab.pinned
       }))}
       activeTabId={activeTabId}
       onSelectTab={onSelectTab}
       onCloseTab={onCloseTab}
       onPinTab={onPinTab}
-      classNamePrefix="objtabs"
+      classNamePrefix="sprtabs"
     />
   )
 }
