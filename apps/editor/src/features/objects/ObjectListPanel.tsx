@@ -332,7 +332,7 @@ export function ObjectListPanel({
                   />
                 ) : (
                   <span
-                    className="truncate text-sm text-slate-600"
+                    className="truncate text-[12px] leading-tight text-slate-600"
                     onDoubleClick={(e) => {
                       e.stopPropagation()
                       setRenamingFolderId(folder.id)
@@ -366,7 +366,7 @@ export function ObjectListPanel({
               onDoubleClick={() => onPinObject(objectEntry.id)}
               onContextMenu={(e) => openContextMenu(e, objectEntry.id, null)}
             >
-              <div className="flex flex-1 items-center gap-2 text-left text-sm min-w-0">
+              <div className="flex flex-1 items-center gap-2 text-left min-w-0">
                 {spriteSource ? (
                   <img
                     src={spriteSource}
@@ -379,7 +379,7 @@ export function ObjectListPanel({
                     <Box className="h-3.5 w-3.5 text-slate-400" />
                   </span>
                 )}
-                <span className="truncate text-slate-600">
+                <span className="truncate text-[12px] leading-tight text-slate-600">
                   {objectEntry.name}
                 </span>
               </div>
