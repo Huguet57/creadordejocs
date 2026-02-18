@@ -42,12 +42,8 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
   const [pickerPreviewColor, setPickerPreviewColor] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!activeSpriteId && spriteIds[0]) {
-      controller.setActiveSpriteId(spriteIds[0])
-      return
-    }
     if (activeSpriteId && !spriteIds.includes(activeSpriteId)) {
-      controller.setActiveSpriteId(spriteIds[0] ?? null)
+      controller.setActiveSpriteId(null)
     }
   }, [activeSpriteId, controller, spriteIds])
 
@@ -152,10 +148,7 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
     return true
   }
 
-  const selectedSprite =
-    sprites.find((spriteEntry) => spriteEntry.id === activeSpriteId) ??
-    sprites[0] ??
-    null
+  const selectedSprite = sprites.find((spriteEntry) => spriteEntry.id === activeSpriteId) ?? null
   const selectedSpritePixels = selectedSprite
     ? normalizePixelGrid(selectedSprite.pixelsRgba, selectedSprite.width, selectedSprite.height)
     : []
@@ -232,7 +225,7 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
           name: folderEntry.name,
           parentId: folderEntry.parentId ?? null
         }))}
-        activeSpriteId={selectedSprite?.id ?? null}
+        activeSpriteId={activeSpriteId}
         onSelectSprite={handleSelectSprite}
         onPinSprite={handlePinSprite}
         onOpenInNewTab={handlePinSprite}
@@ -254,92 +247,93 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
           onCloseTab={handleCloseTab}
           onPinTab={handlePinSprite}
         />
-        <div className="sprtabs-editor-content flex min-h-0 flex-1 overflow-hidden">
-          <SpriteToolbar
-            activeTool={activeTool}
-            activeColor={activeColor}
-            pickerPreviewColor={pickerPreviewColor}
-            spritePixels={selectedSpritePixels}
-            toolOptions={toolOptions}
-            onToolChange={setActiveTool}
-            onColorChange={setActiveColor}
-            onUpdateToolOptions={updateToolOptions}
-          />
-          <div className="mvp16-sprite-editor-main flex flex-1 flex-col">
-        <div className="mvp16-sprite-canvas-bar flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-2">
-          <label className="mvp16-sprite-grid-toggle flex items-center gap-1.5 text-xs text-slate-600">
-            <input
-              type="checkbox"
-              checked={showGrid}
-              onChange={(event) => setShowGrid(event.target.checked)}
-              className="h-3.5 w-3.5 rounded border-slate-300"
-            />
-            Grid
-          </label>
-
-          <label className="mvp16-sprite-zoom flex items-center gap-2 text-xs text-slate-600">
-            Zoom
-            <input
-              type="range"
-              min={4}
-              max={24}
-              value={zoom}
-              onChange={(event: ChangeEvent<HTMLInputElement>) => setZoom(Number(event.target.value))}
-            />
-          </label>
-
-          <div className="ml-auto">
-            <SpriteImportButton
-              isImporting={spriteImport.isImporting}
-              onImportFile={(selectedFile) => {
-                if (!selectedSprite) return
-                void spriteImport.openCropModal(selectedFile)
-              }}
-            />
-          </div>
-        </div>
-
-        {spriteImport.message && (
-          <p className="mx-4 mt-3 rounded border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600">{spriteImport.message}</p>
-        )}
-        <SpriteImportCropModal
-          isOpen={spriteImport.isCropOpen}
-          imageElement={spriteImport.pendingImage}
-          targetWidth={selectedSprite?.width ?? 32}
-          targetHeight={selectedSprite?.height ?? 32}
-          onConfirm={(cropRect) => void spriteImport.confirmCrop(cropRect)}
-          onCancel={spriteImport.cancelCrop}
-        />
-
         {selectedSprite ? (
-          <SpriteCanvasGrid
-            width={selectedSprite.width}
-            height={selectedSprite.height}
-            pixelsRgba={selectedSpritePixels}
-            zoom={zoom}
-            showGrid={showGrid}
-            activeTool={activeTool}
-            eraserRadius={toolOptions.eraser.radius}
-            selectedIndices={magicWandSelection}
-            onPaint={(x, y, tool, phase) => {
-              pixelActions.paintAt(x, y, tool, phase)
-              if (tool === "color_picker" && phase === "pointerDown") {
-                setActiveTool(lastPaintTool)
-              }
-            }}
-            onHoverColorChange={(nextColor) => {
-              if (activeTool === "color_picker") {
-                setPickerPreviewColor(nextColor)
-              }
-            }}
-          />
+          <div className="sprtabs-editor-content flex min-h-0 flex-1 overflow-hidden">
+            <SpriteToolbar
+              activeTool={activeTool}
+              activeColor={activeColor}
+              pickerPreviewColor={pickerPreviewColor}
+              spritePixels={selectedSpritePixels}
+              toolOptions={toolOptions}
+              onToolChange={setActiveTool}
+              onColorChange={setActiveColor}
+              onUpdateToolOptions={updateToolOptions}
+            />
+            <div className="mvp16-sprite-editor-main flex flex-1 flex-col">
+              <div className="mvp16-sprite-canvas-bar flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-2">
+                <label className="mvp16-sprite-grid-toggle flex items-center gap-1.5 text-xs text-slate-600">
+                  <input
+                    type="checkbox"
+                    checked={showGrid}
+                    onChange={(event) => setShowGrid(event.target.checked)}
+                    className="h-3.5 w-3.5 rounded border-slate-300"
+                  />
+                  Grid
+                </label>
+
+                <label className="mvp16-sprite-zoom flex items-center gap-2 text-xs text-slate-600">
+                  Zoom
+                  <input
+                    type="range"
+                    min={4}
+                    max={24}
+                    value={zoom}
+                    onChange={(event: ChangeEvent<HTMLInputElement>) => setZoom(Number(event.target.value))}
+                  />
+                </label>
+
+                <div className="ml-auto">
+                  <SpriteImportButton
+                    isImporting={spriteImport.isImporting}
+                    onImportFile={(selectedFile) => {
+                      void spriteImport.openCropModal(selectedFile)
+                    }}
+                  />
+                </div>
+              </div>
+
+              {spriteImport.message && (
+                <p className="mx-4 mt-3 rounded border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600">
+                  {spriteImport.message}
+                </p>
+              )}
+              <SpriteImportCropModal
+                isOpen={spriteImport.isCropOpen}
+                imageElement={spriteImport.pendingImage}
+                targetWidth={selectedSprite.width}
+                targetHeight={selectedSprite.height}
+                onConfirm={(cropRect) => void spriteImport.confirmCrop(cropRect)}
+                onCancel={spriteImport.cancelCrop}
+              />
+
+              <SpriteCanvasGrid
+                width={selectedSprite.width}
+                height={selectedSprite.height}
+                pixelsRgba={selectedSpritePixels}
+                zoom={zoom}
+                showGrid={showGrid}
+                activeTool={activeTool}
+                eraserRadius={toolOptions.eraser.radius}
+                selectedIndices={magicWandSelection}
+                onPaint={(x, y, tool, phase) => {
+                  pixelActions.paintAt(x, y, tool, phase)
+                  if (tool === "color_picker" && phase === "pointerDown") {
+                    setActiveTool(lastPaintTool)
+                  }
+                }}
+                onHoverColorChange={(nextColor) => {
+                  if (activeTool === "color_picker") {
+                    setPickerPreviewColor(nextColor)
+                  }
+                }}
+              />
+            </div>
+          </div>
         ) : (
           <div className="flex flex-1 items-center justify-center bg-slate-50 text-sm text-slate-400">
-            Add a sprite to start painting pixels.
+            Select a sprite to start editing.
           </div>
         )}
-          </div>
-        </div>
       </div>
     </div>
   )
