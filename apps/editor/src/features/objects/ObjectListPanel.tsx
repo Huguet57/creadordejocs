@@ -339,8 +339,8 @@ export function ObjectListPanel({
           return (
             <div
               key={objectEntry.id}
-              className={`objlist-item group flex cursor-pointer items-center py-1.5 pr-2 transition-colors ${
-                isActive ? "-mx-2 bg-blue-50" : "rounded hover:bg-slate-100"
+              className={`objlist-item group -mx-2 flex cursor-pointer items-center px-2 py-1.5 pr-2 transition-colors ${
+                isActive ? "bg-blue-50" : "hover:bg-slate-100"
               }`}
               style={{ paddingLeft: `${depth * 16 + 8}px` }}
               draggable
@@ -358,9 +358,9 @@ export function ObjectListPanel({
                     style={{ imageRendering: "pixelated" }}
                   />
                 ) : (
-                  <Box className={`h-3.5 w-3.5 shrink-0 ${isActive ? "text-blue-500" : "text-slate-400"}`} />
+                  <Box className="h-3.5 w-3.5 shrink-0 text-slate-400" />
                 )}
-                <span className={`truncate ${isActive ? "font-medium text-slate-900" : "text-slate-600"}`}>
+                <span className="truncate text-slate-600">
                   {objectEntry.name}
                 </span>
               </div>
