@@ -499,7 +499,7 @@ export function SpriteListPanel({
         )}
 
         {isAdding && addingInFolderId === parentId && (
-          <div className="mvp16-sprite-add-inline flex flex-col gap-1.5 py-1 pr-2" style={{ paddingLeft: `${depth * 16 + 8}px` }}>
+          <div className="mvp16-sprite-add-inline -mx-2 mt-2 flex flex-col gap-1.5 border-y border-slate-200 bg-white p-2 shadow-sm">
             <input
               ref={inputCallbackRef}
               value={newName}
