@@ -25,18 +25,18 @@ test("navigates sidebar sections and keeps modular editors available", async ({ 
 test("creates sprite, object and object listener", async ({ page }) => {
   // Create sprite
   await page.getByTestId("sidebar-sprites").click()
-  await page.locator(".mvp16-sprite-list-header").getByRole("button", { name: "Sprite" }).click()
-  await page.locator(".mvp16-sprite-list-name-input").fill("Ship")
-  await page.locator(".mvp16-sprite-list-name-input").press("Enter")
+  await page.locator(".mvp16-sprite-add-btn").click()
+  await page.locator(".mvp16-sprite-add-inline input[placeholder='Sprite nou']").fill("Ship")
+  await page.locator(".mvp16-sprite-add-inline input[placeholder='Sprite nou']").press("Enter")
   await expect(page.getByText("Ship", { exact: true }).first()).toBeVisible()
 
   // Create object
   await page.getByTestId("sidebar-objects").click()
-  await page.getByRole("button", { name: "Add Object" }).click()
-  await page.locator("input[placeholder='Name...']").fill("PlayerShip")
-  await page.locator("input[placeholder='Name...']").press("Enter")
-  await expect(page.locator(".mvp3-object-list-panel").getByRole("button", { name: "PlayerShip" })).toBeVisible()
-  await page.locator(".mvp3-object-list-panel").getByRole("button", { name: "PlayerShip" }).click()
+  await page.locator(".objlist-add-btn").click()
+  await page.locator(".objlist-add-form-inline input").fill("PlayerShip")
+  await page.locator(".objlist-add-form-inline input").press("Enter")
+  await expect(page.locator(".objlist-item", { hasText: "PlayerShip" }).first()).toBeVisible()
+  await page.locator(".objlist-item", { hasText: "PlayerShip" }).first().click()
 
   // Add event
   await page.getByRole("button", { name: "Add Event" }).click()
