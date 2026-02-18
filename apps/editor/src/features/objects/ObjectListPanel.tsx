@@ -38,6 +38,7 @@ type ObjectListPanelProps = {
   activeObjectId: string | null
   spriteSources: Record<string, string>
   onSelectObject: (id: string) => void
+  onPinObject: (id: string) => void
   onOpenInNewTab: (id: string) => void
   onAddObject: (name: string, folderId: string | null) => void
   onDeleteObject: (id: string) => void
@@ -68,6 +69,7 @@ export function ObjectListPanel({
   activeObjectId,
   spriteSources,
   onSelectObject,
+  onPinObject,
   onOpenInNewTab,
   onAddObject,
   onDeleteObject,
@@ -347,6 +349,7 @@ export function ObjectListPanel({
               onDragStart={(e) => handleDragStart(e, { type: "object", id: objectEntry.id })}
               onDragEnd={handleDragEnd}
               onClick={() => onSelectObject(objectEntry.id)}
+              onDoubleClick={() => onPinObject(objectEntry.id)}
               onContextMenu={(e) => openContextMenu(e, objectEntry.id, null)}
             >
               <div className="flex flex-1 items-center gap-2 text-left text-sm min-w-0">

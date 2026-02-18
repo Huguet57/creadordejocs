@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import {
   createEditorDefaultAction,
   cloneObjectEventItemForPaste,
@@ -77,7 +77,8 @@ function findEventItemById(items: ObjectEventItem[], itemId: string): ObjectEven
 }
 
 export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
-  const [openTabIds, setOpenTabIds] = useState<string[]>([])
+  const [openTabs, setOpenTabs] = useState<{ id: string; pinned: boolean }[]>([])
+  const objectStateSignatureByIdRef = useRef<Record<string, string>>({})
   const [activeEventIdByObjectId, setActiveEventIdByObjectId] = useState<Record<string, string | null>>({})
   const [selectNewestForObjectId, setSelectNewestForObjectId] = useState<string | null>(null)
   const [resolvedSpriteSources, setResolvedSpriteSources] = useState<Record<string, string>>({})
@@ -91,34 +92,83 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
   // Clean up tabs when objects are removed (deletion, template import, etc.)
   useEffect(() => {
     const currentObjectIds = new Set(projectObjects.map((o) => o.id))
-    setOpenTabIds((prev) => {
-      const cleaned = prev.filter((id) => currentObjectIds.has(id))
+    setOpenTabs((prev) => {
+      const cleaned = prev.filter((tabEntry) => currentObjectIds.has(tabEntry.id))
       return cleaned.length === prev.length ? prev : cleaned
     })
   }, [projectObjects])
 
-  // Ensure active object always has an open tab (e.g. after addObject)
+  // Ensure active object is visible in tabs (preview if not opened yet).
   useEffect(() => {
     if (controller.activeObjectId) {
-      setOpenTabIds((prev) =>
-        prev.includes(controller.activeObjectId!) ? prev : [...prev, controller.activeObjectId!]
-      )
+      const activeObjectId = controller.activeObjectId
+      setOpenTabs((prev) => {
+        if (prev.some((tabEntry) => tabEntry.id === activeObjectId)) {
+          return prev
+        }
+        return [...prev.filter((tabEntry) => tabEntry.pinned), { id: activeObjectId, pinned: false }]
+      })
     }
   }, [controller.activeObjectId])
 
+  // VSCode-like behavior: if a preview tab has edits, promote it to pinned.
+  useEffect(() => {
+    const currentSignatures: Record<string, string> = {}
+    for (const objectEntry of projectObjects) {
+      const objectVariables = controller.project.variables.objectByObjectId[objectEntry.id] ?? []
+      currentSignatures[objectEntry.id] = JSON.stringify({
+        object: objectEntry,
+        objectVariables
+      })
+    }
+
+    const activeObjectId = controller.activeObjectId
+    if (activeObjectId) {
+      const previousSignature = objectStateSignatureByIdRef.current[activeObjectId]
+      const currentSignature = currentSignatures[activeObjectId]
+      if (previousSignature && currentSignature && previousSignature !== currentSignature) {
+        setOpenTabs((prev) =>
+          prev.map((tabEntry) =>
+            tabEntry.id === activeObjectId && !tabEntry.pinned ? { ...tabEntry, pinned: true } : tabEntry
+          )
+        )
+      }
+    }
+
+    objectStateSignatureByIdRef.current = currentSignatures
+  }, [controller.activeObjectId, controller.project.variables.objectByObjectId, projectObjects])
+
   const handleSelectObject = (id: string) => {
     controller.setActiveObjectId(id)
-    setOpenTabIds((prev) => (prev.includes(id) ? prev : [...prev, id]))
+    setOpenTabs((prev) => {
+      const existing = prev.find((tabEntry) => tabEntry.id === id)
+      const pinnedTabs = prev.filter((tabEntry) => tabEntry.pinned)
+      if (existing?.pinned) {
+        return [...pinnedTabs]
+      }
+      return [...pinnedTabs, { id, pinned: false }]
+    })
+  }
+
+  const handlePinObject = (id: string) => {
+    controller.setActiveObjectId(id)
+    setOpenTabs((prev) => {
+      const tabIndex = prev.findIndex((tabEntry) => tabEntry.id === id)
+      if (tabIndex === -1) {
+        return [...prev, { id, pinned: true }]
+      }
+      return prev.map((tabEntry, index) => (index === tabIndex ? { ...tabEntry, pinned: true } : tabEntry))
+    })
   }
 
   const handleCloseTab = (tabId: string) => {
-    const currentIndex = openTabIds.indexOf(tabId)
-    const remainingTabs = openTabIds.filter((id) => id !== tabId)
-    setOpenTabIds(remainingTabs)
+    const currentIndex = openTabs.findIndex((tabEntry) => tabEntry.id === tabId)
+    const remainingTabs = openTabs.filter((tabEntry) => tabEntry.id !== tabId)
+    setOpenTabs(remainingTabs)
 
     if (controller.activeObjectId === tabId) {
       const nextTabId =
-        remainingTabs.length > 0 ? (remainingTabs[Math.min(currentIndex, remainingTabs.length - 1)] ?? null) : null
+        remainingTabs.length > 0 ? (remainingTabs[Math.min(currentIndex, remainingTabs.length - 1)]?.id ?? null) : null
       controller.setActiveObjectId(nextTabId)
     }
   }
@@ -127,14 +177,14 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
     const targetObject = projectObjects.find((o) => o.id === objectId)
     if (!targetObject) return
 
-    const currentIndex = openTabIds.indexOf(objectId)
-    const remainingTabs = openTabIds.filter((id) => id !== objectId)
+    const currentIndex = openTabs.findIndex((tabEntry) => tabEntry.id === objectId)
+    const remainingTabs = openTabs.filter((tabEntry) => tabEntry.id !== objectId)
 
     controller.deleteObjectById(objectId)
 
-    setOpenTabIds(remainingTabs)
+    setOpenTabs(remainingTabs)
     if (controller.activeObjectId === objectId && remainingTabs.length > 0) {
-      const nextTabId = remainingTabs[Math.min(currentIndex, remainingTabs.length - 1)] ?? null
+      const nextTabId = remainingTabs[Math.min(currentIndex, remainingTabs.length - 1)]?.id ?? null
       controller.setActiveObjectId(nextTabId)
     }
   }
@@ -252,18 +302,19 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
 
   const tabData = useMemo(
     () =>
-      openTabIds
-        .map((tabId) => {
-          const obj = projectObjects.find((o) => o.id === tabId)
+      openTabs
+        .map((tabEntry) => {
+          const obj = projectObjects.find((o) => o.id === tabEntry.id)
           if (!obj) return null
           return {
             id: obj.id,
             name: obj.name,
-            spriteSrc: obj.spriteId ? (resolvedSpriteSources[obj.spriteId] ?? null) : null
+            spriteSrc: obj.spriteId ? (resolvedSpriteSources[obj.spriteId] ?? null) : null,
+            pinned: tabEntry.pinned
           }
         })
         .filter((t): t is NonNullable<typeof t> => t !== null),
-    [openTabIds, projectObjects, resolvedSpriteSources]
+    [openTabs, projectObjects, resolvedSpriteSources]
   )
 
   return (
@@ -274,7 +325,8 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
         activeObjectId={controller.activeObjectId}
         spriteSources={resolvedSpriteSources}
         onSelectObject={handleSelectObject}
-        onOpenInNewTab={(id) => setOpenTabIds((prev) => (prev.includes(id) ? prev : [...prev, id]))}
+        onPinObject={handlePinObject}
+        onOpenInNewTab={handlePinObject}
         onAddObject={(name, folderId) => controller.addObject(name, folderId)}
         onDeleteObject={handleDeleteObjectById}
         onCreateFolder={(name, parentId) => controller.createObjectFolder(name, parentId)}
@@ -290,6 +342,7 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
           activeTabId={controller.activeObjectId}
           onSelectTab={(id) => controller.setActiveObjectId(id)}
           onCloseTab={handleCloseTab}
+          onPinTab={handlePinObject}
         />
 
         {selectedObject ? (

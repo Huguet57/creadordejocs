@@ -5,6 +5,7 @@ type ObjectTab = {
   id: string
   name: string
   spriteSrc: string | null
+  pinned: boolean
 }
 
 type ObjectTabBarProps = {
@@ -12,9 +13,10 @@ type ObjectTabBarProps = {
   activeTabId: string | null
   onSelectTab: (id: string) => void
   onCloseTab: (id: string) => void
+  onPinTab: (id: string) => void
 }
 
-export function ObjectTabBar({ tabs, activeTabId, onSelectTab, onCloseTab }: ObjectTabBarProps) {
+export function ObjectTabBar({ tabs, activeTabId, onSelectTab, onCloseTab, onPinTab }: ObjectTabBarProps) {
   if (tabs.length === 0) return null
 
   const handleCloseClick = (e: MouseEvent, tabId: string) => {
@@ -43,6 +45,7 @@ export function ObjectTabBar({ tabs, activeTabId, onSelectTab, onCloseTab }: Obj
                 : "border-transparent bg-transparent text-slate-500 hover:bg-slate-50 hover:text-slate-700"
             }`}
             onClick={() => onSelectTab(tab.id)}
+            onDoubleClick={() => onPinTab(tab.id)}
             onAuxClick={(e) => handleAuxClick(e, tab.id)}
             title={tab.name}
           >
@@ -56,7 +59,7 @@ export function ObjectTabBar({ tabs, activeTabId, onSelectTab, onCloseTab }: Obj
             ) : (
               <Box className={`h-3 w-3 shrink-0 ${isActive ? "text-blue-500" : "text-slate-400"}`} />
             )}
-            <span className="objtabs-tab-label max-w-[120px] truncate">{tab.name}</span>
+            <span className={`objtabs-tab-label max-w-[120px] truncate ${tab.pinned ? "" : "italic"}`}>{tab.name}</span>
             <span
               className={`objtabs-tab-close inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-sm transition-colors hover:bg-slate-200 hover:text-red-500 ${
                 isActive ? "text-slate-400" : "text-transparent group-hover:text-slate-400"
