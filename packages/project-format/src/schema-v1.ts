@@ -15,6 +15,11 @@ const SceneSchema = z.object({
   objects: z.array(SceneObjectSchema)
 })
 
+const SpriteFrameSchema = z.object({
+  id: z.string().min(1),
+  pixelsRgba: z.array(z.string()).default([])
+})
+
 const SpriteResourceSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
@@ -24,7 +29,8 @@ const SpriteResourceSchema = z.object({
   uploadStatus: z.enum(["notConnected", "ready"]).default("notConnected"),
   width: z.number().int().min(1).default(32),
   height: z.number().int().min(1).default(32),
-  pixelsRgba: z.array(z.string()).default([])
+  pixelsRgba: z.array(z.string()).default([]),
+  frames: z.array(SpriteFrameSchema).optional()
 })
 
 const SpriteFolderSchema = z.object({

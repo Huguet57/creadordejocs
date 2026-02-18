@@ -1289,6 +1289,152 @@ export function deleteSprite(project: ProjectV1, spriteId: string): ProjectV1 {
   }
 }
 
+export type SpriteFrame = NonNullable<ProjectV1["resources"]["sprites"][number]["frames"]>[number]
+
+function getSpriteFrames(sprite: SpriteResource): SpriteFrame[] {
+  return sprite.frames ?? []
+}
+
+function syncPixelsRgbaWithFrame0(sprite: SpriteResource & { frames?: SpriteFrame[] }): SpriteResource {
+  const frames = sprite.frames ?? []
+  if (frames.length === 0) return sprite
+  const firstFrame = frames[0]
+  if (!firstFrame) return sprite
+  return { ...sprite, pixelsRgba: firstFrame.pixelsRgba }
+}
+
+export function addSpriteFrame(
+  project: ProjectV1,
+  spriteId: string,
+  afterFrameId?: string
+): { project: ProjectV1; frameId: string } | null {
+  const sprite = project.resources.sprites.find((entry) => entry.id === spriteId)
+  if (!sprite) return null
+  const frameId = makeId("frame")
+  const width = normalizeSpriteDimension(sprite.width)
+  const height = normalizeSpriteDimension(sprite.height)
+  const newFrame: SpriteFrame = { id: frameId, pixelsRgba: createTransparentPixels(width, height) }
+  const frames = getSpriteFrames(sprite)
+  let nextFrames: SpriteFrame[]
+  if (afterFrameId) {
+    const afterIndex = frames.findIndex((f) => f.id === afterFrameId)
+    if (afterIndex >= 0) {
+      nextFrames = [...frames.slice(0, afterIndex + 1), newFrame, ...frames.slice(afterIndex + 1)]
+    } else {
+      nextFrames = [...frames, newFrame]
+    }
+  } else {
+    nextFrames = [...frames, newFrame]
+  }
+  const updatedSprite = syncPixelsRgbaWithFrame0({ ...sprite, frames: nextFrames })
+  return {
+    project: {
+      ...project,
+      resources: {
+        ...project.resources,
+        sprites: project.resources.sprites.map((entry) => (entry.id === spriteId ? updatedSprite : entry))
+      }
+    },
+    frameId
+  }
+}
+
+export function duplicateSpriteFrame(
+  project: ProjectV1,
+  spriteId: string,
+  frameId: string
+): { project: ProjectV1; frameId: string } | null {
+  const sprite = project.resources.sprites.find((entry) => entry.id === spriteId)
+  if (!sprite) return null
+  const frames = getSpriteFrames(sprite)
+  const sourceIndex = frames.findIndex((f) => f.id === frameId)
+  if (sourceIndex < 0) return null
+  const sourceFrame = frames[sourceIndex]!
+  const newFrameId = makeId("frame")
+  const newFrame: SpriteFrame = { id: newFrameId, pixelsRgba: [...sourceFrame.pixelsRgba] }
+  const nextFrames = [...frames.slice(0, sourceIndex + 1), newFrame, ...frames.slice(sourceIndex + 1)]
+  const updatedSprite = syncPixelsRgbaWithFrame0({ ...sprite, frames: nextFrames })
+  return {
+    project: {
+      ...project,
+      resources: {
+        ...project.resources,
+        sprites: project.resources.sprites.map((entry) => (entry.id === spriteId ? updatedSprite : entry))
+      }
+    },
+    frameId: newFrameId
+  }
+}
+
+export function deleteSpriteFrame(project: ProjectV1, spriteId: string, frameId: string): ProjectV1 {
+  const sprite = project.resources.sprites.find((entry) => entry.id === spriteId)
+  if (!sprite) return project
+  const frames = getSpriteFrames(sprite)
+  if (frames.length <= 1) return project
+  const nextFrames = frames.filter((f) => f.id !== frameId)
+  if (nextFrames.length === frames.length) return project
+  const updatedSprite = syncPixelsRgbaWithFrame0({ ...sprite, frames: nextFrames })
+  return {
+    ...project,
+    resources: {
+      ...project.resources,
+      sprites: project.resources.sprites.map((entry) => (entry.id === spriteId ? updatedSprite : entry))
+    }
+  }
+}
+
+export function updateSpriteFramePixels(
+  project: ProjectV1,
+  spriteId: string,
+  frameId: string,
+  pixelsRgba: string[]
+): ProjectV1 {
+  const sprite = project.resources.sprites.find((entry) => entry.id === spriteId)
+  if (!sprite) return project
+  const frames = getSpriteFrames(sprite)
+  const frameIndex = frames.findIndex((f) => f.id === frameId)
+  if (frameIndex < 0) return project
+  const width = normalizeSpriteDimension(sprite.width)
+  const height = normalizeSpriteDimension(sprite.height)
+  const normalizedPixels = normalizeSpritePixels(width, height, pixelsRgba)
+  const nextFrames = frames.map((f) => (f.id === frameId ? { ...f, pixelsRgba: normalizedPixels } : f))
+  const updatedSprite = syncPixelsRgbaWithFrame0({ ...sprite, frames: nextFrames })
+  return {
+    ...project,
+    resources: {
+      ...project.resources,
+      sprites: project.resources.sprites.map((entry) => (entry.id === spriteId ? updatedSprite : entry))
+    }
+  }
+}
+
+export function reorderSpriteFrame(
+  project: ProjectV1,
+  spriteId: string,
+  frameId: string,
+  newIndex: number
+): ProjectV1 {
+  const sprite = project.resources.sprites.find((entry) => entry.id === spriteId)
+  if (!sprite) return project
+  const frames = getSpriteFrames(sprite)
+  const currentIndex = frames.findIndex((f) => f.id === frameId)
+  if (currentIndex < 0) return project
+  const clampedIndex = Math.max(0, Math.min(newIndex, frames.length - 1))
+  if (clampedIndex === currentIndex) return project
+  const nextFrames = [...frames]
+  const [moved] = nextFrames.splice(currentIndex, 1)
+  if (!moved) return project
+  nextFrames.splice(clampedIndex, 0, moved)
+  const updatedSprite = syncPixelsRgbaWithFrame0({ ...sprite, frames: nextFrames })
+  return {
+    ...project,
+    resources: {
+      ...project.resources,
+      sprites: project.resources.sprites.map((entry) => (entry.id === spriteId ? updatedSprite : entry))
+    }
+  }
+}
+
 export function updateSpritePixelsRgba(project: ProjectV1, spriteId: string, pixelsRgba: string[]): ProjectV1 {
   return {
     ...project,

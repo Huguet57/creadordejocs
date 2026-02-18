@@ -6,7 +6,9 @@ import { SpriteImportButton } from "./components/SpriteImportButton.js"
 import { SpriteImportCropModal } from "./components/SpriteImportCropModal.js"
 import { SpriteListPanel } from "./components/SpriteListPanel.js"
 import { SpriteTabBar } from "./components/SpriteTabBar.js"
+import { SpriteFrameTimeline } from "./components/SpriteFrameTimeline.js"
 import { SpriteToolbar } from "./components/SpriteToolbar.js"
+import { resolveActiveFramePixels, resolveNeighborFrameId, resolveNextActiveFrameId } from "./utils/frame-helpers.js"
 import { useSpriteEditorState } from "./hooks/use-sprite-editor-state.js"
 import { useSpriteImport } from "./hooks/use-sprite-import.js"
 import { useSpritePixelActions } from "./hooks/use-sprite-pixel-actions.js"
@@ -41,6 +43,7 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
   const activeSpriteId = controller.activeSpriteId
   const [magicWandSelection, setMagicWandSelection] = useState<Set<number>>(new Set())
   const [pickerPreviewColor, setPickerPreviewColor] = useState<string | null>(null)
+  const [activeFrameId, setActiveFrameId] = useState<string | null>(null)
 
   useEffect(() => {
     if (activeSpriteId && !spriteIds.includes(activeSpriteId)) {
@@ -82,7 +85,8 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
         name: spriteEntry.name,
         width: spriteEntry.width,
         height: spriteEntry.height,
-        pixelsRgba: spriteEntry.pixelsRgba
+        pixelsRgba: spriteEntry.pixelsRgba,
+        frames: spriteEntry.frames
       })
     }
 
@@ -150,8 +154,22 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
   }
 
   const selectedSprite = sprites.find((spriteEntry) => spriteEntry.id === activeSpriteId) ?? null
+
+  useEffect(() => {
+    if (!selectedSprite) {
+      setActiveFrameId(null)
+      return
+    }
+    const frames = selectedSprite.frames ?? []
+    setActiveFrameId((previous) => resolveNextActiveFrameId(frames, previous))
+  }, [selectedSprite?.id, selectedSprite?.frames])
+
   const selectedSpritePixels = selectedSprite
-    ? normalizePixelGrid(selectedSprite.pixelsRgba, selectedSprite.width, selectedSprite.height)
+    ? normalizePixelGrid(
+        resolveActiveFramePixels(selectedSprite.frames ?? [], activeFrameId, selectedSprite.pixelsRgba),
+        selectedSprite.width,
+        selectedSprite.height
+      )
     : []
 
   const [resolvedSpritePreviews, setResolvedSpritePreviews] = useState<Record<string, string>>({})
@@ -226,7 +244,11 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
     },
     onPixelsImported: (pixelsRgba) => {
       if (!selectedSprite) return
-      controller.updateSpritePixels(selectedSprite.id, pixelsRgba)
+      if (activeFrameId && (selectedSprite.frames?.length ?? 0) > 0) {
+        controller.updateSpriteFramePixels(selectedSprite.id, activeFrameId, pixelsRgba)
+      } else {
+        controller.updateSpritePixels(selectedSprite.id, pixelsRgba)
+      }
     }
   })
 
@@ -238,7 +260,11 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
     toolOptions,
     onPixelsChange: (nextPixelsRgba) => {
       if (!selectedSprite) return
-      controller.updateSpritePixels(selectedSprite.id, nextPixelsRgba)
+      if (activeFrameId && (selectedSprite.frames?.length ?? 0) > 0) {
+        controller.updateSpriteFramePixels(selectedSprite.id, activeFrameId, nextPixelsRgba)
+      } else {
+        controller.updateSpritePixels(selectedSprite.id, nextPixelsRgba)
+      }
     },
     onActiveColorChange: setActiveColor,
     onSelectionChange: setMagicWandSelection
@@ -290,12 +316,20 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
               onFlipHorizontal={() => {
                 if (!selectedSprite) return
                 const result = flipHorizontal({ width: selectedSprite.width, height: selectedSprite.height, pixelsRgba: selectedSpritePixels })
-                controller.updateSpritePixels(selectedSprite.id, result.pixelsRgba)
+                if (activeFrameId && (selectedSprite.frames?.length ?? 0) > 0) {
+                  controller.updateSpriteFramePixels(selectedSprite.id, activeFrameId, result.pixelsRgba)
+                } else {
+                  controller.updateSpritePixels(selectedSprite.id, result.pixelsRgba)
+                }
               }}
               onFlipVertical={() => {
                 if (!selectedSprite) return
                 const result = flipVertical({ width: selectedSprite.width, height: selectedSprite.height, pixelsRgba: selectedSpritePixels })
-                controller.updateSpritePixels(selectedSprite.id, result.pixelsRgba)
+                if (activeFrameId && (selectedSprite.frames?.length ?? 0) > 0) {
+                  controller.updateSpriteFramePixels(selectedSprite.id, activeFrameId, result.pixelsRgba)
+                } else {
+                  controller.updateSpritePixels(selectedSprite.id, result.pixelsRgba)
+                }
               }}
               onRotateCW={() => {
                 if (!selectedSprite) return
@@ -354,6 +388,32 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
                 onConfirm={(cropRect) => void spriteImport.confirmCrop(cropRect)}
                 onCancel={spriteImport.cancelCrop}
               />
+
+              {(selectedSprite.frames?.length ?? 0) > 0 && (
+                <SpriteFrameTimeline
+                  frames={selectedSprite.frames!}
+                  activeFrameId={activeFrameId ?? selectedSprite.frames![0]!.id}
+                  spriteWidth={selectedSprite.width}
+                  spriteHeight={selectedSprite.height}
+                  onSelectFrame={setActiveFrameId}
+                  onAddFrame={() => {
+                    const newId = controller.addSpriteFrame(selectedSprite.id, activeFrameId ?? undefined)
+                    if (newId) setActiveFrameId(newId)
+                  }}
+                  onDuplicateFrame={(frameId) => {
+                    const newId = controller.duplicateSpriteFrame(selectedSprite.id, frameId)
+                    if (newId) setActiveFrameId(newId)
+                  }}
+                  onDeleteFrame={(frameId) => {
+                    const neighbor = resolveNeighborFrameId(selectedSprite.frames!, frameId)
+                    controller.deleteSpriteFrame(selectedSprite.id, frameId)
+                    if (frameId === activeFrameId) setActiveFrameId(neighbor)
+                  }}
+                  onReorderFrame={(frameId, newIndex) =>
+                    controller.reorderSpriteFrame(selectedSprite.id, frameId, newIndex)
+                  }
+                />
+              )}
 
               <SpriteCanvasGrid
                 width={selectedSprite.width}

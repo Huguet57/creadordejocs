@@ -57,6 +57,11 @@ import {
   updateSoundAssetSource,
   updateSpriteAssetSource,
   updateSpritePixelsRgba,
+  addSpriteFrame as addSpriteFrameModel,
+  duplicateSpriteFrame as duplicateSpriteFrameModel,
+  deleteSpriteFrame as deleteSpriteFrameModel,
+  updateSpriteFramePixels as updateSpriteFramePixelsModel,
+  reorderSpriteFrame as reorderSpriteFrameModel,
   addObjectEventBlock as addObjectEventBlockModel,
   removeObjectEventBlock as removeObjectEventBlockModel,
   updateObjectEventBlock as updateObjectEventBlockModel,
@@ -763,6 +768,27 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
     },
     transformSpritePixels(spriteId: string, width: number, height: number, pixelsRgba: string[]) {
       pushProjectChange(transformSpritePixelsModel(project, spriteId, width, height, pixelsRgba), "Transform sprite")
+    },
+    addSpriteFrame(spriteId: string, afterFrameId?: string): string | null {
+      const result = addSpriteFrameModel(project, spriteId, afterFrameId)
+      if (!result) return null
+      pushProjectChange(result.project, "Add sprite frame")
+      return result.frameId
+    },
+    duplicateSpriteFrame(spriteId: string, frameId: string): string | null {
+      const result = duplicateSpriteFrameModel(project, spriteId, frameId)
+      if (!result) return null
+      pushProjectChange(result.project, "Duplicate sprite frame")
+      return result.frameId
+    },
+    deleteSpriteFrame(spriteId: string, frameId: string) {
+      pushProjectChange(deleteSpriteFrameModel(project, spriteId, frameId), "Delete sprite frame")
+    },
+    updateSpriteFramePixels(spriteId: string, frameId: string, pixelsRgba: string[]) {
+      pushProjectChange(updateSpriteFramePixelsModel(project, spriteId, frameId, pixelsRgba))
+    },
+    reorderSpriteFrame(spriteId: string, frameId: string, newIndex: number) {
+      pushProjectChange(reorderSpriteFrameModel(project, spriteId, frameId, newIndex), "Reorder sprite frame")
     },
     assignSelectedObjectSprite(spriteId: string | null) {
       if (!selectedObject) return false
