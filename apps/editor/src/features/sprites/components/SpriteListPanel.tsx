@@ -360,7 +360,7 @@ export function SpriteListPanel({
                 className={`mvp16-sprite-folder-row group -mx-2 flex min-h-[34px] cursor-pointer items-center px-2 py-1 pr-2 transition-colors ${
                   isDropTarget ? "bg-blue-50 ring-1 ring-blue-300" : "hover:bg-slate-100"
                 }`}
-                style={{ paddingLeft: `${depth * 16 + 4}px` }}
+                style={{ paddingLeft: `${depth * 16 + 8}px` }}
                 draggable={!isRenaming}
                 onDragStart={(event) => handleDragStart(event, { type: "folder", id: folderEntry.id })}
                 onDragEnd={handleDragEnd}
@@ -370,7 +370,7 @@ export function SpriteListPanel({
                 onClick={() => toggleFolder(folderEntry.id)}
                 onContextMenu={(event) => openContextMenu(event, null, folderEntry.id)}
               >
-                <span className="mvp16-sprite-folder-chevron mr-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center text-slate-400">
+                <span className="mvp16-sprite-folder-chevron mr-2 inline-flex h-5 w-5 shrink-0 items-center justify-center text-slate-400">
                   {isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                 </span>
                 {isRenaming ? (
@@ -479,8 +479,8 @@ export function SpriteListPanel({
         })}
 
         {creatingFolderParentId === parentId && (
-          <div className="mvp16-sprite-create-folder-inline flex py-1 pr-2" style={{ paddingLeft: `${depth * 16 + 4}px` }}>
-            <span className="mvp16-sprite-create-folder-chevron mr-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center text-slate-400">
+          <div className="mvp16-sprite-create-folder-inline flex py-1 pr-2" style={{ paddingLeft: `${depth * 16 + 8}px` }}>
+            <span className="mvp16-sprite-create-folder-chevron mr-2 inline-flex h-5 w-5 shrink-0 items-center justify-center text-slate-400">
               <ChevronRight className="h-3.5 w-3.5" />
             </span>
             <input

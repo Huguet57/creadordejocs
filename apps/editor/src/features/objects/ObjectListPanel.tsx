@@ -302,7 +302,7 @@ export function ObjectListPanel({
                 className={`objlist-folder-row group -mx-2 flex cursor-pointer items-center px-2 py-1 pr-2 transition-colors ${
                   isDropTarget ? "bg-blue-50 ring-1 ring-blue-300" : "hover:bg-slate-100"
                 }`}
-                style={{ paddingLeft: `${depth * 16 + 4}px` }}
+                style={{ paddingLeft: `${depth * 16 + 8}px` }}
                 draggable={!isRenaming}
                 onDragStart={(e) => handleDragStart(e, { type: "folder", id: folder.id })}
                 onDragEnd={handleDragEnd}
@@ -312,7 +312,7 @@ export function ObjectListPanel({
                 onClick={() => toggleFolder(folder.id)}
                 onContextMenu={(e) => openContextMenu(e, null, folder.id)}
               >
-                <span className="objlist-folder-chevron mr-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center text-slate-400">
+                <span className="objlist-folder-chevron mr-2 inline-flex h-5 w-5 shrink-0 items-center justify-center text-slate-400">
                   {isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                 </span>
                 {isRenaming ? (
@@ -388,8 +388,8 @@ export function ObjectListPanel({
         })}
 
         {creatingFolderParentId === parentId && (
-          <div className="objlist-create-folder-inline flex py-1 pr-2" style={{ paddingLeft: `${depth * 16 + 4}px` }}>
-            <span className="objlist-create-folder-chevron mr-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center text-slate-400">
+          <div className="objlist-create-folder-inline flex py-1 pr-2" style={{ paddingLeft: `${depth * 16 + 8}px` }}>
+            <span className="objlist-create-folder-chevron mr-2 inline-flex h-5 w-5 shrink-0 items-center justify-center text-slate-400">
               <ChevronRight className="h-3.5 w-3.5" />
             </span>
             <input
