@@ -13,7 +13,10 @@ type SpriteImportCropModalProps = {
 
 const SOURCE_BOX_W = 440
 const SOURCE_BOX_H = 400
-const PREVIEW_CELL = 6
+const PREVIEW_CELL_DEFAULT = 6
+const PREVIEW_MAX_W = 220
+const PREVIEW_MAX_H = 220
+const PREVIEW_MIN_CELL = 0.1
 const MIN_CROP_PX = 4
 const HANDLE_RADIUS = 7
 const CANVAS_PAD = 80
@@ -24,6 +27,16 @@ type DragMode = "move" | "nw" | "ne" | "sw" | "se" | null
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value))
+}
+
+export function resolvePreviewCellSize(targetWidth: number, targetHeight: number): number {
+  if (!Number.isFinite(targetWidth) || !Number.isFinite(targetHeight) || targetWidth <= 0 || targetHeight <= 0) {
+    return PREVIEW_CELL_DEFAULT
+  }
+
+  const maxCellByWidth = PREVIEW_MAX_W / targetWidth
+  const maxCellByHeight = PREVIEW_MAX_H / targetHeight
+  return clamp(Math.min(PREVIEW_CELL_DEFAULT, maxCellByWidth, maxCellByHeight), PREVIEW_MIN_CELL, PREVIEW_CELL_DEFAULT)
 }
 
 function fitAspectCrop(
@@ -118,8 +131,9 @@ export function SpriteImportCropModal({
   const canvasW = imgDisplayW + CANVAS_PAD * 2
   const canvasH = imgDisplayH + CANVAS_PAD * 2
 
-  const previewW = targetWidth * PREVIEW_CELL
-  const previewH = targetHeight * PREVIEW_CELL
+  const previewCell = resolvePreviewCellSize(targetWidth, targetHeight)
+  const previewW = Math.max(1, Math.round(targetWidth * previewCell))
+  const previewH = Math.max(1, Math.round(targetHeight * previewCell))
 
   const aspectRatio = targetWidth / targetHeight
   const maxCropDimension = Math.max(imgW, imgH) * 3
