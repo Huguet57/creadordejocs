@@ -1,4 +1,5 @@
-import { Activity, Box, Keyboard, Mouse, MousePointer2, Play, Plus, Radio, Scan, Swords, Timer, X } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
+import { Activity, Box, Copy, Keyboard, Mouse, MousePointer2, Play, Plus, Radio, Scan, Swords, Timer, Trash2, X } from "lucide-react"
 import { Button } from "../../components/ui/button.js"
 import {
   EVENT_DISPLAY_NAMES,
@@ -15,6 +16,7 @@ type EventListPanelProps = {
   onStartAddEvent: () => void
   onCancelAddEvent: () => void
   onRemoveEvent: (id: string) => void
+  onDuplicateEvent: (id: string) => void
 }
 
 const EVENT_ICONS: Record<ObjectEventType, React.ElementType> = {
@@ -30,6 +32,14 @@ const EVENT_ICONS: Record<ObjectEventType, React.ElementType> = {
   CustomEvent: Radio
 }
 
+const DUPLICATABLE_EVENT_TYPES = new Set<ObjectEventType>(["Keyboard", "Mouse", "Collision", "Timer", "CustomEvent"])
+
+type EventContextMenuState = {
+  x: number
+  y: number
+  eventId: string | null
+} | null
+
 export function EventListPanel({
   events,
   activeEventId,
@@ -38,15 +48,43 @@ export function EventListPanel({
   onSelectEvent,
   onStartAddEvent,
   onCancelAddEvent,
-  onRemoveEvent
+  onRemoveEvent,
+  onDuplicateEvent
 }: EventListPanelProps) {
+  const [contextMenu, setContextMenu] = useState<EventContextMenuState>(null)
+  const contextMenuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!contextMenu) return
+    const handleClick = (e: globalThis.MouseEvent) => {
+      if (contextMenuRef.current && !contextMenuRef.current.contains(e.target as Node)) {
+        setContextMenu(null)
+      }
+    }
+    const handleEscape = (e: globalThis.KeyboardEvent) => {
+      if (e.key === "Escape") setContextMenu(null)
+    }
+    document.addEventListener("mousedown", handleClick)
+    document.addEventListener("keydown", handleEscape)
+    return () => {
+      document.removeEventListener("mousedown", handleClick)
+      document.removeEventListener("keydown", handleEscape)
+    }
+  }, [contextMenu])
+
   return (
     <aside className="mvp3-event-list-panel flex w-[220px] flex-col border-r border-slate-200 bg-slate-50">
       <div className="flex items-center justify-between border-b border-slate-200 p-3">
         <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Events</span>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-2">
+      <div
+        className="flex-1 overflow-y-auto p-2"
+        onContextMenu={(e) => {
+          e.preventDefault()
+          setContextMenu({ x: e.clientX, y: e.clientY, eventId: null })
+        }}
+      >
         <div className="flex flex-col gap-1">
           {events.length === 0 && (
             <p className="px-2 py-4 text-center text-xs text-slate-400">No events defined</p>
@@ -59,12 +97,18 @@ export function EventListPanel({
             return (
               <div
                 key={event.id}
-                className={`group flex cursor-pointer items-center justify-between rounded px-2 py-1.5 transition-colors ${
+                className={`group flex cursor-pointer items-center rounded px-2 py-1.5 transition-colors ${
                   activeEventId === event.id
                     ? "bg-white shadow-sm ring-1 ring-slate-200"
                     : "hover:bg-slate-100"
                 }`}
                 onClick={() => onSelectEvent(event.id)}
+                onContextMenu={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  onSelectEvent(event.id)
+                  setContextMenu({ x: e.clientX, y: e.clientY, eventId: event.id })
+                }}
               >
                 <button
                   type="button"
@@ -111,17 +155,6 @@ export function EventListPanel({
                     )}
                   </div>
                 </button>
-                <button
-                  type="button"
-                  className={`opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100 ${activeEventId === event.id ? "opacity-100" : ""}`}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onRemoveEvent(event.id)
-                  }}
-                  title="Remove event"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
               </div>
             )
           })}
@@ -159,6 +192,62 @@ export function EventListPanel({
           Add Event
         </Button>
       </div>
+
+      {contextMenu && (
+        <div
+          ref={contextMenuRef}
+          className="event-context-menu fixed z-30 min-w-[160px] overflow-hidden rounded-md border border-slate-200 bg-white py-1 shadow-lg"
+          style={{ left: `${contextMenu.x}px`, top: `${contextMenu.y}px` }}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-slate-700 transition-colors hover:bg-slate-100"
+            onClick={() => {
+              setContextMenu(null)
+              onStartAddEvent()
+            }}
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Afegir event
+          </button>
+          {contextMenu.eventId && (() => {
+            const contextEvent = events.find((e) => e.id === contextMenu.eventId)
+            const canDuplicate = contextEvent != null && DUPLICATABLE_EVENT_TYPES.has(contextEvent.type)
+            return (
+              <>
+                {canDuplicate && (
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-slate-700 transition-colors hover:bg-slate-100"
+                    onClick={() => {
+                      const eventId = contextMenu.eventId!
+                      setContextMenu(null)
+                      onDuplicateEvent(eventId)
+                    }}
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                    Duplica event
+                  </button>
+                )}
+                <div className="my-1 border-t border-slate-100" />
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-red-600 transition-colors hover:bg-red-50"
+                  onClick={() => {
+                    const eventId = contextMenu.eventId!
+                    setContextMenu(null)
+                    onRemoveEvent(eventId)
+                  }}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Elimina event
+                </button>
+              </>
+            )
+          })()}
+        </div>
+      )}
     </aside>
   )
 }

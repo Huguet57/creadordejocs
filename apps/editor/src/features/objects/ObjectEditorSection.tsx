@@ -383,6 +383,10 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
                 }))
               }}
               onCancelAddEvent={() => setIsEventSelectorOpen(false)}
+              onDuplicateEvent={(id) => {
+                controller.duplicateObjectEvent(id)
+                setSelectNewestForObjectId(selectedObject.id)
+              }}
               onRemoveEvent={(id) => {
                 controller.removeObjectEvent(id)
                 if (activeEventId === id) {

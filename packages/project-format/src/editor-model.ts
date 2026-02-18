@@ -92,6 +92,11 @@ export type RemoveObjectEventInput = {
   eventId: string
 }
 
+export type DuplicateObjectEventInput = {
+  objectId: string
+  eventId: string
+}
+
 export type AddObjectEventActionInput = {
   objectId: string
   eventId: string
@@ -1557,6 +1562,30 @@ export function removeObjectEvent(project: ProjectV1, input: RemoveObjectEventIn
           }
         : objectEntry
     )
+  }
+}
+
+export function duplicateObjectEvent(project: ProjectV1, input: DuplicateObjectEventInput): ProjectV1 {
+  return {
+    ...project,
+    objects: project.objects.map((objectEntry) => {
+      if (objectEntry.id !== input.objectId) {
+        return objectEntry
+      }
+      const sourceEvent = objectEntry.events.find((eventEntry) => eventEntry.id === input.eventId)
+      if (!sourceEvent) {
+        return objectEntry
+      }
+      const sourceIndex = objectEntry.events.indexOf(sourceEvent)
+      const clonedEvent = {
+        ...JSON.parse(JSON.stringify(sourceEvent)) as typeof sourceEvent,
+        id: makeId("event"),
+        items: sourceEvent.items.map((item) => cloneObjectEventItemForPaste(item))
+      }
+      const events = [...objectEntry.events]
+      events.splice(sourceIndex + 1, 0, clonedEvent)
+      return { ...objectEntry, events }
+    })
   }
 }
 

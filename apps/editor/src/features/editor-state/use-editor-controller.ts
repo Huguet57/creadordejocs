@@ -39,6 +39,7 @@ import {
   quickCreateObject,
   quickCreateSound,
   quickCreateSpriteWithSize,
+  duplicateObjectEvent as duplicateObjectEventModel,
   removeObjectEvent,
   removeObjectEventAction as removeObjectEventActionModel,
   removeObjectEventIfAction as removeObjectEventIfActionModel,
@@ -864,6 +865,13 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       pushProjectChange(
         removeObjectEvent(project, { objectId: selectedObject.id, eventId }),
         `Remove object event`
+      )
+    },
+    duplicateObjectEvent(eventId: string) {
+      if (!selectedObject) return
+      pushProjectChange(
+        duplicateObjectEventModel(project, { objectId: selectedObject.id, eventId }),
+        "Duplicate event"
       )
     },
     addObjectEventAction(eventId: string, action: ObjectActionDraft) {
