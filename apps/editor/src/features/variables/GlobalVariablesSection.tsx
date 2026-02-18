@@ -365,17 +365,7 @@ export function GlobalVariablesSection({ controller }: GlobalVariablesSectionPro
           <h2 className="text-sm font-semibold text-slate-900">Global Variables</h2>
           <p className="text-xs text-slate-500">Variables shared across all object instances.</p>
         </div>
-        {isAdding ? (
-          <button
-            type="button"
-            className="mvpv2-global-vars-header-close inline-flex h-6 w-6 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
-            onClick={() => setIsAdding(false)}
-            title="Cancel"
-            aria-label="Cancel add variable"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        ) : (
+        {!isAdding && (
           <button
             type="button"
             className="mvpv2-global-vars-header-add inline-flex h-6 w-6 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
@@ -388,130 +378,9 @@ export function GlobalVariablesSection({ controller }: GlobalVariablesSectionPro
         )}
       </header>
 
-      {isAdding ? (
-        <div className="mvpv2-global-vars-add-panel flex flex-1 flex-col overflow-hidden bg-slate-50/50">
-          <div className="mvpv2-global-vars-add-panel-body flex-1 space-y-3 overflow-y-auto p-4">
-            <div>
-              <label className="mvpv2-global-vars-add-field-label mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                Name
-              </label>
-              <input
-                ref={inputCallbackRef}
-                value={newVariableName}
-                onChange={(event) => setNewVariableName(event.target.value)}
-                onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
-                  blockUndoShortcuts(event)
-                  if (event.key === "Enter") handleAdd()
-                  if (event.key === "Escape") setIsAdding(false)
-                }}
-                className="mvpv2-global-vars-add-field-name flex h-8 w-full max-w-sm rounded-md border border-slate-300 bg-white px-3 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
-                placeholder="e.g. score, lives, level, coins"
-              />
-            </div>
-
-            <div>
-              <label className="mvpv2-global-vars-add-field-label mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                Type
-              </label>
-              <div className="flex max-w-sm gap-1.5">
-                <select
-                  className="mvpv2-global-vars-add-type-select h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400"
-                  value={newVariableType}
-                  onChange={(event) => {
-                    const nextType = event.target.value as VariableType
-                    setNewVariableType(nextType)
-                    setNewVariableRawValue(
-                      nextType === "boolean"
-                        ? "false"
-                        : nextType === "list"
-                          ? "[]"
-                          : nextType === "map"
-                            ? "{}"
-                            : ""
-                    )
-                  }}
-                >
-                  <option value="number">number</option>
-                  <option value="string">string</option>
-                  <option value="boolean">boolean</option>
-                  <option value="list">list</option>
-                  <option value="map">map</option>
-                </select>
-                {(newVariableType === "list" || newVariableType === "map") && (
-                  <select
-                    className="mvpv2-global-vars-add-itemtype-select h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400"
-                    value={newVariableItemType}
-                    onChange={(event) => setNewVariableItemType(event.target.value as VariableItemType)}
-                  >
-                    <option value="number">number</option>
-                    <option value="string">string</option>
-                    <option value="boolean">boolean</option>
-                  </select>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <label className="mvpv2-global-vars-add-field-label mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                Initial value
-              </label>
-              <div className="max-w-sm">
-                {newVariableType === "boolean" ? (
-                  <select
-                    className="mvpv2-global-vars-add-field-value-bool h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400"
-                    value={newVariableRawValue}
-                    onChange={(event) => setNewVariableRawValue(event.target.value)}
-                  >
-                    <option value="true">true</option>
-                    <option value="false">false</option>
-                  </select>
-                ) : newVariableType === "list" ? (
-                  <GlobalListValueEditor
-                    value={parseSafeList(newVariableRawValue, newVariableItemType)}
-                    itemType={newVariableItemType}
-                    onChange={(next) => setNewVariableRawValue(JSON.stringify(next))}
-                  />
-                ) : newVariableType === "map" ? (
-                  <GlobalMapValueEditor
-                    value={parseSafeMap(newVariableRawValue, newVariableItemType)}
-                    itemType={newVariableItemType}
-                    onChange={(next) => setNewVariableRawValue(JSON.stringify(next))}
-                  />
-                ) : (
-                  <input
-                    className="mvpv2-global-vars-add-field-value-input h-8 w-full rounded border border-slate-300 bg-white px-3 text-xs text-slate-900 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400"
-                    type="text"
-                    inputMode={newVariableType === "number" ? "numeric" : "text"}
-                    value={newVariableRawValue}
-                    onChange={(event) => setNewVariableRawValue(event.target.value)}
-                    onBlur={() => {
-                      if (newVariableType === "number" && (newVariableRawValue === "" || newVariableRawValue === "-")) {
-                        setNewVariableRawValue("0")
-                      }
-                    }}
-                    placeholder={newVariableType === "number" ? "0" : "Value"}
-                  />
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="mvpv2-global-vars-add-panel-footer border-t border-slate-200 bg-white p-4">
-            <Button
-              size="sm"
-              className="mvpv2-global-vars-add-panel-submit h-8 w-full max-w-sm text-xs"
-              onClick={handleAdd}
-              disabled={!canAdd}
-            >
-              <Plus className="mr-1.5 h-3.5 w-3.5" />
-              Add global
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <div className="mvpv2-global-vars-list flex-1 overflow-y-auto p-4">
-          <div className="flex max-w-xl flex-col gap-2">
-            {globalVariables.length === 0 && (
+      <div className="mvpv2-global-vars-list flex-1 overflow-y-auto p-4">
+          <div className="flex flex-col gap-2">
+            {globalVariables.length === 0 && !isAdding && (
               <p className="mvpv2-global-vars-empty px-1 py-4 text-center text-xs text-slate-400">
                 No variables yet
               </p>
@@ -615,7 +484,153 @@ export function GlobalVariablesSection({ controller }: GlobalVariablesSectionPro
                 </div>
               </div>
             ))}
+
           </div>
+        </div>
+
+      {isAdding && (
+        <div className="mvpv2-global-vars-add-footer shrink-0 space-y-2 border-t border-slate-200 bg-slate-50 p-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-600">Afegir variable global</span>
+            <button
+              type="button"
+              className="mvpv2-global-vars-add-close inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
+              onClick={() => setIsAdding(false)}
+              title="Cancel"
+              aria-label="Cancel add variable"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+
+          <div className="mvpv2-global-vars-add-inline flex items-end gap-2">
+            <div className="mvpv2-global-vars-add-name-field min-w-[140px] flex-1">
+              <label className="mvpv2-global-vars-add-field-label mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                Name
+              </label>
+              <input
+                ref={inputCallbackRef}
+                value={newVariableName}
+                onChange={(event) => setNewVariableName(event.target.value)}
+                onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
+                  blockUndoShortcuts(event)
+                  if (event.key === "Enter") handleAdd()
+                  if (event.key === "Escape") setIsAdding(false)
+                }}
+                className="mvpv2-global-vars-add-field-name flex h-8 w-full rounded-md border border-slate-300 bg-white px-2.5 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+                placeholder="e.g. score, lives, level"
+              />
+            </div>
+
+            <div className="mvpv2-global-vars-add-type-field w-[100px] shrink-0">
+              <label className="mvpv2-global-vars-add-field-label mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                Type
+              </label>
+              <select
+                className="mvpv2-global-vars-add-type-select h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400"
+                value={newVariableType}
+                onChange={(event) => {
+                  const nextType = event.target.value as VariableType
+                  setNewVariableType(nextType)
+                  setNewVariableRawValue(
+                    nextType === "boolean"
+                      ? "false"
+                      : nextType === "list"
+                        ? "[]"
+                        : nextType === "map"
+                          ? "{}"
+                          : ""
+                  )
+                }}
+              >
+                <option value="number">number</option>
+                <option value="string">string</option>
+                <option value="boolean">boolean</option>
+                <option value="list">list</option>
+                <option value="map">map</option>
+              </select>
+            </div>
+
+            {(newVariableType === "list" || newVariableType === "map") && (
+              <div className="mvpv2-global-vars-add-itemtype-field w-[100px] shrink-0">
+                <label className="mvpv2-global-vars-add-field-label mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                  Item type
+                </label>
+                <select
+                  className="mvpv2-global-vars-add-itemtype-select h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400"
+                  value={newVariableItemType}
+                  onChange={(event) => setNewVariableItemType(event.target.value as VariableItemType)}
+                >
+                  <option value="number">number</option>
+                  <option value="string">string</option>
+                  <option value="boolean">boolean</option>
+                </select>
+              </div>
+            )}
+
+            {newVariableType !== "list" && newVariableType !== "map" && (
+              <div className="mvpv2-global-vars-add-value-field min-w-[120px] flex-1">
+                <label className="mvpv2-global-vars-add-field-label mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                  Initial value
+                </label>
+                {newVariableType === "boolean" ? (
+                  <select
+                    className="mvpv2-global-vars-add-field-value-bool h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400"
+                    value={newVariableRawValue}
+                    onChange={(event) => setNewVariableRawValue(event.target.value)}
+                  >
+                    <option value="true">true</option>
+                    <option value="false">false</option>
+                  </select>
+                ) : (
+                  <input
+                    className="mvpv2-global-vars-add-field-value-input h-8 w-full rounded border border-slate-300 bg-white px-2.5 text-xs text-slate-900 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400"
+                    type="text"
+                    inputMode={newVariableType === "number" ? "numeric" : "text"}
+                    value={newVariableRawValue}
+                    onChange={(event) => setNewVariableRawValue(event.target.value)}
+                    onBlur={() => {
+                      if (newVariableType === "number" && (newVariableRawValue === "" || newVariableRawValue === "-")) {
+                        setNewVariableRawValue("0")
+                      }
+                    }}
+                    placeholder={newVariableType === "number" ? "0" : "Value"}
+                  />
+                )}
+              </div>
+            )}
+
+            <Button
+              size="sm"
+              className="mvpv2-global-vars-add-panel-submit h-8 shrink-0 text-xs"
+              onClick={handleAdd}
+              disabled={!canAdd}
+            >
+              <Plus className="mr-1.5 h-3.5 w-3.5" />
+              Add
+            </Button>
+          </div>
+
+          {(newVariableType === "list" || newVariableType === "map") && (
+            <div className="mvpv2-global-vars-add-value-block">
+              <label className="mvpv2-global-vars-add-field-label mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                Initial value
+              </label>
+              {newVariableType === "list" ? (
+                <GlobalListValueEditor
+                  value={parseSafeList(newVariableRawValue, newVariableItemType)}
+                  itemType={newVariableItemType}
+                  onChange={(next) => setNewVariableRawValue(JSON.stringify(next))}
+                />
+              ) : (
+                <GlobalMapValueEditor
+                  value={parseSafeMap(newVariableRawValue, newVariableItemType)}
+                  itemType={newVariableItemType}
+                  onChange={(next) => setNewVariableRawValue(JSON.stringify(next))}
+                />
+              )}
+            </div>
+          )}
         </div>
       )}
     </section>
