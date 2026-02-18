@@ -19,7 +19,6 @@ import {
   type KeyboardEvent,
   type MouseEvent
 } from "react"
-import { Button } from "../../components/ui/button.js"
 import type { ProjectV1 } from "@creadordejocs/project-format"
 import { EditorSidebarLayout } from "../shared/editor-sidebar/EditorSidebarLayout.js"
 import { buildEntriesByFolder, buildFolderChildrenByParent, isFolderDescendant } from "../shared/editor-sidebar/tree-utils.js"
@@ -110,16 +109,22 @@ export function ObjectListPanel({
 
   const startAddingObject = (inFolderId: string | null = null) => {
     setAddingInFolderId(inFolderId)
-    setNewObjectName("Objecte nou")
+    setNewObjectName("")
     setCreatingFolderParentId(undefined)
     setNewFolderName("")
     setIsAdding(true)
   }
 
-  const handleAddObject = () => {
-    if (!newObjectName.trim()) return
-    onAddObject(newObjectName, addingInFolderId)
-    setNewObjectName("Objecte nou")
+  const commitAddObject = () => {
+    const trimmed = newObjectName.trim()
+    if (!trimmed) {
+      setIsAdding(false)
+      setAddingInFolderId(null)
+      setNewObjectName("")
+      return
+    }
+    onAddObject(trimmed, addingInFolderId)
+    setNewObjectName("")
     setIsAdding(false)
     setAddingInFolderId(null)
   }
@@ -405,25 +410,24 @@ export function ObjectListPanel({
         )}
 
         {isAdding && addingInFolderId === parentId && (
-          <div className="objlist-add-form-inline flex gap-1.5 py-1 pr-2" style={{ paddingLeft: `${depth * 16 + 8}px` }}>
+          <div className="objlist-add-form-inline flex py-1 pr-2" style={{ paddingLeft: `${depth * 16 + 8}px` }}>
             <input
               ref={inputCallbackRef}
               value={newObjectName}
               onChange={(e: ChangeEvent<HTMLInputElement>) => setNewObjectName(e.target.value)}
               onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
                 blockUndoShortcuts(e)
-                if (e.key === "Enter") handleAddObject()
+                if (e.key === "Enter") commitAddObject()
                 if (e.key === "Escape") {
                   setIsAdding(false)
                   setAddingInFolderId(null)
+                  setNewObjectName("")
                 }
               }}
+              onBlur={commitAddObject}
               className="flex h-7 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
-              placeholder="Name..."
+              placeholder="Objecte nou"
             />
-            <Button size="sm" className="objlist-add-confirm h-7 w-7 shrink-0 px-0" onClick={handleAddObject} title="Add object">
-              <Plus className="h-3.5 w-3.5" />
-            </Button>
           </div>
         )}
       </>
