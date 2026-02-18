@@ -11,6 +11,7 @@ import { useSpriteEditorState } from "./hooks/use-sprite-editor-state.js"
 import { useSpriteImport } from "./hooks/use-sprite-import.js"
 import { useSpritePixelActions } from "./hooks/use-sprite-pixel-actions.js"
 import { normalizePixelGrid } from "./utils/sprite-grid.js"
+import { flipHorizontal, flipVertical, rotateCW, rotateCCW } from "./utils/sprite-transforms.js"
 import { hasVisibleSpritePixels } from "./utils/has-visible-pixels.js"
 import { resolveSpritePreviewSource } from "./utils/sprite-preview-source.js"
 
@@ -286,6 +287,26 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
               onToolChange={setActiveTool}
               onColorChange={setActiveColor}
               onUpdateToolOptions={updateToolOptions}
+              onFlipHorizontal={() => {
+                if (!selectedSprite) return
+                const result = flipHorizontal({ width: selectedSprite.width, height: selectedSprite.height, pixelsRgba: selectedSpritePixels })
+                controller.updateSpritePixels(selectedSprite.id, result.pixelsRgba)
+              }}
+              onFlipVertical={() => {
+                if (!selectedSprite) return
+                const result = flipVertical({ width: selectedSprite.width, height: selectedSprite.height, pixelsRgba: selectedSpritePixels })
+                controller.updateSpritePixels(selectedSprite.id, result.pixelsRgba)
+              }}
+              onRotateCW={() => {
+                if (!selectedSprite) return
+                const result = rotateCW({ width: selectedSprite.width, height: selectedSprite.height, pixelsRgba: selectedSpritePixels })
+                controller.transformSpritePixels(selectedSprite.id, result.width, result.height, result.pixelsRgba)
+              }}
+              onRotateCCW={() => {
+                if (!selectedSprite) return
+                const result = rotateCCW({ width: selectedSprite.width, height: selectedSprite.height, pixelsRgba: selectedSpritePixels })
+                controller.transformSpritePixels(selectedSprite.id, result.width, result.height, result.pixelsRgba)
+              }}
             />
             <div className="mvp16-sprite-editor-main flex flex-1 flex-col">
               <div className="mvp16-sprite-canvas-bar flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-2">

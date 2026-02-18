@@ -1311,6 +1311,32 @@ export function updateSpritePixelsRgba(project: ProjectV1, spriteId: string, pix
   }
 }
 
+export function transformSpritePixels(
+  project: ProjectV1,
+  spriteId: string,
+  width: number,
+  height: number,
+  pixelsRgba: string[]
+): ProjectV1 {
+  const normalizedWidth = normalizeSpriteDimension(width)
+  const normalizedHeight = normalizeSpriteDimension(height)
+  return {
+    ...project,
+    resources: {
+      ...project.resources,
+      sprites: project.resources.sprites.map((spriteEntry) => {
+        if (spriteEntry.id !== spriteId) return spriteEntry
+        return {
+          ...spriteEntry,
+          width: normalizedWidth,
+          height: normalizedHeight,
+          pixelsRgba: normalizeSpritePixels(normalizedWidth, normalizedHeight, pixelsRgba)
+        }
+      })
+    }
+  }
+}
+
 export function updateObjectSpriteId(project: ProjectV1, objectId: string, spriteId: string | null): ProjectV1 {
   return {
     ...project,

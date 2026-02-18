@@ -1,4 +1,4 @@
-import { Eraser, PaintBucket, Pencil, Pipette, WandSparkles } from "lucide-react"
+import { Eraser, FlipHorizontal2, FlipVertical2, PaintBucket, Pencil, Pipette, RotateCcw, RotateCw, WandSparkles } from "lucide-react"
 import { useMemo } from "react"
 import { ToolOptionsPanel } from "./tool-options/ToolOptionsPanel.js"
 import type { SpriteEditorTool, SpriteToolOptionsMap, SpriteToolOptionsState } from "../types/sprite-editor.js"
@@ -47,6 +47,10 @@ type SpriteToolbarProps = {
     tool: ToolName,
     options: Partial<SpriteToolOptionsMap[ToolName]>
   ) => void
+  onFlipHorizontal: () => void
+  onFlipVertical: () => void
+  onRotateCW: () => void
+  onRotateCCW: () => void
 }
 
 const TOOL_ICONS: Record<SpriteEditorTool, typeof Pencil> = {
@@ -65,7 +69,11 @@ export function SpriteToolbar({
   toolOptions,
   onToolChange,
   onColorChange,
-  onUpdateToolOptions
+  onUpdateToolOptions,
+  onFlipHorizontal,
+  onFlipVertical,
+  onRotateCW,
+  onRotateCCW
 }: SpriteToolbarProps) {
   const spriteColors = useMemo(() => extractDominantColors(spritePixels, 20), [spritePixels])
 
@@ -94,7 +102,7 @@ export function SpriteToolbar({
         </div>
       </div>
 
-      <div className="mvp16-sprite-tool-options-section flex flex-col gap-1 border-b border-slate-200 p-2">
+      <div className="mvp16-sprite-tool-options-section flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto border-b border-slate-200 p-2">
         <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-400">Tool options</p>
         <ToolOptionsPanel
           activeTool={activeTool}
@@ -105,6 +113,48 @@ export function SpriteToolbar({
           onColorChange={onColorChange}
           onUpdateToolOptions={onUpdateToolOptions}
         />
+      </div>
+
+      <div className="mvp16-sprite-transform-section mt-auto flex shrink-0 flex-col gap-1 border-t border-slate-200 p-2">
+        <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-400">Transform</p>
+        <div className="grid grid-cols-2 gap-1">
+          <button
+            type="button"
+            className="mvp16-sprite-transform-btn flex flex-col items-center gap-0.5 rounded px-1 py-1.5 text-[9px] text-slate-500 hover:bg-slate-100"
+            onClick={onFlipHorizontal}
+            title="Flip horizontal"
+          >
+            <FlipHorizontal2 className="h-4 w-4" />
+            Flip H
+          </button>
+          <button
+            type="button"
+            className="mvp16-sprite-transform-btn flex flex-col items-center gap-0.5 rounded px-1 py-1.5 text-[9px] text-slate-500 hover:bg-slate-100"
+            onClick={onFlipVertical}
+            title="Flip vertical"
+          >
+            <FlipVertical2 className="h-4 w-4" />
+            Flip V
+          </button>
+          <button
+            type="button"
+            className="mvp16-sprite-transform-btn flex flex-col items-center gap-0.5 rounded px-1 py-1.5 text-[9px] text-slate-500 hover:bg-slate-100"
+            onClick={onRotateCW}
+            title="Rotate clockwise"
+          >
+            <RotateCw className="h-4 w-4" />
+            Rot ↻
+          </button>
+          <button
+            type="button"
+            className="mvp16-sprite-transform-btn flex flex-col items-center gap-0.5 rounded px-1 py-1.5 text-[9px] text-slate-500 hover:bg-slate-100"
+            onClick={onRotateCCW}
+            title="Rotate counter-clockwise"
+          >
+            <RotateCcw className="h-4 w-4" />
+            Rot ↺
+          </button>
+        </div>
       </div>
     </aside>
   )

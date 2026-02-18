@@ -10,6 +10,7 @@ import {
   createObjectFolder as createObjectFolderModel,
   deleteSprite as deleteSpriteModel,
   duplicateSprite as duplicateSpriteModel,
+  transformSpritePixels as transformSpritePixelsModel,
   deleteSpriteFolder as deleteSpriteFolderModel,
   deleteObjectFolder as deleteObjectFolderModel,
   deleteRoom as deleteRoomModel,
@@ -759,6 +760,9 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
     },
     updateSpritePixels(spriteId: string, pixelsRgba: string[]) {
       pushProjectChange(updateSpritePixelsRgba(project, spriteId, pixelsRgba))
+    },
+    transformSpritePixels(spriteId: string, width: number, height: number, pixelsRgba: string[]) {
+      pushProjectChange(transformSpritePixelsModel(project, spriteId, width, height, pixelsRgba), "Transform sprite")
     },
     assignSelectedObjectSprite(spriteId: string | null) {
       if (!selectedObject) return false
