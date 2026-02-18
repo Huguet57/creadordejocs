@@ -5345,6 +5345,21 @@ describe("changeSprite action", () => {
     const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
     expect(result.runtime.spriteOverrideByInstanceId["instance-target"]).toBeUndefined()
   })
+
+  it("does not reset animation elapsed when sprite is already the same", () => {
+    const project = createSpriteActionProject([
+      { id: "a-change-sprite", type: "changeSprite", spriteId: "sprite-b", target: "self" }
+    ])
+    const initialRuntime = createInitialRuntimeState(project)
+    const runtimeAlreadyOverridden = {
+      ...initialRuntime,
+      spriteOverrideByInstanceId: { "instance-actor": "sprite-b" },
+      spriteAnimationElapsedMsByInstanceId: { "instance-actor": 150 }
+    }
+    const result = runRuntimeTick(project, "room-main", new Set(), runtimeAlreadyOverridden)
+    // sprite-b has 1 frame so animation doesn't advance, but elapsed should NOT be reset to 0
+    expect(result.runtime.spriteAnimationElapsedMsByInstanceId["instance-actor"]).not.toBe(0)
+  })
 })
 
 describe("setSpriteSpeed action", () => {

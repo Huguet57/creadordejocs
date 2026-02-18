@@ -1285,6 +1285,21 @@ function executeActionFallback(
     if (!targetInstanceId) {
       return { result }
     }
+    const overrideSpriteId = result.runtime.spriteOverrideByInstanceId[targetInstanceId]
+    if (overrideSpriteId === action.spriteId) {
+      return { result }
+    }
+    if (overrideSpriteId === undefined) {
+      const targetInstance = targetInstanceId === result.instance.id
+        ? result.instance
+        : ctx.roomInstances.find((entry) => entry.id === targetInstanceId)
+      const targetObject = targetInstance
+        ? ctx.project.objects.find((entry) => entry.id === targetInstance.objectId)
+        : undefined
+      if (targetObject?.spriteId === action.spriteId) {
+        return { result }
+      }
+    }
     return {
       result: {
         ...result,
@@ -1313,6 +1328,11 @@ function executeActionFallback(
     if (!targetInstanceId) {
       return { result }
     }
+    const clampedSpeed = Math.max(1, speedMs)
+    const currentSpeed = result.runtime.spriteSpeedMsByInstanceId[targetInstanceId]
+    if (currentSpeed === clampedSpeed) {
+      return { result }
+    }
     return {
       result: {
         ...result,
@@ -1320,7 +1340,7 @@ function executeActionFallback(
           ...result.runtime,
           spriteSpeedMsByInstanceId: {
             ...result.runtime.spriteSpeedMsByInstanceId,
-            [targetInstanceId]: Math.max(1, speedMs)
+            [targetInstanceId]: clampedSpeed
           }
         }
       }
