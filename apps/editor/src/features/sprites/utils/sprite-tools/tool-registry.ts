@@ -13,7 +13,9 @@ export const SPRITE_TOOL_REGISTRY: SpriteToolDefinition[] = [
   { id: "eraser", label: "Eraser", usesColor: false, cursor: "cell" },
   { id: "bucket_fill", label: "Bucket", usesColor: true, cursor: "copy" },
   { id: "magic_wand", label: "Wand", usesColor: false, cursor: "pointer", hidden: true },
-  { id: "color_picker", label: "Picker", usesColor: false, cursor: "crosshair" }
+  { id: "color_picker", label: "Picker", usesColor: false, cursor: "crosshair" },
+  { id: "select", label: "Select", usesColor: false, cursor: "crosshair" },
+  { id: "move", label: "Move", usesColor: false, cursor: "move" }
 ]
 
 export const SPRITE_TOOL_BY_ID: Record<SpriteEditorTool, SpriteToolDefinition> = {
@@ -21,5 +23,7 @@ export const SPRITE_TOOL_BY_ID: Record<SpriteEditorTool, SpriteToolDefinition> =
   eraser: { id: "eraser", label: "Eraser", usesColor: false, cursor: "cell" },
   bucket_fill: { id: "bucket_fill", label: "Bucket", usesColor: true, cursor: "copy" },
   magic_wand: { id: "magic_wand", label: "Wand", usesColor: false, cursor: "pointer" },
-  color_picker: { id: "color_picker", label: "Picker", usesColor: false, cursor: "crosshair" }
+  color_picker: { id: "color_picker", label: "Picker", usesColor: false, cursor: "crosshair" },
+  select: { id: "select", label: "Select", usesColor: false, cursor: "crosshair" },
+  move: { id: "move", label: "Move", usesColor: false, cursor: "move" }
 }

@@ -6,7 +6,7 @@ import { readPixelColor } from "../utils/sprite-tools/color-picker.js"
 import { floodFillPixels } from "../utils/sprite-tools/flood-fill.js"
 import { selectContiguousByColor } from "../utils/sprite-tools/magic-wand.js"
 
-export type SpritePointerActionPhase = "pointerDown" | "pointerDrag"
+export type SpritePointerActionPhase = "pointerDown" | "pointerDrag" | "pointerUp"
 
 type BucketFillInput = {
   width: number

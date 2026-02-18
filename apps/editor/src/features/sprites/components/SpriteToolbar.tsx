@@ -1,4 +1,4 @@
-import { Eraser, FlipHorizontal2, FlipVertical2, PaintBucket, Pencil, Pipette, RotateCcw, RotateCw, WandSparkles } from "lucide-react"
+import { BoxSelect, Eraser, FlipHorizontal2, FlipVertical2, Move, PaintBucket, Pencil, Pipette, RotateCcw, RotateCw, WandSparkles } from "lucide-react"
 import { useMemo } from "react"
 import { ToolOptionsPanel } from "./tool-options/ToolOptionsPanel.js"
 import type { SpriteEditorTool, SpriteToolOptionsMap, SpriteToolOptionsState } from "../types/sprite-editor.js"
@@ -58,7 +58,9 @@ const TOOL_ICONS: Record<SpriteEditorTool, typeof Pencil> = {
   eraser: Eraser,
   bucket_fill: PaintBucket,
   magic_wand: WandSparkles,
-  color_picker: Pipette
+  color_picker: Pipette,
+  select: BoxSelect,
+  move: Move
 }
 
 export function SpriteToolbar({

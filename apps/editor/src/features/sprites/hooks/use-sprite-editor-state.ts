@@ -8,7 +8,9 @@ const DEFAULT_TOOL_OPTIONS: SpriteToolOptionsState = {
   magic_wand: {
     tolerance: 0
   },
-  color_picker: {}
+  color_picker: {},
+  select: {},
+  move: {}
 }
 
 export type SpritePaintTool = "pencil" | "bucket_fill"

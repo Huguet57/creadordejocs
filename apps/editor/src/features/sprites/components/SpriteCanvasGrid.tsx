@@ -1,9 +1,16 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { hexRgbaToCss } from "../utils/pixel-rgba.js"
 import { getPixelIndicesInRadius, normalizePixelGrid } from "../utils/sprite-grid.js"
 import type { SpriteEditorTool } from "../types/sprite-editor.js"
 import type { SpritePointerActionPhase } from "../hooks/use-sprite-pixel-actions.js"
 import { SPRITE_TOOL_BY_ID } from "../utils/sprite-tools/tool-registry.js"
+
+export type SelectDragRect = {
+  startX: number
+  startY: number
+  endX: number
+  endY: number
+}
 
 type SpriteCanvasGridProps = {
   width: number
@@ -14,8 +21,18 @@ type SpriteCanvasGridProps = {
   activeTool: SpriteEditorTool
   eraserRadius: number
   selectedIndices: Set<number>
+  selectDragRect: SelectDragRect | null
   onPaint: (x: number, y: number, tool: SpriteEditorTool, phase: SpritePointerActionPhase) => void
   onHoverColorChange?: (color: string | null) => void
+  onPointerUpOutside?: () => void
+}
+
+function isInDragRect(x: number, y: number, rect: SelectDragRect): boolean {
+  const minX = Math.min(rect.startX, rect.endX)
+  const maxX = Math.max(rect.startX, rect.endX)
+  const minY = Math.min(rect.startY, rect.endY)
+  const maxY = Math.max(rect.startY, rect.endY)
+  return x >= minX && x <= maxX && y >= minY && y <= maxY
 }
 
 export function SpriteCanvasGrid({
@@ -27,17 +44,32 @@ export function SpriteCanvasGrid({
   activeTool,
   eraserRadius,
   selectedIndices,
+  selectDragRect,
   onPaint,
-  onHoverColorChange
+  onHoverColorChange,
+  onPointerUpOutside
 }: SpriteCanvasGridProps) {
   const [isPointerDown, setIsPointerDown] = useState(false)
   const [hoveredCell, setHoveredCell] = useState<{ x: number; y: number } | null>(null)
+  const isPointerDownRef = useRef(false)
   const safePixels = normalizePixelGrid(pixelsRgba, width, height)
 
   const eraserPreviewSet = useMemo(() => {
     if (activeTool !== "eraser" || !hoveredCell) return new Set<number>()
     return new Set(getPixelIndicesInRadius(hoveredCell.x, hoveredCell.y, eraserRadius, width, height))
   }, [activeTool, hoveredCell, eraserRadius, width, height])
+
+  useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      if (isPointerDownRef.current) {
+        isPointerDownRef.current = false
+        setIsPointerDown(false)
+        onPointerUpOutside?.()
+      }
+    }
+    document.addEventListener("mouseup", handleGlobalMouseUp)
+    return () => document.removeEventListener("mouseup", handleGlobalMouseUp)
+  }, [onPointerUpOutside])
 
   return (
     <div className="mvp16-sprite-grid-wrapper flex-1 overflow-auto bg-slate-50 p-4">
@@ -55,7 +87,6 @@ export function SpriteCanvasGrid({
           backgroundPosition: `0 0, ${Math.max(zoom, 8) / 2}px ${Math.max(zoom, 8) / 2}px`
         }}
         onMouseLeave={() => {
-          setIsPointerDown(false)
           setHoveredCell(null)
           onHoverColorChange?.(null)
         }}
@@ -65,6 +96,7 @@ export function SpriteCanvasGrid({
           const y = Math.floor(index / width)
           const isEraserPreview = eraserPreviewSet.has(index)
           const isSelected = selectedIndices.has(index)
+          const isDragSelected = selectDragRect !== null && isInDragRect(x, y, selectDragRect)
           const isSingleCellHover = (activeTool === "color_picker" || activeTool === "pencil") && hoveredCell?.x === x && hoveredCell?.y === y
           return (
             <button
@@ -79,7 +111,7 @@ export function SpriteCanvasGrid({
                 ...(isEraserPreview
                   ? { boxShadow: "inset 0 0 0 100px rgba(239, 68, 68, 0.35)" }
                   : {}),
-                ...(isSelected
+                ...(isSelected || isDragSelected
                   ? { boxShadow: "inset 0 0 0 100px rgba(99, 102, 241, 0.3)", outline: "1px dashed rgba(99, 102, 241, 0.7)" }
                   : {}),
                 ...(isSingleCellHover
@@ -87,10 +119,15 @@ export function SpriteCanvasGrid({
                   : {})
               }}
               onMouseDown={() => {
+                isPointerDownRef.current = true
                 setIsPointerDown(true)
                 onPaint(x, y, activeTool, "pointerDown")
               }}
-              onMouseUp={() => setIsPointerDown(false)}
+              onMouseUp={() => {
+                isPointerDownRef.current = false
+                setIsPointerDown(false)
+                onPaint(x, y, activeTool, "pointerUp")
+              }}
               onMouseEnter={() => {
                 setHoveredCell({ x, y })
                 onHoverColorChange?.(pixelEntry)

@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react"
 import type { EditorController } from "../editor-state/use-editor-controller.js"
 import { spriteAssignedObjectNames } from "../editor-state/use-editor-controller.js"
-import { SpriteCanvasGrid } from "./components/SpriteCanvasGrid.js"
+import { SpriteCanvasGrid, type SelectDragRect } from "./components/SpriteCanvasGrid.js"
 import { SpriteImportButton } from "./components/SpriteImportButton.js"
 import { SpriteImportCropModal } from "./components/SpriteImportCropModal.js"
 import { SpriteListPanel } from "./components/SpriteListPanel.js"
@@ -11,11 +11,13 @@ import { SpriteToolbar } from "./components/SpriteToolbar.js"
 import { resolveActiveFramePixels, resolveNeighborFrameId, resolveNextActiveFrameId } from "./utils/frame-helpers.js"
 import { useSpriteEditorState } from "./hooks/use-sprite-editor-state.js"
 import { useSpriteImport } from "./hooks/use-sprite-import.js"
+import { useSpriteMove } from "./hooks/use-sprite-move.js"
 import { useSpritePixelActions } from "./hooks/use-sprite-pixel-actions.js"
 import { normalizePixelGrid } from "./utils/sprite-grid.js"
 import { flipHorizontal, flipVertical, rotateCW, rotateCCW } from "./utils/sprite-transforms.js"
 import { hasVisibleSpritePixels } from "./utils/has-visible-pixels.js"
 import { resolveSpritePreviewSource } from "./utils/sprite-preview-source.js"
+import { indicesInRect } from "./utils/sprite-tools/rect-select.js"
 
 type SpriteEditorSectionProps = {
   controller: EditorController
@@ -41,7 +43,8 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
     updateToolOptions
   } = spriteEditorState
   const activeSpriteId = controller.activeSpriteId
-  const [magicWandSelection, setMagicWandSelection] = useState<Set<number>>(new Set())
+  const [selection, setSelection] = useState<Set<number>>(new Set())
+  const [selectDragRect, setSelectDragRect] = useState<SelectDragRect | null>(null)
   const [pickerPreviewColor, setPickerPreviewColor] = useState<string | null>(null)
   const [activeFrameId, setActiveFrameId] = useState<string | null>(null)
 
@@ -55,9 +58,11 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
     if (activeTool !== "color_picker") {
       setPickerPreviewColor(null)
     }
-    if (activeTool !== "magic_wand") {
-      setMagicWandSelection(new Set())
+    const selectionTools = new Set(["magic_wand", "select", "move"])
+    if (!selectionTools.has(activeTool)) {
+      setSelection(new Set())
     }
+    setSelectDragRect(null)
   }, [activeTool])
 
   useEffect(() => {
@@ -247,19 +252,85 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
     }
   })
 
+  const handlePixelsChange = useCallback(
+    (nextPixelsRgba: string[]) => {
+      if (!selectedSprite || !activeFrameId) return
+      controller.updateSpriteFramePixels(selectedSprite.id, activeFrameId, nextPixelsRgba)
+    },
+    [selectedSprite, activeFrameId, controller]
+  )
+
   const pixelActions = useSpritePixelActions({
     width: selectedSprite?.width ?? 1,
     height: selectedSprite?.height ?? 1,
     pixelsRgba: selectedSpritePixels,
     activeColor,
     toolOptions,
-    onPixelsChange: (nextPixelsRgba) => {
-      if (!selectedSprite || !activeFrameId) return
-      controller.updateSpriteFramePixels(selectedSprite.id, activeFrameId, nextPixelsRgba)
-    },
+    onPixelsChange: handlePixelsChange,
     onActiveColorChange: setActiveColor,
-    onSelectionChange: setMagicWandSelection
+    onSelectionChange: setSelection
   })
+
+  const spriteMove = useSpriteMove({
+    width: selectedSprite?.width ?? 1,
+    height: selectedSprite?.height ?? 1,
+    pixelsRgba: selectedSpritePixels,
+    selection,
+    onPixelsChange: handlePixelsChange,
+    onSelectionChange: setSelection
+  })
+
+  const handleCanvasPaint = useCallback(
+    (x: number, y: number, tool: string, phase: string) => {
+      if (tool === "select") {
+        if (phase === "pointerDown") {
+          setSelectDragRect({ startX: x, startY: y, endX: x, endY: y })
+        } else if (phase === "pointerDrag") {
+          setSelectDragRect((prev) => (prev ? { ...prev, endX: x, endY: y } : null))
+        } else if (phase === "pointerUp") {
+          setSelectDragRect((prev) => {
+            if (!prev) return null
+            if (prev.startX === x && prev.startY === y) {
+              setSelection(new Set())
+            } else {
+              setSelection(indicesInRect(prev.startX, prev.startY, x, y, selectedSprite?.width ?? 1, selectedSprite?.height ?? 1))
+            }
+            return null
+          })
+        }
+        return
+      }
+
+      if (tool === "move") {
+        if (phase === "pointerDown") {
+          spriteMove.onMoveStart(x, y)
+        } else if (phase === "pointerDrag") {
+          spriteMove.onMoveDrag(x, y)
+        } else if (phase === "pointerUp") {
+          spriteMove.onMoveEnd()
+        }
+        return
+      }
+
+      pixelActions.paintAt(x, y, tool as Parameters<typeof pixelActions.paintAt>[2], phase as Parameters<typeof pixelActions.paintAt>[3])
+      if (tool === "color_picker" && phase === "pointerDown") {
+        setActiveTool(lastPaintTool)
+      }
+    },
+    [pixelActions, spriteMove, selectedSprite?.width, selectedSprite?.height, setActiveTool, lastPaintTool]
+  )
+
+  const handlePointerUpOutside = useCallback(() => {
+    if (activeTool === "move" && spriteMove.isMoving) {
+      spriteMove.onMoveEnd()
+    }
+    if (activeTool === "select" && selectDragRect) {
+      setSelection(
+        indicesInRect(selectDragRect.startX, selectDragRect.startY, selectDragRect.endX, selectDragRect.endY, selectedSprite?.width ?? 1, selectedSprite?.height ?? 1)
+      )
+      setSelectDragRect(null)
+    }
+  }, [activeTool, spriteMove, selectDragRect, selectedSprite?.width, selectedSprite?.height])
 
   return (
     <div className="mvp16-sprite-editor-shell flex h-[600px] w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
@@ -399,23 +470,20 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
               <SpriteCanvasGrid
                 width={selectedSprite.width}
                 height={selectedSprite.height}
-                pixelsRgba={selectedSpritePixels}
+                pixelsRgba={spriteMove.displayPixels}
                 zoom={zoom}
                 showGrid={showGrid}
                 activeTool={activeTool}
                 eraserRadius={toolOptions.eraser.radius}
-                selectedIndices={magicWandSelection}
-                onPaint={(x, y, tool, phase) => {
-                  pixelActions.paintAt(x, y, tool, phase)
-                  if (tool === "color_picker" && phase === "pointerDown") {
-                    setActiveTool(lastPaintTool)
-                  }
-                }}
+                selectedIndices={selection}
+                selectDragRect={selectDragRect}
+                onPaint={handleCanvasPaint}
                 onHoverColorChange={(nextColor) => {
                   if (activeTool === "color_picker") {
                     setPickerPreviewColor(nextColor)
                   }
                 }}
+                onPointerUpOutside={handlePointerUpOutside}
               />
             </div>
           </div>

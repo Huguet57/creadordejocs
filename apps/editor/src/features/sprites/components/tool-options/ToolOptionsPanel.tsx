@@ -152,6 +152,10 @@ export function ToolOptionsPanel({
     )
   }
 
+  if (activeTool === "select" || activeTool === "move") {
+    return <EmptyOptions />
+  }
+
   if (activeTool === "eraser") {
     return (
       <div className="mvp16-sprite-tool-options-eraser flex flex-col gap-1.5">
