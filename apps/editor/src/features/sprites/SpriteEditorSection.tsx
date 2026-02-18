@@ -12,7 +12,7 @@ import { useSpriteImport } from "./hooks/use-sprite-import.js"
 import { useSpritePixelActions } from "./hooks/use-sprite-pixel-actions.js"
 import { normalizePixelGrid } from "./utils/sprite-grid.js"
 import { hasVisibleSpritePixels } from "./utils/has-visible-pixels.js"
-import { spritePixelsToDataUrl } from "./utils/sprite-preview-source.js"
+import { resolveSpritePreviewSource } from "./utils/sprite-preview-source.js"
 
 type SpriteEditorSectionProps = {
   controller: EditorController
@@ -153,6 +153,33 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
     ? normalizePixelGrid(selectedSprite.pixelsRgba, selectedSprite.width, selectedSprite.height)
     : []
 
+  const [resolvedSpritePreviews, setResolvedSpritePreviews] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    let cancelled = false
+
+    const resolvePreviews = async () => {
+      const pairs = await Promise.all(
+        sprites.map(async (spriteEntry) => {
+          if (!hasVisibleSpritePixels(spriteEntry.pixelsRgba)) {
+            return null
+          }
+          const resolved = await resolveSpritePreviewSource(spriteEntry)
+          return [spriteEntry.id, resolved] as const
+        })
+      )
+      if (!cancelled) {
+        setResolvedSpritePreviews(Object.fromEntries(pairs.filter((entry): entry is readonly [string, string] => entry !== null)))
+      }
+    }
+
+    void resolvePreviews()
+
+    return () => {
+      cancelled = true
+    }
+  }, [sprites])
+
   const spriteListEntries = useMemo(
     () =>
       sprites.map((spriteEntry) => {
@@ -164,11 +191,11 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
           width: spriteEntry.width,
           height: spriteEntry.height,
           isEmpty: !hasPixels,
-          previewDataUrl: hasPixels ? spritePixelsToDataUrl(spriteEntry.pixelsRgba, spriteEntry.width, spriteEntry.height) : "",
+          previewDataUrl: resolvedSpritePreviews[spriteEntry.id] ?? "",
           objectNames: spriteAssignedObjectNames(controller.project, spriteEntry.id)
         }
       }),
-    [controller.project, sprites]
+    [controller.project, sprites, resolvedSpritePreviews]
   )
 
   const tabData = useMemo(
