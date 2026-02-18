@@ -12,6 +12,7 @@ import {
   Move,
   Plus,
   Pencil,
+  Send,
   Trash2,
   Eraser,
   RotateCcw,
@@ -52,6 +53,7 @@ export const ACTION_ICON_MAP: Record<ActionType, LucideIcon> = {
   wait: Hourglass,
   repeat: RotateCcw,
   forEachList: ArrowLeftRight,
-  forEachMap: ArrowLeftRight
+  forEachMap: ArrowLeftRight,
+  emitCustomEvent: Send
 }
 

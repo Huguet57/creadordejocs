@@ -1,6 +1,7 @@
 import { generateUUID, type ProjectV1, type ValueExpressionOutput } from "@creadordejocs/project-format"
 import { buildWaitActionKey, removeWaitProgress } from "./event-lock-utils.js"
 import { enqueueRuntimeToast, type RuntimeToastState } from "./message-toast-utils.js"
+import { executeEmitCustomEvent } from "./action-handlers-custom-events.js"
 import {
   ROOM_HEIGHT,
   ROOM_WIDTH,
@@ -1315,7 +1316,8 @@ export const ACTION_RUNTIME_REGISTRY: ActionRuntimeRegistry = {
   wait: (action, result, ctx) => executeActionFallback(action, result, ctx),
   repeat: (_action, result) => ({ result }),
   forEachList: (_action, result) => ({ result }),
-  forEachMap: (_action, result) => ({ result })
+  forEachMap: (_action, result) => ({ result }),
+  emitCustomEvent: (action, result, ctx) => executeEmitCustomEvent(action, result, ctx)
 }
 
 function dispatchAction<K extends RuntimeAction["type"]>(

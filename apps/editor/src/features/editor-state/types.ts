@@ -20,6 +20,7 @@ export type ObjectEventType =
   | "OutsideRoom"
   | "Timer"
   | "MouseMove"
+  | "CustomEvent"
 export type ObjectEventKey = "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight" | "Space"
 export type ObjectKeyboardMode = "down" | "press"
 export type ObjectMouseMode = "down" | "press"
@@ -41,7 +42,8 @@ export const OBJECT_EVENT_TYPES: ObjectEventType[] = [
   "OnDestroy",
   "OutsideRoom",
   "Timer",
-  "MouseMove"
+  "MouseMove",
+  "CustomEvent"
 ]
 
 export const EVENT_DISPLAY_NAMES: Record<ObjectEventType, string> = {
@@ -53,10 +55,11 @@ export const EVENT_DISPLAY_NAMES: Record<ObjectEventType, string> = {
   OnDestroy: "On destroy",
   OutsideRoom: "Outside room",
   Timer: "Timer",
-  MouseMove: "Mouse move"
+  MouseMove: "Mouse move",
+  CustomEvent: "Custom event"
 }
 
-export type EventCategoryId = "lifecycle" | "input" | "collision"
+export type EventCategoryId = "lifecycle" | "input" | "collision" | "custom"
 
 export const EVENT_CATEGORIES: { id: EventCategoryId; label: string; types: ObjectEventType[] }[] = [
   {
@@ -73,6 +76,11 @@ export const EVENT_CATEGORIES: { id: EventCategoryId; label: string; types: Obje
     id: "collision",
     label: "Collision",
     types: ["Collision"]
+  },
+  {
+    id: "custom",
+    label: "Custom",
+    types: ["CustomEvent"]
   }
 ]
 

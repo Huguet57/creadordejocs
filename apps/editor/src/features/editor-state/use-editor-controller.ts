@@ -728,11 +728,16 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       keyboardMode: ObjectKeyboardMode | null = null,
       mouseMode: ObjectMouseMode | null = null,
       targetObjectId: string | null = null,
-      intervalMs: number | null = null
+      intervalMs: number | null = null,
+      eventName: string | null = null,
+      sourceObjectId: string | null = null
     ) {
       if (!selectedObject) return
       pushProjectChange(
-        addObjectEvent(project, { objectId: selectedObject.id, type, key, keyboardMode, mouseMode, targetObjectId, intervalMs }),
+        addObjectEvent(project, {
+          objectId: selectedObject.id, type, key, keyboardMode, mouseMode, targetObjectId, intervalMs,
+          eventName, sourceObjectId
+        }),
         `Add ${type} event`
       )
     },
@@ -742,7 +747,9 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       keyboardMode: ObjectKeyboardMode | null,
       mouseMode: ObjectMouseMode | null,
       targetObjectId: string | null,
-      intervalMs: number | null
+      intervalMs: number | null,
+      eventName?: string | null,
+      sourceObjectId?: string | null
     ) {
       if (!selectedObject) return
       pushProjectChange(
@@ -753,7 +760,9 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
           keyboardMode,
           mouseMode,
           targetObjectId,
-          intervalMs
+          intervalMs,
+          ...(eventName !== undefined ? { eventName } : {}),
+          ...(sourceObjectId !== undefined ? { sourceObjectId } : {})
         })
       )
     },

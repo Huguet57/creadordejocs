@@ -395,8 +395,8 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
             {isEventSelectorOpen ? (
               <EventSelectorPanel
                 classNamePrefix="mvp24-event-picker"
-                onSelectEvent={(type, key, keyboardMode, mouseMode, intervalMs) => {
-                  controller.addObjectEvent(type, key ?? null, keyboardMode ?? null, mouseMode ?? null, null, intervalMs ?? null)
+                onSelectEvent={(type, key, keyboardMode, mouseMode, intervalMs, eventName) => {
+                  controller.addObjectEvent(type, key ?? null, keyboardMode ?? null, mouseMode ?? null, null, intervalMs ?? null, eventName ?? null)
                   setSelectNewestForObjectId(selectedObject.id)
                   setIsEventSelectorOpen(false)
                 }}

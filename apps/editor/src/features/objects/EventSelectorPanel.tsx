@@ -1,4 +1,4 @@
-import { Activity, Keyboard, Mouse, MousePointer2, Play, Plus, Scan, Swords, Timer, X } from "lucide-react"
+import { Activity, Keyboard, Mouse, MousePointer2, Play, Plus, Radio, Scan, Swords, Timer, X } from "lucide-react"
 import { useState } from "react"
 import {
   EVENT_CATEGORIES,
@@ -17,7 +17,8 @@ type EventSelectorPanelProps = {
     key?: ObjectEventKey | null,
     keyboardMode?: ObjectKeyboardMode | null,
     mouseMode?: ObjectMouseMode | null,
-    intervalMs?: number | null
+    intervalMs?: number | null,
+    eventName?: string | null
   ) => void
   onClose: () => void
 }
@@ -31,10 +32,11 @@ const EVENT_ICON_MAP: Partial<Record<ObjectEventType, React.ElementType>> = {
   OutsideRoom: Scan,
   Timer,
   MouseMove: MousePointer2,
-  Mouse
+  Mouse,
+  CustomEvent: Radio
 }
 
-const EVENT_TYPES_WITH_REQUIRED_CONFIG: ObjectEventType[] = ["Keyboard", "Mouse", "Timer"]
+const EVENT_TYPES_WITH_REQUIRED_CONFIG: ObjectEventType[] = ["Keyboard", "Mouse", "Timer", "CustomEvent"]
 
 export function EventSelectorPanel({ classNamePrefix, onSelectEvent, onClose }: EventSelectorPanelProps) {
   const [selectedType, setSelectedType] = useState<ObjectEventType | null>(null)
@@ -42,6 +44,7 @@ export function EventSelectorPanel({ classNamePrefix, onSelectEvent, onClose }: 
   const [keyboardMode, setKeyboardMode] = useState<ObjectKeyboardMode>("down")
   const [mouseMode, setMouseMode] = useState<ObjectMouseMode>("down")
   const [timerIntervalMs, setTimerIntervalMs] = useState(1000)
+  const [customEventName, setCustomEventName] = useState("event")
 
   const handleTypeSelection = (type: ObjectEventType) => {
     if (EVENT_TYPES_WITH_REQUIRED_CONFIG.includes(type)) {
@@ -62,6 +65,10 @@ export function EventSelectorPanel({ classNamePrefix, onSelectEvent, onClose }: 
     }
     if (selectedType === "Timer") {
       onSelectEvent("Timer", null, null, null, timerIntervalMs)
+      return
+    }
+    if (selectedType === "CustomEvent") {
+      onSelectEvent("CustomEvent", null, null, null, null, customEventName.trim() || "event")
     }
   }
 
@@ -203,6 +210,35 @@ export function EventSelectorPanel({ classNamePrefix, onSelectEvent, onClose }: 
                   <option value="down">Held</option>
                   <option value="press">Pressed</option>
                 </select>
+                <button
+                  type="button"
+                  className={`${classNamePrefix}-confirm h-8 rounded bg-slate-900 px-3 text-xs font-medium text-white transition-colors hover:bg-slate-700`}
+                  onClick={handleConfirmSelectedType}
+                  title="Add event"
+                  aria-label="Confirm add event"
+                >
+                  Add
+                </button>
+              </div>
+            </div>
+          )}
+
+          {selectedType === "CustomEvent" && (
+            <div className={`${classNamePrefix}-custom-event-config flex flex-col gap-2`}>
+              <p className={`${classNamePrefix}-custom-event-title text-xs font-semibold uppercase tracking-wide text-slate-500`}>
+                Add custom event
+              </p>
+              <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
+                <span className={`${classNamePrefix}-custom-event-name-label text-xs font-medium text-slate-500`}>
+                  Nom
+                </span>
+                <input
+                  type="text"
+                  className={`${classNamePrefix}-custom-event-name h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-none`}
+                  value={customEventName}
+                  onChange={(event) => setCustomEventName(event.target.value)}
+                  placeholder="event"
+                />
                 <button
                   type="button"
                   className={`${classNamePrefix}-confirm h-8 rounded bg-slate-900 px-3 text-xs font-medium text-white transition-colors hover:bg-slate-700`}

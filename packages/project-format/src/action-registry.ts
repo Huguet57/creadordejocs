@@ -156,6 +156,10 @@ export const ACTION_REGISTRY = [
   {
     type: "forEachMap",
     ui: { label: "Per cada mapa", shortLabel: "Each mapa", categoryId: "flow", editorVisible: false }
+  },
+  {
+    type: "emitCustomEvent",
+    ui: { label: "Emetre event", shortLabel: "Emetre", categoryId: "game", editorVisible: true }
   }
 ] as const satisfies readonly { type: string; ui: ActionUiMeta }[]
 
@@ -399,6 +403,12 @@ export function createObjectActionSchema<
       keyLocalVarName: z.string().min(1),
       valueLocalVarName: z.string().min(1),
       actions: z.array(z.any()).default([])
+    }),
+    z.object({
+      id: z.string().min(1),
+      type: z.literal("emitCustomEvent"),
+      eventName: z.string().min(1),
+      payload: valueOrSource
     })
   ])
 }
@@ -720,6 +730,9 @@ export function createEditorDefaultAction(type: ActionType, ctx: ActionDefaultsC
     const soundId = ctx.soundIds[0]
     if (!soundId) return null
     return { type: "playSound", soundId }
+  }
+  if (type === "emitCustomEvent") {
+    return { type: "emitCustomEvent", eventName: "event", payload: 0 }
   }
   return null
 }

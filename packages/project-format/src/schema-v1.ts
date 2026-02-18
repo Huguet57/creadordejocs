@@ -436,13 +436,16 @@ const ObjectEventSchema = z
       "OutsideRoom",
       "Timer",
       "MouseMove",
-      "Mouse"
+      "Mouse",
+      "CustomEvent"
     ]),
     key: z.enum(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"]).nullable().default(null),
     keyboardMode: z.enum(["down", "press"]).nullable().optional(),
     mouseMode: z.enum(["down", "press"]).nullable().optional(),
     targetObjectId: z.string().nullable().default(null),
     intervalMs: z.number().positive().nullable().default(null),
+    eventName: z.string().min(1).nullable().optional(),
+    sourceObjectId: z.string().nullable().optional(),
     items: z.array(ObjectEventItemSchema).optional(),
     actions: z.array(ObjectActionSchema).optional()
   })
@@ -458,6 +461,10 @@ const ObjectEventSchema = z
     return {
       ...eventEntry,
       ...(eventEntry.type === "Mouse" ? { mouseMode: mouseMode ?? "down" } : {}),
+      ...(eventEntry.type === "CustomEvent" ? {
+        eventName: eventEntry.eventName ?? "event",
+        sourceObjectId: eventEntry.sourceObjectId ?? null
+      } : {}),
       items: migratedItems
     }
   })

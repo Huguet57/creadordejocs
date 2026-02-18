@@ -37,6 +37,7 @@ import {
   type RuntimeState,
   type RuntimeVariableValue
 } from "./runtime-types.js"
+import { dispatchCustomEvents } from "./runtime-custom-events.js"
 
 export { ROOM_WIDTH, ROOM_HEIGHT }
 export type { RuntimeMouseButton, RuntimeMouseInput, RuntimeState }
@@ -839,7 +840,8 @@ export function createInitialRuntimeState(project?: ProjectV1): RuntimeState {
     restartRoomRequested: false,
     timerElapsedByEventId: {},
     waitElapsedByInstanceActionId: {},
-    eventLocksByKey: {}
+    eventLocksByKey: {},
+    customEventQueue: []
   }
 }
 
@@ -865,7 +867,8 @@ export function runRuntimeTick(
     },
     mouse: runtime.mouse,
     nextRoomId: null,
-    restartRoomRequested: false
+    restartRoomRequested: false,
+    customEventQueue: []
   }
   nextRuntime = applyMouseBuiltinsToRuntime(nextRuntime, mouseInput)
   nextRuntime = advanceRuntimeToastQueue(nextRuntime as RuntimeToastState, RUNTIME_TICK_MS) as RuntimeState
@@ -894,7 +897,7 @@ export function runRuntimeTick(
     const shouldInitialize = !runtime.initializedInstanceIds.includes(instanceEntry.id)
     const matchingEvents: ProjectV1["objects"][number]["events"] = []
     for (const eventEntry of objectEntry.events) {
-      if (eventEntry.type === "Collision" || eventEntry.type === "OutsideRoom" || eventEntry.type === "OnDestroy") {
+      if (eventEntry.type === "Collision" || eventEntry.type === "OutsideRoom" || eventEntry.type === "OnDestroy" || eventEntry.type === "CustomEvent") {
         continue
       }
       const eventLockTargetId = null
@@ -1047,36 +1050,44 @@ export function runRuntimeTick(
   }
 
   const collisionResult = applyCollisionEvents(project, nextInstances, nextRuntime)
+
+  const customEventResult = dispatchCustomEvents(
+    project,
+    collisionResult.instances,
+    collisionResult.runtime,
+    runEventItems
+  )
+
   const keptStartPositions: RuntimeState["instanceStartPositions"] = {}
   const keptObjectVariableStates: RuntimeState["objectInstanceVariables"] = {}
-  for (const instanceEntry of collisionResult.instances) {
-    keptStartPositions[instanceEntry.id] = getInstanceStartPosition(collisionResult.runtime, instanceEntry)
-    keptObjectVariableStates[instanceEntry.id] = collisionResult.runtime.objectInstanceVariables[instanceEntry.id] ?? {}
+  for (const instanceEntry of customEventResult.instances) {
+    keptStartPositions[instanceEntry.id] = getInstanceStartPosition(customEventResult.runtime, instanceEntry)
+    keptObjectVariableStates[instanceEntry.id] = customEventResult.runtime.objectInstanceVariables[instanceEntry.id] ?? {}
   }
   const aliveInstanceIds = new Set(Object.keys(keptStartPositions))
   const compactedRuntime: RuntimeState = {
-    ...collisionResult.runtime,
+    ...customEventResult.runtime,
     instanceStartPositions: keptStartPositions,
     objectInstanceVariables: keptObjectVariableStates,
     waitElapsedByInstanceActionId: filterWaitProgressByAliveInstances(
-      collisionResult.runtime.waitElapsedByInstanceActionId,
+      customEventResult.runtime.waitElapsedByInstanceActionId,
       aliveInstanceIds
     ),
-    eventLocksByKey: filterEventLocksByAliveInstances(collisionResult.runtime.eventLocksByKey, aliveInstanceIds),
+    eventLocksByKey: filterEventLocksByAliveInstances(customEventResult.runtime.eventLocksByKey, aliveInstanceIds),
     nextRoomId: null,
     restartRoomRequested: false
   }
   const nextProject: ProjectV1 = {
     ...project,
     rooms: project.rooms.map((roomEntry) =>
-      roomEntry.id === roomId ? { ...roomEntry, instances: collisionResult.instances } : roomEntry
+      roomEntry.id === roomId ? { ...roomEntry, instances: customEventResult.instances } : roomEntry
     )
   }
 
   return {
     project: nextProject,
     runtime: compactedRuntime,
-    activeRoomId: collisionResult.runtime.nextRoomId ?? roomId,
-    restartRoomRequested: collisionResult.runtime.restartRoomRequested
+    activeRoomId: customEventResult.runtime.nextRoomId ?? roomId,
+    restartRoomRequested: customEventResult.runtime.restartRoomRequested
   }
 }

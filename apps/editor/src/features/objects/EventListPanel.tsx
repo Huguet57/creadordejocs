@@ -1,4 +1,4 @@
-import { Activity, Box, Keyboard, Mouse, MousePointer2, Play, Plus, Scan, Swords, Timer, X } from "lucide-react"
+import { Activity, Box, Keyboard, Mouse, MousePointer2, Play, Plus, Radio, Scan, Swords, Timer, X } from "lucide-react"
 import { Button } from "../../components/ui/button.js"
 import {
   EVENT_DISPLAY_NAMES,
@@ -26,7 +26,8 @@ const EVENT_ICONS: Record<ObjectEventType, React.ElementType> = {
   OutsideRoom: Scan,
   Timer: Timer,
   Mouse: Mouse,
-  MouseMove: MousePointer2
+  MouseMove: MousePointer2,
+  CustomEvent: Radio
 }
 
 export function EventListPanel({
@@ -102,6 +103,11 @@ export function EventListPanel({
                     )}
                     {event.type === "Timer" && (
                       <span className="truncate text-[10px] text-slate-400">Every: {event.intervalMs ?? 1000}ms</span>
+                    )}
+                    {event.type === "CustomEvent" && (
+                      <span className="truncate text-[10px] text-slate-400">
+                        {(event as typeof event & { eventName?: string }).eventName ?? "event"}
+                      </span>
                     )}
                   </div>
                 </button>

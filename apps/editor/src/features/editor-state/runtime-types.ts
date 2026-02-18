@@ -19,6 +19,13 @@ export type RuntimeVariableValue = ProjectV1["variables"]["global"][number]["ini
 export type RuntimeEventItem = ObjectEventItemType
 export type RuntimeAction = Extract<RuntimeEventItem, { type: "action" }>["action"]
 
+export type CustomEventQueueEntry = {
+  name: string
+  payload: number | string | boolean
+  sourceObjectId: string
+  sourceInstanceId: string
+}
+
 export type RuntimeState = {
   score: number
   gameOver: boolean
@@ -36,6 +43,7 @@ export type RuntimeState = {
   timerElapsedByEventId: Record<string, number>
   waitElapsedByInstanceActionId: Record<string, number>
   eventLocksByKey: Record<string, true>
+  customEventQueue: CustomEventQueueEntry[]
 }
 
 export type RuntimeActionResult = {

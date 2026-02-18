@@ -1024,6 +1024,32 @@ export function ActionBlock({
             )}
           </>
         )}
+
+        {action.type === "emitCustomEvent" && (
+          <>
+            <div className="flex items-center gap-1">
+              <label className="text-[10px] font-medium opacity-60">Nom</label>
+              <input
+                type="text"
+                className="h-7 min-w-[100px] rounded border border-slate-300 bg-white/50 px-2 text-xs focus:outline-none"
+                value={action.eventName}
+                onChange={(event) => onUpdate({ ...action, eventName: event.target.value || "event" })}
+                placeholder="event"
+              />
+            </div>
+            <div className="flex items-center gap-1">
+              <label className="text-[10px] font-medium opacity-60">Payload</label>
+              <RightValuePicker
+                value={action.payload}
+                expectedType="number"
+                globalVariables={globalVariables}
+                internalVariables={internalVariableOptions}
+                allowOtherTarget={allowOtherTarget}
+                onChange={(nextValue) => onUpdate({ ...action, payload: nextValue as typeof action.payload })}
+              />
+            </div>
+          </>
+        )}
       </div>
 
       <div className="action-block-controls flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
