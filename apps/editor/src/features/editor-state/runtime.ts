@@ -24,11 +24,14 @@ import {
   ROOM_HEIGHT,
   ROOM_WIDTH,
   RUNTIME_TICK_MS,
+  clampValue,
+  clampWindowToRoom,
   getDefaultRuntimeActionResult,
   getInstanceHeight,
   getInstanceWidth,
   intersectsInstances,
   isSameVariableValueType,
+  resolveRoomDimensions,
   resolveTargetInstanceId,
   type RuntimeAction,
   type RuntimeActionResult,
@@ -105,15 +108,17 @@ function clearRuntimeStateForRemovedInstances(runtime: RuntimeState, removedInst
 
 function isOutsideRoom(
   project: ProjectV1,
-  instance: ProjectV1["rooms"][number]["instances"][number]
+  instance: ProjectV1["rooms"][number]["instances"][number],
+  roomWidth: number,
+  roomHeight: number
 ): boolean {
   const width = getInstanceWidth(project, instance)
   const height = getInstanceHeight(project, instance)
   return (
     instance.x < 0 ||
     instance.y < 0 ||
-    instance.x > ROOM_WIDTH - width ||
-    instance.y > ROOM_HEIGHT - height
+    instance.x > roomWidth - width ||
+    instance.y > roomHeight - height
   )
 }
 
@@ -350,15 +355,26 @@ function evaluateIfCondition(
   return leftValue <= rightValue
 }
 
-function applyMouseBuiltinsToRuntime(runtime: RuntimeState, mouseInput: RuntimeMouseInput): RuntimeState {
+function applyMouseBuiltinsToRuntime(
+  runtime: RuntimeState,
+  mouseInput: RuntimeMouseInput,
+  roomWidth: number,
+  roomHeight: number
+): RuntimeState {
   return {
     ...runtime,
-    mouse: { x: mouseInput.x, y: mouseInput.y }
+    mouse: {
+      x: clampValue(mouseInput.x, 0, roomWidth),
+      y: clampValue(mouseInput.y, 0, roomHeight)
+    }
   }
 }
 
 function runOnDestroyEvents(
   project: ProjectV1,
+  roomId: string,
+  roomWidth: number,
+  roomHeight: number,
   instance: ProjectV1["rooms"][number]["instances"][number],
   runtime: RuntimeState
 ): RuntimeActionResult {
@@ -376,6 +392,9 @@ function runOnDestroyEvents(
   for (const eventEntry of onDestroyEvents) {
     const eventResult = runEventItems(
       project,
+      roomId,
+      roomWidth,
+      roomHeight,
       aggregate.instance,
       getEventItems(eventEntry),
       aggregate.runtime,
@@ -398,6 +417,9 @@ function runOnDestroyEvents(
 
 function destroyInstancesAndRunOnDestroy(
   project: ProjectV1,
+  roomId: string,
+  roomWidth: number,
+  roomHeight: number,
   instances: ProjectV1["rooms"][number]["instances"],
   instanceIds: string[],
   runtime: RuntimeState
@@ -425,7 +447,7 @@ function destroyInstancesAndRunOnDestroy(
     removedIndices.push(index)
     removedInstanceIds.push(target.id)
 
-    const onDestroyResult = runOnDestroyEvents(project, target, nextRuntime)
+    const onDestroyResult = runOnDestroyEvents(project, roomId, roomWidth, roomHeight, target, nextRuntime)
     nextRuntime = applyActionResultToRuntime(nextRuntime, onDestroyResult)
     mutableInstances = [...mutableInstances, ...onDestroyResult.spawned]
   }
@@ -435,6 +457,9 @@ function destroyInstancesAndRunOnDestroy(
 
 function runEventActions(
   project: ProjectV1,
+  roomId: string,
+  roomWidth: number,
+  roomHeight: number,
   instance: ProjectV1["rooms"][number]["instances"][number],
   actions: RuntimeAction[],
   runtime: RuntimeState,
@@ -446,6 +471,9 @@ function runEventActions(
   let result = getDefaultRuntimeActionResult(instance, runtime)
   const actionContext: ActionContext = {
     project,
+    roomId,
+    roomWidth,
+    roomHeight,
     startPosition,
     collisionOtherInstanceId,
     roomInstances,
@@ -453,6 +481,9 @@ function runEventActions(
     executeNestedActions: (nestedActions, nestedResult, nestedIterationLocals = iterationLocals) =>
       runEventActions(
         project,
+        roomId,
+        roomWidth,
+        roomHeight,
         nestedResult.instance,
         nestedActions,
         nestedResult.runtime,
@@ -475,6 +506,9 @@ function runEventActions(
 
 function buildFlowItemActionContext(
   project: ProjectV1,
+  roomId: string,
+  roomWidth: number,
+  roomHeight: number,
   _result: RuntimeActionResult,
   startPosition: { x: number; y: number } | null,
   collisionOtherInstanceId: string | null,
@@ -483,13 +517,16 @@ function buildFlowItemActionContext(
 ): ActionContext {
   return {
     project,
+    roomId,
+    roomWidth,
+    roomHeight,
     startPosition,
     collisionOtherInstanceId,
     roomInstances,
     iterationLocals,
     executeNestedActions: (nestedActions, nestedResult, nestedIterationLocals = iterationLocals) =>
       runEventActions(
-        project, nestedResult.instance, nestedActions, nestedResult.runtime,
+        project, roomId, roomWidth, roomHeight, nestedResult.instance, nestedActions, nestedResult.runtime,
         startPosition, collisionOtherInstanceId, roomInstances, nestedIterationLocals
       )
   }
@@ -515,6 +552,9 @@ function resolveFlowItemVariableValue(
 
 function runEventItems(
   project: ProjectV1,
+  roomId: string,
+  roomWidth: number,
+  roomHeight: number,
   instance: ProjectV1["rooms"][number]["instances"][number],
   items: RuntimeEventItem[],
   runtime: RuntimeState,
@@ -528,6 +568,9 @@ function runEventItems(
     if (itemEntry.type === "action") {
       const actionResult = runEventActions(
         project,
+        roomId,
+        roomWidth,
+        roomHeight,
         result.instance,
         [itemEntry.action],
         result.runtime,
@@ -560,6 +603,9 @@ function runEventItems(
       )
       const branchResult = runEventItems(
         project,
+        roomId,
+        roomWidth,
+        roomHeight,
         result.instance,
         conditionMatched ? itemEntry.thenActions : itemEntry.elseActions,
         result.runtime,
@@ -572,13 +618,23 @@ function runEventItems(
       continue
     }
     if (itemEntry.type === "repeat") {
-      const actionContext = buildFlowItemActionContext(project, result, startPosition, collisionOtherInstanceId, roomInstances, iterationLocals)
+      const actionContext = buildFlowItemActionContext(
+        project,
+        roomId,
+        roomWidth,
+        roomHeight,
+        result,
+        startPosition,
+        collisionOtherInstanceId,
+        roomInstances,
+        iterationLocals
+      )
       const countValue = resolveNumberValue(itemEntry.count, result, actionContext)
       if (countValue === undefined) continue
       const totalIterations = Math.max(0, Math.min(MAX_FLOW_ITERATIONS, Math.floor(countValue)))
       for (let index = 0; index < totalIterations; index += 1) {
         const iterResult = runEventItems(
-          project, result.instance, itemEntry.actions, result.runtime,
+          project, roomId, roomWidth, roomHeight, result.instance, itemEntry.actions, result.runtime,
           startPosition, collisionOtherInstanceId, roomInstances,
           { ...iterationLocals, index }
         )
@@ -600,7 +656,7 @@ function runEventItems(
           ...(itemEntry.indexLocalVarName ? { [itemEntry.indexLocalVarName]: index } : {})
         }
         const iterResult = runEventItems(
-          project, result.instance, itemEntry.actions, result.runtime,
+          project, roomId, roomWidth, roomHeight, result.instance, itemEntry.actions, result.runtime,
           startPosition, collisionOtherInstanceId, roomInstances, locals
         )
         result = mergeIterationActionResult(result, iterResult)
@@ -619,7 +675,7 @@ function runEventItems(
           [itemEntry.valueLocalVarName]: value
         }
         const iterResult = runEventItems(
-          project, result.instance, itemEntry.actions, result.runtime,
+          project, roomId, roomWidth, roomHeight, result.instance, itemEntry.actions, result.runtime,
           startPosition, collisionOtherInstanceId, roomInstances, locals
         )
         result = mergeIterationActionResult(result, iterResult)
@@ -633,6 +689,9 @@ function runEventItems(
 
 function applyCollisionEvents(
   project: ProjectV1,
+  roomId: string,
+  roomWidth: number,
+  roomHeight: number,
   instances: ProjectV1["rooms"][number]["instances"],
   runtime: RuntimeState
 ): { instances: ProjectV1["rooms"][number]["instances"]; runtime: RuntimeState } {
@@ -673,6 +732,9 @@ function applyCollisionEvents(
     const startPosition = getInstanceStartPosition(nextRuntime, ownerInstance)
     const eventResult = runEventItems(
       project,
+      roomId,
+      roomWidth,
+      roomHeight,
       ownerInstance,
       getEventItems(collisionEvent),
       nextRuntime,
@@ -698,6 +760,9 @@ function applyCollisionEvents(
     if (eventResult.destroyedInstanceIds.length > 0) {
       const destroyResult = destroyInstancesAndRunOnDestroy(
         project,
+        roomId,
+        roomWidth,
+        roomHeight,
         mutableInstances,
         eventResult.destroyedInstanceIds,
         nextRuntime
@@ -749,6 +814,9 @@ function applyCollisionEvents(
         const firstStartPosition = getInstanceStartPosition(nextRuntime, firstInstance)
         const eventResult = runEventItems(
           project,
+          roomId,
+          roomWidth,
+          roomHeight,
           firstInstance,
           getEventItems(eventEntry),
           nextRuntime,
@@ -768,6 +836,9 @@ function applyCollisionEvents(
         if (eventResult.destroyedInstanceIds.length > 0) {
           const destroyResult = destroyInstancesAndRunOnDestroy(
             project,
+            roomId,
+            roomWidth,
+            roomHeight,
             mutableInstances,
             eventResult.destroyedInstanceIds,
             nextRuntime
@@ -803,6 +874,9 @@ function applyCollisionEvents(
         const secondStartPosition = getInstanceStartPosition(nextRuntime, secondInstance)
         const eventResult = runEventItems(
           project,
+          roomId,
+          roomWidth,
+          roomHeight,
           secondInstance,
           getEventItems(eventEntry),
           nextRuntime,
@@ -822,6 +896,9 @@ function applyCollisionEvents(
         if (eventResult.destroyedInstanceIds.length > 0) {
           const destroyResult = destroyInstancesAndRunOnDestroy(
             project,
+            roomId,
+            roomWidth,
+            roomHeight,
             mutableInstances,
             eventResult.destroyedInstanceIds,
             nextRuntime
@@ -847,6 +924,16 @@ function applyCollisionEvents(
   return { instances: mutableInstances, runtime: nextRuntime }
 }
 
+function buildInitialWindowByRoomId(project: ProjectV1): RuntimeState["windowByRoomId"] {
+  return Object.fromEntries(
+    project.rooms.map((roomEntry) => {
+      const dimensions = resolveRoomDimensions(roomEntry)
+      const windowPosition = clampWindowToRoom(0, 0, dimensions.width, dimensions.height)
+      return [roomEntry.id, windowPosition]
+    })
+  )
+}
+
 export function createInitialRuntimeState(project?: ProjectV1): RuntimeState {
   return {
     score: 0,
@@ -868,7 +955,8 @@ export function createInitialRuntimeState(project?: ProjectV1): RuntimeState {
     customEventQueue: [],
     spriteOverrideByInstanceId: {},
     spriteSpeedMsByInstanceId: {},
-    spriteAnimationElapsedMsByInstanceId: {}
+    spriteAnimationElapsedMsByInstanceId: {},
+    windowByRoomId: project ? buildInitialWindowByRoomId(project) : {}
   }
 }
 
@@ -885,6 +973,17 @@ export function runRuntimeTick(
   if (!room || runtime.gameOver) {
     return { project, runtime, activeRoomId: roomId, restartRoomRequested: false }
   }
+  const { width: roomWidth, height: roomHeight } = resolveRoomDimensions(room)
+  const storedWindow = runtime.windowByRoomId[room.id] ?? { x: 0, y: 0 }
+  const clampedWindow = clampWindowToRoom(storedWindow.x, storedWindow.y, roomWidth, roomHeight)
+  const hasStoredWindow = runtime.windowByRoomId[room.id] !== undefined
+  const nextWindowByRoomId =
+    hasStoredWindow && storedWindow.x === clampedWindow.x && storedWindow.y === clampedWindow.y
+      ? runtime.windowByRoomId
+      : {
+          ...runtime.windowByRoomId,
+          [room.id]: clampedWindow
+        }
 
   let nextRuntime: RuntimeState = {
     ...runtime,
@@ -896,9 +995,10 @@ export function runRuntimeTick(
     mouse: runtime.mouse,
     nextRoomId: null,
     restartRoomRequested: false,
-    customEventQueue: []
+    customEventQueue: [],
+    windowByRoomId: nextWindowByRoomId
   }
-  nextRuntime = applyMouseBuiltinsToRuntime(nextRuntime, mouseInput)
+  nextRuntime = applyMouseBuiltinsToRuntime(nextRuntime, mouseInput, roomWidth, roomHeight)
   nextRuntime = advanceRuntimeToastQueue(nextRuntime as RuntimeToastState, RUNTIME_TICK_MS) as RuntimeState
   let nextInstances: ProjectV1["rooms"][number]["instances"] = []
   const pendingDestroyedInstanceIds = new Set<string>()
@@ -966,7 +1066,9 @@ export function runRuntimeTick(
         } else if (eventEntry.keyboardMode === "press") {
           shouldRun = isAnyKey ? justPressedKeys.size > 0 : justPressedKeys.has(eventEntry.key)
         } else {
-          shouldRun = isAnyKey ? justReleasedKeys.size > 0 : justReleasedKeys.has(eventEntry.key)
+          shouldRun = isAnyKey
+          ? justReleasedKeys.size > 0 && pressedKeys.size === 0
+          : justReleasedKeys.has(eventEntry.key)
         }
         if (shouldRun) {
           matchingEvents.push(eventEntry)
@@ -995,6 +1097,9 @@ export function runRuntimeTick(
     for (const eventEntry of matchingEvents) {
       const eventResult = runEventItems(
         project,
+        roomId,
+        roomWidth,
+        roomHeight,
         nextInstance,
         getEventItems(eventEntry),
         nextRuntime,
@@ -1023,11 +1128,14 @@ export function runRuntimeTick(
       for (const eventEntry of outsideEvents) {
         const eventLockTargetId = null
         const isLocked = hasEventLock(nextRuntime.eventLocksByKey, nextInstance.id, eventEntry.id, eventLockTargetId)
-        if (!isLocked && !isOutsideRoom(project, nextInstance)) {
+        if (!isLocked && !isOutsideRoom(project, nextInstance, roomWidth, roomHeight)) {
           continue
         }
         const eventResult = runEventItems(
           project,
+          roomId,
+          roomWidth,
+          roomHeight,
           nextInstance,
           getEventItems(eventEntry),
           nextRuntime,
@@ -1058,7 +1166,7 @@ export function runRuntimeTick(
     if (!destroySelf) {
       nextInstances.push(nextInstance)
     } else {
-      const onDestroyResult = runOnDestroyEvents(project, nextInstance, nextRuntime)
+      const onDestroyResult = runOnDestroyEvents(project, roomId, roomWidth, roomHeight, nextInstance, nextRuntime)
       nextRuntime = applyActionResultToRuntime(nextRuntime, onDestroyResult)
       spawned = [...spawned, ...onDestroyResult.spawned]
     }
@@ -1075,6 +1183,9 @@ export function runRuntimeTick(
   if (pendingDestroyedInstanceIds.size > 0) {
     const destroyResult = destroyInstancesAndRunOnDestroy(
       project,
+      roomId,
+      roomWidth,
+      roomHeight,
       nextInstances,
       Array.from(pendingDestroyedInstanceIds),
       nextRuntime
@@ -1083,13 +1194,26 @@ export function runRuntimeTick(
     nextRuntime = clearRuntimeStateForRemovedInstances(destroyResult.runtime, destroyResult.removedInstanceIds)
   }
 
-  const collisionResult = applyCollisionEvents(project, nextInstances, nextRuntime)
+  const collisionResult = applyCollisionEvents(project, roomId, roomWidth, roomHeight, nextInstances, nextRuntime)
 
   const customEventResult = dispatchCustomEvents(
     project,
     collisionResult.instances,
     collisionResult.runtime,
-    runEventItems
+    (projectArg, instance, items, runtimeArg, startPosition, collisionOtherInstanceId, roomInstances, iterationLocals) =>
+      runEventItems(
+        projectArg,
+        roomId,
+        roomWidth,
+        roomHeight,
+        instance,
+        items,
+        runtimeArg,
+        startPosition,
+        collisionOtherInstanceId,
+        roomInstances,
+        iterationLocals
+      )
   )
 
   // Advance sprite animation for all alive instances with multi-frame sprites

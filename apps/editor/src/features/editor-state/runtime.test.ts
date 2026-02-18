@@ -453,6 +453,42 @@ describe("runtime regressions", () => {
     expect(released.runtime.score).toBe(1)
   })
 
+  it("does not run Keyboard/<any>/release while other keys are still held", () => {
+    const project = createKeyboardScoringProject("release", "<any>")
+    const runtime = createInitialRuntimeState(project)
+
+    const held = runRuntimeTick(project, "room-main", new Set(["KeyA", "KeyB"]), runtime, new Set(["KeyA", "KeyB"]))
+    expect(held.runtime.score).toBe(0)
+
+    const partialRelease = runRuntimeTick(held.project, "room-main", new Set(["KeyB"]), held.runtime, new Set(), new Set(["KeyA"]))
+    expect(partialRelease.runtime.score).toBe(0)
+
+    const fullRelease = runRuntimeTick(partialRelease.project, "room-main", new Set(), partialRelease.runtime, new Set(), new Set(["KeyB"]))
+    expect(fullRelease.runtime.score).toBe(1)
+  })
+
+  it("fires Keyboard/<any>/release on focus-loss bulk clear", () => {
+    const project = createKeyboardScoringProject("release", "<any>")
+    const runtime = createInitialRuntimeState(project)
+
+    const held = runRuntimeTick(project, "room-main", new Set(["ArrowUp"]), runtime, new Set(["ArrowUp"]))
+    expect(held.runtime.score).toBe(0)
+
+    const focusLost = runRuntimeTick(held.project, "room-main", new Set(), held.runtime, new Set(), new Set(["ArrowUp"]))
+    expect(focusLost.runtime.score).toBe(1)
+  })
+
+  it("does not fire Keyboard/<any>/down after focus-loss bulk clear", () => {
+    const project = createKeyboardScoringProject("down", "<any>")
+    const runtime = createInitialRuntimeState(project)
+
+    const held = runRuntimeTick(project, "room-main", new Set(["ArrowUp"]), runtime, new Set(["ArrowUp"]))
+    expect(held.runtime.score).toBe(1)
+
+    const focusLost = runRuntimeTick(held.project, "room-main", new Set(), held.runtime, new Set(), new Set(["ArrowUp"]))
+    expect(focusLost.runtime.score).toBe(1)
+  })
+
   it("runs MouseMove on ticks where pointer moved", () => {
     const project = createMouseScoringProject("MouseMove")
     const runtime = createInitialRuntimeState(project)
@@ -5496,5 +5532,301 @@ describe("sprite animation", () => {
     const result = runRuntimeTick(project, "room-main", new Set(), runtimeNearEnd)
     // 160 + 80 = 240 -> 240 % 200 = 40
     expect(result.runtime.spriteAnimationElapsedMsByInstanceId["instance-actor"]).toBe(40)
+  })
+})
+
+describe("window per room actions", () => {
+  function createWindowProject(actions: unknown[], roomOverrides?: { width?: number; height?: number }): ProjectV1 {
+    return {
+      version: 1,
+      metadata: {
+        id: "project-window-actions",
+        name: "Window action tests",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: { sprites: [], sounds: [] },
+      variables: { global: [], objectByObjectId: {} },
+      objects: [
+        {
+          id: "object-camera",
+          name: "Camera",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step",
+              type: "Step",
+              key: null,
+              keyboardMode: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: actions.map((action, index) => ({
+                id: `item-${index}`,
+                type: "action",
+                action: action as never
+              }))
+            }
+          ]
+        }
+      ],
+      rooms: [
+        {
+          id: "room-main",
+          name: "Main",
+          width: roomOverrides?.width ?? 1200,
+          height: roomOverrides?.height ?? 700,
+          instances: [{ id: "instance-camera", objectId: "object-camera", x: 100, y: 100 }]
+        }
+      ],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+  }
+
+  it("teleportWindow(position) sets and clamps window within room limits", () => {
+    const project = createWindowProject([
+      { id: "action-teleport-window", type: "teleportWindow", mode: "position", x: 2000, y: 900 }
+    ])
+
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    expect(result.runtime.windowByRoomId["room-main"]).toEqual({ x: 368, y: 220 })
+  })
+
+  it("teleportWindow(self) centers on self and clamps near borders", () => {
+    const project = createWindowProject(
+      [{ id: "action-teleport-window-self", type: "teleportWindow", mode: "self", x: null, y: null }],
+      { width: 1000, height: 600 }
+    )
+    const projectNearCorner = {
+      ...project,
+      rooms: [
+        {
+          ...project.rooms[0]!,
+          instances: [{ id: "instance-camera", objectId: "object-camera", x: 900, y: 560 }]
+        }
+      ]
+    }
+
+    const result = runRuntimeTick(projectNearCorner, "room-main", new Set(), createInitialRuntimeState(projectNearCorner))
+    expect(result.runtime.windowByRoomId["room-main"]).toEqual({ x: 168, y: 120 })
+  })
+
+  it("moveWindow moves relatively and clamps", () => {
+    const project = createWindowProject([{ id: "action-move-window", type: "moveWindow", dx: 1000, dy: -500 }])
+    const initialRuntime = {
+      ...createInitialRuntimeState(project),
+      windowByRoomId: {
+        "room-main": { x: 100, y: 50 }
+      }
+    }
+
+    const result = runRuntimeTick(project, "room-main", new Set(), initialRuntime)
+    expect(result.runtime.windowByRoomId["room-main"]).toEqual({ x: 368, y: 0 })
+  })
+
+  it("keeps a remembered window per room across goToRoom and back", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-window-memory",
+        name: "Window memory",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: { sprites: [], sounds: [] },
+      variables: { global: [], objectByObjectId: {} },
+      objects: [
+        {
+          id: "object-room-a",
+          name: "Room A trigger",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step-a",
+              type: "Step",
+              key: null,
+              keyboardMode: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [
+                {
+                  id: "item-teleport-window-a",
+                  type: "action",
+                  action: { id: "action-teleport-window-a", type: "teleportWindow", mode: "position", x: 320, y: 180 }
+                },
+                {
+                  id: "item-go-b",
+                  type: "action",
+                  action: { id: "action-go-b", type: "goToRoom", roomId: "room-b" }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          id: "object-room-b",
+          name: "Room B trigger",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step-b",
+              type: "Step",
+              key: null,
+              keyboardMode: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [
+                {
+                  id: "item-go-a",
+                  type: "action",
+                  action: { id: "action-go-a", type: "goToRoom", roomId: "room-a" }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      rooms: [
+        {
+          id: "room-a",
+          name: "Room A",
+          width: 1600,
+          height: 1200,
+          instances: [{ id: "instance-room-a", objectId: "object-room-a", x: 0, y: 0 }]
+        },
+        {
+          id: "room-b",
+          name: "Room B",
+          width: 900,
+          height: 600,
+          instances: [{ id: "instance-room-b", objectId: "object-room-b", x: 0, y: 0 }]
+        }
+      ],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const firstTick = runRuntimeTick(project, "room-a", new Set(), createInitialRuntimeState(project))
+    expect(firstTick.activeRoomId).toBe("room-b")
+    expect(firstTick.runtime.windowByRoomId["room-a"]).toEqual({ x: 320, y: 180 })
+
+    const secondTick = runRuntimeTick(firstTick.project, "room-b", new Set(), firstTick.runtime)
+    expect(secondTick.activeRoomId).toBe("room-a")
+    expect(secondTick.runtime.windowByRoomId["room-a"]).toEqual({ x: 320, y: 180 })
+  })
+
+  it("clampToRoom and OutsideRoom use custom room dimensions", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-custom-room-dimensions",
+        name: "Custom room dimensions",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: { sprites: [], sounds: [] },
+      variables: { global: [], objectByObjectId: {} },
+      objects: [
+        {
+          id: "object-clamped",
+          name: "Clamped",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          width: 100,
+          height: 20,
+          events: [
+            {
+              id: "event-step-clamp",
+              type: "Step",
+              key: null,
+              keyboardMode: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [{ id: "item-clamp", type: "action", action: { id: "action-clamp", type: "clampToRoom" } }]
+            }
+          ]
+        },
+        {
+          id: "object-outside",
+          name: "Outside",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          width: 32,
+          height: 32,
+          events: [
+            {
+              id: "event-outside",
+              type: "OutsideRoom",
+              key: null,
+              keyboardMode: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [{ id: "item-score", type: "action", action: { id: "action-score", type: "changeScore", delta: 1 } }]
+            }
+          ]
+        }
+      ],
+      rooms: [
+        {
+          id: "room-main",
+          name: "Main",
+          width: 1000,
+          height: 600,
+          instances: [
+            { id: "instance-clamped", objectId: "object-clamped", x: 950, y: 590 },
+            { id: "instance-outside", objectId: "object-outside", x: 980, y: 10 }
+          ]
+        }
+      ],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    const room = result.project.rooms[0]
+    const clamped = room?.instances.find((entry) => entry.id === "instance-clamped")
+
+    expect(clamped?.x).toBe(900)
+    expect(clamped?.y).toBe(580)
+    expect(result.runtime.score).toBe(1)
   })
 })

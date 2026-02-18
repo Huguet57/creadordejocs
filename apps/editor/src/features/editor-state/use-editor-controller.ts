@@ -54,6 +54,7 @@ import {
   updateGlobalVariable as updateGlobalVariableModel,
   updateObjectVariable as updateObjectVariableModel,
   updateObjectProperties,
+  updateRoomSize as updateRoomSizeModel,
   updateObjectSpriteId,
   updateSoundAssetSource,
   updateSpriteAssetSource,
@@ -295,6 +296,12 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
     justPressedButtons: new Set<RuntimeMouseButton>()
   })
   const runtimeRef = useRef<RuntimeState>(createInitialRuntimeState(initial.project))
+  const projectRef = useRef<ProjectV1>(project)
+  projectRef.current = project
+  const runSnapshotRef = useRef<ProjectV1 | null>(null)
+  runSnapshotRef.current = runSnapshot
+  const activeRoomIdRef = useRef<string>(activeRoomId)
+  activeRoomIdRef.current = activeRoomId
 
   const activeRoom = useMemo(() => selectActiveRoom(project, activeRoomId), [project, activeRoomId])
   const selectedObject = useMemo(() => selectObject(project, activeObjectId), [project, activeObjectId])
@@ -363,13 +370,16 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
   }, [isDirty, project])
 
   useEffect(() => {
-    if (!isRunning || !activeRoom) {
+    if (!isRunning || !activeRoomId) {
       return
     }
     const interval = window.setInterval(() => {
+      const currentProject = projectRef.current
+      const currentRoomId = activeRoomIdRef.current
+      const currentSnapshot = runSnapshotRef.current
       const result = runRuntimeTick(
-        project,
-        activeRoom.id,
+        currentProject,
+        currentRoomId,
         pressedKeysRef.current,
         runtimeRef.current,
         justPressedKeysRef.current,
@@ -379,13 +389,13 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       let nextProject = result.project
       let nextRuntime = result.runtime
 
-      if (result.restartRoomRequested && runSnapshot) {
-        const snapshotRoom = runSnapshot.rooms.find((roomEntry) => roomEntry.id === activeRoom.id)
+      if (result.restartRoomRequested && currentSnapshot) {
+        const snapshotRoom = currentSnapshot.rooms.find((roomEntry) => roomEntry.id === currentRoomId)
         if (snapshotRoom) {
           nextProject = {
             ...nextProject,
             rooms: nextProject.rooms.map((roomEntry) =>
-              roomEntry.id === activeRoom.id
+              roomEntry.id === currentRoomId
                 ? {
                     ...roomEntry,
                     instances: snapshotRoom.instances.map((instanceEntry) => ({ ...instanceEntry }))
@@ -398,9 +408,10 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       }
 
       runtimeRef.current = nextRuntime
+      projectRef.current = nextProject
       setRuntimeState(nextRuntime)
       setProject(nextProject)
-      if (result.activeRoomId !== activeRoom.id) {
+      if (result.activeRoomId !== currentRoomId) {
         setActiveRoomId(result.activeRoomId)
       }
       justPressedKeysRef.current.clear()
@@ -409,7 +420,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       runtimeMouseRef.current.justPressedButtons.clear()
     }, 80)
     return () => window.clearInterval(interval)
-  }, [activeRoom, isRunning, project, runSnapshot])
+  }, [isRunning, activeRoomId])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
@@ -426,11 +437,26 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       }
       pressedKeysRef.current.delete(runtimeKey)
     }
+    const releaseAllKeys = (): void => {
+      for (const key of pressedKeysRef.current) {
+        justReleasedKeysRef.current.add(key)
+      }
+      pressedKeysRef.current.clear()
+    }
+    const onVisibilityChange = (): void => {
+      if (document.visibilityState === "hidden") {
+        releaseAllKeys()
+      }
+    }
     window.addEventListener("keydown", onKeyDown)
     window.addEventListener("keyup", onKeyUp)
+    window.addEventListener("blur", releaseAllKeys)
+    document.addEventListener("visibilitychange", onVisibilityChange)
     return () => {
       window.removeEventListener("keydown", onKeyDown)
       window.removeEventListener("keyup", onKeyUp)
+      window.removeEventListener("blur", releaseAllKeys)
+      document.removeEventListener("visibilitychange", onVisibilityChange)
     }
   }, [])
 
@@ -791,6 +817,12 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       const next = moveRoomToFolderModel(project, roomId, folderId)
       if (next === project) return false
       pushProjectChange(next, "Move room to folder")
+      return true
+    },
+    updateRoomSize(roomId: string, width: number, height: number) {
+      const next = updateRoomSizeModel(project, { roomId, width, height })
+      if (next === project) return false
+      pushProjectChange(next, "Update room size")
       return true
     },
     updateSpriteSource(spriteId: string, source: string) {
