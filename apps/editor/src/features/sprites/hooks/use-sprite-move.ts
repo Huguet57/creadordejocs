@@ -127,6 +127,15 @@ export function useSpriteMove({ width, height, pixelsRgba, selection, onPixelsCh
     })
   }, [width, height, onPixelsChange, onSelectionChange])
 
+  const cancelMove = useCallback(() => {
+    setMoveState((prev) => {
+      if (!prev) return null
+      const restored = composeMovedPixels(prev.basePixels, prev.liftedEntries, 0, 0, width, height)
+      onPixelsChange(restored)
+      return null
+    })
+  }, [width, height, onPixelsChange])
+
   const displayPixels = useMemo(() => {
     if (!moveState) return pixelsRgba
     return composeMovedPixels(moveState.basePixels, moveState.liftedEntries, moveState.offsetX, moveState.offsetY, width, height)
@@ -137,6 +146,7 @@ export function useSpriteMove({ width, height, pixelsRgba, selection, onPixelsCh
     displayPixels,
     onMoveStart,
     onMoveDrag,
-    onMoveEnd
+    onMoveEnd,
+    cancelMove
   }
 }

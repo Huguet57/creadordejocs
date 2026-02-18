@@ -320,6 +320,25 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
     [pixelActions, spriteMove, selectedSprite?.width, selectedSprite?.height, setActiveTool, lastPaintTool]
   )
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return
+      if (spriteMove.isMoving) {
+        spriteMove.cancelMove()
+        return
+      }
+      if (selectDragRect) {
+        setSelectDragRect(null)
+        return
+      }
+      if (selection.size > 0) {
+        setSelection(new Set())
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown)
+    return () => document.removeEventListener("keydown", handleKeyDown)
+  }, [spriteMove, selectDragRect, selection.size])
+
   const handlePointerUpOutside = useCallback(() => {
     if (activeTool === "move" && spriteMove.isMoving) {
       spriteMove.onMoveEnd()
