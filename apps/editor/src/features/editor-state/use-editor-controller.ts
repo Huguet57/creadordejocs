@@ -632,11 +632,10 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
     addObject(name: string, folderId: string | null = null) {
       const trimmedName = name.trim()
       if (!trimmedName) return
-      const createdSprite = quickCreateSpriteWithSize(project, trimmedName, 32, 32)
-      const result = quickCreateObject(createdSprite.project, {
+      const result = quickCreateObject(project, {
         name: trimmedName,
         folderId,
-        spriteId: createdSprite.spriteId,
+        spriteId: null,
         x: 64,
         y: 64,
         speed: 1,
