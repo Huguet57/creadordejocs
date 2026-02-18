@@ -1234,6 +1234,21 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
     resetImportStatus() {
       setImportStatus("idle")
     },
+    createBlankProject() {
+      const confirmed = window.confirm("Això crearà un joc nou en blanc. Es perdran els canvis no desats. Vols continuar?")
+      if (!confirmed) return
+      const normalized = ensureProjectHasRoom(createEmptyProjectV1("Nou joc"))
+      setPast((value) => [...value.slice(-39), project])
+      setFuture([])
+      setProject(normalized.project)
+      setActiveRoomId(normalized.roomId)
+      setActiveObjectId(null)
+      setActiveSpriteId(null)
+      setActiveSection("objects")
+      setIsRunning(false)
+      setRunSnapshot(null)
+      setIsDirty(true)
+    },
     restoreSnapshot(snapshotId: string) {
       const restored = loadSnapshotProject(snapshotId)
       if (!restored) {

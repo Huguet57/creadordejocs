@@ -1,4 +1,4 @@
-import { Download, FileUp, ChevronDown } from "lucide-react"
+import { Download, FileUp, FilePlus2, ChevronDown } from "lucide-react"
 import { useRef, useState, type ChangeEvent } from "react"
 import { Button } from "../components/ui/button.js"
 import {
@@ -53,16 +53,19 @@ export function ImportDropdown({ controller }: ImportDropdownProps) {
             size="sm"
             className="mvp19-import-dropdown-trigger h-7 gap-1 px-2 text-xs text-slate-500 hover:text-slate-800"
           >
-            Import
+            Game
             <ChevronDown className="h-3.5 w-3.5" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="mvp19-import-dropdown-content w-52">
+          <DropdownMenuItem data-testid="header-create-blank-item" onSelect={() => controller.createBlankProject()}>
+            <FilePlus2 className="h-4 w-4 text-slate-500" />
+            Crear joc en blanc...
+          </DropdownMenuItem>
           <DropdownMenuItem data-testid="header-import-json-item" onSelect={openImportPicker}>
             <FileUp className="h-4 w-4 text-slate-500" />
             Importar joc (.json)
           </DropdownMenuItem>
-          <DropdownMenuSeparator />
           <DropdownMenuItem data-testid="header-export-json-item" onSelect={exportCurrentProject}>
             <Download className="h-4 w-4 text-slate-500" />
             Exportar joc actual
