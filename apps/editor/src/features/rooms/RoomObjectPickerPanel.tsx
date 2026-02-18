@@ -81,7 +81,7 @@ export function RoomObjectPickerPanel({
           <button
             key={obj.id}
             type="button"
-            className={`room-objpicker-item -mx-2 flex w-[calc(100%+16px)] items-center gap-2 rounded px-2 py-1.5 text-left text-sm transition-colors ${
+            className={`room-objpicker-item -mx-2 flex w-[calc(100%+16px)] items-center gap-2 rounded px-2 py-1.5 text-left text-[12px] leading-tight transition-colors ${
               placingObjectId === obj.id
                 ? "bg-white font-medium text-slate-900 ring-1 ring-slate-300"
                 : "text-slate-600 hover:bg-slate-100"
