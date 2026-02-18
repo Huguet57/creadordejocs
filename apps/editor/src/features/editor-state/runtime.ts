@@ -878,6 +878,7 @@ export function runRuntimeTick(
   pressedKeys: Set<string>,
   runtime: RuntimeState,
   justPressedKeys = new Set<string>(),
+  justReleasedKeys = new Set<string>(),
   mouseInput: RuntimeMouseInput = DEFAULT_RUNTIME_MOUSE_INPUT
 ): { project: ProjectV1; runtime: RuntimeState; activeRoomId: string; restartRoomRequested: boolean } {
   const room = project.rooms.find((roomEntry) => roomEntry.id === roomId)
@@ -958,9 +959,15 @@ export function runRuntimeTick(
         continue
       }
       if (eventEntry.type === "Keyboard" && eventEntry.key && eventEntry.keyboardMode) {
-        const shouldRun = eventEntry.keyboardMode === "down"
-          ? pressedKeys.has(eventEntry.key)
-          : justPressedKeys.has(eventEntry.key)
+        const isAnyKey = eventEntry.key === "<any>"
+        let shouldRun: boolean
+        if (eventEntry.keyboardMode === "down") {
+          shouldRun = isAnyKey ? pressedKeys.size > 0 : pressedKeys.has(eventEntry.key)
+        } else if (eventEntry.keyboardMode === "press") {
+          shouldRun = isAnyKey ? justPressedKeys.size > 0 : justPressedKeys.has(eventEntry.key)
+        } else {
+          shouldRun = isAnyKey ? justReleasedKeys.size > 0 : justReleasedKeys.has(eventEntry.key)
+        }
         if (shouldRun) {
           matchingEvents.push(eventEntry)
         }

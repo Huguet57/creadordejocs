@@ -55,8 +55,8 @@ export type ObjectEventType =
   | "MouseMove"
   | "Timer"
   | "CustomEvent"
-export type ObjectEventKey = "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight" | "Space"
-export type ObjectKeyboardMode = "down" | "press"
+export type ObjectEventKey = "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight" | "Space" | "<any>"
+export type ObjectKeyboardMode = "down" | "press" | "release"
 export type ObjectMouseMode = "down" | "press"
 export type ObjectEventItem = ProjectV1["objects"][number]["events"][number]["items"][number]
 export type ObjectAction = Extract<ObjectEventItem, { type: "action" }>["action"]

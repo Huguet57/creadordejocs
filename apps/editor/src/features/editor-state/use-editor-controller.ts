@@ -261,6 +261,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
   const [startedAtMs] = useState<number>(() => Date.now())
   const pressedKeysRef = useRef<Set<string>>(new Set())
   const justPressedKeysRef = useRef<Set<string>>(new Set())
+  const justReleasedKeysRef = useRef<Set<string>>(new Set())
   const runtimeMouseRef = useRef<RuntimeMouseInput>({
     x: 0,
     y: 0,
@@ -347,6 +348,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
         pressedKeysRef.current,
         runtimeRef.current,
         justPressedKeysRef.current,
+        justReleasedKeysRef.current,
         runtimeMouseRef.current
       )
       let nextProject = result.project
@@ -377,6 +379,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
         setActiveRoomId(result.activeRoomId)
       }
       justPressedKeysRef.current.clear()
+      justReleasedKeysRef.current.clear()
       runtimeMouseRef.current.moved = false
       runtimeMouseRef.current.justPressedButtons.clear()
     }, 80)
@@ -393,6 +396,9 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
     }
     const onKeyUp = (event: KeyboardEvent): void => {
       const runtimeKey = getRuntimeKeyFromKeyboardEvent(event)
+      if (pressedKeysRef.current.has(runtimeKey)) {
+        justReleasedKeysRef.current.add(runtimeKey)
+      }
       pressedKeysRef.current.delete(runtimeKey)
     }
     window.addEventListener("keydown", onKeyDown)
@@ -409,6 +415,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
     }
     pressedKeysRef.current.clear()
     justPressedKeysRef.current.clear()
+    justReleasedKeysRef.current.clear()
     runtimeMouseRef.current = {
       x: 0,
       y: 0,

@@ -137,7 +137,7 @@ export function EventSelectorPanel({ classNamePrefix, onSelectEvent, onClose }: 
                   onChange={(event) => setEventKey(event.target.value as ObjectEventKey)}
                 >
                   {OBJECT_EVENT_KEYS.map((key) => (
-                    <option key={key} value={key}>{key}</option>
+                    <option key={key} value={key}>{key === "<any>" ? "Any key" : key}</option>
                   ))}
                 </select>
                 <span className={`${classNamePrefix}-keyboard-mode-label text-xs font-medium text-slate-500`}>
@@ -150,6 +150,7 @@ export function EventSelectorPanel({ classNamePrefix, onSelectEvent, onClose }: 
                 >
                   <option value="down">Held</option>
                   <option value="press">Pressed</option>
+                  <option value="release">Released</option>
                 </select>
                 <button
                   type="button"

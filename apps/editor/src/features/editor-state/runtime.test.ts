@@ -19,7 +19,7 @@ function updateRoomInstances(
   }
 }
 
-function createKeyboardScoringProject(mode: "down" | "press"): ProjectV1 {
+function createKeyboardScoringProject(mode: "down" | "press" | "release", key: "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight" | "Space" | "<any>" = "Space"): ProjectV1 {
   return {
     version: 1,
     metadata: {
@@ -49,7 +49,7 @@ function createKeyboardScoringProject(mode: "down" | "press"): ProjectV1 {
           {
             id: "event-keyboard",
             type: "Keyboard",
-            key: "Space",
+            key,
             keyboardMode: mode,
             targetObjectId: null,
             intervalMs: null,
@@ -400,18 +400,71 @@ describe("runtime regressions", () => {
     expect(secondPress.runtime.score).toBe(2)
   })
 
+  it("runs Keyboard/release only on the tick when key is released", () => {
+    const project = createKeyboardScoringProject("release")
+    const runtime = createInitialRuntimeState(project)
+
+    const pressed = runRuntimeTick(project, "room-main", new Set(["Space"]), runtime, new Set(["Space"]))
+    expect(pressed.runtime.score).toBe(0)
+
+    const held = runRuntimeTick(pressed.project, "room-main", new Set(["Space"]), pressed.runtime, new Set())
+    expect(held.runtime.score).toBe(0)
+
+    const released = runRuntimeTick(held.project, "room-main", new Set(), held.runtime, new Set(), new Set(["Space"]))
+    expect(released.runtime.score).toBe(1)
+
+    const idle = runRuntimeTick(released.project, "room-main", new Set(), released.runtime, new Set())
+    expect(idle.runtime.score).toBe(1)
+  })
+
+  it("runs Keyboard/<any>/down when any key is held", () => {
+    const project = createKeyboardScoringProject("down", "<any>")
+    const runtime = createInitialRuntimeState(project)
+
+    const idle = runRuntimeTick(project, "room-main", new Set(), runtime, new Set())
+    expect(idle.runtime.score).toBe(0)
+
+    const first = runRuntimeTick(idle.project, "room-main", new Set(["KeyA"]), idle.runtime, new Set(["KeyA"]))
+    expect(first.runtime.score).toBe(1)
+
+    const second = runRuntimeTick(first.project, "room-main", new Set(["KeyB"]), first.runtime, new Set(["KeyB"]))
+    expect(second.runtime.score).toBe(2)
+  })
+
+  it("runs Keyboard/<any>/press when any key is just pressed", () => {
+    const project = createKeyboardScoringProject("press", "<any>")
+    const runtime = createInitialRuntimeState(project)
+
+    const first = runRuntimeTick(project, "room-main", new Set(["Space"]), runtime, new Set(["Space"]))
+    expect(first.runtime.score).toBe(1)
+
+    const held = runRuntimeTick(first.project, "room-main", new Set(["Space"]), first.runtime, new Set())
+    expect(held.runtime.score).toBe(1)
+  })
+
+  it("runs Keyboard/<any>/release when any key is released", () => {
+    const project = createKeyboardScoringProject("release", "<any>")
+    const runtime = createInitialRuntimeState(project)
+
+    const pressed = runRuntimeTick(project, "room-main", new Set(["KeyA"]), runtime, new Set(["KeyA"]))
+    expect(pressed.runtime.score).toBe(0)
+
+    const released = runRuntimeTick(pressed.project, "room-main", new Set(), pressed.runtime, new Set(), new Set(["KeyA"]))
+    expect(released.runtime.score).toBe(1)
+  })
+
   it("runs MouseMove on ticks where pointer moved", () => {
     const project = createMouseScoringProject("MouseMove")
     const runtime = createInitialRuntimeState(project)
 
-    const first = runRuntimeTick(project, "room-main", new Set(), runtime, new Set(), {
+    const first = runRuntimeTick(project, "room-main", new Set(), runtime, new Set(), new Set(), {
       x: 10,
       y: 12,
       moved: true,
       pressedButtons: new Set(),
       justPressedButtons: new Set()
     })
-    const second = runRuntimeTick(first.project, "room-main", new Set(), first.runtime, new Set(), {
+    const second = runRuntimeTick(first.project, "room-main", new Set(), first.runtime, new Set(), new Set(), {
       x: 10,
       y: 12,
       moved: false,
@@ -427,14 +480,14 @@ describe("runtime regressions", () => {
     const project = createMouseScoringProject("Mouse", "down")
     const runtime = createInitialRuntimeState(project)
 
-    const held = runRuntimeTick(project, "room-main", new Set(), runtime, new Set(), {
+    const held = runRuntimeTick(project, "room-main", new Set(), runtime, new Set(), new Set(), {
       x: 0,
       y: 0,
       moved: false,
       pressedButtons: new Set(["left"]),
       justPressedButtons: new Set(["left"])
     })
-    const released = runRuntimeTick(held.project, "room-main", new Set(), held.runtime, new Set(), {
+    const released = runRuntimeTick(held.project, "room-main", new Set(), held.runtime, new Set(), new Set(), {
       x: 0,
       y: 0,
       moved: false,
@@ -450,21 +503,21 @@ describe("runtime regressions", () => {
     const project = createMouseScoringProject("Mouse", "press")
     const runtime = createInitialRuntimeState(project)
 
-    const first = runRuntimeTick(project, "room-main", new Set(), runtime, new Set(), {
+    const first = runRuntimeTick(project, "room-main", new Set(), runtime, new Set(), new Set(), {
       x: 0,
       y: 0,
       moved: false,
       pressedButtons: new Set(["left"]),
       justPressedButtons: new Set(["left"])
     })
-    const held = runRuntimeTick(first.project, "room-main", new Set(), first.runtime, new Set(), {
+    const held = runRuntimeTick(first.project, "room-main", new Set(), first.runtime, new Set(), new Set(), {
       x: 0,
       y: 0,
       moved: false,
       pressedButtons: new Set(["left"]),
       justPressedButtons: new Set()
     })
-    const secondPress = runRuntimeTick(held.project, "room-main", new Set(), held.runtime, new Set(), {
+    const secondPress = runRuntimeTick(held.project, "room-main", new Set(), held.runtime, new Set(), new Set(), {
       x: 0,
       y: 0,
       moved: false,
@@ -481,14 +534,14 @@ describe("runtime regressions", () => {
     const project = createMouseBuiltinConditionProject()
     const runtime = createInitialRuntimeState(project)
 
-    const belowThreshold = runRuntimeTick(project, "room-main", new Set(), runtime, new Set(), {
+    const belowThreshold = runRuntimeTick(project, "room-main", new Set(), runtime, new Set(), new Set(), {
       x: 90,
       y: 30,
       moved: true,
       pressedButtons: new Set(),
       justPressedButtons: new Set()
     })
-    const aboveThreshold = runRuntimeTick(project, "room-main", new Set(), belowThreshold.runtime, new Set(), {
+    const aboveThreshold = runRuntimeTick(project, "room-main", new Set(), belowThreshold.runtime, new Set(), new Set(), {
       x: 120,
       y: 30,
       moved: true,
@@ -994,7 +1047,7 @@ describe("runtime regressions", () => {
       }
     }
 
-    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(), new Set(), {
+    const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(), new Set(), new Set(), {
       x: 187,
       y: 93,
       moved: true,
@@ -2175,6 +2228,7 @@ describe("runtime regressions", () => {
       "room-main",
       new Set(),
       createInitialRuntimeState(project),
+      new Set(),
       new Set(),
       {
         x: 12,

@@ -350,6 +350,7 @@ export function ActionEditorPanel({
             >
               <option value="down">Held</option>
               <option value="press">Pressed</option>
+              <option value="release">Released</option>
             </select>
             <Label className="text-xs text-slate-400">Key</Label>
             <select
@@ -366,7 +367,7 @@ export function ActionEditorPanel({
               }
             >
               {OBJECT_EVENT_KEYS.map((key) => (
-                <option key={key} value={key}>{key}</option>
+                <option key={key} value={key}>{key === "<any>" ? "Any key" : key}</option>
               ))}
             </select>
           </div>

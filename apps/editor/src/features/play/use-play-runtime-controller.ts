@@ -17,6 +17,7 @@ export function usePlayRuntimeController(initialProject: ProjectV1): RunSectionC
   const [runSnapshot, setRunSnapshot] = useState<ProjectV1 | null>(null)
   const pressedKeysRef = useRef<Set<string>>(new Set())
   const justPressedKeysRef = useRef<Set<string>>(new Set())
+  const justReleasedKeysRef = useRef<Set<string>>(new Set())
   const runtimeRef = useRef<RuntimeState>(createInitialRuntimeState(initialProject))
   const runtimeMouseRef = useRef<RuntimeMouseInput>({
     x: 0,
@@ -49,6 +50,7 @@ export function usePlayRuntimeController(initialProject: ProjectV1): RunSectionC
         pressedKeysRef.current,
         runtimeRef.current,
         justPressedKeysRef.current,
+        justReleasedKeysRef.current,
         runtimeMouseRef.current
       )
       let nextProject = result.project
@@ -79,6 +81,7 @@ export function usePlayRuntimeController(initialProject: ProjectV1): RunSectionC
         setActiveRoomId(result.activeRoomId)
       }
       justPressedKeysRef.current.clear()
+      justReleasedKeysRef.current.clear()
       runtimeMouseRef.current.moved = false
       runtimeMouseRef.current.justPressedButtons.clear()
     }, 80)
@@ -93,6 +96,9 @@ export function usePlayRuntimeController(initialProject: ProjectV1): RunSectionC
       pressedKeysRef.current.add(event.code)
     }
     const onKeyUp = (event: KeyboardEvent): void => {
+      if (pressedKeysRef.current.has(event.code)) {
+        justReleasedKeysRef.current.add(event.code)
+      }
       pressedKeysRef.current.delete(event.code)
     }
     window.addEventListener("keydown", onKeyDown)
@@ -109,6 +115,7 @@ export function usePlayRuntimeController(initialProject: ProjectV1): RunSectionC
     }
     pressedKeysRef.current.clear()
     justPressedKeysRef.current.clear()
+    justReleasedKeysRef.current.clear()
     runtimeMouseRef.current = {
       x: 0,
       y: 0,

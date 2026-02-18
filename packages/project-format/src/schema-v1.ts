@@ -460,8 +460,8 @@ const ObjectEventSchema = z
       "Mouse",
       "CustomEvent"
     ]),
-    key: z.enum(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"]).nullable().default(null),
-    keyboardMode: z.enum(["down", "press"]).nullable().optional(),
+    key: z.enum(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space", "<any>"]).nullable().default(null),
+    keyboardMode: z.enum(["down", "press", "release"]).nullable().optional(),
     mouseMode: z.enum(["down", "press"]).nullable().optional(),
     targetObjectId: z.string().nullable().default(null),
     intervalMs: z.number().positive().nullable().default(null),

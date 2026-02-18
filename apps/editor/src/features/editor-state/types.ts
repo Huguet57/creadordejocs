@@ -21,8 +21,8 @@ export type ObjectEventType =
   | "Timer"
   | "MouseMove"
   | "CustomEvent"
-export type ObjectEventKey = "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight" | "Space"
-export type ObjectKeyboardMode = "down" | "press"
+export type ObjectEventKey = "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight" | "Space" | "<any>"
+export type ObjectKeyboardMode = "down" | "press" | "release"
 export type ObjectMouseMode = "down" | "press"
 export type ObjectActionType = Exclude<ActionType, "playSound">
 
@@ -88,7 +88,7 @@ export const SYSTEM_MOUSE_GLOBALS = [
   { id: "mouse.x", name: "mouse.x", type: "number" as const, initialValue: 0 },
   { id: "mouse.y", name: "mouse.y", type: "number" as const, initialValue: 0 }
 ]
-export const OBJECT_EVENT_KEYS: ObjectEventKey[] = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"]
+export const OBJECT_EVENT_KEYS: ObjectEventKey[] = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space", "<any>"]
 export const OBJECT_ACTION_TYPES: ObjectActionType[] = getEditorVisibleActionTypes().filter(
   (actionType): actionType is ObjectActionType => actionType !== "playSound"
 )
