@@ -23,7 +23,7 @@ export function resolveRecentPaintTool(previousTool: SpritePaintTool, nextTool: 
 export function useSpriteEditorState() {
   const [activeTool, setActiveToolState] = useState<SpriteEditorTool>("pencil")
   const [lastPaintTool, setLastPaintTool] = useState<SpritePaintTool>("pencil")
-  const [activeColor, setActiveColor] = useState("#4F46E5FF")
+  const [activeColor, setActiveColor] = useState("#000000FF")
   const [zoom, setZoom] = useState(12)
   const [showGrid, setShowGrid] = useState(false)
   const [toolOptions, setToolOptions] = useState<SpriteToolOptionsState>(DEFAULT_TOOL_OPTIONS)
