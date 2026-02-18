@@ -7,6 +7,13 @@ import {
   type RuntimeMouseInput,
   type RuntimeState
 } from "../editor-state/runtime.js"
+import {
+  captureRuntimeKeyDown,
+  captureRuntimeKeyUp,
+  clearRuntimeKeyEdges,
+  releaseAllRuntimeKeys,
+  resetRuntimeKeyBuffer
+} from "../editor-state/runtime-input-buffer.js"
 import type { RunSectionController } from "../run/RunSection.js"
 
 export function usePlayRuntimeController(initialProject: ProjectV1): RunSectionController {
@@ -90,8 +97,7 @@ export function usePlayRuntimeController(initialProject: ProjectV1): RunSectionC
       if (result.activeRoomId !== currentRoomId) {
         setActiveRoomId(result.activeRoomId)
       }
-      justPressedKeysRef.current.clear()
-      justReleasedKeysRef.current.clear()
+      clearRuntimeKeyEdges(justPressedKeysRef.current, justReleasedKeysRef.current)
       runtimeMouseRef.current.moved = false
       runtimeMouseRef.current.justPressedButtons.clear()
     }, 80)
@@ -100,22 +106,13 @@ export function usePlayRuntimeController(initialProject: ProjectV1): RunSectionC
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
-      if (!pressedKeysRef.current.has(event.code)) {
-        justPressedKeysRef.current.add(event.code)
-      }
-      pressedKeysRef.current.add(event.code)
+      captureRuntimeKeyDown(pressedKeysRef.current, justPressedKeysRef.current, event.code)
     }
     const onKeyUp = (event: KeyboardEvent): void => {
-      if (pressedKeysRef.current.has(event.code)) {
-        justReleasedKeysRef.current.add(event.code)
-      }
-      pressedKeysRef.current.delete(event.code)
+      captureRuntimeKeyUp(pressedKeysRef.current, justReleasedKeysRef.current, event.code)
     }
     const releaseAllKeys = (): void => {
-      for (const key of pressedKeysRef.current) {
-        justReleasedKeysRef.current.add(key)
-      }
-      pressedKeysRef.current.clear()
+      releaseAllRuntimeKeys(pressedKeysRef.current, justReleasedKeysRef.current)
     }
     const onVisibilityChange = (): void => {
       if (document.visibilityState === "hidden") {
@@ -138,9 +135,7 @@ export function usePlayRuntimeController(initialProject: ProjectV1): RunSectionC
     if (isRunning) {
       return
     }
-    pressedKeysRef.current.clear()
-    justPressedKeysRef.current.clear()
-    justReleasedKeysRef.current.clear()
+    resetRuntimeKeyBuffer(pressedKeysRef.current, justPressedKeysRef.current, justReleasedKeysRef.current)
     runtimeMouseRef.current = {
       x: 0,
       y: 0,
@@ -151,6 +146,7 @@ export function usePlayRuntimeController(initialProject: ProjectV1): RunSectionC
   }, [isRunning])
 
   const run = (): void => {
+    resetRuntimeKeyBuffer(pressedKeysRef.current, justPressedKeysRef.current, justReleasedKeysRef.current)
     setRunSnapshot(project)
     const freshRuntime = createInitialRuntimeState(project)
     runtimeRef.current = freshRuntime

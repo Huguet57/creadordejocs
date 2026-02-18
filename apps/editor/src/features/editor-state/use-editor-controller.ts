@@ -99,6 +99,13 @@ import {
   type RuntimeMouseInput,
   type RuntimeState
 } from "./runtime.js"
+import {
+  captureRuntimeKeyDown,
+  captureRuntimeKeyUp,
+  clearRuntimeKeyEdges,
+  releaseAllRuntimeKeys,
+  resetRuntimeKeyBuffer
+} from "./runtime-input-buffer.js"
 import { intersectsInstances } from "./runtime-types.js"
 import type { EditorSection, ObjectEventKey, ObjectEventType, ObjectKeyboardMode, ObjectMouseMode } from "./types.js"
 import { resolveAssetSource } from "../assets/asset-source-resolver.js"
@@ -419,8 +426,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       if (result.activeRoomId !== currentRoomId) {
         setActiveRoomId(result.activeRoomId)
       }
-      justPressedKeysRef.current.clear()
-      justReleasedKeysRef.current.clear()
+      clearRuntimeKeyEdges(justPressedKeysRef.current, justReleasedKeysRef.current)
       runtimeMouseRef.current.moved = false
       runtimeMouseRef.current.justPressedButtons.clear()
     }, 80)
@@ -430,23 +436,14 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
       const runtimeKey = getRuntimeKeyFromKeyboardEvent(event)
-      if (!pressedKeysRef.current.has(runtimeKey)) {
-        justPressedKeysRef.current.add(runtimeKey)
-      }
-      pressedKeysRef.current.add(runtimeKey)
+      captureRuntimeKeyDown(pressedKeysRef.current, justPressedKeysRef.current, runtimeKey)
     }
     const onKeyUp = (event: KeyboardEvent): void => {
       const runtimeKey = getRuntimeKeyFromKeyboardEvent(event)
-      if (pressedKeysRef.current.has(runtimeKey)) {
-        justReleasedKeysRef.current.add(runtimeKey)
-      }
-      pressedKeysRef.current.delete(runtimeKey)
+      captureRuntimeKeyUp(pressedKeysRef.current, justReleasedKeysRef.current, runtimeKey)
     }
     const releaseAllKeys = (): void => {
-      for (const key of pressedKeysRef.current) {
-        justReleasedKeysRef.current.add(key)
-      }
-      pressedKeysRef.current.clear()
+      releaseAllRuntimeKeys(pressedKeysRef.current, justReleasedKeysRef.current)
     }
     const onVisibilityChange = (): void => {
       if (document.visibilityState === "hidden") {
@@ -469,9 +466,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
     if (isRunning) {
       return
     }
-    pressedKeysRef.current.clear()
-    justPressedKeysRef.current.clear()
-    justReleasedKeysRef.current.clear()
+    resetRuntimeKeyBuffer(pressedKeysRef.current, justPressedKeysRef.current, justReleasedKeysRef.current)
     runtimeMouseRef.current = {
       x: 0,
       y: 0,
@@ -1229,6 +1224,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
     },
     run() {
       if (isRunning) return
+      resetRuntimeKeyBuffer(pressedKeysRef.current, justPressedKeysRef.current, justReleasedKeysRef.current)
       const withTimeMetric = setTimeToFirstPlayableFunMs(project, Date.now() - startedAtMs)
       setProject(withTimeMetric)
       setRunSnapshot(withTimeMetric)

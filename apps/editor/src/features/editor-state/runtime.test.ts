@@ -77,6 +77,119 @@ function createKeyboardScoringProject(mode: "down" | "press" | "release", key: "
   }
 }
 
+function createKeyboardMovementAndSpeedProject(): ProjectV1 {
+  return {
+    version: 1,
+    metadata: {
+      id: "project-keyboard-movement-speed",
+      name: "keyboard movement and speed test",
+      locale: "ca",
+      createdAtIso: new Date().toISOString()
+    },
+    resources: {
+      sprites: [],
+      sounds: []
+    },
+    variables: {
+      global: [],
+      objectByObjectId: {}
+    },
+    objects: [
+      {
+        id: "object-player",
+        name: "Player",
+        spriteId: null,
+        x: 0,
+        y: 0,
+        speed: 0,
+        direction: 0,
+        events: [
+          {
+            id: "event-arrow-up-down",
+            type: "Keyboard",
+            key: "ArrowUp",
+            keyboardMode: "down",
+            targetObjectId: null,
+            intervalMs: null,
+            items: [
+              {
+                id: "item-arrow-up-change-sprite",
+                type: "action",
+                action: { id: "action-arrow-up-change-sprite", type: "changeSprite", spriteId: "sprite-up", target: "self" }
+              },
+              {
+                id: "item-arrow-up-move",
+                type: "action",
+                action: { id: "action-arrow-up-move", type: "move", dx: 0, dy: -6 }
+              }
+            ]
+          },
+          {
+            id: "event-arrow-down-down",
+            type: "Keyboard",
+            key: "ArrowDown",
+            keyboardMode: "down",
+            targetObjectId: null,
+            intervalMs: null,
+            items: [
+              {
+                id: "item-arrow-down-change-sprite",
+                type: "action",
+                action: { id: "action-arrow-down-change-sprite", type: "changeSprite", spriteId: "sprite-down", target: "self" }
+              },
+              {
+                id: "item-arrow-down-move",
+                type: "action",
+                action: { id: "action-arrow-down-move", type: "move", dx: 0, dy: 6 }
+              }
+            ]
+          },
+          {
+            id: "event-any-down-speed-up",
+            type: "Keyboard",
+            key: "<any>",
+            keyboardMode: "down",
+            targetObjectId: null,
+            intervalMs: null,
+            items: [
+              {
+                id: "item-speed-up",
+                type: "action",
+                action: { id: "action-speed-up", type: "setSpriteSpeed", speedMs: 100, target: "self" }
+              }
+            ]
+          },
+          {
+            id: "event-arrow-down-release-speed-reset",
+            type: "Keyboard",
+            key: "ArrowDown",
+            keyboardMode: "release",
+            targetObjectId: null,
+            intervalMs: null,
+            items: [
+              {
+                id: "item-speed-reset",
+                type: "action",
+                action: { id: "action-speed-reset", type: "setSpriteSpeed", speedMs: 0, target: "self" }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    rooms: [{ id: "room-main", name: "Main", instances: [{ id: "instance-player", objectId: "object-player", x: 0, y: 0 }] }],
+    scenes: [],
+    metrics: {
+      appStart: 0,
+      projectLoad: 0,
+      runtimeErrors: 0,
+      tutorialCompletion: 0,
+      stuckRate: 0,
+      timeToFirstPlayableFunMs: null
+    }
+  }
+}
+
 function createMouseScoringProject(
   eventType: "MouseMove" | "Mouse",
   mouseMode: "down" | "press" | null = null
@@ -487,6 +600,42 @@ describe("runtime regressions", () => {
 
     const focusLost = runRuntimeTick(held.project, "room-main", new Set(), held.runtime, new Set(), new Set(["ArrowUp"]))
     expect(focusLost.runtime.score).toBe(1)
+  })
+
+  it("runs full keyboard action chains and lets ArrowDown/release cleanup win same-tick conflicts", () => {
+    const project = createKeyboardMovementAndSpeedProject()
+    const runtime = createInitialRuntimeState(project)
+
+    const firstDown = runRuntimeTick(project, "room-main", new Set(["ArrowDown"]), runtime, new Set(["ArrowDown"]))
+    expect(firstDown.project.rooms[0]?.instances[0]?.y).toBe(6)
+    expect(firstDown.runtime.spriteOverrideByInstanceId["instance-player"]).toBe("sprite-down")
+    expect(firstDown.runtime.spriteSpeedMsByInstanceId["instance-player"]).toBe(100)
+
+    const holdDown = runRuntimeTick(firstDown.project, "room-main", new Set(["ArrowDown"]), firstDown.runtime, new Set())
+    expect(holdDown.project.rooms[0]?.instances[0]?.y).toBe(12)
+
+    const downReleaseConflict = runRuntimeTick(
+      holdDown.project,
+      "room-main",
+      new Set(["ArrowUp"]),
+      holdDown.runtime,
+      new Set(["ArrowUp"]),
+      new Set(["ArrowDown"])
+    )
+    expect(downReleaseConflict.project.rooms[0]?.instances[0]?.y).toBe(6)
+    expect(downReleaseConflict.runtime.spriteOverrideByInstanceId["instance-player"]).toBe("sprite-up")
+    expect(downReleaseConflict.runtime.spriteSpeedMsByInstanceId["instance-player"]).toBe(1)
+
+    const postRelease = runRuntimeTick(
+      downReleaseConflict.project,
+      "room-main",
+      new Set(),
+      downReleaseConflict.runtime,
+      new Set(),
+      new Set(["ArrowUp"])
+    )
+    expect(postRelease.project.rooms[0]?.instances[0]?.y).toBe(6)
+    expect(postRelease.runtime.spriteSpeedMsByInstanceId["instance-player"]).toBe(1)
   })
 
   it("runs MouseMove on ticks where pointer moved", () => {
