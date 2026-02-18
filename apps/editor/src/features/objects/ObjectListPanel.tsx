@@ -381,7 +381,10 @@ export function ObjectListPanel({
         })}
 
         {creatingFolderParentId === parentId && (
-          <div className="objlist-create-folder-inline flex py-1 pr-2" style={{ paddingLeft: `${depth * 16 + 8}px` }}>
+          <div className="objlist-create-folder-inline flex py-1 pr-2" style={{ paddingLeft: `${depth * 16 + 4}px` }}>
+            <span className="objlist-create-folder-chevron mr-0.5 inline-flex h-7 items-center text-slate-400">
+              <ChevronRight className="h-3.5 w-3.5" />
+            </span>
             <input
               ref={createFolderInputCallbackRef}
               value={newFolderName}

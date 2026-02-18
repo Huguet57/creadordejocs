@@ -429,7 +429,10 @@ export function SpriteListPanel({
         })}
 
         {creatingFolderParentId === parentId && (
-          <div className="mvp16-sprite-create-folder-inline flex py-1 pr-2" style={{ paddingLeft: `${depth * 16 + 8}px` }}>
+          <div className="mvp16-sprite-create-folder-inline flex py-1 pr-2" style={{ paddingLeft: `${depth * 16 + 4}px` }}>
+            <span className="mvp16-sprite-create-folder-chevron mr-0.5 inline-flex h-7 items-center text-slate-400">
+              <ChevronRight className="h-3.5 w-3.5" />
+            </span>
             <input
               ref={createFolderInputCallbackRef}
               value={newFolderName}
