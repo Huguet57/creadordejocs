@@ -403,7 +403,7 @@ export function RoomListPanel({
         })}
 
         {creatingFolderParentId === parentId && (
-          <div className="roomlist-create-folder-inline flex py-1 pr-2" style={{ paddingLeft: `${depth * 16 + 8}px` }}>
+          <div className="roomlist-create-folder-inline -mx-2 flex min-h-[34px] items-center px-2 py-1 pr-2" style={{ paddingLeft: `${depth * 16 + 8}px` }}>
             <span className="roomlist-create-folder-chevron mr-2 inline-flex h-5 w-5 shrink-0 items-center justify-center text-slate-400">
               <ChevronRight className="h-3.5 w-3.5" />
             </span>
@@ -420,7 +420,7 @@ export function RoomListPanel({
                 }
               }}
               onBlur={commitCreateFolder}
-              className="roomlist-folder-create-input h-7 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+              className="roomlist-folder-create-input h-5 w-full rounded border border-slate-300 bg-white px-1 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-400"
               placeholder="New folder"
             />
           </div>
