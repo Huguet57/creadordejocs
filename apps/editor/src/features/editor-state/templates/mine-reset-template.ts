@@ -1,8 +1,9 @@
+import { ProjectSchemaV1 } from "@creadordejocs/project-format"
 import { mineResetTemplateProject } from "./mine-reset-template.project.js"
 import type { TemplateProjectResult } from "./types.js"
 
 export function createMineResetTemplateProject(): TemplateProjectResult {
-  const project = structuredClone(mineResetTemplateProject)
+  const project = ProjectSchemaV1.parse(mineResetTemplateProject)
 
   return {
     project,

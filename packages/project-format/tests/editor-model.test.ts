@@ -1177,7 +1177,16 @@ describe("editor model helpers", () => {
 })
 
 describe("sprite frame model operations", () => {
-  it("adds a frame to a sprite and returns the new frame id", () => {
+  it("new sprite starts with one initial frame", () => {
+    const initial = createEmptyProjectV1("Frames")
+    const spriteResult = quickCreateSpriteWithSize(initial, "Hero", 2, 2)
+    const sprite = spriteResult.project.resources.sprites[0]
+    expect(sprite?.frames).toHaveLength(1)
+    expect(sprite?.frames[0]?.pixelsRgba).toHaveLength(2 * 2)
+    expect(sprite?.frames[0]?.pixelsRgba[0]).toBe("#00000000")
+  })
+
+  it("adds a frame after the initial frame", () => {
     const initial = createEmptyProjectV1("Frames")
     const spriteResult = quickCreateSpriteWithSize(initial, "Hero", 2, 2)
     const result = addSpriteFrame(spriteResult.project, spriteResult.spriteId)
@@ -1185,15 +1194,16 @@ describe("sprite frame model operations", () => {
     expect(result).not.toBeNull()
     if (!result) return
     const sprite = result.project.resources.sprites[0]
-    expect(sprite?.frames).toHaveLength(1)
-    expect(sprite?.frames?.[0]?.id).toBe(result.frameId)
-    expect(sprite?.frames?.[0]?.pixelsRgba).toHaveLength(2 * 2)
-    expect(sprite?.frames?.[0]?.pixelsRgba[0]).toBe("#00000000")
+    expect(sprite?.frames).toHaveLength(2)
+    expect(sprite?.frames[1]?.id).toBe(result.frameId)
+    expect(sprite?.frames[1]?.pixelsRgba).toHaveLength(2 * 2)
+    expect(sprite?.frames[1]?.pixelsRgba[0]).toBe("#00000000")
   })
 
   it("inserts frame after specified afterFrameId", () => {
     const initial = createEmptyProjectV1("Frames insert")
     const spriteResult = quickCreateSpriteWithSize(initial, "Hero", 2, 2)
+    const initialFrameId = spriteResult.project.resources.sprites[0]?.frames[0]?.id
     const firstFrame = addSpriteFrame(spriteResult.project, spriteResult.spriteId)
     if (!firstFrame) throw new Error("Expected first frame")
     const secondFrame = addSpriteFrame(firstFrame.project, spriteResult.spriteId)
@@ -1203,43 +1213,44 @@ describe("sprite frame model operations", () => {
     if (!middleFrame) throw new Error("Expected middle frame")
 
     const frames = middleFrame.project.resources.sprites[0]?.frames ?? []
-    expect(frames).toHaveLength(3)
-    expect(frames[0]?.id).toBe(firstFrame.frameId)
-    expect(frames[1]?.id).toBe(middleFrame.frameId)
-    expect(frames[2]?.id).toBe(secondFrame.frameId)
+    expect(frames).toHaveLength(4)
+    expect(frames[0]?.id).toBe(initialFrameId)
+    expect(frames[1]?.id).toBe(firstFrame.frameId)
+    expect(frames[2]?.id).toBe(middleFrame.frameId)
+    expect(frames[3]?.id).toBe(secondFrame.frameId)
   })
 
   it("duplicates a frame with copied pixels", () => {
     const initial = createEmptyProjectV1("Frames duplicate")
     const spriteResult = quickCreateSpriteWithSize(initial, "Hero", 2, 2)
-    const frame = addSpriteFrame(spriteResult.project, spriteResult.spriteId)
-    if (!frame) throw new Error("Expected frame")
+    const initialFrameId = spriteResult.project.resources.sprites[0]?.frames[0]?.id
+    if (!initialFrameId) throw new Error("Expected initial frame")
 
     const withPixels = updateSpriteFramePixels(
-      frame.project,
+      spriteResult.project,
       spriteResult.spriteId,
-      frame.frameId,
+      initialFrameId,
       ["#ff0000ff", "#00ff00ff", "#0000ffff", "#ffffffff"]
     )
-    const duplicated = duplicateSpriteFrame(withPixels, spriteResult.spriteId, frame.frameId)
+    const duplicated = duplicateSpriteFrame(withPixels, spriteResult.spriteId, initialFrameId)
     if (!duplicated) throw new Error("Expected duplicated frame")
 
     const frames = duplicated.project.resources.sprites[0]?.frames ?? []
     expect(frames).toHaveLength(2)
     expect(frames[1]?.id).toBe(duplicated.frameId)
     expect(frames[1]?.pixelsRgba).toEqual(["#ff0000ff", "#00ff00ff", "#0000ffff", "#ffffffff"])
-    expect(frames[1]?.id).not.toBe(frame.frameId)
+    expect(frames[1]?.id).not.toBe(initialFrameId)
   })
 
   it("deletes a frame but keeps at least one", () => {
     const initial = createEmptyProjectV1("Frames delete")
     const spriteResult = quickCreateSpriteWithSize(initial, "Hero", 2, 2)
-    const first = addSpriteFrame(spriteResult.project, spriteResult.spriteId)
-    if (!first) throw new Error("Expected first frame")
-    const second = addSpriteFrame(first.project, spriteResult.spriteId)
+    const second = addSpriteFrame(spriteResult.project, spriteResult.spriteId)
     if (!second) throw new Error("Expected second frame")
+    const initialFrameId = spriteResult.project.resources.sprites[0]?.frames[0]?.id
+    if (!initialFrameId) throw new Error("Expected initial frame")
 
-    const afterDelete = deleteSpriteFrame(second.project, spriteResult.spriteId, first.frameId)
+    const afterDelete = deleteSpriteFrame(second.project, spriteResult.spriteId, initialFrameId)
     const frames = afterDelete.resources.sprites[0]?.frames ?? []
     expect(frames).toHaveLength(1)
     expect(frames[0]?.id).toBe(second.frameId)
@@ -1251,40 +1262,40 @@ describe("sprite frame model operations", () => {
   it("updates pixels for a specific frame", () => {
     const initial = createEmptyProjectV1("Frame pixels")
     const spriteResult = quickCreateSpriteWithSize(initial, "Hero", 2, 2)
-    const frame = addSpriteFrame(spriteResult.project, spriteResult.spriteId)
-    if (!frame) throw new Error("Expected frame")
+    const initialFrameId = spriteResult.project.resources.sprites[0]?.frames[0]?.id
+    if (!initialFrameId) throw new Error("Expected initial frame")
 
     const updated = updateSpriteFramePixels(
-      frame.project,
+      spriteResult.project,
       spriteResult.spriteId,
-      frame.frameId,
+      initialFrameId,
       ["#ff0000ff", "#00ff00ff", "#0000ffff", "#ffffffff"]
     )
-    const updatedFrame = updated.resources.sprites[0]?.frames?.[0]
+    const updatedFrame = updated.resources.sprites[0]?.frames[0]
     expect(updatedFrame?.pixelsRgba).toEqual(["#ff0000ff", "#00ff00ff", "#0000ffff", "#ffffffff"])
   })
 
   it("normalizes frame pixels to width*height", () => {
     const initial = createEmptyProjectV1("Frame pixel normalize")
     const spriteResult = quickCreateSpriteWithSize(initial, "Hero", 2, 2)
-    const frame = addSpriteFrame(spriteResult.project, spriteResult.spriteId)
-    if (!frame) throw new Error("Expected frame")
+    const initialFrameId = spriteResult.project.resources.sprites[0]?.frames[0]?.id
+    if (!initialFrameId) throw new Error("Expected initial frame")
 
     const tooShort = updateSpriteFramePixels(
-      frame.project,
+      spriteResult.project,
       spriteResult.spriteId,
-      frame.frameId,
+      initialFrameId,
       ["#ff0000ff"]
     )
-    expect(tooShort.resources.sprites[0]?.frames?.[0]?.pixelsRgba).toHaveLength(4)
+    expect(tooShort.resources.sprites[0]?.frames[0]?.pixelsRgba).toHaveLength(4)
 
     const tooLong = updateSpriteFramePixels(
-      frame.project,
+      spriteResult.project,
       spriteResult.spriteId,
-      frame.frameId,
+      initialFrameId,
       ["#ff0000ff", "#00ff00ff", "#0000ffff", "#ffffffff", "#000000ff", "#111111ff"]
     )
-    expect(tooLong.resources.sprites[0]?.frames?.[0]?.pixelsRgba).toHaveLength(4)
+    expect(tooLong.resources.sprites[0]?.frames[0]?.pixelsRgba).toHaveLength(4)
   })
 
   it("reorders frames by moving a frame to a new index", () => {
@@ -1299,10 +1310,10 @@ describe("sprite frame model operations", () => {
 
     const reordered = reorderSpriteFrame(f3.project, spriteResult.spriteId, f3.frameId, 0)
     const frames = reordered.resources.sprites[0]?.frames ?? []
-    expect(frames).toHaveLength(3)
+    expect(frames).toHaveLength(4)
     expect(frames[0]?.id).toBe(f3.frameId)
-    expect(frames[1]?.id).toBe(f1.frameId)
-    expect(frames[2]?.id).toBe(f2.frameId)
+    expect(frames[2]?.id).toBe(f1.frameId)
+    expect(frames[3]?.id).toBe(f2.frameId)
   })
 
   it("returns same project when operating on missing sprite", () => {
@@ -1317,11 +1328,11 @@ describe("sprite frame model operations", () => {
   it("keeps pixelsRgba in sync with frame 0 when frames exist", () => {
     const initial = createEmptyProjectV1("Frame sync")
     const spriteResult = quickCreateSpriteWithSize(initial, "Hero", 2, 2)
-    const frame = addSpriteFrame(spriteResult.project, spriteResult.spriteId)
-    if (!frame) throw new Error("Expected frame")
+    const initialFrameId = spriteResult.project.resources.sprites[0]?.frames[0]?.id
+    if (!initialFrameId) throw new Error("Expected initial frame")
 
     const pixels = ["#ff0000ff", "#00ff00ff", "#0000ffff", "#ffffffff"]
-    const updated = updateSpriteFramePixels(frame.project, spriteResult.spriteId, frame.frameId, pixels)
+    const updated = updateSpriteFramePixels(spriteResult.project, spriteResult.spriteId, initialFrameId, pixels)
     expect(updated.resources.sprites[0]?.pixelsRgba).toEqual(pixels)
   })
 })

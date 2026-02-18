@@ -1,8 +1,9 @@
+import { ProjectSchemaV1 } from "@creadordejocs/project-format"
 import { spaceShooterTemplateProject } from "./space-shooter-template.project.js"
 import type { TemplateProjectResult } from "./types.js"
 
 export function createSpaceShooterTemplateProject(): TemplateProjectResult {
-  const project = structuredClone(spaceShooterTemplateProject)
+  const project = ProjectSchemaV1.parse(spaceShooterTemplateProject)
 
   return {
     project,

@@ -1,8 +1,9 @@
+import { ProjectSchemaV1 } from "@creadordejocs/project-format"
 import { switchVaultTemplateProject } from "./switch-vault-template.project.js"
 import type { TemplateProjectResult } from "./types.js"
 
 export function createSwitchVaultTemplateProject(): TemplateProjectResult {
-  const project = structuredClone(switchVaultTemplateProject)
+  const project = ProjectSchemaV1.parse(switchVaultTemplateProject)
 
   return {
     project,

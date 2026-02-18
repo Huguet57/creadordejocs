@@ -1,8 +1,9 @@
+import { ProjectSchemaV1 } from "@creadordejocs/project-format"
 import { coinDashTemplateProject } from "./coin-dash-template.project.js"
 import type { TemplateProjectResult } from "./types.js"
 
 export function createCoinDashTemplateProject(): TemplateProjectResult {
-  const project = structuredClone(coinDashTemplateProject)
+  const project = ProjectSchemaV1.parse(coinDashTemplateProject)
   const coinsRemainingVariable = project.variables.global.find((variable) => variable.name === "coinsRemaining")
   const coinObject = project.objects.find((objectEntry) => objectEntry.name === "Coin")
   const coinCollisionEvent = coinObject?.events.find((eventEntry) => eventEntry.type === "Collision")

@@ -1,8 +1,9 @@
+import { ProjectSchemaV1 } from "@creadordejocs/project-format"
 import { laneCrosserTemplateProject } from "./lane-crosser-template.project.js"
 import type { TemplateProjectResult } from "./types.js"
 
 export function createLaneCrosserTemplateProject(): TemplateProjectResult {
-  const project = structuredClone(laneCrosserTemplateProject)
+  const project = ProjectSchemaV1.parse(laneCrosserTemplateProject)
 
   return {
     project,

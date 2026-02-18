@@ -1,8 +1,9 @@
+import { ProjectSchemaV1 } from "@creadordejocs/project-format"
 import { batteryCourierTemplateProject } from "./battery-courier-template.project.js"
 import type { TemplateProjectResult } from "./types.js"
 
 export function createBatteryCourierTemplateProject(): TemplateProjectResult {
-  const project = structuredClone(batteryCourierTemplateProject)
+  const project = ProjectSchemaV1.parse(batteryCourierTemplateProject)
 
   return {
     project,

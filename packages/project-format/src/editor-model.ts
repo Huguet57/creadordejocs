@@ -694,6 +694,7 @@ export function quickCreateSpriteWithSize(
   const spriteId = makeId("sprite")
   const normalizedWidth = normalizeSpriteDimension(width)
   const normalizedHeight = normalizeSpriteDimension(height)
+  const initialPixels = createTransparentPixels(normalizedWidth, normalizedHeight)
   return {
     project: {
       ...project,
@@ -710,7 +711,8 @@ export function quickCreateSpriteWithSize(
             uploadStatus: "notConnected",
             width: normalizedWidth,
             height: normalizedHeight,
-            pixelsRgba: createTransparentPixels(normalizedWidth, normalizedHeight)
+            pixelsRgba: initialPixels,
+            frames: [{ id: makeId("frame"), pixelsRgba: [...initialPixels] }]
           }
         ]
       }
@@ -742,7 +744,8 @@ export function duplicateSprite(
             uploadStatus: source.uploadStatus,
             width: source.width,
             height: source.height,
-            pixelsRgba: [...source.pixelsRgba]
+            pixelsRgba: [...source.pixelsRgba],
+            frames: source.frames.map((f) => ({ id: makeId("frame"), pixelsRgba: [...f.pixelsRgba] }))
           }
         ]
       }
@@ -1292,13 +1295,11 @@ export function deleteSprite(project: ProjectV1, spriteId: string): ProjectV1 {
 export type SpriteFrame = NonNullable<ProjectV1["resources"]["sprites"][number]["frames"]>[number]
 
 function getSpriteFrames(sprite: SpriteResource): SpriteFrame[] {
-  return sprite.frames ?? []
+  return sprite.frames
 }
 
-function syncPixelsRgbaWithFrame0(sprite: SpriteResource & { frames?: SpriteFrame[] }): SpriteResource {
-  const frames = sprite.frames ?? []
-  if (frames.length === 0) return sprite
-  const firstFrame = frames[0]
+function syncPixelsRgbaWithFrame0(sprite: SpriteResource): SpriteResource {
+  const firstFrame = sprite.frames[0]
   if (!firstFrame) return sprite
   return { ...sprite, pixelsRgba: firstFrame.pixelsRgba }
 }

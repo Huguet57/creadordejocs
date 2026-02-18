@@ -20,18 +20,26 @@ const SpriteFrameSchema = z.object({
   pixelsRgba: z.array(z.string()).default([])
 })
 
-const SpriteResourceSchema = z.object({
-  id: z.string().min(1),
-  name: z.string().min(1),
-  folderId: z.string().nullable().optional(),
-  imagePath: z.string(),
-  assetSource: z.string().default(""),
-  uploadStatus: z.enum(["notConnected", "ready"]).default("notConnected"),
-  width: z.number().int().min(1).default(32),
-  height: z.number().int().min(1).default(32),
-  pixelsRgba: z.array(z.string()).default([]),
-  frames: z.array(SpriteFrameSchema).optional()
-})
+const SpriteResourceSchema = z
+  .object({
+    id: z.string().min(1),
+    name: z.string().min(1),
+    folderId: z.string().nullable().optional(),
+    imagePath: z.string(),
+    assetSource: z.string().default(""),
+    uploadStatus: z.enum(["notConnected", "ready"]).default("notConnected"),
+    width: z.number().int().min(1).default(32),
+    height: z.number().int().min(1).default(32),
+    pixelsRgba: z.array(z.string()).default([]),
+    frames: z.array(SpriteFrameSchema).optional()
+  })
+  .transform((sprite) => ({
+    ...sprite,
+    frames:
+      sprite.frames && sprite.frames.length > 0
+        ? sprite.frames
+        : [{ id: `frame-${generateUUID()}`, pixelsRgba: [...sprite.pixelsRgba] }]
+  }))
 
 const SpriteFolderSchema = z.object({
   id: z.string().min(1),
@@ -548,6 +556,7 @@ export const ProjectSchemaV1 = z.object({
 })
 
 export type ProjectV1 = z.infer<typeof ProjectSchemaV1>
+export type RawProjectV1 = z.input<typeof ProjectSchemaV1>
 
 export function createEmptyProjectV1(name: string): ProjectV1 {
   return {

@@ -1,8 +1,9 @@
+import { ProjectSchemaV1 } from "@creadordejocs/project-format"
 import { cursorCourierTemplateProject } from "./cursor-courier-template.project.js"
 import type { TemplateProjectResult } from "./types.js"
 
 export function createCursorCourierTemplateProject(): TemplateProjectResult {
-  const project = structuredClone(cursorCourierTemplateProject)
+  const project = ProjectSchemaV1.parse(cursorCourierTemplateProject)
 
   return {
     project,
