@@ -14,28 +14,12 @@ import { EventListPanel } from "./EventListPanel.js"
 import { ActionEditorPanel } from "./ActionEditorPanel.js"
 import { SpritePickerModal } from "../sprites/components/SpritePickerModal.js"
 import { resolveSpritePreviewSource } from "../sprites/utils/sprite-preview-source.js"
+import { hasVisibleSpritePixels } from "../sprites/utils/has-visible-pixels.js"
 import { resolveActiveEventMemoryForObject } from "./object-event-selection.js"
 import { EventSelectorPanel } from "./EventSelectorPanel.js"
 
 type ObjectEditorSectionProps = {
   controller: EditorController
-}
-
-function hasVisibleSpritePixels(pixelsRgba: string[]): boolean {
-  return pixelsRgba.some((pixel) => {
-    const normalized = pixel.trim().toLowerCase()
-    if (!normalized.startsWith("#")) return false
-    if (normalized.length === 9) {
-      // #RRGGBBAA
-      const alphaHex = normalized.slice(7, 9)
-      return Number.parseInt(alphaHex, 16) > 0
-    }
-    if (normalized.length === 7) {
-      // #RRGGBB (legacy/no alpha) is considered visible.
-      return true
-    }
-    return false
-  })
 }
 
 function findEventItemByActionId(items: ObjectEventItem[], actionId: string): ObjectEventItem | null {

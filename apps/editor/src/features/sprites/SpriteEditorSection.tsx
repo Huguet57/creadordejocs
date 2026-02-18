@@ -9,6 +9,7 @@ import { useSpriteEditorState } from "./hooks/use-sprite-editor-state.js"
 import { useSpriteImport } from "./hooks/use-sprite-import.js"
 import { useSpritePixelActions } from "./hooks/use-sprite-pixel-actions.js"
 import { normalizePixelGrid } from "./utils/sprite-grid.js"
+import { hasVisibleSpritePixels } from "./utils/has-visible-pixels.js"
 
 type SpriteEditorSectionProps = {
   controller: EditorController
@@ -98,7 +99,8 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
           name: spriteEntry.name,
           folderId: spriteEntry.folderId ?? null,
           width: spriteEntry.width,
-          height: spriteEntry.height
+          height: spriteEntry.height,
+          isEmpty: !hasVisibleSpritePixels(spriteEntry.pixelsRgba)
         }))}
         spriteFolders={(controller.project.resources.spriteFolders ?? []).map((folderEntry) => ({
           id: folderEntry.id,

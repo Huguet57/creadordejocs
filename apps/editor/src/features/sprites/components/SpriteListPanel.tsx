@@ -11,6 +11,7 @@ type SpriteListEntry = {
   folderId: string | null
   width: number
   height: number
+  isEmpty: boolean
 }
 
 type SpriteFolderEntry = {
@@ -473,6 +474,7 @@ export function SpriteListPanel({
           )}
           <span className="truncate text-[10px] text-slate-400">
             {spriteEntry.width} x {spriteEntry.height}
+            {spriteEntry.isEmpty && <span className="mvp16-sprite-empty-badge ml-1 text-amber-400">· buit</span>}
           </span>
         </div>
       </button>

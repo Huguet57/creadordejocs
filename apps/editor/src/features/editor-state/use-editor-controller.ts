@@ -601,15 +601,6 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       if (!spriteEntry) {
         return false
       }
-      const assignmentCount = countSpriteAssignments(project, spriteId)
-      const warningText =
-        assignmentCount > 0
-          ? ` Aquest sprite s'utilitza en ${assignmentCount} objecte(s) i es desassignarà automàticament.`
-          : ""
-      const confirmed = window.confirm(`Vols eliminar el sprite "${spriteEntry.name}"?${warningText}`)
-      if (!confirmed) {
-        return false
-      }
       const spriteIds = project.resources.sprites.map((entry) => entry.id)
       const next = deleteSpriteModel(project, spriteId)
       pushProjectChange(next, `Delete sprite: ${spriteEntry.name}`)
