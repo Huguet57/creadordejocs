@@ -25,6 +25,7 @@ export function ObjectCard({ objectName, spriteSrc, visible, solid, onToggleVisi
               src={spriteSrc}
               alt=""
               className="objcard-sprite-img h-full w-full object-contain"
+              style={{ imageRendering: "pixelated" }}
             />
           ) : (
             <Box className="h-4 w-4 text-slate-600" />
