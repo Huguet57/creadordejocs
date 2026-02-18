@@ -1,5 +1,15 @@
-import { ChevronLeft, ChevronRight, Folder, FolderOpen, Image, Pencil, Plus, Trash2 } from "lucide-react"
-import { useEffect, useMemo, useState, type ChangeEvent, type DragEvent, type KeyboardEvent, type MouseEvent } from "react"
+import { ChevronDown, ChevronLeft, ChevronRight, FolderPlus, Image, Pencil, Plus, Trash2, X } from "lucide-react"
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type DragEvent,
+  type KeyboardEvent,
+  type MouseEvent
+} from "react"
 import { Button } from "../../../components/ui/button.js"
 import { EditorSidebarLayout } from "../../shared/editor-sidebar/EditorSidebarLayout.js"
 import { buildEntriesByFolder, buildFolderChildrenByParent, isFolderDescendant } from "../../shared/editor-sidebar/tree-utils.js"
@@ -31,9 +41,10 @@ type SpriteListPanelProps = {
   spriteFolders: SpriteFolderEntry[]
   activeSpriteId: string | null
   onSelectSprite: (spriteId: string) => void
+  onPinSprite: (spriteId: string) => void
+  onOpenInNewTab: (spriteId: string) => void
   onAddSprite: (name: string, width: number, height: number, folderId: string | null) => void
   onCreateFolder: (name: string, parentId: string | null) => string | null
-  onRenameSprite: (spriteId: string, name: string) => boolean
   onDeleteSprite: (spriteId: string) => boolean
   onMoveSpriteToFolder: (spriteId: string, folderId: string | null) => boolean
   onRenameFolder: (folderId: string, name: string) => boolean
@@ -41,27 +52,22 @@ type SpriteListPanelProps = {
   onMoveFolderToParent: (folderId: string, newParentId: string | null) => boolean
 }
 
-type ContextMenuState =
-  | {
-      x: number
-      y: number
-      node: TreeNode
-    }
-  | null
-
-function nodeKey(node: TreeNode | null): string | null {
-  if (!node) return null
-  return `${node.type}:${node.id}`
-}
+type ContextMenuState = {
+  x: number
+  y: number
+  spriteId: string | null
+  folderId: string | null
+} | null
 
 export function SpriteListPanel({
   sprites,
   spriteFolders,
   activeSpriteId,
   onSelectSprite,
+  onPinSprite,
+  onOpenInNewTab,
   onAddSprite,
   onCreateFolder,
-  onRenameSprite,
   onDeleteSprite,
   onMoveSpriteToFolder,
   onRenameFolder,
@@ -70,103 +76,42 @@ export function SpriteListPanel({
 }: SpriteListPanelProps) {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [isAdding, setIsAdding] = useState(false)
-  const [newName, setNewName] = useState("")
+  const [addingInFolderId, setAddingInFolderId] = useState<string | null>(null)
+  const [newName, setNewName] = useState("Sprite nou")
   const [newWidth, setNewWidth] = useState(String(DEFAULT_SPRITE_DIMENSION))
   const [newHeight, setNewHeight] = useState(String(DEFAULT_SPRITE_DIMENSION))
-  const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null)
+  const [contextMenu, setContextMenu] = useState<ContextMenuState>(null)
+  const contextMenuRef = useRef<HTMLDivElement>(null)
+
   const [expandedFolderIds, setExpandedFolderIds] = useState<Set<string>>(() => new Set())
-  const [renamingNode, setRenamingNode] = useState<TreeNode | null>(null)
+  const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState("")
   const [creatingFolderParentId, setCreatingFolderParentId] = useState<string | null | undefined>(undefined)
-  const [newFolderName, setNewFolderName] = useState("Nova carpeta")
-  const [contextMenu, setContextMenu] = useState<ContextMenuState>(null)
-  const [draggedNode, setDraggedNode] = useState<TreeNode | null>(null)
-  const [dropTargetFolderId, setDropTargetFolderId] = useState<string | null | undefined>(undefined)
+  const [newFolderName, setNewFolderName] = useState("")
+  const dragItemRef = useRef<TreeNode | null>(null)
+  const [dropTargetFolderId, setDropTargetFolderId] = useState<string | null>(null)
+  const [dropTargetIsRoot, setDropTargetIsRoot] = useState(false)
+  const autoExpandTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const handleDragStart = (event: DragEvent<HTMLElement>, node: TreeNode) => {
-    event.dataTransfer.setData(DND_MIME, JSON.stringify(node))
-    event.dataTransfer.effectAllowed = "move"
-    setDraggedNode(node)
-  }
-
-  const handleDragEnd = () => {
-    setDraggedNode(null)
-    setDropTargetFolderId(undefined)
-  }
-
-  const handleDragOver = (event: DragEvent<HTMLElement>, targetFolderId: string | null) => {
-    if (!event.dataTransfer.types.includes(DND_MIME)) {
-      return
-    }
-    if (
-      draggedNode?.type === "folder" &&
-      targetFolderId !== null &&
-      (draggedNode.id === targetFolderId || isFolderDescendant(targetFolderId, draggedNode.id, spriteFolders))
-    ) {
-      return
-    }
-    event.preventDefault()
-    event.dataTransfer.dropEffect = "move"
-    setDropTargetFolderId(targetFolderId)
-  }
-
-  const handleDragLeave = (event: DragEvent<HTMLElement>) => {
-    const related = event.relatedTarget
-    if (related instanceof Node && event.currentTarget.contains(related)) {
-      return
-    }
-    setDropTargetFolderId(undefined)
-  }
-
-  const handleDrop = (event: DragEvent<HTMLElement>, targetFolderId: string | null) => {
-    event.preventDefault()
-    setDropTargetFolderId(undefined)
-    setDraggedNode(null)
-    const raw = event.dataTransfer.getData(DND_MIME)
-    if (!raw) return
-    try {
-      const node = JSON.parse(raw) as TreeNode
-      if (node.type === "sprite") {
-        onMoveSpriteToFolder(node.id, targetFolderId)
-      } else if (node.type === "folder") {
-        if (
-          node.id !== targetFolderId &&
-          (targetFolderId === null || !isFolderDescendant(targetFolderId, node.id, spriteFolders))
-        ) {
-          onMoveFolderToParent(node.id, targetFolderId)
-        }
-      }
-      if (targetFolderId) {
-        setExpandedFolderIds((previous) => new Set([...previous, targetFolderId]))
-      }
-    } catch {
-      // ignore malformed drag data
-    }
-  }
-
-  const foldersById = useMemo(() => new Map(spriteFolders.map((folderEntry) => [folderEntry.id, folderEntry])), [spriteFolders])
-
+  const foldersById = useMemo(() => new Map(spriteFolders.map((entry) => [entry.id, entry])), [spriteFolders])
   const folderChildrenByParent = useMemo(() => buildFolderChildrenByParent<SpriteFolderEntry>(spriteFolders), [spriteFolders])
   const spritesByFolder = useMemo(() => buildEntriesByFolder<SpriteListEntry>(sprites), [sprites])
 
-  const visibleNodes = useMemo(() => {
-    const nodes: TreeNode[] = []
-    const collectNodes = (parentId: string | null): void => {
-      const childFolders = folderChildrenByParent.get(parentId) ?? []
-      for (const folderEntry of childFolders) {
-        nodes.push({ type: "folder", id: folderEntry.id })
-        if (expandedFolderIds.has(folderEntry.id)) {
-          collectNodes(folderEntry.id)
-        }
-      }
-      const folderSprites = spritesByFolder.get(parentId) ?? []
-      for (const spriteEntry of folderSprites) {
-        nodes.push({ type: "sprite", id: spriteEntry.id })
-      }
+  const inputCallbackRef = useCallback((node: HTMLInputElement | null) => {
+    if (node) node.select()
+  }, [])
+  const renameInputCallbackRef = useCallback((node: HTMLInputElement | null) => {
+    if (node) node.select()
+  }, [])
+  const createFolderInputCallbackRef = useCallback((node: HTMLInputElement | null) => {
+    if (node) node.select()
+  }, [])
+
+  const blockUndoShortcuts = (event: KeyboardEvent<HTMLInputElement>): void => {
+    if ((event.metaKey || event.ctrlKey) && (event.key.toLowerCase() === "z" || event.key.toLowerCase() === "y")) {
+      event.preventDefault()
     }
-    collectNodes(null)
-    return nodes
-  }, [expandedFolderIds, folderChildrenByParent, spritesByFolder])
+  }
 
   const parseDimensionValue = (value: string): number => {
     const parsedValue = Number.parseInt(value, 10)
@@ -176,97 +121,181 @@ export function SpriteListPanel({
     return parsedValue
   }
 
-  const handleAdd = () => {
-    if (!newName.trim()) return
-    const targetFolderId = selectedNode?.type === "folder" ? selectedNode.id : null
-    onAddSprite(newName.trim(), parseDimensionValue(newWidth), parseDimensionValue(newHeight), targetFolderId)
+  const startAddingSprite = (inFolderId: string | null = null) => {
+    setAddingInFolderId(inFolderId)
     setNewName("")
-    setNewWidth(String(DEFAULT_SPRITE_DIMENSION))
-    setNewHeight(String(DEFAULT_SPRITE_DIMENSION))
+    setNewWidth("")
+    setNewHeight("")
+    setCreatingFolderParentId(undefined)
+    setNewFolderName("")
+    setIsCollapsed(false)
+    setIsAdding(true)
+  }
+
+  const handleAddSprite = () => {
+    if (!newName.trim()) return
+    onAddSprite(newName.trim(), parseDimensionValue(newWidth), parseDimensionValue(newHeight), addingInFolderId)
+    setNewName("")
+    setNewWidth("")
+    setNewHeight("")
     setIsAdding(false)
+    setAddingInFolderId(null)
   }
 
-  const startRename = (node: TreeNode) => {
-    const nextValue =
-      node.type === "sprite" ? sprites.find((entry) => entry.id === node.id)?.name : foldersById.get(node.id)?.name
-    if (!nextValue) return
-    setRenamingNode(node)
-    setRenameValue(nextValue)
-    setContextMenu(null)
+  const createFolder = (parentId: string | null) => {
+    setCreatingFolderParentId(parentId)
+    setNewFolderName("")
+    setIsAdding(false)
+    setAddingInFolderId(null)
   }
 
-  const commitRename = () => {
-    const trimmedName = renameValue.trim()
-    if (!renamingNode || !trimmedName) {
-      setRenamingNode(null)
-      return
-    }
-    if (renamingNode.type === "sprite") {
-      onRenameSprite(renamingNode.id, trimmedName)
-    } else {
-      onRenameFolder(renamingNode.id, trimmedName)
-    }
-    setRenamingNode(null)
-  }
-
-  const handleDeleteNode = (node: TreeNode): void => {
-    if (node.type === "sprite") {
-      onDeleteSprite(node.id)
-      return
-    }
-    onDeleteFolder(node.id)
-  }
-
-  const handleCreateFolder = () => {
-    if (creatingFolderParentId === undefined) {
-      return
-    }
-    const createdFolderId = onCreateFolder(newFolderName, creatingFolderParentId)
-    if (createdFolderId) {
-      if (creatingFolderParentId) {
-        setExpandedFolderIds((previous) => new Set([...previous, creatingFolderParentId]))
-      }
-      setExpandedFolderIds((previous) => new Set([...previous, createdFolderId]))
-      setSelectedNode({ type: "folder", id: createdFolderId })
+  const commitCreateFolder = () => {
+    if (creatingFolderParentId === undefined) return
+    const trimmed = newFolderName.trim()
+    if (!trimmed) {
       setCreatingFolderParentId(undefined)
-      setNewFolderName("Nova carpeta")
-    }
-  }
-
-  const navigateNode = (direction: -1 | 1) => {
-    if (!visibleNodes.length) {
+      setNewFolderName("")
       return
     }
-    const selectedKey = nodeKey(selectedNode)
-    const currentIndex = selectedKey ? visibleNodes.findIndex((node) => nodeKey(node) === selectedKey) : -1
-    const nextIndex = currentIndex < 0 ? (direction === 1 ? 0 : visibleNodes.length - 1) : currentIndex + direction
-    const boundedIndex = Math.max(0, Math.min(visibleNodes.length - 1, nextIndex))
-    const targetNode = visibleNodes[boundedIndex]
-    if (!targetNode) return
-    setSelectedNode(targetNode)
-    if (targetNode.type === "sprite") {
-      onSelectSprite(targetNode.id)
+    const createdFolderId = onCreateFolder(trimmed, creatingFolderParentId)
+    if (!createdFolderId) return
+    setExpandedFolderIds((prev) => new Set(prev).add(createdFolderId))
+    if (creatingFolderParentId) {
+      setExpandedFolderIds((prev) => new Set(prev).add(creatingFolderParentId))
     }
+    setCreatingFolderParentId(undefined)
+    setNewFolderName("")
   }
 
-  const toggleFolderExpansion = (folderId: string) => {
-    setExpandedFolderIds((previous) => {
-      const next = new Set(previous)
-      if (next.has(folderId)) {
-        next.delete(folderId)
-      } else {
-        next.add(folderId)
-      }
+  const renameFolder = (folderId: string, name: string) => {
+    const trimmed = name.trim()
+    if (!trimmed) return
+    const renamed = onRenameFolder(folderId, trimmed)
+    if (!renamed) return
+    setRenamingFolderId(null)
+  }
+
+  const deleteFolder = (folderId: string) => {
+    onDeleteFolder(folderId)
+  }
+
+  const toggleFolder = (folderId: string) => {
+    setExpandedFolderIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(folderId)) next.delete(folderId)
+      else next.add(folderId)
       return next
     })
   }
 
+  const openContextMenu = (event: MouseEvent, spriteId: string | null, folderId: string | null) => {
+    event.preventDefault()
+    event.stopPropagation()
+    setContextMenu({ x: event.clientX, y: event.clientY, spriteId, folderId })
+  }
+
+  const closeContextMenu = () => setContextMenu(null)
+
   useEffect(() => {
-    if (!activeSpriteId) {
+    if (!contextMenu) return
+    const handleClick = (event: globalThis.MouseEvent) => {
+      if (contextMenuRef.current && !contextMenuRef.current.contains(event.target as Node)) {
+        closeContextMenu()
+      }
+    }
+    const handleEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") closeContextMenu()
+    }
+    document.addEventListener("mousedown", handleClick)
+    document.addEventListener("keydown", handleEscape)
+    return () => {
+      document.removeEventListener("mousedown", handleClick)
+      document.removeEventListener("keydown", handleEscape)
+    }
+  }, [contextMenu])
+
+  const handleDragStart = (event: DragEvent, node: TreeNode) => {
+    dragItemRef.current = node
+    event.dataTransfer.effectAllowed = "move"
+    event.dataTransfer.setData(DND_MIME, JSON.stringify(node))
+  }
+
+  const handleDragEnd = () => {
+    dragItemRef.current = null
+    setDropTargetFolderId(null)
+    setDropTargetIsRoot(false)
+    if (autoExpandTimerRef.current) {
+      clearTimeout(autoExpandTimerRef.current)
+      autoExpandTimerRef.current = null
+    }
+  }
+
+  const handleFolderDragOver = (event: DragEvent, folderId: string) => {
+    event.preventDefault()
+    event.stopPropagation()
+    event.dataTransfer.dropEffect = "move"
+
+    const dragged = dragItemRef.current
+    if (!dragged) return
+    if (dragged.type === "folder" && (dragged.id === folderId || isFolderDescendant(folderId, dragged.id, spriteFolders))) {
+      event.dataTransfer.dropEffect = "none"
       return
     }
-    setSelectedNode((previous) => (previous?.type === "sprite" && previous.id === activeSpriteId ? previous : { type: "sprite", id: activeSpriteId }))
-  }, [activeSpriteId])
+
+    if (dropTargetFolderId !== folderId) {
+      setDropTargetFolderId(folderId)
+      setDropTargetIsRoot(false)
+      if (autoExpandTimerRef.current) clearTimeout(autoExpandTimerRef.current)
+      autoExpandTimerRef.current = setTimeout(() => {
+        setExpandedFolderIds((prev) => new Set(prev).add(folderId))
+      }, 500)
+    }
+  }
+
+  const handleFolderDrop = (event: DragEvent, folderId: string) => {
+    event.preventDefault()
+    event.stopPropagation()
+    const dragged = dragItemRef.current
+    if (!dragged) return
+    if (dragged.type === "folder" && (dragged.id === folderId || isFolderDescendant(folderId, dragged.id, spriteFolders))) {
+      return
+    }
+    if (dragged.type === "sprite") onMoveSpriteToFolder(dragged.id, folderId)
+    else onMoveFolderToParent(dragged.id, folderId)
+    setExpandedFolderIds((prev) => new Set(prev).add(folderId))
+    handleDragEnd()
+  }
+
+  const handleRootDragOver = (event: DragEvent) => {
+    event.preventDefault()
+    event.dataTransfer.dropEffect = "move"
+    setDropTargetFolderId(null)
+    setDropTargetIsRoot(true)
+    if (autoExpandTimerRef.current) {
+      clearTimeout(autoExpandTimerRef.current)
+      autoExpandTimerRef.current = null
+    }
+  }
+
+  const handleRootDrop = (event: DragEvent) => {
+    event.preventDefault()
+    const dragged = dragItemRef.current
+    if (!dragged) return
+    if (dragged.type === "sprite") onMoveSpriteToFolder(dragged.id, null)
+    else onMoveFolderToParent(dragged.id, null)
+    handleDragEnd()
+  }
+
+  const handleDragLeave = (event: DragEvent) => {
+    const relatedTarget = event.relatedTarget as Node | null
+    if (relatedTarget && (event.currentTarget as Node).contains(relatedTarget)) return
+    setDropTargetFolderId(null)
+    setDropTargetIsRoot(false)
+    if (autoExpandTimerRef.current) {
+      clearTimeout(autoExpandTimerRef.current)
+      autoExpandTimerRef.current = null
+    }
+  }
 
   useEffect(() => {
     setExpandedFolderIds((previous) => {
@@ -289,204 +318,351 @@ export function SpriteListPanel({
   }, [foldersById, spriteFolders])
 
   useEffect(() => {
-    if (!selectedNode) {
-      return
+    if (renamingFolderId && !foldersById.has(renamingFolderId)) {
+      setRenamingFolderId(null)
     }
-    if (selectedNode.type === "sprite" && !sprites.some((entry) => entry.id === selectedNode.id)) {
-      setSelectedNode(null)
-      return
-    }
-    if (selectedNode.type === "folder" && !foldersById.has(selectedNode.id)) {
-      setSelectedNode(null)
-    }
-  }, [foldersById, selectedNode, sprites])
+  }, [foldersById, renamingFolderId])
 
-  useEffect(() => {
-    const close = () => setContextMenu(null)
-    window.addEventListener("mousedown", close)
-    return () => window.removeEventListener("mousedown", close)
-  }, [])
-
-  const renderFolderNode = (folderEntry: SpriteFolderEntry, depth: number) => {
-    const isExpanded = expandedFolderIds.has(folderEntry.id)
-    const isSelected = selectedNode?.type === "folder" && selectedNode.id === folderEntry.id
-    const isRenaming = renamingNode?.type === "folder" && renamingNode.id === folderEntry.id
-    const isDragOver = dropTargetFolderId === folderEntry.id
-    const isDragging = draggedNode?.type === "folder" && draggedNode.id === folderEntry.id
-    const childFolders = folderChildrenByParent.get(folderEntry.id) ?? []
-    const childSprites = spritesByFolder.get(folderEntry.id) ?? []
+  function renderTree(parentId: string | null, depth: number) {
+    const childFolders = folderChildrenByParent.get(parentId) ?? []
+    const childSprites = spritesByFolder.get(parentId) ?? []
     return (
-      <div key={folderEntry.id} className="mvp16-sprite-tree-folder-container">
-        <button
-          type="button"
-          draggable={!isRenaming}
-          onDragStart={(event) => handleDragStart(event, { type: "folder", id: folderEntry.id })}
-          onDragEnd={handleDragEnd}
-          onDragOver={(event) => {
-            event.stopPropagation()
-            handleDragOver(event, folderEntry.id)
-          }}
-          onDragLeave={(event) => {
-            event.stopPropagation()
-            handleDragLeave(event)
-          }}
-          onDrop={(event) => {
-            event.stopPropagation()
-            handleDrop(event, folderEntry.id)
-          }}
-          className={`mvp16-sprite-tree-folder-row flex h-8 w-full items-center gap-1 rounded px-2 text-left text-xs transition-colors ${
-            isDragOver ? "bg-indigo-100 ring-2 ring-indigo-300" : isSelected ? "bg-indigo-50 text-indigo-700" : "text-slate-700 hover:bg-slate-100"
-          } ${isDragging ? "opacity-40" : ""}`}
-          style={{ paddingLeft: `${depth * 14 + 8}px` }}
-          onClick={() => setSelectedNode({ type: "folder", id: folderEntry.id })}
-          onDoubleClick={(event) => {
-            event.preventDefault()
-            toggleFolderExpansion(folderEntry.id)
-          }}
-          onContextMenu={(event: MouseEvent<HTMLButtonElement>) => {
-            event.preventDefault()
-            setSelectedNode({ type: "folder", id: folderEntry.id })
-            setContextMenu({
-              x: event.clientX,
-              y: event.clientY,
-              node: { type: "folder", id: folderEntry.id }
-            })
-          }}
-        >
-          <span
-            className="mvp16-sprite-tree-folder-toggle inline-flex h-4 w-4 items-center justify-center rounded hover:bg-slate-200"
-            onClick={(event) => {
-              event.preventDefault()
-              event.stopPropagation()
-              toggleFolderExpansion(folderEntry.id)
-            }}
-          >
-            <ChevronRight className={`h-3.5 w-3.5 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
-          </span>
-          {isExpanded ? <FolderOpen className="h-3.5 w-3.5 text-amber-500" /> : <Folder className="h-3.5 w-3.5 text-amber-500" />}
-          {isRenaming ? (
+      <>
+        {childFolders.map((folderEntry) => {
+          const isExpanded = expandedFolderIds.has(folderEntry.id)
+          const isRenaming = renamingFolderId === folderEntry.id
+          const isDropTarget = dropTargetFolderId === folderEntry.id
+          return (
+            <div key={folderEntry.id}>
+              <div
+                className={`mvp16-sprite-folder-row group flex cursor-pointer items-center rounded py-1 pr-2 transition-colors ${
+                  isDropTarget ? "bg-blue-50 ring-1 ring-blue-300" : "hover:bg-slate-100"
+                }`}
+                style={{ paddingLeft: `${depth * 16 + 4}px` }}
+                draggable={!isRenaming}
+                onDragStart={(event) => handleDragStart(event, { type: "folder", id: folderEntry.id })}
+                onDragEnd={handleDragEnd}
+                onDragOver={(event) => handleFolderDragOver(event, folderEntry.id)}
+                onDragLeave={handleDragLeave}
+                onDrop={(event) => handleFolderDrop(event, folderEntry.id)}
+                onClick={() => toggleFolder(folderEntry.id)}
+                onContextMenu={(event) => openContextMenu(event, null, folderEntry.id)}
+              >
+                <span className="mvp16-sprite-folder-chevron mr-0.5 shrink-0 text-slate-400">
+                  {isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                </span>
+                {isRenaming ? (
+                  <input
+                    ref={renameInputCallbackRef}
+                    className="mvp16-sprite-folder-rename-input h-5 w-full rounded border border-slate-300 bg-white px-1 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-400"
+                    value={renameValue}
+                    onChange={(event: ChangeEvent<HTMLInputElement>) => setRenameValue(event.target.value)}
+                    onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
+                      blockUndoShortcuts(event)
+                      if (event.key === "Enter") renameFolder(folderEntry.id, renameValue)
+                      if (event.key === "Escape") setRenamingFolderId(null)
+                      event.stopPropagation()
+                    }}
+                    onBlur={() => renameFolder(folderEntry.id, renameValue)}
+                    onClick={(event) => event.stopPropagation()}
+                  />
+                ) : (
+                  <span
+                    className="truncate text-sm text-slate-600"
+                    onDoubleClick={(event) => {
+                      event.stopPropagation()
+                      setRenamingFolderId(folderEntry.id)
+                      setRenameValue(folderEntry.name)
+                    }}
+                  >
+                    {folderEntry.name}
+                  </span>
+                )}
+              </div>
+              {isExpanded && renderTree(folderEntry.id, depth + 1)}
+            </div>
+          )
+        })}
+
+        {childSprites.map((spriteEntry) => {
+          const isActive = activeSpriteId === spriteEntry.id
+          return (
+            <div
+              key={spriteEntry.id}
+              className={`mvp16-sprite-item group -mx-2 flex cursor-pointer items-center px-2 py-1.5 pr-2 transition-colors ${
+                isActive ? "bg-blue-50" : "hover:bg-slate-100"
+              }`}
+              style={{ paddingLeft: `${depth * 16 + 8}px` }}
+              draggable
+              onDragStart={(event) => handleDragStart(event, { type: "sprite", id: spriteEntry.id })}
+              onDragEnd={handleDragEnd}
+              onClick={() => onSelectSprite(spriteEntry.id)}
+              onDoubleClick={() => onPinSprite(spriteEntry.id)}
+              onContextMenu={(event) => openContextMenu(event, spriteEntry.id, null)}
+            >
+              <div className="flex min-w-0 flex-1 items-center gap-2 text-left text-sm">
+                {spriteEntry.previewDataUrl ? (
+                  <img
+                    src={spriteEntry.previewDataUrl}
+                    alt=""
+                    className="mvp16-sprite-thumb h-5 w-5 shrink-0 object-contain"
+                    style={{ imageRendering: "pixelated" }}
+                  />
+                ) : (
+                  <Image className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                )}
+                <div className="flex min-w-0 flex-1 flex-col gap-0">
+                  <span className="truncate text-[12px] leading-tight text-slate-600">{spriteEntry.name}</span>
+                  <span className="truncate text-[9px] leading-tight text-slate-400">
+                    {spriteEntry.width} x {spriteEntry.height}
+                    {spriteEntry.isEmpty && <span className="ml-1 text-amber-400">· buit</span>}
+                    {spriteEntry.objectNames.length > 0 && (
+                      <span className="ml-1 text-slate-400">
+                        · {spriteEntry.objectNames[0]}{spriteEntry.objectNames.length > 1 && ` +${spriteEntry.objectNames.length - 1} més`}
+                      </span>
+                    )}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )
+        })}
+
+        {creatingFolderParentId === parentId && (
+          <div className="mvp16-sprite-create-folder-inline flex py-1 pr-2" style={{ paddingLeft: `${depth * 16 + 8}px` }}>
             <input
-              value={renameValue}
-              onChange={(event: ChangeEvent<HTMLInputElement>) => setRenameValue(event.target.value)}
-              autoFocus
-              onBlur={commitRename}
-              onClick={(event) => event.stopPropagation()}
+              ref={createFolderInputCallbackRef}
+              value={newFolderName}
+              onChange={(event: ChangeEvent<HTMLInputElement>) => setNewFolderName(event.target.value)}
               onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
-                if (event.key === "Enter") {
-                  event.preventDefault()
-                  commitRename()
-                }
+                blockUndoShortcuts(event)
+                if (event.key === "Enter") commitCreateFolder()
                 if (event.key === "Escape") {
-                  event.preventDefault()
-                  setRenamingNode(null)
+                  setCreatingFolderParentId(undefined)
+                  setNewFolderName("")
                 }
               }}
-              className="mvp16-sprite-tree-rename-input h-6 w-full rounded border border-slate-300 bg-white px-2 text-xs"
+              onBlur={commitCreateFolder}
+              className="mvp16-sprite-folder-create-input h-7 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+              placeholder="New folder"
             />
-          ) : (
-            <span className="truncate">{folderEntry.name}</span>
-          )}
-        </button>
-        {isExpanded && (
-          <div className="mvp16-sprite-tree-folder-children">
-            {childFolders.map((childFolder) => renderFolderNode(childFolder, depth + 1))}
-            {childSprites.map((spriteEntry) => renderSpriteNode(spriteEntry, depth + 1))}
           </div>
+        )}
+
+        {isAdding && addingInFolderId === parentId && (
+          <div className="mvp16-sprite-add-inline flex flex-col gap-1.5 py-1 pr-2" style={{ paddingLeft: `${depth * 16 + 8}px` }}>
+            <input
+              ref={inputCallbackRef}
+              value={newName}
+              onChange={(event: ChangeEvent<HTMLInputElement>) => setNewName(event.target.value)}
+              onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
+                blockUndoShortcuts(event)
+                if (event.key === "Enter") handleAddSprite()
+                if (event.key === "Escape") {
+                  setIsAdding(false)
+                  setAddingInFolderId(null)
+                }
+              }}
+              className="h-7 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+              placeholder="Sprite nou"
+            />
+            <div className="flex items-end gap-1.5">
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={newWidth}
+                onChange={(event: ChangeEvent<HTMLInputElement>) => setNewWidth(event.target.value)}
+                onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
+                  blockUndoShortcuts(event)
+                  if (event.key === "Enter") handleAddSprite()
+                  if (event.key === "Escape") {
+                    setIsAdding(false)
+                    setAddingInFolderId(null)
+                  }
+                }}
+                className="h-7 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+                placeholder="32"
+              />
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={newHeight}
+                onChange={(event: ChangeEvent<HTMLInputElement>) => setNewHeight(event.target.value)}
+                onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
+                  blockUndoShortcuts(event)
+                  if (event.key === "Enter") handleAddSprite()
+                  if (event.key === "Escape") {
+                    setIsAdding(false)
+                    setAddingInFolderId(null)
+                  }
+                }}
+                className="h-7 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+                placeholder="32"
+              />
+              <Button size="sm" className="h-7 w-7 shrink-0 px-0" onClick={handleAddSprite} title="Add sprite">
+                <Plus className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 w-7 shrink-0 px-0 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                onClick={() => {
+                  setIsAdding(false)
+                  setAddingInFolderId(null)
+                  setNewName("")
+                  setNewWidth("")
+                  setNewHeight("")
+                }}
+                title="Cancel"
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+        )}
+      </>
+    )
+  }
+
+  function renderContextMenu() {
+    if (!contextMenu) return null
+    const { spriteId, folderId } = contextMenu
+    return (
+      <div
+        ref={contextMenuRef}
+        className="mvp16-sprite-context-menu fixed z-50 min-w-[160px] rounded-md border border-slate-200 bg-white py-1 shadow-lg"
+        style={{ left: contextMenu.x, top: contextMenu.y }}
+      >
+        {spriteId ? (
+          <>
+            <button
+              type="button"
+              className="mvp16-sprite-ctx-open flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-slate-700 transition-colors hover:bg-slate-100"
+              onClick={() => {
+                onSelectSprite(spriteId)
+                closeContextMenu()
+              }}
+            >
+              <Image className="h-3.5 w-3.5 text-slate-400" />
+              Open
+            </button>
+            <button
+              type="button"
+              className="mvp16-sprite-ctx-open-tab flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-slate-700 transition-colors hover:bg-slate-100"
+              onClick={() => {
+                onOpenInNewTab(spriteId)
+                closeContextMenu()
+              }}
+            >
+              <Plus className="h-3.5 w-3.5 text-slate-400" />
+              Open in a new tab
+            </button>
+            <div className="my-1 border-t border-slate-100" />
+            <button
+              type="button"
+              className="mvp16-sprite-ctx-delete flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-red-600 transition-colors hover:bg-red-50"
+              onClick={() => {
+                onDeleteSprite(spriteId)
+                closeContextMenu()
+              }}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete
+            </button>
+          </>
+        ) : folderId ? (
+          <>
+            <button
+              type="button"
+              className="mvp16-sprite-ctx-rename flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-slate-700 transition-colors hover:bg-slate-100"
+              onClick={() => {
+                const folder = spriteFolders.find((entry) => entry.id === folderId)
+                if (folder) {
+                  setRenamingFolderId(folderId)
+                  setRenameValue(folder.name)
+                }
+                closeContextMenu()
+              }}
+            >
+              <Pencil className="h-3.5 w-3.5 text-slate-400" />
+              Rename
+            </button>
+            <button
+              type="button"
+              className="mvp16-sprite-ctx-subfolder flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-slate-700 transition-colors hover:bg-slate-100"
+              onClick={() => {
+                createFolder(folderId)
+                closeContextMenu()
+              }}
+            >
+              <FolderPlus className="h-3.5 w-3.5 text-slate-400" />
+              New subfolder
+            </button>
+            <button
+              type="button"
+              className="mvp16-sprite-ctx-add-in-folder flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-slate-700 transition-colors hover:bg-slate-100"
+              onClick={() => {
+                setExpandedFolderIds((prev) => new Set(prev).add(folderId))
+                startAddingSprite(folderId)
+                closeContextMenu()
+              }}
+            >
+              <Plus className="h-3.5 w-3.5 text-slate-400" />
+              New sprite here
+            </button>
+            <div className="my-1 border-t border-slate-100" />
+            <button
+              type="button"
+              className="mvp16-sprite-ctx-delete-folder flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-red-600 transition-colors hover:bg-red-50"
+              onClick={() => {
+                deleteFolder(folderId)
+                closeContextMenu()
+              }}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete folder
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              className="mvp16-sprite-ctx-new flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-slate-700 transition-colors hover:bg-slate-100"
+              onClick={() => {
+                startAddingSprite(null)
+                closeContextMenu()
+              }}
+            >
+              <Plus className="h-3.5 w-3.5 text-slate-400" />
+              New sprite
+            </button>
+            <button
+              type="button"
+              className="mvp16-sprite-ctx-new-folder flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-slate-700 transition-colors hover:bg-slate-100"
+              onClick={() => {
+                createFolder(null)
+                closeContextMenu()
+              }}
+            >
+              <FolderPlus className="h-3.5 w-3.5 text-slate-400" />
+              New folder
+            </button>
+          </>
         )}
       </div>
     )
   }
-
-  const renderSpriteNode = (spriteEntry: SpriteListEntry, depth: number) => {
-    const isActive = spriteEntry.id === activeSpriteId
-    const isSelected = selectedNode?.type === "sprite" && selectedNode.id === spriteEntry.id
-    const isRenaming = renamingNode?.type === "sprite" && renamingNode.id === spriteEntry.id
-    const highlighted = isSelected || isActive
-    const isDragging = draggedNode?.type === "sprite" && draggedNode.id === spriteEntry.id
-    return (
-      <button
-        key={spriteEntry.id}
-        type="button"
-        draggable={!isRenaming}
-        onDragStart={(event) => handleDragStart(event, { type: "sprite", id: spriteEntry.id })}
-        onDragEnd={handleDragEnd}
-        className={`mvp16-sprite-tree-sprite-row flex h-8 w-full items-center gap-2 rounded px-2 text-left text-xs ${
-          highlighted ? "bg-indigo-50 text-indigo-700" : "text-slate-700 hover:bg-slate-100"
-        } ${isDragging ? "opacity-40" : ""}`}
-        style={{ paddingLeft: `${depth * 14 + 8}px` }}
-        onClick={() => {
-          setSelectedNode({ type: "sprite", id: spriteEntry.id })
-          onSelectSprite(spriteEntry.id)
-        }}
-        onDoubleClick={() => startRename({ type: "sprite", id: spriteEntry.id })}
-        onContextMenu={(event: MouseEvent<HTMLButtonElement>) => {
-          event.preventDefault()
-          setSelectedNode({ type: "sprite", id: spriteEntry.id })
-          setContextMenu({
-            x: event.clientX,
-            y: event.clientY,
-            node: { type: "sprite", id: spriteEntry.id }
-          })
-        }}
-      >
-        {spriteEntry.previewDataUrl ? (
-          <img
-            src={spriteEntry.previewDataUrl}
-            alt=""
-            className="mvp16-sprite-tree-thumb h-5 w-5 shrink-0 object-contain"
-            style={{ imageRendering: "pixelated" }}
-          />
-        ) : (
-          <Image className={`h-3.5 w-3.5 shrink-0 ${highlighted ? "text-indigo-500" : "text-slate-400"}`} />
-        )}
-        <div className="flex min-w-0 flex-1 flex-col">
-          {isRenaming ? (
-            <input
-              value={renameValue}
-              onChange={(event: ChangeEvent<HTMLInputElement>) => setRenameValue(event.target.value)}
-              autoFocus
-              onBlur={commitRename}
-              onClick={(event) => event.stopPropagation()}
-              onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
-                if (event.key === "Enter") {
-                  event.preventDefault()
-                  commitRename()
-                }
-                if (event.key === "Escape") {
-                  event.preventDefault()
-                  setRenamingNode(null)
-                }
-              }}
-              className="mvp16-sprite-tree-rename-input h-6 w-full rounded border border-slate-300 bg-white px-2 text-xs"
-            />
-          ) : (
-            <span className="truncate font-medium">{spriteEntry.name}</span>
-          )}
-          <span className="truncate text-[10px] text-slate-400">
-            {spriteEntry.width} x {spriteEntry.height}
-            {spriteEntry.isEmpty && <span className="mvp16-sprite-empty-badge ml-1 text-amber-400">· buit</span>}
-            {spriteEntry.objectNames.length > 0 && (
-              <span className="mvp16-sprite-obj-count ml-1 text-slate-400">
-                · {spriteEntry.objectNames[0]}{spriteEntry.objectNames.length > 1 && ` +${spriteEntry.objectNames.length - 1} més`}
-              </span>
-            )}
-          </span>
-        </div>
-      </button>
-    )
-  }
-
-  const rootFolders = folderChildrenByParent.get(null) ?? []
-  const rootSprites = spritesByFolder.get(null) ?? []
 
   return (
     <EditorSidebarLayout
       classNamePrefix="mvp16-sprite-tree-panel"
       className="border-r border-slate-200"
       isCollapsed={isCollapsed}
-      expandedWidthClass="w-[280px]"
+      expandedWidthClass="w-[200px]"
       header={
-        <div className={`mvp16-sprite-list-header flex items-center border-b border-slate-200 bg-white px-2 py-2 ${isCollapsed ? "justify-center" : "justify-between"}`}>
+        <div className={`mvp16-sprite-list-header flex items-center border-b border-slate-200 px-1.5 py-1.5 ${isCollapsed ? "justify-center" : "justify-between"}`}>
           {isCollapsed ? (
             <div className="flex flex-col items-center gap-1">
               <button
@@ -502,7 +678,7 @@ export function SpriteListPanel({
                 className="mvp16-sprite-add-collapsed-btn inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
                 onClick={() => {
                   setIsCollapsed(false)
-                  setIsAdding(true)
+                  startAddingSprite(null)
                 }}
                 title="Add sprite"
               >
@@ -511,25 +687,23 @@ export function SpriteListPanel({
             </div>
           ) : (
             <>
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="mvp16-sprite-tree-header-action h-7 rounded-md border border-transparent px-2 text-[11px] hover:border-slate-200 hover:bg-slate-100"
-                  onClick={() => setCreatingFolderParentId(selectedNode?.type === "folder" ? selectedNode.id : null)}
+              <div className="flex items-center gap-0.5">
+                <button
+                  type="button"
+                  className="mvp16-sprite-add-btn inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
+                  onClick={() => startAddingSprite(null)}
+                  title="Add sprite"
                 >
-                  <Folder className="mr-1 h-3.5 w-3.5" />
-                  Folder
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="mvp16-sprite-tree-header-action h-7 rounded-md border border-transparent px-2 text-[11px] hover:border-slate-200 hover:bg-slate-100"
-                  onClick={() => setIsAdding(true)}
+                  <Plus className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  className="mvp16-sprite-add-folder-btn inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
+                  onClick={() => createFolder(null)}
+                  title="New folder"
                 >
-                  <Plus className="mr-1 h-3.5 w-3.5" />
-                  Sprite
-                </Button>
+                  <FolderPlus className="h-4 w-4" />
+                </button>
               </div>
               <button
                 type="button"
@@ -545,238 +719,21 @@ export function SpriteListPanel({
       }
       body={
         <div
-          className={`mvp16-sprite-tree-items flex-1 overflow-y-auto p-2 transition-colors ${
-            dropTargetFolderId === null && draggedNode ? "bg-indigo-50/50" : "bg-slate-50"
-          }`}
-          tabIndex={0}
-          onDragOver={(event) => handleDragOver(event, null)}
+          className={`mvp16-sprite-tree-items flex-1 overflow-y-auto p-2 ${dropTargetIsRoot ? "bg-blue-50/50" : ""}`}
+          onContextMenu={(event) => openContextMenu(event, null, null)}
+          onDragOver={handleRootDragOver}
           onDragLeave={handleDragLeave}
-          onDrop={(event) => handleDrop(event, null)}
-          onKeyDown={(event) => {
-            if (renamingNode || creatingFolderParentId !== undefined) {
-              return
-            }
-            if (event.key === "ArrowDown") {
-              event.preventDefault()
-              navigateNode(1)
-              return
-            }
-            if (event.key === "ArrowUp") {
-              event.preventDefault()
-              navigateNode(-1)
-              return
-            }
-            if (event.key === "ArrowRight" && selectedNode?.type === "folder") {
-              event.preventDefault()
-              setExpandedFolderIds((previous) => new Set([...previous, selectedNode.id]))
-              return
-            }
-            if (event.key === "ArrowLeft" && selectedNode?.type === "folder") {
-              event.preventDefault()
-              setExpandedFolderIds((previous) => {
-                const next = new Set(previous)
-                next.delete(selectedNode.id)
-                return next
-              })
-              return
-            }
-            if (event.key === "F2" && selectedNode) {
-              event.preventDefault()
-              startRename(selectedNode)
-              return
-            }
-            if ((event.key === "Delete" || event.key === "Backspace") && selectedNode) {
-              event.preventDefault()
-              handleDeleteNode(selectedNode)
-            }
-          }}
+          onDrop={handleRootDrop}
         >
-          {creatingFolderParentId !== undefined && (
-            <div className="mvp16-sprite-tree-folder-create mb-2 rounded-lg border border-slate-200 bg-white p-2.5 shadow-sm">
-              <div className="mb-2 flex items-center gap-1.5">
-                <Folder className="h-3.5 w-3.5 text-amber-500" />
-                <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                  New folder {creatingFolderParentId ? "inside selected folder" : "at root"}
-                </span>
-              </div>
-              <input
-                value={newFolderName}
-                onChange={(event: ChangeEvent<HTMLInputElement>) => setNewFolderName(event.target.value)}
-                autoFocus
-                onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault()
-                    handleCreateFolder()
-                  }
-                  if (event.key === "Escape") {
-                    event.preventDefault()
-                    setCreatingFolderParentId(undefined)
-                  }
-                }}
-                className="mvp16-sprite-tree-folder-create-input h-8 w-full rounded-md border border-slate-300 bg-white px-2.5 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
-              />
-              <div className="mt-2 flex items-center justify-end gap-1.5">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-7 rounded-md px-2 text-[11px] text-slate-600 hover:bg-slate-100"
-                  onClick={() => setCreatingFolderParentId(undefined)}
-                >
-                  Cancel
-                </Button>
-                <Button size="sm" className="h-7 rounded-md px-2 text-[11px]" onClick={handleCreateFolder}>
-                  Create
-                </Button>
-              </div>
-            </div>
-          )}
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-0.5">
             {sprites.length === 0 && spriteFolders.length === 0 && (
-              <p className="px-2 py-4 text-center text-xs text-slate-400">No sprites yet</p>
+              <p className="px-2 py-4 text-center text-xs text-slate-400">Right-click or press + to add</p>
             )}
-            {rootFolders.map((folderEntry) => renderFolderNode(folderEntry, 0))}
-            {rootSprites.map((spriteEntry) => renderSpriteNode(spriteEntry, 0))}
+            {renderTree(null, 0)}
           </div>
         </div>
       }
-      footer={
-        isAdding ? (
-          <div className="mvp16-sprite-list-footer border-t border-slate-200 bg-white p-3">
-            <div className="mvp16-sprite-list-add-form flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-slate-700">Add Sprite</span>
-                <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">
-                  {selectedNode?.type === "folder" ? foldersById.get(selectedNode.id)?.name ?? "Root" : "Root"}
-                </span>
-              </div>
-              <input
-                value={newName}
-                onChange={(event: ChangeEvent<HTMLInputElement>) => setNewName(event.target.value)}
-                placeholder="Sprite nou"
-                onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
-                  if (event.key === "Enter") handleAdd()
-                  if (event.key === "Escape") setIsAdding(false)
-                }}
-                className="mvp16-sprite-list-name-input flex h-8 w-full rounded-md border border-slate-300 bg-white px-3 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
-              />
-              <div className="mvp16-sprite-list-add-details flex items-end gap-2">
-                <label className="mvp16-sprite-list-dimension-field flex min-w-0 flex-1 flex-col gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                  Width
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    value={newWidth}
-                    onChange={(event: ChangeEvent<HTMLInputElement>) => setNewWidth(event.target.value)}
-                    onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
-                      if (event.key === "Enter") handleAdd()
-                      if (event.key === "Escape") setIsAdding(false)
-                    }}
-                    className="mvp16-sprite-list-dimension-input h-8 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-normal text-slate-700 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
-                  />
-                </label>
-                <label className="mvp16-sprite-list-dimension-field flex min-w-0 flex-1 flex-col gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                  Height
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    value={newHeight}
-                    onChange={(event: ChangeEvent<HTMLInputElement>) => setNewHeight(event.target.value)}
-                    onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
-                      if (event.key === "Enter") handleAdd()
-                      if (event.key === "Escape") setIsAdding(false)
-                    }}
-                    className="mvp16-sprite-list-dimension-input h-8 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-normal text-slate-700 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
-                  />
-                </label>
-                <Button size="sm" className="mvp16-sprite-list-submit-button h-8 w-8 shrink-0 px-0" onClick={handleAdd}>
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="flex items-center justify-end gap-1.5">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-7 rounded-md px-2 text-[11px] text-slate-600 hover:bg-slate-100"
-                  onClick={() => setIsAdding(false)}
-                >
-                  Cancel
-                </Button>
-                <Button size="sm" className="h-7 rounded-md px-2 text-[11px]" onClick={handleAdd}>
-                  Create
-                </Button>
-              </div>
-            </div>
-          </div>
-        ) : null
-      }
-      overlay={
-        contextMenu ? (
-          <div
-            className="mvp16-sprite-tree-context-menu fixed z-30 max-h-[280px] min-w-[190px] overflow-y-auto rounded-md border border-slate-200 bg-white p-1 shadow-lg"
-            style={{ left: `${contextMenu.x}px`, top: `${contextMenu.y}px` }}
-            onMouseDown={(event) => event.stopPropagation()}
-          >
-            {contextMenu.node.type === "folder" ? (
-              <>
-                <button
-                  type="button"
-                  className="mvp16-sprite-tree-context-item flex h-7 w-full items-center gap-2 rounded px-2 text-left text-xs hover:bg-slate-100"
-                  onClick={() => {
-                    setCreatingFolderParentId(contextMenu.node.id)
-                    setContextMenu(null)
-                  }}
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  New Folder
-                </button>
-                <button
-                  type="button"
-                  className="mvp16-sprite-tree-context-item flex h-7 w-full items-center gap-2 rounded px-2 text-left text-xs hover:bg-slate-100"
-                  onClick={() => startRename(contextMenu.node)}
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                  Rename
-                </button>
-                <button
-                  type="button"
-                  className="mvp16-sprite-tree-context-item flex h-7 w-full items-center gap-2 rounded px-2 text-left text-xs text-rose-600 hover:bg-rose-50"
-                  onClick={() => {
-                    handleDeleteNode(contextMenu.node)
-                    setContextMenu(null)
-                  }}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  Delete
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  className="mvp16-sprite-tree-context-item flex h-7 w-full items-center gap-2 rounded px-2 text-left text-xs hover:bg-slate-100"
-                  onClick={() => startRename(contextMenu.node)}
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                  Rename
-                </button>
-                <button
-                  type="button"
-                  className="mvp16-sprite-tree-context-item flex h-7 w-full items-center gap-2 rounded px-2 text-left text-xs text-rose-600 hover:bg-rose-50"
-                  onClick={() => {
-                    handleDeleteNode(contextMenu.node)
-                    setContextMenu(null)
-                  }}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  Delete
-                </button>
-              </>
-            )}
-          </div>
-        ) : null
-      }
+      overlay={renderContextMenu()}
     />
   )
 }

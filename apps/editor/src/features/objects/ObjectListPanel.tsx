@@ -79,6 +79,8 @@ export function ObjectListPanel({
   const [expandedFolderIds, setExpandedFolderIds] = useState<Set<string>>(new Set())
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null)
   const [renamingValue, setRenamingValue] = useState("")
+  const [creatingFolderParentId, setCreatingFolderParentId] = useState<string | null | undefined>(undefined)
+  const [newFolderName, setNewFolderName] = useState("")
 
   const dragItemRef = useRef<DragItem>(null)
   const [dropTargetFolderId, setDropTargetFolderId] = useState<string | null>(null)
@@ -96,6 +98,10 @@ export function ObjectListPanel({
     if (node) node.select()
   }, [])
 
+  const createFolderInputCallbackRef = useCallback((node: HTMLInputElement | null) => {
+    if (node) node.select()
+  }, [])
+
   const blockUndoShortcuts = (event: KeyboardEvent<HTMLInputElement>): void => {
     if ((event.metaKey || event.ctrlKey) && (event.key.toLowerCase() === "z" || event.key.toLowerCase() === "y")) {
       event.preventDefault()
@@ -105,6 +111,8 @@ export function ObjectListPanel({
   const startAddingObject = (inFolderId: string | null = null) => {
     setAddingInFolderId(inFolderId)
     setNewObjectName("Objecte nou")
+    setCreatingFolderParentId(undefined)
+    setNewFolderName("")
     setIsAdding(true)
   }
 
@@ -117,14 +125,28 @@ export function ObjectListPanel({
   }
 
   const createFolder = (parentId: string | null) => {
-    const createdFolderId = onCreateFolder("New folder", parentId)
+    setCreatingFolderParentId(parentId)
+    setNewFolderName("")
+    setIsAdding(false)
+    setAddingInFolderId(null)
+  }
+
+  const commitCreateFolder = () => {
+    if (creatingFolderParentId === undefined) return
+    const trimmed = newFolderName.trim()
+    if (!trimmed) {
+      setCreatingFolderParentId(undefined)
+      setNewFolderName("")
+      return
+    }
+    const createdFolderId = onCreateFolder(trimmed, creatingFolderParentId)
     if (!createdFolderId) return
     setExpandedFolderIds((prev) => new Set(prev).add(createdFolderId))
-    if (parentId) {
-      setExpandedFolderIds((prev) => new Set(prev).add(parentId))
+    if (creatingFolderParentId) {
+      setExpandedFolderIds((prev) => new Set(prev).add(creatingFolderParentId))
     }
-    setRenamingFolderId(createdFolderId)
-    setRenamingValue("New folder")
+    setCreatingFolderParentId(undefined)
+    setNewFolderName("")
   }
 
   const renameFolder = (folderId: string, name: string) => {
@@ -357,6 +379,27 @@ export function ObjectListPanel({
             </div>
           )
         })}
+
+        {creatingFolderParentId === parentId && (
+          <div className="objlist-create-folder-inline flex py-1 pr-2" style={{ paddingLeft: `${depth * 16 + 8}px` }}>
+            <input
+              ref={createFolderInputCallbackRef}
+              value={newFolderName}
+              onChange={(event: ChangeEvent<HTMLInputElement>) => setNewFolderName(event.target.value)}
+              onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
+                blockUndoShortcuts(event)
+                if (event.key === "Enter") commitCreateFolder()
+                if (event.key === "Escape") {
+                  setCreatingFolderParentId(undefined)
+                  setNewFolderName("")
+                }
+              }}
+              onBlur={commitCreateFolder}
+              className="objlist-folder-create-input h-7 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+              placeholder="New folder"
+            />
+          </div>
+        )}
 
         {isAdding && addingInFolderId === parentId && (
           <div className="objlist-add-form-inline flex gap-1.5 py-1 pr-2" style={{ paddingLeft: `${depth * 16 + 8}px` }}>
