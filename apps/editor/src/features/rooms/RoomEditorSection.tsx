@@ -501,6 +501,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                   style={{
                     width: activeRoomWidth * zoom,
                     height: activeRoomHeight * zoom,
+                    imageRendering: "pixelated" as const,
                     ...roomCanvasBackgroundStyle
                   }}
                   onMouseMove={(event) => {
@@ -756,6 +757,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                             className={`mvp15-room-instance-sprite h-full w-full object-contain ${isInvisible ? "opacity-40" : ""}`}
                             src={spriteSource}
                             alt={spriteEntry?.name ?? objectEntry?.name ?? "Sprite"}
+                            style={{ imageRendering: "pixelated" }}
                           />
                         ) : (
                           objectEntry?.name.slice(0, 2).toUpperCase() ?? "??"
