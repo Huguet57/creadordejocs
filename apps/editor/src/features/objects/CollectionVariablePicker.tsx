@@ -26,8 +26,7 @@ type CollectionVariablePickerProps = {
 
 const TARGET_LABELS: Record<string, string> = {
   self: "self",
-  other: "other",
-  instanceId: "id"
+  other: "other"
 }
 
 export function CollectionVariablePicker({
@@ -40,21 +39,18 @@ export function CollectionVariablePicker({
   onChange,
   allowOtherTarget = false,
   target,
-  targetInstanceId,
-  roomInstances,
   onTargetChange,
   variant = "default"
 }: CollectionVariablePickerProps) {
   const [isOpen, setIsOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
-  const allowInstanceTarget = Boolean(roomInstances && roomInstances.length > 0)
-  const [localTarget, setLocalTarget] = useState<"self" | "other" | "instanceId">(
-    normalizeTargetValue(target, allowOtherTarget, allowInstanceTarget)
+  const [localTarget, setLocalTarget] = useState<"self" | "other">(
+    normalizeTargetValue(target, allowOtherTarget, false) === "other" ? "other" : "self"
   )
 
   useEffect(() => {
-    setLocalTarget(normalizeTargetValue(target, allowOtherTarget, allowInstanceTarget))
-  }, [target, allowOtherTarget, allowInstanceTarget])
+    setLocalTarget(normalizeTargetValue(target, allowOtherTarget, false) === "other" ? "other" : "self")
+  }, [target, allowOtherTarget])
 
   useEffect(() => {
     if (!isOpen) return
@@ -75,7 +71,7 @@ export function CollectionVariablePicker({
     allowOtherTarget
   })
   const filteredObject = activeObjectVariables.filter((v) => v.type === collectionType)
-  const hasAnyObjectVariables = allowOtherTarget || allowInstanceTarget
+  const hasAnyObjectVariables = allowOtherTarget
     ? hasAnyTargetVariables({
         selfVariables: objectVariables.filter((v) => v.type === collectionType),
         otherVariables: otherObjectVariables.filter((v) => v.type === collectionType),
@@ -94,8 +90,8 @@ export function CollectionVariablePicker({
   const ScopeIcon = scope === "global" ? Globe : Box
 
   const targetPrefix =
-    scope === "object" && (allowOtherTarget || allowInstanceTarget)
-      ? `${TARGET_LABELS[normalizeTargetValue(target ?? localTarget, allowOtherTarget, allowInstanceTarget)] ?? normalizeTargetValue(target ?? localTarget, allowOtherTarget, allowInstanceTarget)}.`
+    scope === "object" && allowOtherTarget
+      ? `${TARGET_LABELS[normalizeTargetValue(target ?? localTarget, allowOtherTarget, false)] ?? normalizeTargetValue(target ?? localTarget, allowOtherTarget, false)}.`
       : ""
 
   const borderColor = variant === "purple" ? "border-purple-300" : "border-slate-300"
@@ -105,12 +101,8 @@ export function CollectionVariablePicker({
   const rowHover = variant === "purple" ? "hover:bg-purple-50" : "hover:bg-blue-50"
 
   const itemTypeBadge = collectionType === "list" ? "list" : "map"
-  const showTargetToggle = (allowOtherTarget || allowInstanceTarget) && hasAnyObjectVariables
-  const targetOptions: ("self" | "other" | "instanceId")[] = [
-    "self",
-    ...(allowOtherTarget ? (["other"] as const) : []),
-    ...(allowInstanceTarget ? (["instanceId"] as const) : [])
-  ]
+  const showTargetToggle = allowOtherTarget && hasAnyObjectVariables
+  const targetOptions: ("self" | "other")[] = ["self", ...(allowOtherTarget ? (["other"] as const) : [])]
 
   return (
     <div className="collection-variable-picker-container relative" ref={containerRef}>
@@ -171,7 +163,7 @@ export function CollectionVariablePicker({
                         onClick={(e) => {
                           e.stopPropagation()
                           setLocalTarget(t)
-                          onTargetChange?.(t, t === "instanceId" ? (roomInstances?.[0]?.id ?? null) : null)
+                          onTargetChange?.(t, null)
                         }}
                       >
                         {TARGET_LABELS[t]}
@@ -180,21 +172,6 @@ export function CollectionVariablePicker({
                   </div>
                 )}
               </div>
-              {showTargetToggle && localTarget === "instanceId" && (
-                <div className="px-3 py-1.5 border-b border-slate-100">
-                  <select
-                    className="h-6 w-full rounded border border-slate-200 bg-white px-2 text-[10px] text-slate-600"
-                    value={targetInstanceId ?? roomInstances?.[0]?.id ?? ""}
-                    onChange={(event) => onTargetChange?.("instanceId", event.target.value || null)}
-                  >
-                    {(roomInstances ?? []).map((instance) => (
-                      <option key={instance.id} value={instance.id}>
-                        {instance.id}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
               {filteredObject.length === 0 ? (
                 <div className="px-3 py-1.5 text-xs text-slate-400">&mdash;</div>
               ) : filteredObject.map((variable) => (

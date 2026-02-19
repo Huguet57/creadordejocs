@@ -180,6 +180,7 @@ export function ControlBlock({
     selfObjectVariables: selectedObjectVariables,
     otherObjectVariables,
     allowOtherTarget,
+    allowInstanceTarget: false,
     iterationVariables
   }
 

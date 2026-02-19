@@ -105,6 +105,7 @@ export function ActionBlock({
     selfObjectVariables: selectedObjectVariables,
     otherObjectVariables,
     allowOtherTarget,
+    allowInstanceTarget: false,
     iterationVariables
   }
   const scalarGlobalVariables = getScalarObjectDefinitions(globalVariables)
@@ -177,16 +178,14 @@ export function ActionBlock({
       allowedSources={props.allowedSources ?? ["literal", "random", "attribute", "internalVariable", "globalVariable", "iterationVariable"]}
     />
   )
-  const hasInstanceTargets = roomInstances.length > 0
-
   function ensureRandomizeVariableDraft(
     draft: Extract<ObjectActionDraft, { type: "randomizeVariable" }>
   ): Extract<ObjectActionDraft, { type: "randomizeVariable" }> {
-    const normalizedTarget = normalizeTargetValue(draft.target, allowOtherTarget, hasInstanceTargets)
+    const normalizedTarget = normalizeTargetValue(draft.target, allowOtherTarget, false)
     const normalizedDraft = {
       ...draft,
       target: normalizedTarget,
-      targetInstanceId: normalizedTarget === "instanceId" ? (draft.targetInstanceId ?? null) : null
+      targetInstanceId: null
     }
 
     if (
@@ -699,7 +698,7 @@ export function ActionBlock({
               globalVariables={globalVariables}
               objectVariables={selfObjectVariableOptions}
               otherObjectVariables={otherObjectVariableOptionsForPicker}
-              showTarget={allowOtherTarget || hasInstanceTargets}
+              showTarget={allowOtherTarget}
               target={normalizedChangeVariableAction.scope === "object" ? (normalizedChangeVariableAction.target ?? "self") : null}
               targetInstanceId={normalizedChangeVariableAction.scope === "object" ? (normalizedChangeVariableAction.targetInstanceId ?? null) : null}
               roomInstances={roomInstances}
@@ -794,7 +793,7 @@ export function ActionBlock({
                 globalVariables={globalVariables}
                 objectVariables={compatibleSelfOptionsForCopy}
                 otherObjectVariables={compatibleOtherOptionsForCopy}
-                showTarget={leftScope === "object"}
+                showTarget={leftScope === "object" && allowOtherTarget}
                 target={leftScope === "object" ? normalizedCopyAction.instanceTarget : null}
                 targetInstanceId={leftScope === "object" ? (normalizedCopyAction.instanceTargetId ?? null) : null}
                 roomInstances={roomInstances}
@@ -845,7 +844,7 @@ export function ActionBlock({
                 objectVariables={compatibleSelfOptionsForCopy}
                 otherObjectVariables={compatibleOtherOptionsForCopy}
                 allowedScopes={[rightScope]}
-                showTarget={rightScope === "object"}
+                showTarget={rightScope === "object" && allowOtherTarget}
                 target={rightScope === "object" ? normalizedCopyAction.instanceTarget : null}
                 targetInstanceId={rightScope === "object" ? (normalizedCopyAction.instanceTargetId ?? null) : null}
                 roomInstances={roomInstances}
@@ -897,7 +896,7 @@ export function ActionBlock({
               globalVariables={globalVariables}
               objectVariables={selfObjectVariableOptions}
               otherObjectVariables={otherObjectVariableOptionsForPicker}
-              showTarget={allowOtherTarget || hasInstanceTargets}
+              showTarget={allowOtherTarget}
               target={action.scope === "object" ? (action.target ?? "self") : null}
               targetInstanceId={action.scope === "object" ? (action.targetInstanceId ?? null) : null}
               roomInstances={roomInstances}

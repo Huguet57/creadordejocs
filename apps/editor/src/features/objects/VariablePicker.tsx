@@ -39,8 +39,7 @@ type VariablePickerProps = {
 
 const TARGET_LABELS: Record<string, string> = {
   self: "self",
-  other: "other",
-  instanceId: "id"
+  other: "other"
 }
 
 function getDisplayName(
@@ -66,8 +65,6 @@ export function VariablePicker({
   onChange,
   showTarget = false,
   target,
-  targetInstanceId,
-  roomInstances,
   onTargetChange,
   filter,
   allowedScopes,
@@ -76,15 +73,14 @@ export function VariablePicker({
   const [isOpen, setIsOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const allowOtherTarget = showTarget
-  const allowInstanceTarget = Boolean(roomInstances && roomInstances.length > 0)
-  const [localTarget, setLocalTarget] = useState<"self" | "other" | "instanceId">(
-    normalizeTargetValue(target, allowOtherTarget, allowInstanceTarget)
+  const [localTarget, setLocalTarget] = useState<"self" | "other">(
+    normalizeTargetValue(target, allowOtherTarget, false) === "other" ? "other" : "self"
   )
 
   // Sync local target state with props
   useEffect(() => {
-    setLocalTarget(normalizeTargetValue(target, allowOtherTarget, allowInstanceTarget))
-  }, [target, allowOtherTarget, allowInstanceTarget])
+    setLocalTarget(normalizeTargetValue(target, allowOtherTarget, false) === "other" ? "other" : "self")
+  }, [target, allowOtherTarget])
 
   // Close on click outside
   useEffect(() => {
@@ -122,17 +118,13 @@ export function VariablePicker({
   const allObjectVars = showTarget ? [...objectVariables, ...otherObjectVariables] : objectVariables
   const displayName = getDisplayName(scope, variableId, globalVariables, allObjectVars)
   const ScopeIcon = scope === "global" ? Globe : Box
-  const triggerTarget = normalizeTargetValue(target ?? localTarget, allowOtherTarget, allowInstanceTarget)
+  const triggerTarget = normalizeTargetValue(target ?? localTarget, allowOtherTarget, false) === "other" ? "other" : "self"
 
   const targetPrefix =
     showTarget && scope === "object"
       ? `${TARGET_LABELS[triggerTarget] ?? triggerTarget}.`
       : ""
-  const targetToggleOptions: ("self" | "other" | "instanceId")[] = [
-    "self",
-    ...(allowOtherTarget ? (["other"] as const) : []),
-    ...(allowInstanceTarget ? (["instanceId"] as const) : [])
-  ]
+  const targetToggleOptions: ("self" | "other")[] = ["self", ...(allowOtherTarget ? (["other"] as const) : [])]
 
   const borderColor = variant === "amber" ? "border-amber-200" : variant === "blue" ? "border-blue-200" : "border-slate-300"
   const hoverBg = variant === "amber" ? "hover:bg-amber-50" : variant === "blue" ? "hover:bg-blue-50" : "hover:bg-slate-50"
@@ -197,7 +189,7 @@ export function VariablePicker({
                         onClick={(e) => {
                           e.stopPropagation()
                           setLocalTarget(t)
-                          onTargetChange?.(t, t === "instanceId" ? (roomInstances?.[0]?.id ?? null) : null)
+                          onTargetChange?.(t, null)
                         }}
                       >
                         {TARGET_LABELS[t]}
@@ -206,21 +198,6 @@ export function VariablePicker({
                   </div>
                 )}
               </div>
-              {showTarget && localTarget === "instanceId" && (
-                <div className="px-3 py-1.5 border-b border-slate-100">
-                  <select
-                    className="h-6 w-full rounded border border-slate-200 bg-white px-2 text-[10px] text-slate-600"
-                    value={targetInstanceId ?? roomInstances?.[0]?.id ?? ""}
-                    onChange={(event) => onTargetChange?.("instanceId", event.target.value || null)}
-                  >
-                    {(roomInstances ?? []).map((instance) => (
-                      <option key={instance.id} value={instance.id}>
-                        {instance.id}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
               {filteredObject.length === 0 ? (
                 <div className="px-3 py-1.5 text-xs text-slate-400">&mdash;</div>
               ) : filteredObject.map((variable) => (
