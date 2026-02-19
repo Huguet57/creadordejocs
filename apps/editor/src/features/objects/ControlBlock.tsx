@@ -22,6 +22,7 @@ type ControlBlockProps = {
   selectableSprites: { id: string; name: string }[]
   globalVariables: ProjectV1["variables"]["global"]
   selectedObjectVariables: ProjectV1["variables"]["global"]
+  otherObjectVariables?: ProjectV1["variables"]["global"]
   objectVariablesByObjectId: ProjectV1["variables"]["objectByObjectId"]
   roomInstances: ProjectV1["rooms"][number]["instances"]
   allObjects: ProjectV1["objects"]
@@ -139,6 +140,7 @@ export function ControlBlock({
   selectableSprites,
   globalVariables,
   selectedObjectVariables,
+  otherObjectVariables = [],
   objectVariablesByObjectId,
   roomInstances,
   allObjects,
@@ -182,6 +184,12 @@ export function ControlBlock({
   const objectVarOptionsForPicker: ObjectVariableOption[] = scalarSelectedObjectVariables.map((v) => ({
     id: v.id, label: v.name, type: v.type, objectName: ""
   }))
+  const otherVarOptionsForPicker: ObjectVariableOption[] = otherObjectVariables
+    .filter(
+      (v): v is Extract<typeof otherObjectVariables[number], { type: "number" | "string" | "boolean" }> =>
+        v.type === "number" || v.type === "string" || v.type === "boolean"
+    )
+    .map((v) => ({ id: v.id, label: v.name, type: v.type, objectName: "" }))
 
   const allowOtherTarget = eventType === "Collision"
 
@@ -339,6 +347,7 @@ export function ControlBlock({
               allObjects={allObjects}
               rooms={rooms}
               selectedObjectVariables={selectedObjectVariables}
+              otherObjectVariables={otherObjectVariables}
               eventType={eventType}
               collisionTargetName={collisionTargetName}
               isDragging={draggedActionId === branchItem.action.id}
@@ -376,6 +385,7 @@ export function ControlBlock({
               selectableSprites={selectableSprites}
               globalVariables={globalVariables}
               selectedObjectVariables={selectedObjectVariables}
+              otherObjectVariables={otherObjectVariables}
               objectVariablesByObjectId={objectVariablesByObjectId}
               roomInstances={roomInstances}
               allObjects={allObjects}
@@ -437,6 +447,7 @@ export function ControlBlock({
             expectedType={selectedType}
             globalVariables={globalVariables}
             internalVariables={objectVarOptionsForPicker}
+            otherInternalVariables={otherVarOptionsForPicker}
             filterByExpectedType={false}
             allowOtherTarget={allowOtherTarget}
             allowedSources={["globalVariable", "internalVariable", "attribute"]}
@@ -463,6 +474,7 @@ export function ControlBlock({
             expectedType={selectedType}
             globalVariables={globalVariables}
             internalVariables={objectVarOptionsForPicker}
+            otherInternalVariables={otherVarOptionsForPicker}
             allowOtherTarget={allowOtherTarget}
             variant="blue"
             onChange={(nextRight) => onChange({ ...condition, right: nextRight })}
@@ -540,6 +552,7 @@ export function ControlBlock({
           expectedType="number"
           globalVariables={globalVariables}
           internalVariables={objectVarOptionsForPicker}
+            otherInternalVariables={otherVarOptionsForPicker}
           allowOtherTarget={allowOtherTarget}
           iterationVariables={iterationVariables}
           onChange={(nextValue) => onUpdateBlock(item.id, { count: nextValue } as Partial<ObjectControlBlockItem>)}

@@ -37,6 +37,7 @@ type ActionBlockProps = {
   allObjects: ProjectV1["objects"]
   rooms: ProjectV1["rooms"]
   selectedObjectVariables: ProjectV1["variables"]["global"]
+  otherObjectVariables?: ProjectV1["variables"]["global"]
   eventType: ObjectEventType
   collisionTargetName?: string | null | undefined
   isDragging?: boolean
@@ -100,6 +101,7 @@ export function ActionBlock({
   allObjects,
   rooms,
   selectedObjectVariables,
+  otherObjectVariables = [],
   eventType,
   collisionTargetName,
   isDragging = false,
@@ -146,6 +148,12 @@ export function ActionBlock({
     ? objectVariableOptions.filter((option) => option.type === selectedGlobalForCopy.type)
     : objectVariableOptions
   const internalVariableOptions = selectedObjectVariables.map((definition) => ({
+    id: definition.id,
+    label: definition.name,
+    type: definition.type,
+    objectName: ""
+  })).filter((definition) => definition.type === "number" || definition.type === "string" || definition.type === "boolean")
+  const otherInternalVariableOptions = otherObjectVariables.map((definition) => ({
     id: definition.id,
     label: definition.name,
     type: definition.type,
@@ -285,6 +293,7 @@ export function ActionBlock({
                 expectedType="number"
                 globalVariables={globalVariables}
                 internalVariables={internalVariableOptions}
+                otherInternalVariables={otherInternalVariableOptions}
                 allowOtherTarget={allowOtherTarget}
                 onChange={(nextValue) => onUpdate({ ...action, dx: nextValue as typeof action.dx })}
               />
@@ -296,6 +305,7 @@ export function ActionBlock({
                 expectedType="number"
                 globalVariables={globalVariables}
                 internalVariables={internalVariableOptions}
+                otherInternalVariables={otherInternalVariableOptions}
                 allowOtherTarget={allowOtherTarget}
                 onChange={(nextValue) => onUpdate({ ...action, dy: nextValue as typeof action.dy })}
               />
@@ -312,6 +322,7 @@ export function ActionBlock({
                 expectedType="number"
                 globalVariables={globalVariables}
                 internalVariables={internalVariableOptions}
+                otherInternalVariables={otherInternalVariableOptions}
                 allowOtherTarget={allowOtherTarget}
                 onChange={(nextValue) => onUpdate({ ...action, speed: nextValue as typeof action.speed })}
               />
@@ -323,6 +334,7 @@ export function ActionBlock({
                 expectedType="number"
                 globalVariables={globalVariables}
                 internalVariables={internalVariableOptions}
+                otherInternalVariables={otherInternalVariableOptions}
                 allowOtherTarget={allowOtherTarget}
                 onChange={(nextValue) => onUpdate({ ...action, direction: nextValue as typeof action.direction })}
               />
@@ -347,6 +359,7 @@ export function ActionBlock({
                 expectedType="number"
                 globalVariables={globalVariables}
                 internalVariables={internalVariableOptions}
+                otherInternalVariables={otherInternalVariableOptions}
                 allowOtherTarget={allowOtherTarget}
                 onChange={(nextValue) => onUpdate({ ...action, angle: nextValue as typeof action.angle })}
               />
@@ -394,6 +407,7 @@ export function ActionBlock({
                 expectedType="number"
                 globalVariables={globalVariables}
                 internalVariables={internalVariableOptions}
+                otherInternalVariables={otherInternalVariableOptions}
                 allowOtherTarget={allowOtherTarget}
                 onChange={(nextValue) => onUpdate({ ...action, speed: nextValue as typeof action.speed })}
               />
@@ -427,6 +441,7 @@ export function ActionBlock({
                 expectedType="number"
                 globalVariables={globalVariables}
                 internalVariables={internalVariableOptions}
+                otherInternalVariables={otherInternalVariableOptions}
                 allowOtherTarget={allowOtherTarget}
                 onChange={(nextValue) => onUpdate({ ...action, offsetX: nextValue as typeof action.offsetX })}
               />
@@ -438,6 +453,7 @@ export function ActionBlock({
                 expectedType="number"
                 globalVariables={globalVariables}
                 internalVariables={internalVariableOptions}
+                otherInternalVariables={otherInternalVariableOptions}
                 allowOtherTarget={allowOtherTarget}
                 onChange={(nextValue) => onUpdate({ ...action, offsetY: nextValue as typeof action.offsetY })}
               />
@@ -453,6 +469,7 @@ export function ActionBlock({
               expectedType="number"
               globalVariables={globalVariables}
               internalVariables={internalVariableOptions}
+                otherInternalVariables={otherInternalVariableOptions}
               allowOtherTarget={allowOtherTarget}
               onChange={(nextValue) => onUpdate({ ...action, delta: nextValue as typeof action.delta })}
             />
@@ -486,6 +503,7 @@ export function ActionBlock({
                     expectedType="number"
                     globalVariables={globalVariables}
                     internalVariables={internalVariableOptions}
+                otherInternalVariables={otherInternalVariableOptions}
                     allowOtherTarget={allowOtherTarget}
                     onChange={(nextValue) => onUpdate({ ...action, x: nextValue as typeof action.x })}
                   />
@@ -497,6 +515,7 @@ export function ActionBlock({
                     expectedType="number"
                     globalVariables={globalVariables}
                     internalVariables={internalVariableOptions}
+                otherInternalVariables={otherInternalVariableOptions}
                     allowOtherTarget={allowOtherTarget}
                     onChange={(nextValue) => onUpdate({ ...action, y: nextValue as typeof action.y })}
                   />
@@ -532,6 +551,7 @@ export function ActionBlock({
                     expectedType="number"
                     globalVariables={globalVariables}
                     internalVariables={internalVariableOptions}
+                otherInternalVariables={otherInternalVariableOptions}
                     allowOtherTarget={allowOtherTarget}
                     onChange={(nextValue) => onUpdate({ ...action, x: nextValue as typeof action.x })}
                   />
@@ -543,6 +563,7 @@ export function ActionBlock({
                     expectedType="number"
                     globalVariables={globalVariables}
                     internalVariables={internalVariableOptions}
+                otherInternalVariables={otherInternalVariableOptions}
                     allowOtherTarget={allowOtherTarget}
                     onChange={(nextValue) => onUpdate({ ...action, y: nextValue as typeof action.y })}
                   />
@@ -561,6 +582,7 @@ export function ActionBlock({
                 expectedType="number"
                 globalVariables={globalVariables}
                 internalVariables={internalVariableOptions}
+                otherInternalVariables={otherInternalVariableOptions}
                 allowOtherTarget={allowOtherTarget}
                 onChange={(nextValue) => onUpdate({ ...action, dx: nextValue as typeof action.dx })}
               />
@@ -572,6 +594,7 @@ export function ActionBlock({
                 expectedType="number"
                 globalVariables={globalVariables}
                 internalVariables={internalVariableOptions}
+                otherInternalVariables={otherInternalVariableOptions}
                 allowOtherTarget={allowOtherTarget}
                 onChange={(nextValue) => onUpdate({ ...action, dy: nextValue as typeof action.dy })}
               />
@@ -587,6 +610,7 @@ export function ActionBlock({
               expectedType="string"
               globalVariables={globalVariables}
               internalVariables={internalVariableOptions}
+                otherInternalVariables={otherInternalVariableOptions}
               allowOtherTarget={allowOtherTarget}
               onChange={(nextValue) => onUpdate({ ...action, message: nextValue as typeof action.message })}
             />
@@ -602,6 +626,7 @@ export function ActionBlock({
                 expectedType="string"
                 globalVariables={globalVariables}
                 internalVariables={internalVariableOptions}
+                otherInternalVariables={otherInternalVariableOptions}
                 allowOtherTarget={allowOtherTarget}
                 onChange={(nextValue) => onUpdate({ ...action, text: nextValue as typeof action.text })}
               />
@@ -613,6 +638,7 @@ export function ActionBlock({
                 expectedType="number"
                 globalVariables={globalVariables}
                 internalVariables={internalVariableOptions}
+                otherInternalVariables={otherInternalVariableOptions}
                 allowOtherTarget={allowOtherTarget}
                 onChange={(nextValue) => onUpdate({ ...action, durationMs: nextValue as typeof action.durationMs })}
               />
@@ -644,6 +670,7 @@ export function ActionBlock({
               expectedType="number"
               globalVariables={globalVariables}
               internalVariables={internalVariableOptions}
+                otherInternalVariables={otherInternalVariableOptions}
               allowOtherTarget={allowOtherTarget}
               onChange={(nextValue) => onUpdate({ ...action, durationMs: nextValue as typeof action.durationMs })}
             />
@@ -722,6 +749,7 @@ export function ActionBlock({
               expectedType={action.operator === "set" ? normalizedChangeVariableExpectedType : "number"}
               globalVariables={globalVariables}
               internalVariables={internalVariableOptions}
+                otherInternalVariables={otherInternalVariableOptions}
               allowOtherTarget={allowOtherTarget}
               onChange={(nextValue) => onUpdate({ ...action, value: nextValue })}
             />
@@ -836,6 +864,7 @@ export function ActionBlock({
                 expectedType="number"
                 globalVariables={globalVariables}
                 internalVariables={internalVariableOptions}
+                otherInternalVariables={otherInternalVariableOptions}
                 allowOtherTarget={allowOtherTarget}
                 onChange={(nextValue) => onUpdate({ ...action, min: nextValue as typeof action.min })}
               />
@@ -847,6 +876,7 @@ export function ActionBlock({
                 expectedType="number"
                 globalVariables={globalVariables}
                 internalVariables={internalVariableOptions}
+                otherInternalVariables={otherInternalVariableOptions}
                 allowOtherTarget={allowOtherTarget}
                 onChange={(nextValue) => onUpdate({ ...action, max: nextValue as typeof action.max })}
               />
@@ -858,6 +888,7 @@ export function ActionBlock({
                 expectedType="number"
                 globalVariables={globalVariables}
                 internalVariables={internalVariableOptions}
+                otherInternalVariables={otherInternalVariableOptions}
                 allowOtherTarget={allowOtherTarget}
                 onChange={(nextValue) => onUpdate({ ...action, step: nextValue as typeof action.step })}
               />
@@ -1044,6 +1075,7 @@ export function ActionBlock({
                   expectedType="number"
                   globalVariables={globalVariables}
                   internalVariables={internalVariableOptions}
+                otherInternalVariables={otherInternalVariableOptions}
                   allowOtherTarget={allowOtherTarget}
                   onChange={(nextValue) => onUpdate({ ...action, index: nextValue as typeof action.index })}
                 />
@@ -1058,6 +1090,7 @@ export function ActionBlock({
                   expectedType={selectedCollectionItemType}
                   globalVariables={globalVariables}
                   internalVariables={internalVariableOptions}
+                otherInternalVariables={otherInternalVariableOptions}
                   allowOtherTarget={allowOtherTarget}
                   onChange={(nextValue) => onUpdate({ ...action, value: nextValue })}
                 />
@@ -1072,6 +1105,7 @@ export function ActionBlock({
                   expectedType="string"
                   globalVariables={globalVariables}
                   internalVariables={internalVariableOptions}
+                otherInternalVariables={otherInternalVariableOptions}
                   allowOtherTarget={allowOtherTarget}
                   onChange={(nextValue) => onUpdate({ ...action, key: nextValue as typeof action.key })}
                 />
@@ -1086,6 +1120,7 @@ export function ActionBlock({
                   expectedType={selectedCollectionItemType}
                   globalVariables={globalVariables}
                   internalVariables={internalVariableOptions}
+                otherInternalVariables={otherInternalVariableOptions}
                   allowOtherTarget={allowOtherTarget}
                   onChange={(nextValue) => onUpdate({ ...action, value: nextValue })}
                 />
@@ -1119,6 +1154,7 @@ export function ActionBlock({
                 expectedType="number"
                 globalVariables={globalVariables}
                 internalVariables={internalVariableOptions}
+                otherInternalVariables={otherInternalVariableOptions}
                 allowOtherTarget={allowOtherTarget}
                 onChange={(nextValue) => onUpdate({ ...action, payload: nextValue as typeof action.payload })}
               />
@@ -1167,6 +1203,7 @@ export function ActionBlock({
                 expectedType="number"
                 globalVariables={globalVariables}
                 internalVariables={internalVariableOptions}
+                otherInternalVariables={otherInternalVariableOptions}
                 allowOtherTarget={allowOtherTarget}
                 onChange={(nextValue) => onUpdate({ ...action, speedMs: nextValue as typeof action.speedMs })}
               />

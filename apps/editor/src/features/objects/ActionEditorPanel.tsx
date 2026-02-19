@@ -586,6 +586,7 @@ export function ActionEditorPanel({
                           allObjects={allObjects}
                           rooms={rooms}
                           selectedObjectVariables={selectedObjectVariables}
+                          otherObjectVariables={otherVariablesForCollision}
                           eventType={activeEvent.type}
                           collisionTargetName={collisionTargetName}
                           isDragging={draggedActionId === item.action.id}
@@ -637,6 +638,7 @@ export function ActionEditorPanel({
                           selectableSprites={selectableSprites}
                           globalVariables={globalVariables}
                           selectedObjectVariables={selectedObjectVariables}
+                          otherObjectVariables={otherVariablesForCollision}
                           objectVariablesByObjectId={objectVariablesByObjectId}
                           roomInstances={roomInstances}
                           allObjects={allObjects}

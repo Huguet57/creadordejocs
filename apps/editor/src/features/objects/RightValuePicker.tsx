@@ -34,6 +34,7 @@ type RightValuePickerProps = {
   expectedType: "number" | "string" | "boolean"
   globalVariables: VariableOption[]
   internalVariables: ObjectVariableOption[]
+  otherInternalVariables?: ObjectVariableOption[]
   iterationVariables?: { name: string; type: "number" | "string" | "boolean" }[]
   filterByExpectedType?: boolean
   allowOtherTarget?: boolean
@@ -60,6 +61,7 @@ export function RightValuePicker({
   expectedType,
   globalVariables,
   internalVariables,
+  otherInternalVariables = [],
   iterationVariables = [],
   filterByExpectedType = true,
   allowOtherTarget = false,
@@ -190,14 +192,18 @@ export function RightValuePicker({
     canPickMouse && expectedType === "number"
       ? SYSTEM_MOUSE_GLOBALS.map((entry) => ({ id: entry.id, name: entry.name, type: entry.type }))
       : []
-  const filteredInternal = canPickInternal
+  const filteredInternalSelf = canPickInternal
     ? internalVariables.filter((variable) => !filterByExpectedType || variable.type === expectedType)
     : []
+  const filteredInternalOther = canPickInternal
+    ? otherInternalVariables.filter((variable) => !filterByExpectedType || variable.type === expectedType)
+    : []
+  const filteredInternal = localTarget === "other" && allowOtherTarget ? filteredInternalOther : filteredInternalSelf
   const filteredIteration = canPickIteration
     ? iterationVariables.filter((variable) => !filterByExpectedType || variable.type === expectedType)
     : []
   const hasVariables =
-    filteredGlobal.length > 0 || filteredMouse.length > 0 || filteredInternal.length > 0 || filteredIteration.length > 0
+    filteredGlobal.length > 0 || filteredMouse.length > 0 || filteredInternalSelf.length > 0 || filteredInternalOther.length > 0 || filteredIteration.length > 0
 
   const borderColor = variant === "blue" ? "border-blue-200" : "border-slate-300"
   const hoverBg = variant === "blue" ? "hover:bg-blue-50" : "hover:bg-slate-50"
@@ -226,7 +232,10 @@ export function RightValuePicker({
       return `${value.target}.${formatAttributeLabel(value.attribute as ValueAttribute)}`
     }
     if (value.source === "internalVariable") {
-      const label = internalVariables.find((item) => item.id === value.variableId)?.label ?? "?"
+      const searchList = value.target === "other" ? otherInternalVariables : internalVariables
+      const label = searchList.find((item) => item.id === value.variableId)?.label
+        ?? internalVariables.find((item) => item.id === value.variableId)?.label
+        ?? "?"
       return `${value.target}.${label}`
     }
     if (value.source === "iterationVariable") {
@@ -449,7 +458,7 @@ export function RightValuePicker({
             </div>
           )}
 
-          {canPickInternal && filteredInternal.length > 0 && (
+          {canPickInternal && (filteredInternalSelf.length > 0 || filteredInternalOther.length > 0) && (
             <div className="right-value-picker-internal-section">
               <div className="right-value-picker-section-header px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-50 border-b border-slate-100 border-t flex items-center justify-between">
                 <span>Internal variables</span>
