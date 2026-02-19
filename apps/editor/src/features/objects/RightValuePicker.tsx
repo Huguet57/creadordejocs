@@ -477,7 +477,9 @@ export function RightValuePicker({
                   ))}
                 </div>
               </div>
-              {filteredInternal.map((variable) => (
+              {filteredInternal.length === 0 ? (
+                <div className="px-3 py-1.5 text-xs text-slate-400">&mdash;</div>
+              ) : filteredInternal.map((variable) => (
                 <button
                   key={`${variable.objectName}-${variable.id}`}
                   type="button"
