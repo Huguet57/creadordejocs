@@ -14,8 +14,8 @@ describe("room drag snapping", () => {
       clientY: 95,
       rectLeft: 10,
       rectTop: 20,
-      roomWidth: 832,
-      roomHeight: 480,
+      roomWidth: 768,
+      roomHeight: 512,
       instanceWidth: 32,
       instanceHeight: 32,
       snapSize: 4
@@ -30,14 +30,14 @@ describe("room drag snapping", () => {
       clientY: 5000,
       rectLeft: 0,
       rectTop: 0,
-      roomWidth: 832,
-      roomHeight: 480,
+      roomWidth: 768,
+      roomHeight: 512,
       instanceWidth: 32,
       instanceHeight: 32,
       snapSize: 4
     })
 
-    expect(position).toEqual({ x: 800, y: 448 })
+    expect(position).toEqual({ x: 736, y: 480 })
   })
 
   it("maps pointer coordinates correctly when zoom is applied", () => {
@@ -46,8 +46,8 @@ describe("room drag snapping", () => {
       clientY: 190,
       rectLeft: 10,
       rectTop: 20,
-      roomWidth: 832,
-      roomHeight: 480,
+      roomWidth: 768,
+      roomHeight: 512,
       instanceWidth: 32,
       instanceHeight: 32,
       snapSize: 4,

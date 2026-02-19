@@ -1,8 +1,8 @@
 import type { ProjectV1, ObjectEventItemType } from "@creadordejocs/project-format"
 import type { RuntimeToast } from "./message-toast-utils.js"
 
-export const WINDOW_WIDTH = 832
-export const WINDOW_HEIGHT = 480
+export const WINDOW_WIDTH = 768
+export const WINDOW_HEIGHT = 512
 // Backwards-compatible aliases used by existing runtime/editor code.
 export const ROOM_WIDTH = WINDOW_WIDTH
 export const ROOM_HEIGHT = WINDOW_HEIGHT

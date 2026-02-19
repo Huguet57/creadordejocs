@@ -5761,7 +5761,7 @@ describe("window per room actions", () => {
     ])
 
     const result = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
-    expect(result.runtime.windowByRoomId["room-main"]).toEqual({ x: 368, y: 220 })
+    expect(result.runtime.windowByRoomId["room-main"]).toEqual({ x: 432, y: 188 })
   })
 
   it("teleportWindow(self) centers on self and clamps near borders", () => {
@@ -5780,7 +5780,7 @@ describe("window per room actions", () => {
     }
 
     const result = runRuntimeTick(projectNearCorner, "room-main", new Set(), createInitialRuntimeState(projectNearCorner))
-    expect(result.runtime.windowByRoomId["room-main"]).toEqual({ x: 168, y: 120 })
+    expect(result.runtime.windowByRoomId["room-main"]).toEqual({ x: 232, y: 88 })
   })
 
   it("moveWindow moves relatively and clamps", () => {
@@ -5793,7 +5793,7 @@ describe("window per room actions", () => {
     }
 
     const result = runRuntimeTick(project, "room-main", new Set(), initialRuntime)
-    expect(result.runtime.windowByRoomId["room-main"]).toEqual({ x: 368, y: 0 })
+    expect(result.runtime.windowByRoomId["room-main"]).toEqual({ x: 432, y: 0 })
   })
 
   it("keeps a remembered window per room across goToRoom and back", () => {

@@ -46,8 +46,8 @@ describe("run window utils", () => {
 
     expect(
       isInstanceVisibleInWindow({
-        instanceX: 810,
-        instanceY: 470,
+        instanceX: 740,
+        instanceY: 490,
         instanceWidth: 32,
         instanceHeight: 32,
         windowX: 0,

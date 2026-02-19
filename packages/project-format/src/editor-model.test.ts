@@ -42,8 +42,8 @@ describe("createRoom with folderId", () => {
     const roomResult = createRoom(project, "Level 1")
     const room = roomResult.project.rooms.find((r) => r.id === roomResult.roomId)
     expect(room).toBeDefined()
-    expect(room!.width).toBe(832)
-    expect(room!.height).toBe(480)
+    expect(room!.width).toBe(768)
+    expect(room!.height).toBe(512)
     expect(room!.backgroundSpriteId).toBeNull()
   })
 
@@ -62,8 +62,8 @@ describe("updateRoomSize", () => {
     const next = updateRoomSize(base.project, { roomId: base.roomId, width: 200.2, height: 100.9 })
     const room = next.rooms.find((entry) => entry.id === base.roomId)
     expect(room).toBeDefined()
-    expect(room!.width).toBe(832)
-    expect(room!.height).toBe(480)
+    expect(room!.width).toBe(768)
+    expect(room!.height).toBe(512)
   })
 
   it("clamps instances inside room bounds when reducing size", () => {
@@ -90,7 +90,7 @@ describe("updateRoomSize", () => {
     const instance = room?.instances[0]
     expect(instance).toBeDefined()
     expect(instance!.x).toBe(836)
-    expect(instance!.y).toBe(468)
+    expect(instance!.y).toBe(480)
   })
 })
 

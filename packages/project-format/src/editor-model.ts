@@ -16,8 +16,8 @@ export type CreateObjectInput = {
 }
 
 const DEFAULT_SPRITE_SIZE = 32
-const DEFAULT_ROOM_WIDTH = 832
-const DEFAULT_ROOM_HEIGHT = 480
+const DEFAULT_ROOM_WIDTH = 768
+const DEFAULT_ROOM_HEIGHT = 512
 const TRANSPARENT_RGBA = "#00000000"
 
 export type AddRoomInstanceInput = {

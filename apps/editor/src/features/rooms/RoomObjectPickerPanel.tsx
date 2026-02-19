@@ -31,8 +31,6 @@ type RoomObjectPickerPanelProps = {
   backgroundSpriteId: string | null
   backgroundSprites: SpriteEntry[]
   onChangeBackgroundSprite: (spriteId: string | null) => void
-  showGrid: boolean
-  onToggleGrid: (show: boolean) => void
 }
 
 export function RoomObjectPickerPanel({
@@ -51,9 +49,7 @@ export function RoomObjectPickerPanel({
   onCommitRoomSize,
   backgroundSpriteId,
   backgroundSprites,
-  onChangeBackgroundSprite,
-  showGrid,
-  onToggleGrid
+  onChangeBackgroundSprite
 }: RoomObjectPickerPanelProps) {
   const [expandedFolderIds, setExpandedFolderIds] = useState<Set<string>>(new Set())
   const [isBackgroundSelectorOpen, setIsBackgroundSelectorOpen] = useState(false)
@@ -162,7 +158,7 @@ export function RoomObjectPickerPanel({
   }
 
   return (
-    <aside className="mvp3-room-object-picker-container flex w-[220px] shrink-0 flex-col overflow-hidden border-l border-slate-200 bg-slate-50">
+    <aside className="mvp3-room-object-picker-container flex w-[220px] shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-slate-50">
       <div className="room-objpicker-header flex items-center border-b border-slate-200 p-3">
         <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Add objects</span>
       </div>
@@ -287,22 +283,6 @@ export function RoomObjectPickerPanel({
           </div>
         </div>
 
-        <div className="mvp19-room-options border-t border-slate-200">
-          <div className="flex items-center justify-between border-b border-slate-200 p-3">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Options</span>
-          </div>
-          <div className="p-3">
-            <label className="mvp19-room-grid-toggle flex cursor-pointer items-center gap-2">
-              <input
-                type="checkbox"
-                checked={showGrid}
-                onChange={(e) => onToggleGrid(e.target.checked)}
-                className="h-3.5 w-3.5 rounded border-slate-300 text-blue-500 focus:ring-blue-400"
-              />
-              <span className="text-xs text-slate-600">Show grid</span>
-            </label>
-          </div>
-        </div>
       </div>
     </aside>
   )
