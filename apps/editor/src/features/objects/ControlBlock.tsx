@@ -458,7 +458,8 @@ export function ControlBlock({
             variant="blue"
             onChange={(nextLeft) => {
               const nextType = getLeftValueExpectedType(nextLeft as ComparisonIfCondition["left"], globalVariables, selectedObjectVariables, otherObjectVariables)
-              onChange({ left: nextLeft as ComparisonIfCondition["left"], operator: condition.operator, right: getDefaultRightValueForType(nextType) })
+              const nextOperator = nextType === "boolean" && condition.operator !== "==" && condition.operator !== "!=" ? "==" : condition.operator
+              onChange({ left: nextLeft as ComparisonIfCondition["left"], operator: nextOperator, right: getDefaultRightValueForType(nextType) })
             }}
           />
           <select
@@ -468,10 +469,14 @@ export function ControlBlock({
           >
             <option value="==">==</option>
             <option value="!=">!=</option>
-            <option value=">">&gt;</option>
-            <option value=">=">&gt;=</option>
-            <option value="<">&lt;</option>
-            <option value="<=">&lt;=</option>
+            {selectedType !== "boolean" && (
+              <>
+                <option value=">">&gt;</option>
+                <option value=">=">&gt;=</option>
+                <option value="<">&lt;</option>
+                <option value="<=">&lt;=</option>
+              </>
+            )}
           </select>
           <RightValuePicker
             value={condition.right}
