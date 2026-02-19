@@ -472,11 +472,11 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
                   if (!activeEvent) {
                     return
                   }
-                  const ifBlockToCopy = findEventItemById(activeEvent.items, ifBlockId)
-                  if (ifBlockToCopy?.type !== "if") {
+                  const blockToCopy = findEventItemById(activeEvent.items, ifBlockId)
+                  if (!blockToCopy || blockToCopy.type === "action") {
                     return
                   }
-                  setEventItemClipboard(ifBlockToCopy)
+                  setEventItemClipboard(blockToCopy)
                 }}
                 onPasteAfterIfBlock={(ifBlockId) => {
                   if (!activeEvent || !eventItemClipboard) {

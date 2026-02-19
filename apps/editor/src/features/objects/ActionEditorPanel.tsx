@@ -509,7 +509,7 @@ export function ActionEditorPanel({
             className="flex-1 overflow-y-auto p-4"
             onContextMenu={(event) => {
               const target = event.target as HTMLElement
-              if (target.closest(".action-block-container, .if-block-header")) {
+              if (target.closest(".action-block-container, .control-block-container")) {
                 return
               }
               event.preventDefault()
