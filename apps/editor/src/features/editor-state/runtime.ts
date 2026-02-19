@@ -808,48 +808,56 @@ export function runRuntimeTick(
     }
   }
 
-  const keptStartPositions: RuntimeState["instanceStartPositions"] = {}
-  const keptObjectVariableStates: RuntimeState["objectInstanceVariables"] = {}
-  const keptSpriteOverrides: RuntimeState["spriteOverrideByInstanceId"] = {}
-  const keptSpriteSpeed: RuntimeState["spriteSpeedMsByInstanceId"] = {}
-  const keptSpriteElapsed: RuntimeState["spriteAnimationElapsedMsByInstanceId"] = {}
-  for (const instanceEntry of customEventResult.instances) {
-    keptStartPositions[instanceEntry.id] = getInstanceStartPosition(postAnimationRuntime, instanceEntry)
-    keptObjectVariableStates[instanceEntry.id] = postAnimationRuntime.objectInstanceVariables[instanceEntry.id] ?? {}
-    const overrideSpriteId = postAnimationRuntime.spriteOverrideByInstanceId[instanceEntry.id]
-    if (overrideSpriteId !== undefined) {
-      keptSpriteOverrides[instanceEntry.id] = overrideSpriteId
-    }
-    const speedOverride = postAnimationRuntime.spriteSpeedMsByInstanceId[instanceEntry.id]
-    if (speedOverride !== undefined) {
-      keptSpriteSpeed[instanceEntry.id] = speedOverride
-    }
-    const elapsed = postAnimationRuntime.spriteAnimationElapsedMsByInstanceId[instanceEntry.id]
-    if (elapsed !== undefined) {
-      keptSpriteElapsed[instanceEntry.id] = elapsed
-    }
-  }
-  const aliveInstanceIds = new Set(Object.keys(keptStartPositions))
-  const compactedRuntime: RuntimeState = {
-    ...postAnimationRuntime,
-    instanceStartPositions: keptStartPositions,
-    objectInstanceVariables: keptObjectVariableStates,
-    waitElapsedByInstanceActionId: filterWaitProgressByAliveInstances(
-      postAnimationRuntime.waitElapsedByInstanceActionId,
-      aliveInstanceIds
-    ),
-    eventLocksByKey: filterEventLocksByAliveInstances(postAnimationRuntime.eventLocksByKey, aliveInstanceIds),
-    spriteOverrideByInstanceId: keptSpriteOverrides,
-    spriteSpeedMsByInstanceId: keptSpriteSpeed,
-    spriteAnimationElapsedMsByInstanceId: keptSpriteElapsed,
-    nextRoomId: null,
-    restartRoomRequested: false
-  }
   const nextProject: ProjectV1 = {
     ...project,
     rooms: project.rooms.map((roomEntry) =>
       roomEntry.id === roomId ? { ...roomEntry, instances: customEventResult.instances } : roomEntry
     )
+  }
+  const globalAliveInstanceIds = new Set<string>()
+  for (const roomEntry of nextProject.rooms) {
+    for (const instanceEntry of roomEntry.instances) {
+      globalAliveInstanceIds.add(instanceEntry.id)
+    }
+  }
+
+  const keptStartPositions: RuntimeState["instanceStartPositions"] = {}
+  for (const roomEntry of nextProject.rooms) {
+    for (const instanceEntry of roomEntry.instances) {
+      keptStartPositions[instanceEntry.id] = getInstanceStartPosition(postAnimationRuntime, instanceEntry)
+    }
+  }
+  const keptObjectVariableStates = Object.fromEntries(
+    Object.entries(postAnimationRuntime.objectInstanceVariables).filter(([instanceId]) => globalAliveInstanceIds.has(instanceId))
+  )
+  const keptSpriteOverrides = Object.fromEntries(
+    Object.entries(postAnimationRuntime.spriteOverrideByInstanceId).filter(([instanceId]) => globalAliveInstanceIds.has(instanceId))
+  )
+  const keptSpriteSpeed = Object.fromEntries(
+    Object.entries(postAnimationRuntime.spriteSpeedMsByInstanceId).filter(([instanceId]) => globalAliveInstanceIds.has(instanceId))
+  )
+  const keptSpriteElapsed = Object.fromEntries(
+    Object.entries(postAnimationRuntime.spriteAnimationElapsedMsByInstanceId).filter(([instanceId]) =>
+      globalAliveInstanceIds.has(instanceId)
+    )
+  )
+  const compactedRuntime: RuntimeState = {
+    ...postAnimationRuntime,
+    initializedInstanceIds: postAnimationRuntime.initializedInstanceIds.filter((instanceId) =>
+      globalAliveInstanceIds.has(instanceId)
+    ),
+    instanceStartPositions: keptStartPositions,
+    objectInstanceVariables: keptObjectVariableStates,
+    waitElapsedByInstanceActionId: filterWaitProgressByAliveInstances(
+      postAnimationRuntime.waitElapsedByInstanceActionId,
+      globalAliveInstanceIds
+    ),
+    eventLocksByKey: filterEventLocksByAliveInstances(postAnimationRuntime.eventLocksByKey, globalAliveInstanceIds),
+    spriteOverrideByInstanceId: keptSpriteOverrides,
+    spriteSpeedMsByInstanceId: keptSpriteSpeed,
+    spriteAnimationElapsedMsByInstanceId: keptSpriteElapsed,
+    nextRoomId: null,
+    restartRoomRequested: false
   }
 
   return {

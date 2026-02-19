@@ -3480,6 +3480,350 @@ describe("runtime regressions", () => {
     expect(result.activeRoomId).toBe("room-a")
   })
 
+  it("preserves object instance variables across room switches and resumes on return", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-room-switch-object-vars",
+        name: "Room switch object vars",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: {
+        sprites: [],
+        sounds: []
+      },
+      variables: {
+        global: [],
+        objectByObjectId: {
+          "object-room-a": [{ id: "ov-count", name: "count", type: "number", initialValue: 0 }]
+        }
+      },
+      objects: [
+        {
+          id: "object-room-a",
+          name: "Room A actor",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step-a",
+              type: "Step",
+              key: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [
+                {
+                  id: "item-inc",
+                  type: "action",
+                  action: {
+                    id: "action-inc",
+                    type: "changeVariable",
+                    scope: "object",
+                    variableId: "ov-count",
+                    operator: "add",
+                    value: 1,
+                    target: "self",
+                    targetInstanceId: null
+                  }
+                },
+                {
+                  id: "item-go-b",
+                  type: "action",
+                  action: { id: "action-go-b", type: "goToRoom", roomId: "room-b" }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          id: "object-room-b",
+          name: "Room B actor",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step-b",
+              type: "Step",
+              key: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [{ id: "item-go-a", type: "action", action: { id: "action-go-a", type: "goToRoom", roomId: "room-a" } }]
+            }
+          ]
+        }
+      ],
+      rooms: [
+        { id: "room-a", name: "Room A", instances: [{ id: "instance-a", objectId: "object-room-a", x: 0, y: 0 }] },
+        { id: "room-b", name: "Room B", instances: [{ id: "instance-b", objectId: "object-room-b", x: 0, y: 0 }] }
+      ],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const firstTick = runRuntimeTick(project, "room-a", new Set(), createInitialRuntimeState(project))
+    expect(firstTick.activeRoomId).toBe("room-b")
+    expect(firstTick.runtime.objectInstanceVariables["instance-a"]?.["ov-count"]).toBe(1)
+
+    const secondTick = runRuntimeTick(firstTick.project, "room-b", new Set(), firstTick.runtime)
+    expect(secondTick.activeRoomId).toBe("room-a")
+    expect(secondTick.runtime.objectInstanceVariables["instance-a"]?.["ov-count"]).toBe(1)
+
+    const thirdTick = runRuntimeTick(secondTick.project, "room-a", new Set(), secondTick.runtime)
+    expect(thirdTick.runtime.objectInstanceVariables["instance-a"]?.["ov-count"]).toBe(2)
+  })
+
+  it("preserves wait progress while room is inactive and resumes on return", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-room-switch-wait",
+        name: "Room switch wait",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: {
+        sprites: [],
+        sounds: []
+      },
+      variables: {
+        global: [],
+        objectByObjectId: {}
+      },
+      objects: [
+        {
+          id: "object-waiter",
+          name: "Waiter",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step-waiter",
+              type: "Step",
+              key: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [
+                { id: "item-wait", type: "action", action: { id: "action-wait", type: "wait", durationMs: 160 } },
+                { id: "item-score", type: "action", action: { id: "action-score", type: "changeScore", delta: 1 } }
+              ]
+            }
+          ]
+        },
+        {
+          id: "object-go-b",
+          name: "Go B",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step-go-b",
+              type: "Step",
+              key: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [{ id: "item-go-b", type: "action", action: { id: "action-go-b", type: "goToRoom", roomId: "room-b" } }]
+            }
+          ]
+        },
+        {
+          id: "object-go-a",
+          name: "Go A",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step-go-a",
+              type: "Step",
+              key: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [{ id: "item-go-a", type: "action", action: { id: "action-go-a", type: "goToRoom", roomId: "room-a" } }]
+            }
+          ]
+        }
+      ],
+      rooms: [
+        {
+          id: "room-a",
+          name: "Room A",
+          instances: [
+            { id: "instance-waiter", objectId: "object-waiter", x: 0, y: 0 },
+            { id: "instance-go-b", objectId: "object-go-b", x: 32, y: 0 }
+          ]
+        },
+        {
+          id: "room-b",
+          name: "Room B",
+          instances: [{ id: "instance-go-a", objectId: "object-go-a", x: 0, y: 0 }]
+        }
+      ],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const waitKey = "instance-waiter::action-wait::none"
+    const firstTick = runRuntimeTick(project, "room-a", new Set(), createInitialRuntimeState(project))
+    expect(firstTick.activeRoomId).toBe("room-b")
+    expect(firstTick.runtime.score).toBe(0)
+    expect(firstTick.runtime.waitElapsedByInstanceActionId[waitKey]).toBe(80)
+
+    const secondTick = runRuntimeTick(firstTick.project, "room-b", new Set(), firstTick.runtime)
+    expect(secondTick.activeRoomId).toBe("room-a")
+    expect(secondTick.runtime.score).toBe(0)
+    expect(secondTick.runtime.waitElapsedByInstanceActionId[waitKey]).toBe(80)
+
+    const thirdTick = runRuntimeTick(secondTick.project, "room-a", new Set(), secondTick.runtime)
+    expect(thirdTick.runtime.score).toBe(1)
+    expect(thirdTick.runtime.waitElapsedByInstanceActionId[waitKey]).toBeUndefined()
+  })
+
+  it("preserves timer elapsed while room is inactive and resumes on return", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-room-switch-timer",
+        name: "Room switch timer",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: {
+        sprites: [],
+        sounds: []
+      },
+      variables: {
+        global: [],
+        objectByObjectId: {}
+      },
+      objects: [
+        {
+          id: "object-timer",
+          name: "Timer object",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-timer",
+              type: "Timer",
+              key: null,
+              targetObjectId: null,
+              intervalMs: 160,
+              items: [{ id: "item-score", type: "action", action: { id: "action-score", type: "changeScore", delta: 1 } }]
+            }
+          ]
+        },
+        {
+          id: "object-go-b",
+          name: "Go B",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step-go-b",
+              type: "Step",
+              key: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [{ id: "item-go-b", type: "action", action: { id: "action-go-b", type: "goToRoom", roomId: "room-b" } }]
+            }
+          ]
+        },
+        {
+          id: "object-go-a",
+          name: "Go A",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step-go-a",
+              type: "Step",
+              key: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [{ id: "item-go-a", type: "action", action: { id: "action-go-a", type: "goToRoom", roomId: "room-a" } }]
+            }
+          ]
+        }
+      ],
+      rooms: [
+        {
+          id: "room-a",
+          name: "Room A",
+          instances: [
+            { id: "instance-timer", objectId: "object-timer", x: 0, y: 0 },
+            { id: "instance-go-b", objectId: "object-go-b", x: 32, y: 0 }
+          ]
+        },
+        {
+          id: "room-b",
+          name: "Room B",
+          instances: [{ id: "instance-go-a", objectId: "object-go-a", x: 0, y: 0 }]
+        }
+      ],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const firstTick = runRuntimeTick(project, "room-a", new Set(), createInitialRuntimeState(project))
+    expect(firstTick.activeRoomId).toBe("room-b")
+    expect(firstTick.runtime.score).toBe(0)
+    expect(firstTick.runtime.timerElapsedByEventId["event-timer"]).toBe(80)
+
+    const secondTick = runRuntimeTick(firstTick.project, "room-b", new Set(), firstTick.runtime)
+    expect(secondTick.activeRoomId).toBe("room-a")
+    expect(secondTick.runtime.score).toBe(0)
+    expect(secondTick.runtime.timerElapsedByEventId["event-timer"]).toBe(80)
+
+    const thirdTick = runRuntimeTick(secondTick.project, "room-a", new Set(), secondTick.runtime)
+    expect(thirdTick.runtime.score).toBe(1)
+    expect(thirdTick.runtime.timerElapsedByEventId["event-timer"]).toBe(0)
+  })
+
   it("flags restartRoom requests so controller can restore room snapshot", () => {
     const project: ProjectV1 = {
       version: 1,
