@@ -74,5 +74,3 @@ npm workspaces monorepo with four workspaces referenced in the root `tsconfig.js
 - [Principles](docs/PRINCIPLES.md) — product and engineering principles, tie-breaking criteria
 - [Architecture Boundaries](docs/ARCHITECTURE-BOUNDARIES.md) — package boundaries and naming conventions
 - [Roadmap](docs/ROADMAP.md) — MVP sequence, quarterly cycles, exit criteria
-- [ADR-0001](docs/adr-0001-mvp0-foundation.md) — MVP 0 foundation decisions
-- MVP TODOs: `docs/mvp-{0..4}-*.todo.md`

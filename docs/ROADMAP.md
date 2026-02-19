@@ -98,11 +98,6 @@ Exit criteria Q4:
 - Adjust:
   - retrospective and Must/Should/Could reprioritization for the next cycle
 
-## Links to detailed TODOs
+## Links
 
 - [Principles](./PRINCIPLES.md)
-- [MVP 0 TODO](./mvp-0-foundation-learning.todo.md)
-- [MVP 1 TODO](./mvp-1-first-autonomous-game.todo.md)
-- [MVP 2 TODO](./mvp-2-learn-core-programming.todo.md)
-- [MVP 3 TODO](./mvp-3-creativity-sharing.todo.md)
-- [MVP 4 TODO](./mvp-4-polish-reliability.todo.md)
