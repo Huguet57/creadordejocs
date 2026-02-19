@@ -16,6 +16,20 @@ import { RightValuePicker as BaseRightValuePicker } from "./RightValuePicker.js"
 import { CollectionVariablePicker } from "./CollectionVariablePicker.js"
 import type { ObjectEventType } from "../editor-state/types.js"
 import { ACTION_ICON_MAP } from "./action-icon-map.js"
+import {
+  canRandomizeVariable,
+  getScalarObjectDefinitions,
+  inferPayloadType,
+  normalizeChangeVariableDraft,
+  normalizeCollectionActionDraft,
+  normalizeCopyVariableDraft,
+  normalizeEmitPayloadDraft,
+  normalizeTargetValue,
+  resolveCollectionItemType,
+  resolveScalarType,
+  type ScalarType,
+  type VariableSelectionContext
+} from "./variable-selection-model.js"
 
 type ActionBlockProps = {
   action: ObjectActionDraft & { id: string }
@@ -32,9 +46,7 @@ type ActionBlockProps = {
   selectableObjects: { id: string; name: string }[]
   selectableSprites: { id: string; name: string }[]
   globalVariables: ProjectV1["variables"]["global"]
-  objectVariablesByObjectId: ProjectV1["variables"]["objectByObjectId"]
   roomInstances: ProjectV1["rooms"][number]["instances"]
-  allObjects: ProjectV1["objects"]
   rooms: ProjectV1["rooms"]
   selectedObjectVariables: ProjectV1["variables"]["global"]
   otherObjectVariables?: ProjectV1["variables"]["global"]
@@ -60,32 +72,6 @@ function asLiteralValue(value: string | number | boolean): ValueExpression {
   return { source: "literal", value }
 }
 
-function canBeNumericExpression(value: ValueExpression): boolean {
-  if (typeof value === "number") {
-    return true
-  }
-  if (typeof value === "string" || typeof value === "boolean") {
-    return false
-  }
-  if ("source" in value) {
-    if (value.source === "literal") {
-      return typeof value.value === "number"
-    }
-    return true
-  }
-  return true
-}
-
-function defaultScalarByItemType(type: "number" | "string" | "boolean"): number | string | boolean {
-  if (type === "number") {
-    return 0
-  }
-  if (type === "boolean") {
-    return false
-  }
-  return ""
-}
-
 export function ActionBlock({
   action,
   onUpdate,
@@ -96,9 +82,7 @@ export function ActionBlock({
   selectableObjects,
   selectableSprites,
   globalVariables,
-  objectVariablesByObjectId,
   roomInstances,
-  allObjects,
   rooms,
   selectedObjectVariables,
   otherObjectVariables = [],
@@ -115,88 +99,74 @@ export function ActionBlock({
   const Icon = ACTION_ICON_MAP[action.type] ?? Move
   const actionLabel = ACTION_REGISTRY.find((entry) => entry.type === action.type)?.ui.shortLabel ?? action.type
   const isDestroySelfAction = action.type === "destroySelf"
-  const allObjectVariableOptions = allObjects.flatMap((objectEntry) =>
-    (objectVariablesByObjectId[objectEntry.id] ?? []).map((definition) => ({
-      id: definition.id,
-      objectName: objectEntry.name,
-      label: `${objectEntry.name}.${definition.name}`,
-      type: definition.type,
-      itemType: definition.type === "list" || definition.type === "map" ? definition.itemType : null
-    }))
-  )
-  const objectVariableOptions = allObjectVariableOptions.filter(
-    (definition) => definition.type === "number" || definition.type === "string" || definition.type === "boolean"
-  )
-  const collectionObjectVariableOptions = allObjectVariableOptions.filter(
-    (definition): definition is typeof allObjectVariableOptions[number] & { type: "list" | "map"; itemType: "number" | "string" | "boolean" } =>
-      (definition.type === "list" || definition.type === "map") && definition.itemType !== null
-  )
-  const scalarGlobalVariables = globalVariables.filter(
-    (definition): definition is Extract<typeof globalVariables[number], { type: "number" | "string" | "boolean" }> =>
-      definition.type === "number" || definition.type === "string" || definition.type === "boolean"
-  )
-  const collectionGlobalVariables = globalVariables.filter(
-    (definition): definition is Extract<typeof globalVariables[number], { type: "list" | "map" }> =>
-      definition.type === "list" || definition.type === "map"
-  )
+  const allowOtherTarget = eventType === "Collision"
+  const variableContext: VariableSelectionContext = {
+    globalVariables,
+    selfObjectVariables: selectedObjectVariables,
+    otherObjectVariables,
+    allowOtherTarget,
+    iterationVariables
+  }
+  const scalarGlobalVariables = getScalarObjectDefinitions(globalVariables)
+  const scalarSelectedObjectVariables = getScalarObjectDefinitions(selectedObjectVariables)
+  const scalarOtherObjectVariables = getScalarObjectDefinitions(otherObjectVariables)
 
   const selectedGlobalForCopy =
     action.type === "copyVariable"
       ? scalarGlobalVariables.find((definition) => definition.id === action.globalVariableId)
       : null
-  const compatibleObjectOptionsForCopy = selectedGlobalForCopy
-    ? objectVariableOptions.filter((option) => option.type === selectedGlobalForCopy.type)
-    : objectVariableOptions
-  const internalVariableOptions = selectedObjectVariables.map((definition) => ({
+  const internalVariableOptions = scalarSelectedObjectVariables.map((definition) => ({
     id: definition.id,
     label: definition.name,
     type: definition.type,
     objectName: ""
-  })).filter((definition) => definition.type === "number" || definition.type === "string" || definition.type === "boolean")
-  const otherInternalVariableOptions = otherObjectVariables.map((definition) => ({
+  }))
+  const otherInternalVariableOptions = scalarOtherObjectVariables.map((definition) => ({
     id: definition.id,
     label: definition.name,
     type: definition.type,
     objectName: ""
-  })).filter((definition) => definition.type === "number" || definition.type === "string" || definition.type === "boolean")
-  const scalarSelectedObjectVariables = selectedObjectVariables.filter(
-    (definition): definition is Extract<typeof selectedObjectVariables[number], { type: "number" | "string" | "boolean" }> =>
-      definition.type === "number" || definition.type === "string" || definition.type === "boolean"
-  )
-  const selfObjectVariableOptions = allObjectVariableOptions.filter(
-    (option) => selectedObjectVariables.some((v) => v.id === option.id)
-  )
-  const otherObjectVariableOptionsForPicker = allObjectVariableOptions.filter(
-    (option) => otherObjectVariables.some((v) => v.id === option.id)
-  )
-  const allowOtherTarget = eventType === "Collision"
-  const selectedGlobalVariableForChange =
-    action.type === "changeVariable" && action.scope === "global"
-      ? scalarGlobalVariables.find((definition) => definition.id === action.variableId)
-      : null
-  const selectedObjectVariableForChange =
-    action.type === "changeVariable" && action.scope === "object"
-      ? objectVariableOptions.find((definition) => definition.id === action.variableId)
-      : null
-  const changeVariableExpectedType =
-    selectedGlobalVariableForChange?.type ?? selectedObjectVariableForChange?.type ?? "number"
-  const normalizedChangeVariableExpectedType: "number" | "string" | "boolean" =
-    changeVariableExpectedType === "number" || changeVariableExpectedType === "string" || changeVariableExpectedType === "boolean"
-      ? changeVariableExpectedType
+  }))
+  const selfObjectVariableOptions = scalarSelectedObjectVariables.map((definition) => ({
+    id: definition.id,
+    label: definition.name,
+    type: definition.type,
+    objectName: ""
+  }))
+  const otherObjectVariableOptionsForPicker = scalarOtherObjectVariables.map((definition) => ({
+    id: definition.id,
+    label: definition.name,
+    type: definition.type,
+    objectName: ""
+  }))
+  const compatibleSelfOptionsForCopy = selectedGlobalForCopy
+    ? selfObjectVariableOptions.filter((option) => option.type === selectedGlobalForCopy.type)
+    : selfObjectVariableOptions
+  const compatibleOtherOptionsForCopy = selectedGlobalForCopy
+    ? otherObjectVariableOptionsForPicker.filter((option) => option.type === selectedGlobalForCopy.type)
+    : otherObjectVariableOptionsForPicker
+  const normalizedChangeVariableAction =
+    action.type === "changeVariable" ? normalizeChangeVariableDraft(action, variableContext) : null
+  const normalizedChangeVariableExpectedType: ScalarType =
+    action.type === "changeVariable" && normalizedChangeVariableAction
+      ? (
+          resolveScalarType(
+            normalizedChangeVariableAction.scope === "global"
+              ? { source: "globalVariable", variableId: normalizedChangeVariableAction.variableId }
+              : {
+                  source: "internalVariable",
+                  target:
+                    normalizeTargetValue(normalizedChangeVariableAction.target, allowOtherTarget, false) === "other"
+                      ? "other"
+                      : "self",
+                  variableId: normalizedChangeVariableAction.variableId
+                },
+            variableContext
+          ) ?? "number"
+        )
       : "number"
-  const selectedCollectionVariable =
-    action.type === "listPush" ||
-    action.type === "listSetAt" ||
-    action.type === "listRemoveAt" ||
-    action.type === "listClear" ||
-    action.type === "mapSet" ||
-    action.type === "mapDelete" ||
-    action.type === "mapClear"
-      ? action.scope === "global"
-        ? collectionGlobalVariables.find((definition) => definition.id === action.variableId)
-        : collectionObjectVariableOptions.find((definition) => definition.id === action.variableId)
-      : null
-  const selectedCollectionItemType = selectedCollectionVariable?.itemType ?? "number"
+  const emitPayloadType: ScalarType =
+    action.type === "emitCustomEvent" ? inferPayloadType(action.payload, variableContext) : "number"
   const [contextMenu, setContextMenu] = useState<ActionContextMenuState>(null)
   const RightValuePicker = (
     props: Omit<React.ComponentProps<typeof BaseRightValuePicker>, "iterationVariables">
@@ -207,6 +177,44 @@ export function ActionBlock({
       allowedSources={props.allowedSources ?? ["literal", "random", "attribute", "internalVariable", "globalVariable", "iterationVariable"]}
     />
   )
+  const hasInstanceTargets = roomInstances.length > 0
+
+  function ensureRandomizeVariableDraft(
+    draft: Extract<ObjectActionDraft, { type: "randomizeVariable" }>
+  ): Extract<ObjectActionDraft, { type: "randomizeVariable" }> {
+    const normalizedTarget = normalizeTargetValue(draft.target, allowOtherTarget, hasInstanceTargets)
+    const normalizedDraft = {
+      ...draft,
+      target: normalizedTarget,
+      targetInstanceId: normalizedTarget === "instanceId" ? (draft.targetInstanceId ?? null) : null
+    }
+
+    if (
+      canRandomizeVariable(
+        { scope: normalizedDraft.scope, variableId: normalizedDraft.variableId, target: normalizedDraft.target },
+        variableContext
+      )
+    ) {
+      return normalizedDraft
+    }
+
+    if (normalizedDraft.scope === "global") {
+      const fallbackGlobal = scalarGlobalVariables.find((definition) => definition.type === "number")
+      return {
+        ...normalizedDraft,
+        variableId: fallbackGlobal?.id ?? normalizedDraft.variableId
+      }
+    }
+
+    const objectVariables = normalizedTarget === "other"
+      ? scalarOtherObjectVariables
+      : scalarSelectedObjectVariables
+    const fallbackObject = objectVariables.find((definition) => definition.type === "number")
+    return {
+      ...normalizedDraft,
+      variableId: fallbackObject?.id ?? normalizedDraft.variableId
+    }
+  }
 
   useEffect(() => {
     if (!contextMenu) {
@@ -683,92 +691,99 @@ export function ActionBlock({
           </div>
         )}
 
-        {action.type === "changeVariable" && (
+        {action.type === "changeVariable" && normalizedChangeVariableAction && (
           <>
             <VariablePicker
-              scope={action.scope}
-              variableId={action.variableId}
+              scope={normalizedChangeVariableAction.scope}
+              variableId={normalizedChangeVariableAction.variableId}
               globalVariables={globalVariables}
-              objectVariables={allowOtherTarget ? selfObjectVariableOptions.filter((o) => o.type === "number" || o.type === "string" || o.type === "boolean") : objectVariableOptions}
-              otherObjectVariables={otherObjectVariableOptionsForPicker.filter((o) => o.type === "number" || o.type === "string" || o.type === "boolean")}
-              showTarget={allowOtherTarget}
-              target={action.scope === "object" ? (action.target ?? "self") : null}
-              targetInstanceId={action.scope === "object" ? (action.targetInstanceId ?? null) : null}
+              objectVariables={selfObjectVariableOptions}
+              otherObjectVariables={otherObjectVariableOptionsForPicker}
+              showTarget={allowOtherTarget || hasInstanceTargets}
+              target={normalizedChangeVariableAction.scope === "object" ? (normalizedChangeVariableAction.target ?? "self") : null}
+              targetInstanceId={normalizedChangeVariableAction.scope === "object" ? (normalizedChangeVariableAction.targetInstanceId ?? null) : null}
               roomInstances={roomInstances}
               onTargetChange={(nextTarget, nextInstanceId) => {
-                onUpdate({
-                  ...action,
-                  target: nextTarget,
-                  targetInstanceId: nextInstanceId
-                })
-              }}
-              {...(action.operator !== "set" ? { filter: (v: { type: string }) => v.type === "number" } : {})}
-              onChange={(nextScope, nextVariableId) => {
-                if (nextScope === "global") {
-                  const selected = scalarGlobalVariables.find((d) => d.id === nextVariableId)
-                  if (!selected) return
-                  onUpdate({
-                    scope: "global",
-                    type: "changeVariable",
-                    variableId: nextVariableId,
-                    operator: action.operator,
-                    value: action.operator === "set" ? asLiteralValue(selected.initialValue) : asLiteralValue(0)
-                  })
-                } else {
-                  const selected = objectVariableOptions.find((o) => o.id === nextVariableId)
-                  const selectedObjectDefinition = scalarSelectedObjectVariables.find(
-                    (definition) => definition.id === nextVariableId
+                onUpdate(
+                  normalizeChangeVariableDraft(
+                    {
+                      ...normalizedChangeVariableAction,
+                      target: nextTarget,
+                      targetInstanceId: nextInstanceId
+                    },
+                    variableContext
                   )
-                  if (!selected) return
-                  onUpdate({
-                    ...action,
-                    scope: "object",
-                    variableId: nextVariableId,
-                    target: action.target ?? "self",
-                    targetInstanceId: action.targetInstanceId ?? null,
-                    value:
-                      action.operator === "set"
-                        ? asLiteralValue(selectedObjectDefinition?.initialValue ?? 0)
-                        : asLiteralValue(0)
-                  })
-                }
+                )
+              }}
+              {...(normalizedChangeVariableAction.operator !== "set"
+                ? { filter: (v: { type: string }) => v.type === "number" }
+                : {})}
+              onChange={(nextScope, nextVariableId) => {
+                onUpdate(
+                  normalizeChangeVariableDraft(
+                    {
+                      ...normalizedChangeVariableAction,
+                      scope: nextScope,
+                      variableId: nextVariableId
+                    },
+                    variableContext
+                  )
+                )
               }}
             />
             <select
               className="action-block-operator-select h-7 w-14 rounded border border-slate-300 bg-white/50 px-2 text-xs font-bold text-center"
-              value={action.operator}
+              value={normalizedChangeVariableAction.operator}
               onChange={(event) => {
-                const newOp = event.target.value as "set" | "add" | "subtract" | "multiply"
-                if (newOp !== "set" && !canBeNumericExpression(action.value)) {
-                  onUpdate({ ...action, operator: newOp, value: asLiteralValue(0) })
-                } else {
-                  onUpdate({ ...action, operator: newOp })
-                }
+                onUpdate(
+                  normalizeChangeVariableDraft(
+                    {
+                      ...normalizedChangeVariableAction,
+                      operator: event.target.value as "set" | "add" | "subtract" | "multiply"
+                    },
+                    variableContext
+                  )
+                )
               }}
             >
               <option value="set">=</option>
-              <option value="add">+</option>
-              <option value="subtract">−</option>
-              <option value="multiply">×</option>
+              {normalizedChangeVariableExpectedType === "number" && (
+                <>
+                  <option value="add">+</option>
+                  <option value="subtract">−</option>
+                  <option value="multiply">×</option>
+                </>
+              )}
             </select>
             <RightValuePicker
-              value={action.value}
-              expectedType={action.operator === "set" ? normalizedChangeVariableExpectedType : "number"}
+              value={normalizedChangeVariableAction.value}
+              expectedType={normalizedChangeVariableAction.operator === "set" ? normalizedChangeVariableExpectedType : "number"}
               globalVariables={globalVariables}
               internalVariables={internalVariableOptions}
-                otherInternalVariables={otherInternalVariableOptions}
+              otherInternalVariables={otherInternalVariableOptions}
               allowOtherTarget={allowOtherTarget}
-              onChange={(nextValue) => onUpdate({ ...action, value: nextValue })}
+              onChange={(nextValue) =>
+                onUpdate(
+                  normalizeChangeVariableDraft(
+                    {
+                      ...normalizedChangeVariableAction,
+                      value: nextValue
+                    },
+                    variableContext
+                  )
+                )
+              }
             />
           </>
         )}
 
         {action.type === "copyVariable" && (() => {
-          const isGlobalToObject = action.direction === "globalToObject"
+          const normalizedCopyAction = normalizeCopyVariableDraft(action, variableContext)
+          const isGlobalToObject = normalizedCopyAction.direction === "globalToObject"
           const leftScope = isGlobalToObject ? "global" as const : "object" as const
           const rightScope = isGlobalToObject ? "object" as const : "global" as const
-          const leftVarId = isGlobalToObject ? action.globalVariableId : action.objectVariableId
-          const rightVarId = isGlobalToObject ? action.objectVariableId : action.globalVariableId
+          const leftVarId = isGlobalToObject ? normalizedCopyAction.globalVariableId : normalizedCopyAction.objectVariableId
+          const rightVarId = isGlobalToObject ? normalizedCopyAction.objectVariableId : normalizedCopyAction.globalVariableId
 
           return (
             <>
@@ -777,22 +792,47 @@ export function ActionBlock({
                 scope={leftScope}
                 variableId={leftVarId}
                 globalVariables={globalVariables}
-                objectVariables={allowOtherTarget ? compatibleObjectOptionsForCopy.filter((o) => selectedObjectVariables.some((v) => v.id === o.id)) : compatibleObjectOptionsForCopy}
-                otherObjectVariables={compatibleObjectOptionsForCopy.filter((o) => otherObjectVariables.some((v) => v.id === o.id))}
-                showTarget={leftScope === "object" && allowOtherTarget}
-                target={leftScope === "object" ? action.instanceTarget : null}
-                targetInstanceId={leftScope === "object" ? (action.instanceTargetId ?? null) : null}
+                objectVariables={compatibleSelfOptionsForCopy}
+                otherObjectVariables={compatibleOtherOptionsForCopy}
+                showTarget={leftScope === "object"}
+                target={leftScope === "object" ? normalizedCopyAction.instanceTarget : null}
+                targetInstanceId={leftScope === "object" ? (normalizedCopyAction.instanceTargetId ?? null) : null}
                 roomInstances={roomInstances}
                 onTargetChange={(nextTarget, nextInstanceId) => {
-                  onUpdate({ ...action, instanceTarget: nextTarget, instanceTargetId: nextInstanceId })
+                  onUpdate(
+                    normalizeCopyVariableDraft(
+                      {
+                        ...normalizedCopyAction,
+                        instanceTarget: nextTarget,
+                        instanceTargetId: nextInstanceId
+                      },
+                      variableContext
+                    )
+                  )
                 }}
                 onChange={(nextScope, nextVarId) => {
                   if (nextScope === "global") {
-                    // Left picked global → direction = globalToObject
-                    onUpdate({ ...action, direction: "globalToObject", globalVariableId: nextVarId })
+                    onUpdate(
+                      normalizeCopyVariableDraft(
+                        {
+                          ...normalizedCopyAction,
+                          direction: "globalToObject",
+                          globalVariableId: nextVarId
+                        },
+                        variableContext
+                      )
+                    )
                   } else {
-                    // Left picked object → direction = objectToGlobal
-                    onUpdate({ ...action, direction: "objectToGlobal", objectVariableId: nextVarId })
+                    onUpdate(
+                      normalizeCopyVariableDraft(
+                        {
+                          ...normalizedCopyAction,
+                          direction: "objectToGlobal",
+                          objectVariableId: nextVarId
+                        },
+                        variableContext
+                      )
+                    )
                   }
                 }}
               />
@@ -802,21 +842,46 @@ export function ActionBlock({
                 scope={rightScope}
                 variableId={rightVarId}
                 globalVariables={globalVariables}
-                objectVariables={allowOtherTarget ? compatibleObjectOptionsForCopy.filter((o) => selectedObjectVariables.some((v) => v.id === o.id)) : compatibleObjectOptionsForCopy}
-                otherObjectVariables={compatibleObjectOptionsForCopy.filter((o) => otherObjectVariables.some((v) => v.id === o.id))}
+                objectVariables={compatibleSelfOptionsForCopy}
+                otherObjectVariables={compatibleOtherOptionsForCopy}
                 allowedScopes={[rightScope]}
-                showTarget={rightScope === "object" && allowOtherTarget}
-                target={rightScope === "object" ? action.instanceTarget : null}
-                targetInstanceId={rightScope === "object" ? (action.instanceTargetId ?? null) : null}
+                showTarget={rightScope === "object"}
+                target={rightScope === "object" ? normalizedCopyAction.instanceTarget : null}
+                targetInstanceId={rightScope === "object" ? (normalizedCopyAction.instanceTargetId ?? null) : null}
                 roomInstances={roomInstances}
                 onTargetChange={(nextTarget, nextInstanceId) => {
-                  onUpdate({ ...action, instanceTarget: nextTarget, instanceTargetId: nextInstanceId })
+                  onUpdate(
+                    normalizeCopyVariableDraft(
+                      {
+                        ...normalizedCopyAction,
+                        instanceTarget: nextTarget,
+                        instanceTargetId: nextInstanceId
+                      },
+                      variableContext
+                    )
+                  )
                 }}
                 onChange={(_nextScope, nextVarId) => {
                   if (rightScope === "global") {
-                    onUpdate({ ...action, globalVariableId: nextVarId })
+                    onUpdate(
+                      normalizeCopyVariableDraft(
+                        {
+                          ...normalizedCopyAction,
+                          globalVariableId: nextVarId
+                        },
+                        variableContext
+                      )
+                    )
                   } else {
-                    onUpdate({ ...action, objectVariableId: nextVarId })
+                    onUpdate(
+                      normalizeCopyVariableDraft(
+                        {
+                          ...normalizedCopyAction,
+                          objectVariableId: nextVarId
+                        },
+                        variableContext
+                      )
+                    )
                   }
                 }}
               />
@@ -830,41 +895,30 @@ export function ActionBlock({
               scope={action.scope}
               variableId={action.variableId}
               globalVariables={globalVariables}
-              objectVariables={allowOtherTarget ? selfObjectVariableOptions.filter((o) => o.type === "number" || o.type === "string" || o.type === "boolean") : objectVariableOptions}
-              otherObjectVariables={otherObjectVariableOptionsForPicker.filter((o) => o.type === "number" || o.type === "string" || o.type === "boolean")}
-              showTarget={allowOtherTarget}
+              objectVariables={selfObjectVariableOptions}
+              otherObjectVariables={otherObjectVariableOptionsForPicker}
+              showTarget={allowOtherTarget || hasInstanceTargets}
               target={action.scope === "object" ? (action.target ?? "self") : null}
               targetInstanceId={action.scope === "object" ? (action.targetInstanceId ?? null) : null}
               roomInstances={roomInstances}
               filter={(definition) => definition.type === "number"}
               onTargetChange={(nextTarget, nextInstanceId) => {
-                onUpdate({
-                  ...action,
-                  target: nextTarget,
-                  targetInstanceId: nextInstanceId
-                })
+                onUpdate(
+                  ensureRandomizeVariableDraft({
+                    ...action,
+                    target: nextTarget,
+                    targetInstanceId: nextInstanceId
+                  })
+                )
               }}
               onChange={(nextScope, nextVariableId) => {
-                if (nextScope === "global") {
-                  onUpdate({
-                    type: "randomizeVariable",
-                    scope: "global",
-                    variableId: nextVariableId,
-                    min: action.min,
-                    max: action.max,
-                    step: action.step
-                  })
-                } else {
-                  onUpdate({
+                onUpdate(
+                  ensureRandomizeVariableDraft({
                     ...action,
-                    type: "randomizeVariable",
-                    scope: "object",
-                    variableId: nextVariableId,
-                    target: action.target ?? "self",
-                    targetInstanceId: action.targetInstanceId ?? null,
-                    step: action.step
+                    scope: nextScope,
+                    variableId: nextVariableId
                   })
-                }
+                )
               }}
             />
             <div className="action-block-random-min-field flex items-center gap-1">
@@ -912,240 +966,171 @@ export function ActionBlock({
           action.type === "listClear" ||
           action.type === "mapSet" ||
           action.type === "mapDelete" ||
-          action.type === "mapClear") && (
-          <>
-            <CollectionVariablePicker
-              scope={action.scope}
-              variableId={action.variableId}
-              collectionType={
-                action.type === "listPush" ||
-                action.type === "listSetAt" ||
-                action.type === "listRemoveAt" ||
-                action.type === "listClear"
-                  ? "list"
-                  : "map"
-              }
-              globalVariables={globalVariables}
-              objectVariables={selectedObjectVariables}
-              otherObjectVariables={otherObjectVariables}
-              allowOtherTarget={allowOtherTarget}
-              target={action.scope === "object" ? (action.target === "other" ? "other" : "self") : null}
-              onTargetChange={(nextTarget) => {
-                if (action.scope !== "object") {
-                  return
-                }
-                onUpdate({ ...action, target: nextTarget, targetInstanceId: null })
-              }}
-              onChange={(nextScope, nextVariableId) => {
-                const isListAction =
-                  action.type === "listPush" ||
-                  action.type === "listSetAt" ||
-                  action.type === "listRemoveAt" ||
-                  action.type === "listClear"
-                if (nextScope === "global") {
-                  const selectedGlobal = collectionGlobalVariables.find((definition) => definition.id === nextVariableId)
-                  if (!selectedGlobal) {
-                    return
-                  }
-                  const defaultValue = asLiteralValue(defaultScalarByItemType(selectedGlobal.itemType))
-                  if (action.type === "listPush") {
-                    onUpdate({
-                      type: "listPush",
-                      scope: "global",
-                      variableId: nextVariableId,
-                      value: defaultValue
-                    })
-                    return
-                  }
-                  if (action.type === "listSetAt") {
-                    onUpdate({
-                      type: "listSetAt",
-                      scope: "global",
-                      variableId: nextVariableId,
-                      index: action.index,
-                      value: defaultValue
-                    })
-                    return
-                  }
-                  if (action.type === "listRemoveAt") {
-                    onUpdate({ type: "listRemoveAt", scope: "global", variableId: nextVariableId, index: action.index })
-                    return
-                  }
-                  if (action.type === "listClear") {
-                    onUpdate({ type: "listClear", scope: "global", variableId: nextVariableId })
-                    return
-                  }
-                  if (action.type === "mapSet") {
-                    onUpdate({
-                      type: "mapSet",
-                      scope: "global",
-                      variableId: nextVariableId,
-                      key: action.key,
-                      value: defaultValue
-                    })
-                    return
-                  }
-                  if (action.type === "mapDelete") {
-                    onUpdate({ type: "mapDelete", scope: "global", variableId: nextVariableId, key: action.key })
-                    return
-                  }
-                  onUpdate({ type: "mapClear", scope: "global", variableId: nextVariableId })
-                  return
-                }
-                const allObjVars = allowOtherTarget ? [...selectedObjectVariables, ...otherObjectVariables] : selectedObjectVariables
-                const selectedObject = allObjVars.find(
-                  (definition) =>
-                    definition.id === nextVariableId &&
-                    (isListAction ? definition.type === "list" : definition.type === "map")
-                )
-                if (!selectedObject || (selectedObject.type !== "list" && selectedObject.type !== "map")) {
-                  return
-                }
-                const defaultValue = asLiteralValue(defaultScalarByItemType(selectedObject.itemType))
-                if (action.type === "listPush") {
-                  onUpdate({
-                    type: "listPush",
-                    scope: "object",
-                    variableId: nextVariableId,
-                    target: action.target ?? "self",
-                    targetInstanceId: action.targetInstanceId ?? null,
-                    value: defaultValue
-                  })
-                  return
-                }
-                if (action.type === "listSetAt") {
-                  onUpdate({
-                    type: "listSetAt",
-                    scope: "object",
-                    variableId: nextVariableId,
-                    target: action.target ?? "self",
-                    targetInstanceId: action.targetInstanceId ?? null,
-                    index: action.index,
-                    value: defaultValue
-                  })
-                  return
-                }
-                if (action.type === "listRemoveAt") {
-                  onUpdate({
-                    type: "listRemoveAt",
-                    scope: "object",
-                    variableId: nextVariableId,
-                    target: action.target ?? "self",
-                    targetInstanceId: action.targetInstanceId ?? null,
-                    index: action.index
-                  })
-                  return
-                }
-                if (action.type === "listClear") {
-                  onUpdate({
-                    type: "listClear",
-                    scope: "object",
-                    variableId: nextVariableId,
-                    target: action.target ?? "self",
-                    targetInstanceId: action.targetInstanceId ?? null
-                  })
-                  return
-                }
-                if (action.type === "mapSet") {
-                  onUpdate({
-                    type: "mapSet",
-                    scope: "object",
-                    variableId: nextVariableId,
-                    target: action.target ?? "self",
-                    targetInstanceId: action.targetInstanceId ?? null,
-                    key: action.key,
-                    value: defaultValue
-                  })
-                  return
-                }
-                if (action.type === "mapDelete") {
-                  onUpdate({
-                    type: "mapDelete",
-                    scope: "object",
-                    variableId: nextVariableId,
-                    target: action.target ?? "self",
-                    targetInstanceId: action.targetInstanceId ?? null,
-                    key: action.key
-                  })
-                  return
-                }
-                onUpdate({
-                  type: "mapClear",
-                  scope: "object",
-                  variableId: nextVariableId,
-                  target: action.target ?? "self",
-                  targetInstanceId: action.targetInstanceId ?? null
-                })
-              }}
-            />
+          action.type === "mapClear") && (() => {
+          const normalizedCollectionAction = normalizeCollectionActionDraft(action, variableContext)
+          const collectionItemType = resolveCollectionItemType(
+            {
+              scope: normalizedCollectionAction.scope,
+              variableId: normalizedCollectionAction.variableId,
+              target: normalizedCollectionAction.scope === "object" ? normalizedCollectionAction.target : undefined
+            },
+            variableContext
+          ) ?? "number"
 
-            {(action.type === "listSetAt" || action.type === "listRemoveAt") && (
-              <div className="action-block-collection-index-field flex items-center gap-1">
-                <label className="text-[10px] font-medium opacity-60">Idx</label>
-                <RightValuePicker
-                  value={action.index}
-                  expectedType="number"
-                  globalVariables={globalVariables}
-                  internalVariables={internalVariableOptions}
-                otherInternalVariables={otherInternalVariableOptions}
-                  allowOtherTarget={allowOtherTarget}
-                  onChange={(nextValue) => onUpdate({ ...action, index: nextValue as typeof action.index })}
-                />
-              </div>
-            )}
+          return (
+            <>
+              <CollectionVariablePicker
+                scope={normalizedCollectionAction.scope}
+                variableId={normalizedCollectionAction.variableId}
+                collectionType={
+                  normalizedCollectionAction.type === "listPush" ||
+                  normalizedCollectionAction.type === "listSetAt" ||
+                  normalizedCollectionAction.type === "listRemoveAt" ||
+                  normalizedCollectionAction.type === "listClear"
+                    ? "list"
+                    : "map"
+                }
+                globalVariables={globalVariables}
+                objectVariables={selectedObjectVariables}
+                otherObjectVariables={otherObjectVariables}
+                allowOtherTarget={allowOtherTarget}
+                target={normalizedCollectionAction.scope === "object" ? (normalizedCollectionAction.target ?? "self") : null}
+                targetInstanceId={normalizedCollectionAction.scope === "object" ? (normalizedCollectionAction.targetInstanceId ?? null) : null}
+                roomInstances={roomInstances}
+                onTargetChange={(nextTarget, nextInstanceId) =>
+                  onUpdate(
+                    normalizeCollectionActionDraft(
+                      {
+                        ...normalizedCollectionAction,
+                        target: nextTarget,
+                        targetInstanceId: nextInstanceId
+                      },
+                      variableContext
+                    )
+                  )
+                }
+                onChange={(nextScope, nextVariableId) =>
+                  onUpdate(
+                    normalizeCollectionActionDraft(
+                      {
+                        ...normalizedCollectionAction,
+                        scope: nextScope,
+                        variableId: nextVariableId
+                      },
+                      variableContext
+                    )
+                  )
+                }
+              />
 
-            {(action.type === "listPush" || action.type === "listSetAt") && (
-              <div className="action-block-collection-value-field flex items-center gap-1">
-                <label className="text-[10px] font-medium opacity-60">Val</label>
-                <RightValuePicker
-                  value={action.value}
-                  expectedType={selectedCollectionItemType}
-                  globalVariables={globalVariables}
-                  internalVariables={internalVariableOptions}
-                otherInternalVariables={otherInternalVariableOptions}
-                  allowOtherTarget={allowOtherTarget}
-                  onChange={(nextValue) => onUpdate({ ...action, value: nextValue })}
-                />
-              </div>
-            )}
+              {(normalizedCollectionAction.type === "listSetAt" || normalizedCollectionAction.type === "listRemoveAt") && (
+                <div className="action-block-collection-index-field flex items-center gap-1">
+                  <label className="text-[10px] font-medium opacity-60">Idx</label>
+                  <RightValuePicker
+                    value={normalizedCollectionAction.index}
+                    expectedType="number"
+                    globalVariables={globalVariables}
+                    internalVariables={internalVariableOptions}
+                    otherInternalVariables={otherInternalVariableOptions}
+                    allowOtherTarget={allowOtherTarget}
+                    onChange={(nextValue) =>
+                      onUpdate(
+                        normalizeCollectionActionDraft(
+                          {
+                            ...normalizedCollectionAction,
+                            index: nextValue as typeof normalizedCollectionAction.index
+                          },
+                          variableContext
+                        )
+                      )
+                    }
+                  />
+                </div>
+              )}
 
-            {(action.type === "mapSet" || action.type === "mapDelete") && (
-              <div className="action-block-collection-key-field flex items-center gap-1">
-                <label className="text-[10px] font-medium opacity-60">Key</label>
-                <RightValuePicker
-                  value={action.key}
-                  expectedType="string"
-                  globalVariables={globalVariables}
-                  internalVariables={internalVariableOptions}
-                otherInternalVariables={otherInternalVariableOptions}
-                  allowOtherTarget={allowOtherTarget}
-                  onChange={(nextValue) => onUpdate({ ...action, key: nextValue as typeof action.key })}
-                />
-              </div>
-            )}
+              {(normalizedCollectionAction.type === "listPush" || normalizedCollectionAction.type === "listSetAt") && (
+                <div className="action-block-collection-value-field flex items-center gap-1">
+                  <label className="text-[10px] font-medium opacity-60">Val</label>
+                  <RightValuePicker
+                    value={normalizedCollectionAction.value}
+                    expectedType={collectionItemType}
+                    globalVariables={globalVariables}
+                    internalVariables={internalVariableOptions}
+                    otherInternalVariables={otherInternalVariableOptions}
+                    allowOtherTarget={allowOtherTarget}
+                    onChange={(nextValue) =>
+                      onUpdate(
+                        normalizeCollectionActionDraft(
+                          {
+                            ...normalizedCollectionAction,
+                            value: nextValue
+                          },
+                          variableContext
+                        )
+                      )
+                    }
+                  />
+                </div>
+              )}
 
-            {action.type === "mapSet" && (
-              <div className="action-block-collection-map-value-field flex items-center gap-1">
-                <label className="text-[10px] font-medium opacity-60">Val</label>
-                <RightValuePicker
-                  value={action.value}
-                  expectedType={selectedCollectionItemType}
-                  globalVariables={globalVariables}
-                  internalVariables={internalVariableOptions}
-                otherInternalVariables={otherInternalVariableOptions}
-                  allowOtherTarget={allowOtherTarget}
-                  onChange={(nextValue) => onUpdate({ ...action, value: nextValue })}
-                />
-              </div>
-            )}
+              {(normalizedCollectionAction.type === "mapSet" || normalizedCollectionAction.type === "mapDelete") && (
+                <div className="action-block-collection-key-field flex items-center gap-1">
+                  <label className="text-[10px] font-medium opacity-60">Key</label>
+                  <RightValuePicker
+                    value={normalizedCollectionAction.key}
+                    expectedType="string"
+                    globalVariables={globalVariables}
+                    internalVariables={internalVariableOptions}
+                    otherInternalVariables={otherInternalVariableOptions}
+                    allowOtherTarget={allowOtherTarget}
+                    onChange={(nextValue) =>
+                      onUpdate(
+                        normalizeCollectionActionDraft(
+                          {
+                            ...normalizedCollectionAction,
+                            key: nextValue as typeof normalizedCollectionAction.key
+                          },
+                          variableContext
+                        )
+                      )
+                    }
+                  />
+                </div>
+              )}
 
-            {(action.type === "listClear" || action.type === "mapClear") && (
-              <span className="action-block-collection-clear-note text-[10px] font-medium text-slate-500">
-                Clear
-              </span>
-            )}
-          </>
-        )}
+              {normalizedCollectionAction.type === "mapSet" && (
+                <div className="action-block-collection-map-value-field flex items-center gap-1">
+                  <label className="text-[10px] font-medium opacity-60">Val</label>
+                  <RightValuePicker
+                    value={normalizedCollectionAction.value}
+                    expectedType={collectionItemType}
+                    globalVariables={globalVariables}
+                    internalVariables={internalVariableOptions}
+                    otherInternalVariables={otherInternalVariableOptions}
+                    allowOtherTarget={allowOtherTarget}
+                    onChange={(nextValue) =>
+                      onUpdate(
+                        normalizeCollectionActionDraft(
+                          {
+                            ...normalizedCollectionAction,
+                            value: nextValue
+                          },
+                          variableContext
+                        )
+                      )
+                    }
+                  />
+                </div>
+              )}
+
+              {(normalizedCollectionAction.type === "listClear" || normalizedCollectionAction.type === "mapClear") && (
+                <span className="action-block-collection-clear-note text-[10px] font-medium text-slate-500">
+                  Clear
+                </span>
+              )}
+            </>
+          )
+        })()}
 
         {action.type === "emitCustomEvent" && (
           <>
@@ -1160,15 +1145,46 @@ export function ActionBlock({
               />
             </div>
             <div className="flex items-center gap-1">
+              <label className="text-[10px] font-medium opacity-60">Tipus</label>
+              <select
+                className="h-7 rounded border border-slate-300 bg-white/50 px-2 text-xs"
+                value={emitPayloadType}
+                onChange={(event) =>
+                  onUpdate(
+                    normalizeEmitPayloadDraft(
+                      action,
+                      event.target.value as ScalarType,
+                      variableContext
+                    )
+                  )
+                }
+              >
+                <option value="number">number</option>
+                <option value="string">string</option>
+                <option value="boolean">boolean</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-1">
               <label className="text-[10px] font-medium opacity-60">Payload</label>
               <RightValuePicker
                 value={action.payload}
-                expectedType="number"
+                expectedType={emitPayloadType}
                 globalVariables={globalVariables}
                 internalVariables={internalVariableOptions}
                 otherInternalVariables={otherInternalVariableOptions}
                 allowOtherTarget={allowOtherTarget}
-                onChange={(nextValue) => onUpdate({ ...action, payload: nextValue as typeof action.payload })}
+                onChange={(nextValue) =>
+                  onUpdate(
+                    normalizeEmitPayloadDraft(
+                      {
+                        ...action,
+                        payload: nextValue as typeof action.payload
+                      },
+                      emitPayloadType,
+                      variableContext
+                    )
+                  )
+                }
               />
             </div>
           </>

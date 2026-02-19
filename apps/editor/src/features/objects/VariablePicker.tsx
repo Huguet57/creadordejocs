@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from "react"
 import { Globe, Box, ChevronDown } from "lucide-react"
+import {
+  formatTargetQualifiedName,
+  hasAnyTargetVariables,
+  normalizeTargetValue,
+  selectTargetVariables
+} from "./variable-selection-model.js"
 
 export type VariableOption = {
   id: string
@@ -60,6 +66,8 @@ export function VariablePicker({
   onChange,
   showTarget = false,
   target,
+  targetInstanceId,
+  roomInstances,
   onTargetChange,
   filter,
   allowedScopes,
@@ -67,12 +75,16 @@ export function VariablePicker({
 }: VariablePickerProps) {
   const [isOpen, setIsOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
-  const [localTarget, setLocalTarget] = useState<"self" | "other" | "instanceId">(target ?? "self")
+  const allowOtherTarget = showTarget
+  const allowInstanceTarget = Boolean(roomInstances && roomInstances.length > 0)
+  const [localTarget, setLocalTarget] = useState<"self" | "other" | "instanceId">(
+    normalizeTargetValue(target, allowOtherTarget, allowInstanceTarget)
+  )
 
   // Sync local target state with props
   useEffect(() => {
-    setLocalTarget(target ?? "self")
-  }, [target])
+    setLocalTarget(normalizeTargetValue(target, allowOtherTarget, allowInstanceTarget))
+  }, [target, allowOtherTarget, allowInstanceTarget])
 
   // Close on click outside
   useEffect(() => {
@@ -87,10 +99,21 @@ export function VariablePicker({
   }, [isOpen])
 
   const filteredGlobal = filter ? globalVariables.filter(filter) : globalVariables
-  const activeObjectVariables = showTarget && localTarget === "other" ? otherObjectVariables : objectVariables
+  const activeObjectVariables = selectTargetVariables({
+    selfVariables: objectVariables,
+    otherVariables: otherObjectVariables,
+    target: localTarget,
+    allowOtherTarget
+  })
   const filteredObject = filter ? activeObjectVariables.filter(filter) : activeObjectVariables
+  const filteredSelfObject = filter ? objectVariables.filter(filter) : objectVariables
+  const filteredOtherObject = filter ? otherObjectVariables.filter(filter) : otherObjectVariables
   const hasAnyObjectVariables = showTarget
-    ? (filter ? objectVariables.filter(filter) : objectVariables).length > 0 || (filter ? otherObjectVariables.filter(filter) : otherObjectVariables).length > 0
+    ? hasAnyTargetVariables({
+        selfVariables: filteredSelfObject,
+        otherVariables: filteredOtherObject,
+        allowOtherTarget
+      })
     : filteredObject.length > 0
 
   const showGlobal = !allowedScopes || allowedScopes.includes("global")
@@ -99,11 +122,17 @@ export function VariablePicker({
   const allObjectVars = showTarget ? [...objectVariables, ...otherObjectVariables] : objectVariables
   const displayName = getDisplayName(scope, variableId, globalVariables, allObjectVars)
   const ScopeIcon = scope === "global" ? Globe : Box
+  const triggerTarget = normalizeTargetValue(target ?? localTarget, allowOtherTarget, allowInstanceTarget)
 
   const targetPrefix =
-    showTarget && scope === "object" && target
-      ? `${TARGET_LABELS[target] ?? target}.`
+    showTarget && scope === "object"
+      ? `${TARGET_LABELS[triggerTarget] ?? triggerTarget}.`
       : ""
+  const targetToggleOptions: ("self" | "other" | "instanceId")[] = [
+    "self",
+    ...(allowOtherTarget ? (["other"] as const) : []),
+    ...(allowInstanceTarget ? (["instanceId"] as const) : [])
+  ]
 
   const borderColor = variant === "amber" ? "border-amber-200" : variant === "blue" ? "border-blue-200" : "border-slate-300"
   const hoverBg = variant === "amber" ? "hover:bg-amber-50" : variant === "blue" ? "hover:bg-blue-50" : "hover:bg-slate-50"
@@ -156,7 +185,7 @@ export function VariablePicker({
                 <span>Objecte</span>
                 {showTarget && (
                   <div className="flex items-center gap-1">
-                    {(["self", "other"] as const).map((t) => (
+                    {targetToggleOptions.map((t) => (
                       <button
                         key={t}
                         type="button"
@@ -168,7 +197,7 @@ export function VariablePicker({
                         onClick={(e) => {
                           e.stopPropagation()
                           setLocalTarget(t)
-                          onTargetChange?.(t, null)
+                          onTargetChange?.(t, t === "instanceId" ? (roomInstances?.[0]?.id ?? null) : null)
                         }}
                       >
                         {TARGET_LABELS[t]}
@@ -177,6 +206,21 @@ export function VariablePicker({
                   </div>
                 )}
               </div>
+              {showTarget && localTarget === "instanceId" && (
+                <div className="px-3 py-1.5 border-b border-slate-100">
+                  <select
+                    className="h-6 w-full rounded border border-slate-200 bg-white px-2 text-[10px] text-slate-600"
+                    value={targetInstanceId ?? roomInstances?.[0]?.id ?? ""}
+                    onChange={(event) => onTargetChange?.("instanceId", event.target.value || null)}
+                  >
+                    {(roomInstances ?? []).map((instance) => (
+                      <option key={instance.id} value={instance.id}>
+                        {instance.id}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               {filteredObject.length === 0 ? (
                 <div className="px-3 py-1.5 text-xs text-slate-400">&mdash;</div>
               ) : filteredObject.map((variable) => (
@@ -192,7 +236,9 @@ export function VariablePicker({
                   }}
                 >
                   <Box className="h-3 w-3 text-slate-400 shrink-0" />
-                  <span className="flex-1 truncate">{showTarget ? `${localTarget}.${variable.label}` : variable.label}</span>
+                  <span className="flex-1 truncate">
+                    {showTarget ? formatTargetQualifiedName(localTarget, variable.label) : variable.label}
+                  </span>
                   <span className="variable-picker-type-badge text-[9px] px-1 py-0.5 rounded bg-slate-100 text-slate-400 shrink-0">
                     {variable.type === "number" ? "num" : variable.type === "boolean" ? "bool" : "str"}
                   </span>

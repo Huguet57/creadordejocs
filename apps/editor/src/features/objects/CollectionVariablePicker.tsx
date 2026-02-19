@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from "react"
 import { Globe, Box, ChevronDown } from "lucide-react"
 import type { ProjectV1 } from "@creadordejocs/project-format"
+import {
+  formatTargetQualifiedName,
+  hasAnyTargetVariables,
+  normalizeTargetValue,
+  selectTargetVariables
+} from "./variable-selection-model.js"
 
 type CollectionVariablePickerProps = {
   scope: "global" | "object"
@@ -11,14 +17,17 @@ type CollectionVariablePickerProps = {
   otherObjectVariables?: ProjectV1["variables"]["global"]
   onChange: (scope: "global" | "object", variableId: string) => void
   allowOtherTarget?: boolean
-  target?: "self" | "other" | null | undefined
-  onTargetChange?: (target: "self" | "other") => void
+  target?: "self" | "other" | "instanceId" | null | undefined
+  targetInstanceId?: string | null | undefined
+  roomInstances?: { id: string }[]
+  onTargetChange?: (target: "self" | "other" | "instanceId", instanceId: string | null) => void
   variant?: "default" | "purple" | undefined
 }
 
 const TARGET_LABELS: Record<string, string> = {
   self: "self",
-  other: "other"
+  other: "other",
+  instanceId: "id"
 }
 
 export function CollectionVariablePicker({
@@ -31,16 +40,21 @@ export function CollectionVariablePicker({
   onChange,
   allowOtherTarget = false,
   target,
+  targetInstanceId,
+  roomInstances,
   onTargetChange,
   variant = "default"
 }: CollectionVariablePickerProps) {
   const [isOpen, setIsOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
-  const [localTarget, setLocalTarget] = useState<"self" | "other">(target === "other" ? "other" : "self")
+  const allowInstanceTarget = Boolean(roomInstances && roomInstances.length > 0)
+  const [localTarget, setLocalTarget] = useState<"self" | "other" | "instanceId">(
+    normalizeTargetValue(target, allowOtherTarget, allowInstanceTarget)
+  )
 
   useEffect(() => {
-    setLocalTarget(target === "other" ? "other" : "self")
-  }, [target])
+    setLocalTarget(normalizeTargetValue(target, allowOtherTarget, allowInstanceTarget))
+  }, [target, allowOtherTarget, allowInstanceTarget])
 
   useEffect(() => {
     if (!isOpen) return
@@ -54,10 +68,19 @@ export function CollectionVariablePicker({
   }, [isOpen])
 
   const filteredGlobal = globalVariables.filter((v) => v.type === collectionType)
-  const activeObjectVariables = allowOtherTarget && localTarget === "other" ? otherObjectVariables : objectVariables
+  const activeObjectVariables = selectTargetVariables({
+    selfVariables: objectVariables,
+    otherVariables: otherObjectVariables,
+    target: localTarget,
+    allowOtherTarget
+  })
   const filteredObject = activeObjectVariables.filter((v) => v.type === collectionType)
-  const hasAnyObjectVariables = allowOtherTarget
-    ? objectVariables.filter((v) => v.type === collectionType).length > 0 || otherObjectVariables.filter((v) => v.type === collectionType).length > 0
+  const hasAnyObjectVariables = allowOtherTarget || allowInstanceTarget
+    ? hasAnyTargetVariables({
+        selfVariables: objectVariables.filter((v) => v.type === collectionType),
+        otherVariables: otherObjectVariables.filter((v) => v.type === collectionType),
+        allowOtherTarget
+      })
     : filteredObject.length > 0
 
   const allObjectVars = allowOtherTarget ? [...objectVariables, ...otherObjectVariables] : objectVariables
@@ -71,8 +94,8 @@ export function CollectionVariablePicker({
   const ScopeIcon = scope === "global" ? Globe : Box
 
   const targetPrefix =
-    scope === "object" && allowOtherTarget && target
-      ? `${TARGET_LABELS[target] ?? target}.`
+    scope === "object" && (allowOtherTarget || allowInstanceTarget)
+      ? `${TARGET_LABELS[normalizeTargetValue(target ?? localTarget, allowOtherTarget, allowInstanceTarget)] ?? normalizeTargetValue(target ?? localTarget, allowOtherTarget, allowInstanceTarget)}.`
       : ""
 
   const borderColor = variant === "purple" ? "border-purple-300" : "border-slate-300"
@@ -82,7 +105,12 @@ export function CollectionVariablePicker({
   const rowHover = variant === "purple" ? "hover:bg-purple-50" : "hover:bg-blue-50"
 
   const itemTypeBadge = collectionType === "list" ? "list" : "map"
-  const showTargetToggle = allowOtherTarget && hasAnyObjectVariables
+  const showTargetToggle = (allowOtherTarget || allowInstanceTarget) && hasAnyObjectVariables
+  const targetOptions: ("self" | "other" | "instanceId")[] = [
+    "self",
+    ...(allowOtherTarget ? (["other"] as const) : []),
+    ...(allowInstanceTarget ? (["instanceId"] as const) : [])
+  ]
 
   return (
     <div className="collection-variable-picker-container relative" ref={containerRef}>
@@ -131,7 +159,7 @@ export function CollectionVariablePicker({
                 <span>Objecte</span>
                 {showTargetToggle && (
                   <div className="flex items-center gap-1">
-                    {(["self", "other"] as const).map((t) => (
+                    {targetOptions.map((t) => (
                       <button
                         key={t}
                         type="button"
@@ -143,7 +171,7 @@ export function CollectionVariablePicker({
                         onClick={(e) => {
                           e.stopPropagation()
                           setLocalTarget(t)
-                          onTargetChange?.(t)
+                          onTargetChange?.(t, t === "instanceId" ? (roomInstances?.[0]?.id ?? null) : null)
                         }}
                       >
                         {TARGET_LABELS[t]}
@@ -152,6 +180,21 @@ export function CollectionVariablePicker({
                   </div>
                 )}
               </div>
+              {showTargetToggle && localTarget === "instanceId" && (
+                <div className="px-3 py-1.5 border-b border-slate-100">
+                  <select
+                    className="h-6 w-full rounded border border-slate-200 bg-white px-2 text-[10px] text-slate-600"
+                    value={targetInstanceId ?? roomInstances?.[0]?.id ?? ""}
+                    onChange={(event) => onTargetChange?.("instanceId", event.target.value || null)}
+                  >
+                    {(roomInstances ?? []).map((instance) => (
+                      <option key={instance.id} value={instance.id}>
+                        {instance.id}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               {filteredObject.length === 0 ? (
                 <div className="px-3 py-1.5 text-xs text-slate-400">&mdash;</div>
               ) : filteredObject.map((variable) => (
@@ -168,7 +211,7 @@ export function CollectionVariablePicker({
                 >
                   <Box className="h-3 w-3 text-slate-400 shrink-0" />
                   <span className="flex-1 truncate">
-                    {allowOtherTarget ? `${localTarget}.` : ""}{variable.name}
+                    {showTargetToggle ? formatTargetQualifiedName(localTarget, variable.name) : variable.name}
                   </span>
                   <span className="collection-variable-picker-type-badge text-[9px] px-1 py-0.5 rounded bg-slate-100 text-slate-400 shrink-0">
                     {itemTypeBadge}

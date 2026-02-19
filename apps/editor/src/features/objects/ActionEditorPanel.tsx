@@ -30,6 +30,7 @@ import type { ActionDropTarget } from "./action-dnd.js"
 import type { ProjectV1, ObjectControlBlockItem } from "@creadordejocs/project-format"
 import { generateUUID } from "@creadordejocs/project-format"
 import { buildDefaultIfCondition } from "./if-condition-utils.js"
+import { buildVariableUniverse } from "./variable-selection-model.js"
 
 type ActionEditorPanelProps = {
   selectedObject: ProjectV1["objects"][0] | null
@@ -143,7 +144,14 @@ export function ActionEditorPanel({
       : activeEvent.targetObjectId
         ? [activeEvent.targetObjectId]
         : selectableTargetObjects.map((targetObject) => targetObject.id)
-  const otherVariablesForCollision = collisionOtherObjectIds.flatMap((objectId) => objectVariablesByObjectId[objectId] ?? [])
+  const collisionOtherVariableSets = collisionOtherObjectIds.map((objectId) => objectVariablesByObjectId[objectId] ?? [])
+  const collisionVariableUniverse = buildVariableUniverse({
+    globalVariables,
+    selfObjectVariables: selectedObjectVariables,
+    otherObjectVariableSets: collisionOtherVariableSets,
+    allowOtherTarget: activeEvent?.type === "Collision"
+  })
+  const otherVariablesForCollision = collisionVariableUniverse.otherObjectVariables
   const hasListActionsAvailable =
     globalVariables.some((variableEntry) => variableEntry.type === "list") ||
     selectedObjectVariables.some((variableEntry) => variableEntry.type === "list") ||
@@ -581,9 +589,7 @@ export function ActionEditorPanel({
                           selectableObjects={selectableTargetObjects}
                           selectableSprites={selectableSprites}
                           globalVariables={globalVariables}
-                          objectVariablesByObjectId={objectVariablesByObjectId}
                           roomInstances={roomInstances}
-                          allObjects={allObjects}
                           rooms={rooms}
                           selectedObjectVariables={selectedObjectVariables}
                           otherObjectVariables={otherVariablesForCollision}

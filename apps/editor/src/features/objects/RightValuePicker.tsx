@@ -3,6 +3,7 @@ import { Globe, Box, ChevronDown, Hash, Dices, Crosshair } from "lucide-react"
 import type { ValueExpression } from "@creadordejocs/project-format"
 import type { VariableOption, ObjectVariableOption } from "./VariablePicker.js"
 import { SYSTEM_MOUSE_GLOBALS } from "../editor-state/types.js"
+import { formatTargetQualifiedName, normalizeTargetValue } from "./variable-selection-model.js"
 
 type LegacyVariableReference = { scope: "global" | "object"; variableId: string }
 type ValueSourceExpression = Extract<ValueExpression, { source: string }>
@@ -154,9 +155,13 @@ export function RightValuePicker({
       return
     }
     if (value.source === "attribute" || value.source === "internalVariable") {
-      setLocalTarget(value.target)
+      setLocalTarget(
+        normalizeTargetValue(value.target, allowOtherTarget, false) === "other"
+          ? "other"
+          : "self"
+      )
     }
-  }, [value])
+  }, [value, allowOtherTarget])
 
   // Close on click outside
   useEffect(() => {
@@ -185,6 +190,10 @@ export function RightValuePicker({
   const canPickGlobal = allowedSources.includes("globalVariable")
   const canPickMouse = canPickGlobal || allowedSources.includes("mouseAttribute")
   const canPickIteration = allowedSources.includes("iterationVariable")
+  const normalizedLocalTarget: ValueSourceTarget =
+    normalizeTargetValue(localTarget, allowOtherTarget, false) === "other"
+      ? "other"
+      : "self"
   const filteredGlobal = canPickGlobal
     ? globalVariables.filter((variable) => !filterByExpectedType || variable.type === expectedType)
     : []
@@ -198,7 +207,7 @@ export function RightValuePicker({
   const filteredInternalOther = canPickInternal
     ? otherInternalVariables.filter((variable) => !filterByExpectedType || variable.type === expectedType)
     : []
-  const filteredInternal = localTarget === "other" && allowOtherTarget ? filteredInternalOther : filteredInternalSelf
+  const filteredInternal = normalizedLocalTarget === "other" ? filteredInternalOther : filteredInternalSelf
   const filteredIteration = canPickIteration
     ? iterationVariables.filter((variable) => !filterByExpectedType || variable.type === expectedType)
     : []
@@ -229,14 +238,16 @@ export function RightValuePicker({
       return `mouse.${value.attribute}`
     }
     if (value.source === "attribute") {
-      return `${value.target}.${formatAttributeLabel(value.attribute as ValueAttribute)}`
+      const target = normalizeTargetValue(value.target, allowOtherTarget, false) === "other" ? "other" : "self"
+      return formatTargetQualifiedName(target, formatAttributeLabel(value.attribute as ValueAttribute))
     }
     if (value.source === "internalVariable") {
-      const searchList = value.target === "other" ? otherInternalVariables : internalVariables
+      const target = normalizeTargetValue(value.target, allowOtherTarget, false) === "other" ? "other" : "self"
+      const searchList = target === "other" ? otherInternalVariables : internalVariables
       const label = searchList.find((item) => item.id === value.variableId)?.label
         ?? internalVariables.find((item) => item.id === value.variableId)?.label
         ?? "?"
-      return `${value.target}.${label}`
+      return formatTargetQualifiedName(target, label)
     }
     if (value.source === "iterationVariable") {
       return `iter.${value.variableName}`
@@ -444,17 +455,17 @@ export function RightValuePicker({
                   key={`attribute-row-${attribute}`}
                   type="button"
                   className="right-value-picker-attribute-row flex items-center gap-2 w-full px-3 py-1.5 text-xs text-left hover:bg-blue-50 transition-colors"
-                  onClick={() => {
-                    onChange({ source: "attribute", target: localTarget, attribute: attribute as ValueAttribute })
-                    setIsOpen(false)
-                  }}
-                >
-                  <Crosshair className="h-3 w-3 text-slate-400 shrink-0" />
-                  <span className="flex-1 truncate">
-                    {localTarget}.{formatAttributeLabel(attribute)}
-                  </span>
-                </button>
-              ))}
+                    onClick={() => {
+                      onChange({ source: "attribute", target: normalizedLocalTarget, attribute: attribute as ValueAttribute })
+                      setIsOpen(false)
+                    }}
+                  >
+                    <Crosshair className="h-3 w-3 text-slate-400 shrink-0" />
+                    <span className="flex-1 truncate">
+                      {formatTargetQualifiedName(normalizedLocalTarget, formatAttributeLabel(attribute))}
+                    </span>
+                  </button>
+                ))}
             </div>
           )}
 
@@ -468,7 +479,7 @@ export function RightValuePicker({
                       key={`internal-${targetOption}`}
                       type="button"
                       className={`right-value-picker-target-btn px-1.5 py-0.5 rounded text-[9px] transition-colors ${
-                        localTarget === targetOption ? "bg-slate-700 text-white" : "bg-slate-200 text-slate-500 hover:bg-slate-300"
+                        normalizedLocalTarget === targetOption ? "bg-slate-700 text-white" : "bg-slate-200 text-slate-500 hover:bg-slate-300"
                       }`}
                       onClick={() => setLocalTarget(targetOption)}
                     >
@@ -485,13 +496,13 @@ export function RightValuePicker({
                   type="button"
                   className="right-value-picker-internal-row flex items-center gap-2 w-full px-3 py-1.5 text-xs text-left hover:bg-blue-50 transition-colors"
                   onClick={() => {
-                    onChange({ source: "internalVariable", target: localTarget, variableId: variable.id })
+                    onChange({ source: "internalVariable", target: normalizedLocalTarget, variableId: variable.id })
                     setIsOpen(false)
                   }}
                 >
                   <Box className="h-3 w-3 text-slate-400 shrink-0" />
                   <span className="flex-1 truncate">
-                    {localTarget}.{variable.label}
+                    {formatTargetQualifiedName(normalizedLocalTarget, variable.label)}
                   </span>
                 </button>
               ))}

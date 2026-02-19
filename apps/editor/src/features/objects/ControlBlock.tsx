@@ -15,6 +15,14 @@ import { type ObjectVariableOption } from "./VariablePicker.js"
 import { RightValuePicker } from "./RightValuePicker.js"
 import { CollectionVariablePicker } from "./CollectionVariablePicker.js"
 import type { ActionDropTarget } from "./action-dnd.js"
+import {
+  getAllowedIfOperators,
+  normalizeIfConditionDraft,
+  normalizeTargetValue,
+  resolveCollectionItemType,
+  resolveScalarType,
+  type VariableSelectionContext
+} from "./variable-selection-model.js"
 
 type ControlBlockProps = {
   item: ObjectControlBlockItem
@@ -75,35 +83,6 @@ function ensureComparisonIfCondition(
 ): ComparisonIfCondition {
   if (condition && isComparisonIfCondition(condition)) return condition
   return fallback
-}
-
-function getLeftValueExpectedType(
-  left: ComparisonIfCondition["left"],
-  globalVariables: ProjectV1["variables"]["global"],
-  selectedObjectVariables: ProjectV1["variables"]["global"],
-  otherObjectVariables: ProjectV1["variables"]["global"]
-): "number" | "string" | "boolean" {
-  const asScalarType = (type: ProjectV1["variables"]["global"][number]["type"] | undefined): "number" | "string" | "boolean" =>
-    type === "string" || type === "boolean" || type === "number" ? type : "number"
-  if (typeof left === "object" && left !== null && "scope" in left && "variableId" in left && !("source" in left)) {
-    const source = left.scope === "global" ? globalVariables : selectedObjectVariables
-    return asScalarType(source.find((v) => v.id === left.variableId)?.type)
-  }
-  if (typeof left !== "object" || left === null || !("source" in left)) return "number"
-  if (left.source === "mouseAttribute") return "number"
-  if (left.source === "attribute") return "number"
-  if (left.source === "globalVariable") return asScalarType(globalVariables.find((v) => v.id === left.variableId)?.type)
-  if (left.source === "internalVariable") {
-    const vars = "target" in left && left.target === "other" ? otherObjectVariables : selectedObjectVariables
-    return asScalarType(vars.find((v) => v.id === left.variableId)?.type)
-  }
-  return "number"
-}
-
-function getDefaultRightValueForType(type: "number" | "string" | "boolean"): ComparisonIfCondition["right"] {
-  if (type === "boolean") return false
-  if (type === "string") return ""
-  return 0
 }
 
 function isFlowBlockType(type: string): type is "repeat" | "forEachList" | "forEachMap" {
@@ -196,28 +175,27 @@ export function ControlBlock({
     .map((v) => ({ id: v.id, label: v.name, type: v.type, objectName: "" }))
 
   const allowOtherTarget = eventType === "Collision"
-
-  const listGlobalOptions = globalVariables.filter(
-    (d): d is Extract<typeof globalVariables[number], { type: "list" }> => d.type === "list"
-  )
-  const mapGlobalOptions = globalVariables.filter(
-    (d): d is Extract<typeof globalVariables[number], { type: "map" }> => d.type === "map"
-  )
-  const listObjectOptions = selectedObjectVariables.filter(
-    (d): d is Extract<typeof selectedObjectVariables[number], { type: "list" }> => d.type === "list"
-  )
-  const mapObjectOptions = selectedObjectVariables.filter(
-    (d): d is Extract<typeof selectedObjectVariables[number], { type: "map" }> => d.type === "map"
-  )
+  const variableContext: VariableSelectionContext = {
+    globalVariables,
+    selfObjectVariables: selectedObjectVariables,
+    otherObjectVariables,
+    allowOtherTarget,
+    iterationVariables
+  }
 
   const flowIterationVariables = (() => {
     if (item.type === "repeat") {
       return [...iterationVariables, { name: "index", type: "number" as const }]
     }
     if (item.type === "forEachList") {
-      const itemType = item.scope === "global"
-        ? (listGlobalOptions.find((e) => e.id === item.variableId)?.itemType ?? "number")
-        : (listObjectOptions.find((e) => e.id === item.variableId)?.itemType ?? "number")
+      const itemType = resolveCollectionItemType(
+        {
+          scope: item.scope,
+          variableId: item.variableId,
+          target: item.scope === "object" ? (item.target as "self" | "other" | "instanceId" | null | undefined) : undefined
+        },
+        variableContext
+      ) ?? "number"
       return [
         ...iterationVariables,
         { name: item.itemLocalVarName, type: itemType },
@@ -225,9 +203,14 @@ export function ControlBlock({
       ]
     }
     if (item.type === "forEachMap") {
-      const valueType = item.scope === "global"
-        ? (mapGlobalOptions.find((e) => e.id === item.variableId)?.itemType ?? "number")
-        : (mapObjectOptions.find((e) => e.id === item.variableId)?.itemType ?? "number")
+      const valueType = resolveCollectionItemType(
+        {
+          scope: item.scope,
+          variableId: item.variableId,
+          target: item.scope === "object" ? (item.target as "self" | "other" | "instanceId" | null | undefined) : undefined
+        },
+        variableContext
+      ) ?? "number"
       return [
         ...iterationVariables,
         { name: item.keyLocalVarName, type: "string" as const },
@@ -346,9 +329,7 @@ export function ControlBlock({
               selectableObjects={selectableTargetObjects}
               selectableSprites={selectableSprites}
               globalVariables={globalVariables}
-              objectVariablesByObjectId={objectVariablesByObjectId}
               roomInstances={roomInstances}
-              allObjects={allObjects}
               rooms={rooms}
               selectedObjectVariables={selectedObjectVariables}
               otherObjectVariables={otherObjectVariables}
@@ -443,7 +424,8 @@ export function ControlBlock({
       condition: ComparisonIfCondition,
       onChange: (next: ComparisonIfCondition) => void
     ) => {
-      const selectedType = getLeftValueExpectedType(condition.left, globalVariables, selectedObjectVariables, otherObjectVariables)
+      const selectedType = resolveScalarType(condition.left, variableContext) ?? "number"
+      const allowedOperators = getAllowedIfOperators(selectedType)
       return (
         <>
           <RightValuePicker
@@ -457,26 +439,37 @@ export function ControlBlock({
             allowedSources={["globalVariable", "internalVariable", "attribute"]}
             variant="blue"
             onChange={(nextLeft) => {
-              const nextType = getLeftValueExpectedType(nextLeft as ComparisonIfCondition["left"], globalVariables, selectedObjectVariables, otherObjectVariables)
-              const nextOperator = nextType === "boolean" && condition.operator !== "==" && condition.operator !== "!=" ? "==" : condition.operator
-              onChange({ left: nextLeft as ComparisonIfCondition["left"], operator: nextOperator, right: getDefaultRightValueForType(nextType) })
+              const normalizedCondition = normalizeIfConditionDraft(
+                {
+                  left: nextLeft as ComparisonIfCondition["left"],
+                  operator: condition.operator,
+                  right: condition.right
+                },
+                variableContext
+              )
+              onChange(normalizedCondition as ComparisonIfCondition)
             }}
           />
           <select
             className="control-block-if-operator h-7 w-14 text-center font-mono rounded border border-blue-200 bg-white px-2 text-xs focus:border-blue-400 focus:outline-none"
             value={condition.operator}
-            onChange={(e) => onChange({ ...condition, operator: e.target.value as ComparisonIfCondition["operator"] })}
+            onChange={(e) => {
+              const normalizedCondition = normalizeIfConditionDraft(
+                {
+                  left: condition.left,
+                  operator: e.target.value as ComparisonIfCondition["operator"],
+                  right: condition.right
+                },
+                variableContext
+              )
+              onChange(normalizedCondition as ComparisonIfCondition)
+            }}
           >
-            <option value="==">==</option>
-            <option value="!=">!=</option>
-            {selectedType !== "boolean" && (
-              <>
-                <option value=">">&gt;</option>
-                <option value=">=">&gt;=</option>
-                <option value="<">&lt;</option>
-                <option value="<=">&lt;=</option>
-              </>
-            )}
+            {allowedOperators.map((operator) => (
+              <option key={operator} value={operator}>
+                {operator}
+              </option>
+            ))}
           </select>
           <RightValuePicker
             value={condition.right}
@@ -486,7 +479,17 @@ export function ControlBlock({
             otherInternalVariables={otherVarOptionsForPicker}
             allowOtherTarget={allowOtherTarget}
             variant="blue"
-            onChange={(nextRight) => onChange({ ...condition, right: nextRight })}
+            onChange={(nextRight) => {
+              const normalizedCondition = normalizeIfConditionDraft(
+                {
+                  left: condition.left,
+                  operator: condition.operator,
+                  right: nextRight
+                },
+                variableContext
+              )
+              onChange(normalizedCondition as ComparisonIfCondition)
+            }}
           />
         </>
       )
@@ -582,14 +585,44 @@ export function ControlBlock({
           objectVariables={selectedObjectVariables}
           otherObjectVariables={otherObjectVariables}
           allowOtherTarget={allowOtherTarget}
-          target={(item.target as "self" | "other" | null | undefined) ?? null}
-          onTargetChange={(nextTarget) =>
-            onUpdateBlock(item.id, { target: nextTarget } as Partial<ObjectControlBlockItem>)
+          target={(item.target as "self" | "other" | "instanceId" | null | undefined) ?? null}
+          targetInstanceId={item.targetInstanceId ?? null}
+          roomInstances={roomInstances}
+          onTargetChange={(nextTarget, nextInstanceId) =>
+            onUpdateBlock(
+              item.id,
+              {
+                target: normalizeTargetValue(nextTarget, allowOtherTarget, false),
+                targetInstanceId: nextInstanceId ?? null
+              } as Partial<ObjectControlBlockItem>
+            )
           }
           variant="purple"
-          onChange={(nextScope, nextVarId) =>
-            onUpdateBlock(item.id, { scope: nextScope, variableId: nextVarId, ...(nextScope === "object" ? { target: "self" } : {}) } as Partial<ObjectControlBlockItem>)
-          }
+          onChange={(nextScope, nextVarId) => {
+            const normalizedTarget = normalizeTargetValue(
+              item.target as "self" | "other" | "instanceId" | null | undefined,
+              allowOtherTarget,
+              false
+            )
+            onUpdateBlock(
+              item.id,
+              (
+                nextScope === "object"
+                  ? {
+                      scope: nextScope,
+                      variableId: nextVarId,
+                      target: normalizedTarget,
+                      targetInstanceId: item.targetInstanceId ?? null
+                    }
+                  : {
+                      scope: nextScope,
+                      variableId: nextVarId,
+                      target: undefined,
+                      targetInstanceId: undefined
+                    }
+              ) as Partial<ObjectControlBlockItem>
+            )
+          }}
         />
         <input
           className="control-block-local-item h-7 w-20 rounded border border-purple-300 bg-white/50 px-2 text-xs"
@@ -627,14 +660,44 @@ export function ControlBlock({
           objectVariables={selectedObjectVariables}
           otherObjectVariables={otherObjectVariables}
           allowOtherTarget={allowOtherTarget}
-          target={(item.target as "self" | "other" | null | undefined) ?? null}
-          onTargetChange={(nextTarget) =>
-            onUpdateBlock(item.id, { target: nextTarget } as Partial<ObjectControlBlockItem>)
+          target={(item.target as "self" | "other" | "instanceId" | null | undefined) ?? null}
+          targetInstanceId={item.targetInstanceId ?? null}
+          roomInstances={roomInstances}
+          onTargetChange={(nextTarget, nextInstanceId) =>
+            onUpdateBlock(
+              item.id,
+              {
+                target: normalizeTargetValue(nextTarget, allowOtherTarget, false),
+                targetInstanceId: nextInstanceId ?? null
+              } as Partial<ObjectControlBlockItem>
+            )
           }
           variant="purple"
-          onChange={(nextScope, nextVarId) =>
-            onUpdateBlock(item.id, { scope: nextScope, variableId: nextVarId, ...(nextScope === "object" ? { target: "self" } : {}) } as Partial<ObjectControlBlockItem>)
-          }
+          onChange={(nextScope, nextVarId) => {
+            const normalizedTarget = normalizeTargetValue(
+              item.target as "self" | "other" | "instanceId" | null | undefined,
+              allowOtherTarget,
+              false
+            )
+            onUpdateBlock(
+              item.id,
+              (
+                nextScope === "object"
+                  ? {
+                      scope: nextScope,
+                      variableId: nextVarId,
+                      target: normalizedTarget,
+                      targetInstanceId: item.targetInstanceId ?? null
+                    }
+                  : {
+                      scope: nextScope,
+                      variableId: nextVarId,
+                      target: undefined,
+                      targetInstanceId: undefined
+                    }
+              ) as Partial<ObjectControlBlockItem>
+            )
+          }}
         />
         <input
           className="control-block-local-key h-7 w-20 rounded border border-purple-300 bg-white/50 px-2 text-xs"
