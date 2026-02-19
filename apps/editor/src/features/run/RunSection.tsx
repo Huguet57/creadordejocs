@@ -12,7 +12,9 @@ import {
 } from "../editor-state/runtime-types.js"
 import type { RuntimeMouseButton, RuntimeState } from "../editor-state/runtime.js"
 import { resolveSpritePreviewSource, spritePixelsToDataUrl } from "../sprites/utils/sprite-preview-source.js"
+import { InstanceDebugPanel } from "./InstanceDebugPanel.js"
 import { isInstanceVisibleInWindow, mapPointerToWorldCoordinates, toScreenCoordinates } from "./run-window-utils.js"
+import { useInstanceDebug } from "./use-instance-debug.js"
 
 type RunSectionProps = {
   controller: RunSectionController
@@ -55,6 +57,13 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
   const { runtimeState } = controller
   const [resolvedSpriteSources, setResolvedSpriteSources] = useState<Record<string, string>>({})
   const canvasRef = useRef<HTMLDivElement>(null)
+
+  const instanceDebug = useInstanceDebug({
+    isRunning: controller.isRunning,
+    activeRoom: controller.activeRoom,
+    objects: controller.project.objects
+  })
+
   const activeRoomDimensions = useMemo(
     () => resolveRoomDimensions(controller.activeRoom),
     [controller.activeRoom]
@@ -188,6 +197,9 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
       if (button) {
         controller.setRuntimeMouseButton(button, true)
       }
+      if (!isPlayMode) {
+        instanceDebug.handleCanvasClick(point.x, point.y)
+      }
     }
     const onMouseUp = (event: MouseEvent): void => {
       if (!controller.isRunning) {
@@ -211,7 +223,7 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
       canvasElement.removeEventListener("mouseup", onMouseUp)
       canvasElement.removeEventListener("mouseleave", onMouseUp)
     }
-  }, [controller, windowPosition.x, windowPosition.y, activeRoomDimensions.width, activeRoomDimensions.height])
+  }, [controller, isPlayMode, instanceDebug, windowPosition.x, windowPosition.y, activeRoomDimensions.width, activeRoomDimensions.height])
 
   const runCanvasBackgroundStyle = useMemo(() => {
     if (!activeRoomBackgroundSprite || !activeRoomBackgroundSource) {
@@ -313,6 +325,16 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
                 ))}
               </div>
             </div>
+            <InstanceDebugPanel
+              project={controller.project}
+              runtimeState={runtimeState}
+              activeRoom={controller.activeRoom}
+              isRunning={controller.isRunning}
+              debugEnabled={instanceDebug.debugEnabled}
+              onDebugEnabledChange={instanceDebug.setDebugEnabled}
+              selectedInstanceId={instanceDebug.selectedInstanceId}
+              onSelectedInstanceIdChange={instanceDebug.setSelectedInstanceId}
+            />
           </div>
         </aside>
       )}
@@ -417,6 +439,8 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
                     spriteSource = spriteEntry ? resolvedSpriteSources[spriteEntry.id] : undefined
                   }
 
+                  const isDebugSelected = instanceDebug.debugEnabled && instanceEntry.id === instanceDebug.selectedInstanceId
+
                   return (
                     <div
                       key={instanceEntry.id}
@@ -426,7 +450,10 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
                         top: screenPosition.y,
                         width: instanceWidth,
                         height: instanceHeight,
-                        transform: `rotate(${instanceEntry.rotation ?? 0}deg)`
+                        transform: `rotate(${instanceEntry.rotation ?? 0}deg)`,
+                        ...(isDebugSelected
+                          ? { outline: "2px solid #3b82f6", outlineOffset: "1px", zIndex: 50 }
+                          : {})
                       }}
                     >
                       {spriteSource ? (

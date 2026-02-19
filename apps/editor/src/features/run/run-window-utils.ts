@@ -48,3 +48,30 @@ export function toScreenCoordinates(worldX: number, worldY: number, windowX: num
     y: worldY - windowY
   }
 }
+
+const DEFAULT_INSTANCE_SIZE = 32
+
+export function hitTestInstances(params: {
+  worldX: number
+  worldY: number
+  instances: readonly { id: string; objectId: string; x: number; y: number }[]
+  objects: readonly { id: string; width?: number | undefined; height?: number | undefined; visible?: boolean | undefined }[]
+}): string | null {
+  for (let i = params.instances.length - 1; i >= 0; i--) {
+    const inst = params.instances[i]
+    if (!inst) continue
+    const obj = params.objects.find((o) => o.id === inst.objectId)
+    if (!obj || obj.visible === false) continue
+    const w = obj.width ?? DEFAULT_INSTANCE_SIZE
+    const h = obj.height ?? DEFAULT_INSTANCE_SIZE
+    if (
+      params.worldX >= inst.x &&
+      params.worldX < inst.x + w &&
+      params.worldY >= inst.y &&
+      params.worldY < inst.y + h
+    ) {
+      return inst.id
+    }
+  }
+  return null
+}

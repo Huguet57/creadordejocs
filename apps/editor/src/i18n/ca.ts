@@ -6,7 +6,12 @@ export const caMessages = {
   spriteFrameDelete: "Elimina fotograma",
   spriteFrameLabel: "Fotograma",
   actionChangeSprite: "Canviar sprite",
-  actionSetSpriteSpeed: "Velocitat sprite"
+  actionSetSpriteSpeed: "Velocitat sprite",
+  runDebugInspectInstance: "Inspeccionar instància",
+  runDebugInstanceInspection: "Inspecció d'instància",
+  runDebugObject: "Objecte",
+  runDebugNone: "Cap",
+  runDebugVariables: "Variables"
 } as const
 
 export type EditorMessageKey = keyof typeof caMessages
