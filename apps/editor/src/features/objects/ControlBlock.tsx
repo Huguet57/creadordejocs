@@ -580,6 +580,7 @@ export function ControlBlock({
           collectionType="list"
           globalVariables={globalVariables}
           objectVariables={selectedObjectVariables}
+          otherObjectVariables={otherObjectVariables}
           allowOtherTarget={allowOtherTarget}
           target={(item.target as "self" | "other" | null | undefined) ?? null}
           onTargetChange={(nextTarget) =>
@@ -624,6 +625,7 @@ export function ControlBlock({
           collectionType="map"
           globalVariables={globalVariables}
           objectVariables={selectedObjectVariables}
+          otherObjectVariables={otherObjectVariables}
           allowOtherTarget={allowOtherTarget}
           target={(item.target as "self" | "other" | null | undefined) ?? null}
           onTargetChange={(nextTarget) =>

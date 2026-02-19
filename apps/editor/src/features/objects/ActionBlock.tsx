@@ -163,6 +163,12 @@ export function ActionBlock({
     (definition): definition is Extract<typeof selectedObjectVariables[number], { type: "number" | "string" | "boolean" }> =>
       definition.type === "number" || definition.type === "string" || definition.type === "boolean"
   )
+  const selfObjectVariableOptions = allObjectVariableOptions.filter(
+    (option) => selectedObjectVariables.some((v) => v.id === option.id)
+  )
+  const otherObjectVariableOptionsForPicker = allObjectVariableOptions.filter(
+    (option) => otherObjectVariables.some((v) => v.id === option.id)
+  )
   const allowOtherTarget = eventType === "Collision"
   const selectedGlobalVariableForChange =
     action.type === "changeVariable" && action.scope === "global"
@@ -683,7 +689,8 @@ export function ActionBlock({
               scope={action.scope}
               variableId={action.variableId}
               globalVariables={globalVariables}
-              objectVariables={objectVariableOptions}
+              objectVariables={allowOtherTarget ? selfObjectVariableOptions.filter((o) => o.type === "number" || o.type === "string" || o.type === "boolean") : objectVariableOptions}
+              otherObjectVariables={otherObjectVariableOptionsForPicker.filter((o) => o.type === "number" || o.type === "string" || o.type === "boolean")}
               showTarget={allowOtherTarget}
               target={action.scope === "object" ? (action.target ?? "self") : null}
               targetInstanceId={action.scope === "object" ? (action.targetInstanceId ?? null) : null}
@@ -717,8 +724,8 @@ export function ActionBlock({
                     ...action,
                     scope: "object",
                     variableId: nextVariableId,
-                    target: action.scope === "object" ? (action.target ?? "self") : "self",
-                    targetInstanceId: action.scope === "object" ? (action.targetInstanceId ?? null) : null,
+                    target: action.target ?? "self",
+                    targetInstanceId: action.targetInstanceId ?? null,
                     value:
                       action.operator === "set"
                         ? asLiteralValue(selectedObjectDefinition?.initialValue ?? 0)
@@ -770,7 +777,8 @@ export function ActionBlock({
                 scope={leftScope}
                 variableId={leftVarId}
                 globalVariables={globalVariables}
-                objectVariables={compatibleObjectOptionsForCopy}
+                objectVariables={allowOtherTarget ? compatibleObjectOptionsForCopy.filter((o) => selectedObjectVariables.some((v) => v.id === o.id)) : compatibleObjectOptionsForCopy}
+                otherObjectVariables={compatibleObjectOptionsForCopy.filter((o) => otherObjectVariables.some((v) => v.id === o.id))}
                 showTarget={leftScope === "object" && allowOtherTarget}
                 target={leftScope === "object" ? action.instanceTarget : null}
                 targetInstanceId={leftScope === "object" ? (action.instanceTargetId ?? null) : null}
@@ -794,7 +802,8 @@ export function ActionBlock({
                 scope={rightScope}
                 variableId={rightVarId}
                 globalVariables={globalVariables}
-                objectVariables={compatibleObjectOptionsForCopy}
+                objectVariables={allowOtherTarget ? compatibleObjectOptionsForCopy.filter((o) => selectedObjectVariables.some((v) => v.id === o.id)) : compatibleObjectOptionsForCopy}
+                otherObjectVariables={compatibleObjectOptionsForCopy.filter((o) => otherObjectVariables.some((v) => v.id === o.id))}
                 allowedScopes={[rightScope]}
                 showTarget={rightScope === "object" && allowOtherTarget}
                 target={rightScope === "object" ? action.instanceTarget : null}
@@ -821,7 +830,8 @@ export function ActionBlock({
               scope={action.scope}
               variableId={action.variableId}
               globalVariables={globalVariables}
-              objectVariables={objectVariableOptions}
+              objectVariables={allowOtherTarget ? selfObjectVariableOptions.filter((o) => o.type === "number" || o.type === "string" || o.type === "boolean") : objectVariableOptions}
+              otherObjectVariables={otherObjectVariableOptionsForPicker.filter((o) => o.type === "number" || o.type === "string" || o.type === "boolean")}
               showTarget={allowOtherTarget}
               target={action.scope === "object" ? (action.target ?? "self") : null}
               targetInstanceId={action.scope === "object" ? (action.targetInstanceId ?? null) : null}
@@ -850,8 +860,8 @@ export function ActionBlock({
                     type: "randomizeVariable",
                     scope: "object",
                     variableId: nextVariableId,
-                    target: action.scope === "object" ? (action.target ?? "self") : "self",
-                    targetInstanceId: action.scope === "object" ? (action.targetInstanceId ?? null) : null,
+                    target: action.target ?? "self",
+                    targetInstanceId: action.targetInstanceId ?? null,
                     step: action.step
                   })
                 }
@@ -917,6 +927,7 @@ export function ActionBlock({
               }
               globalVariables={globalVariables}
               objectVariables={selectedObjectVariables}
+              otherObjectVariables={otherObjectVariables}
               allowOtherTarget={allowOtherTarget}
               target={action.scope === "object" ? (action.target === "other" ? "other" : "self") : null}
               onTargetChange={(nextTarget) => {
@@ -981,7 +992,8 @@ export function ActionBlock({
                   onUpdate({ type: "mapClear", scope: "global", variableId: nextVariableId })
                   return
                 }
-                const selectedObject = selectedObjectVariables.find(
+                const allObjVars = allowOtherTarget ? [...selectedObjectVariables, ...otherObjectVariables] : selectedObjectVariables
+                const selectedObject = allObjVars.find(
                   (definition) =>
                     definition.id === nextVariableId &&
                     (isListAction ? definition.type === "list" : definition.type === "map")
@@ -995,8 +1007,8 @@ export function ActionBlock({
                     type: "listPush",
                     scope: "object",
                     variableId: nextVariableId,
-                    target: action.scope === "object" ? (action.target ?? "self") : "self",
-                    targetInstanceId: action.scope === "object" ? (action.targetInstanceId ?? null) : null,
+                    target: action.target ?? "self",
+                    targetInstanceId: action.targetInstanceId ?? null,
                     value: defaultValue
                   })
                   return
@@ -1006,8 +1018,8 @@ export function ActionBlock({
                     type: "listSetAt",
                     scope: "object",
                     variableId: nextVariableId,
-                    target: action.scope === "object" ? (action.target ?? "self") : "self",
-                    targetInstanceId: action.scope === "object" ? (action.targetInstanceId ?? null) : null,
+                    target: action.target ?? "self",
+                    targetInstanceId: action.targetInstanceId ?? null,
                     index: action.index,
                     value: defaultValue
                   })
@@ -1018,8 +1030,8 @@ export function ActionBlock({
                     type: "listRemoveAt",
                     scope: "object",
                     variableId: nextVariableId,
-                    target: action.scope === "object" ? (action.target ?? "self") : "self",
-                    targetInstanceId: action.scope === "object" ? (action.targetInstanceId ?? null) : null,
+                    target: action.target ?? "self",
+                    targetInstanceId: action.targetInstanceId ?? null,
                     index: action.index
                   })
                   return
@@ -1029,8 +1041,8 @@ export function ActionBlock({
                     type: "listClear",
                     scope: "object",
                     variableId: nextVariableId,
-                    target: action.scope === "object" ? (action.target ?? "self") : "self",
-                    targetInstanceId: action.scope === "object" ? (action.targetInstanceId ?? null) : null
+                    target: action.target ?? "self",
+                    targetInstanceId: action.targetInstanceId ?? null
                   })
                   return
                 }
@@ -1039,8 +1051,8 @@ export function ActionBlock({
                     type: "mapSet",
                     scope: "object",
                     variableId: nextVariableId,
-                    target: action.scope === "object" ? (action.target ?? "self") : "self",
-                    targetInstanceId: action.scope === "object" ? (action.targetInstanceId ?? null) : null,
+                    target: action.target ?? "self",
+                    targetInstanceId: action.targetInstanceId ?? null,
                     key: action.key,
                     value: defaultValue
                   })
@@ -1051,8 +1063,8 @@ export function ActionBlock({
                     type: "mapDelete",
                     scope: "object",
                     variableId: nextVariableId,
-                    target: action.scope === "object" ? (action.target ?? "self") : "self",
-                    targetInstanceId: action.scope === "object" ? (action.targetInstanceId ?? null) : null,
+                    target: action.target ?? "self",
+                    targetInstanceId: action.targetInstanceId ?? null,
                     key: action.key
                   })
                   return
@@ -1061,8 +1073,8 @@ export function ActionBlock({
                   type: "mapClear",
                   scope: "object",
                   variableId: nextVariableId,
-                  target: action.scope === "object" ? (action.target ?? "self") : "self",
-                  targetInstanceId: action.scope === "object" ? (action.targetInstanceId ?? null) : null
+                  target: action.target ?? "self",
+                  targetInstanceId: action.targetInstanceId ?? null
                 })
               }}
             />

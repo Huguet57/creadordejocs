@@ -8,6 +8,7 @@ type CollectionVariablePickerProps = {
   collectionType: "list" | "map"
   globalVariables: ProjectV1["variables"]["global"]
   objectVariables: ProjectV1["variables"]["global"]
+  otherObjectVariables?: ProjectV1["variables"]["global"]
   onChange: (scope: "global" | "object", variableId: string) => void
   allowOtherTarget?: boolean
   target?: "self" | "other" | null | undefined
@@ -26,6 +27,7 @@ export function CollectionVariablePicker({
   collectionType,
   globalVariables,
   objectVariables,
+  otherObjectVariables = [],
   onChange,
   allowOtherTarget = false,
   target,
@@ -52,21 +54,26 @@ export function CollectionVariablePicker({
   }, [isOpen])
 
   const filteredGlobal = globalVariables.filter((v) => v.type === collectionType)
-  const filteredObject = objectVariables.filter((v) => v.type === collectionType)
+  const activeObjectVariables = allowOtherTarget && localTarget === "other" ? otherObjectVariables : objectVariables
+  const filteredObject = activeObjectVariables.filter((v) => v.type === collectionType)
+  const hasAnyObjectVariables = allowOtherTarget
+    ? objectVariables.filter((v) => v.type === collectionType).length > 0 || otherObjectVariables.filter((v) => v.type === collectionType).length > 0
+    : filteredObject.length > 0
 
+  const allObjectVars = allowOtherTarget ? [...objectVariables, ...otherObjectVariables] : objectVariables
   const displayName = (() => {
     if (scope === "global") {
       return filteredGlobal.find((v) => v.id === variableId)?.name ?? "?"
     }
-    return filteredObject.find((v) => v.id === variableId)?.name ?? "?"
+    return allObjectVars.find((v) => v.id === variableId)?.name ?? "?"
   })()
 
   const ScopeIcon = scope === "global" ? Globe : Box
 
-  const targetSuffix =
+  const targetPrefix =
     scope === "object" && allowOtherTarget && target
-      ? `(${TARGET_LABELS[target] ?? target})`
-      : null
+      ? `${TARGET_LABELS[target] ?? target}.`
+      : ""
 
   const borderColor = variant === "purple" ? "border-purple-300" : "border-slate-300"
   const hoverBg = variant === "purple" ? "hover:bg-purple-50" : "hover:bg-slate-50"
@@ -75,7 +82,7 @@ export function CollectionVariablePicker({
   const rowHover = variant === "purple" ? "hover:bg-purple-50" : "hover:bg-blue-50"
 
   const itemTypeBadge = collectionType === "list" ? "list" : "map"
-  const showTargetToggle = allowOtherTarget && filteredObject.length > 0
+  const showTargetToggle = allowOtherTarget && hasAnyObjectVariables
 
   return (
     <div className="collection-variable-picker-container relative" ref={containerRef}>
@@ -85,10 +92,7 @@ export function CollectionVariablePicker({
         onClick={() => setIsOpen(!isOpen)}
       >
         <ScopeIcon className="h-3 w-3 shrink-0 text-slate-400" />
-        <span className="truncate text-slate-700">{displayName}</span>
-        {targetSuffix && (
-          <span className="text-[9px] text-slate-400 shrink-0">{targetSuffix}</span>
-        )}
+        <span className="truncate text-slate-700">{targetPrefix}{displayName}</span>
         <ChevronDown className="h-3 w-3 shrink-0 text-slate-300" />
       </button>
 
@@ -121,7 +125,7 @@ export function CollectionVariablePicker({
             </div>
           )}
 
-          {filteredObject.length > 0 && (
+          {hasAnyObjectVariables && (
             <div className="collection-variable-picker-object-section">
               <div className="collection-variable-picker-section-header px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
                 <span>Objecte</span>
@@ -148,7 +152,9 @@ export function CollectionVariablePicker({
                   </div>
                 )}
               </div>
-              {filteredObject.map((variable) => (
+              {filteredObject.length === 0 ? (
+                <div className="px-3 py-1.5 text-xs text-slate-400">&mdash;</div>
+              ) : filteredObject.map((variable) => (
                 <button
                   key={variable.id}
                   type="button"
