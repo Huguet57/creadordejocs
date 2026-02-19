@@ -80,7 +80,8 @@ function ensureComparisonIfCondition(
 function getLeftValueExpectedType(
   left: ComparisonIfCondition["left"],
   globalVariables: ProjectV1["variables"]["global"],
-  selectedObjectVariables: ProjectV1["variables"]["global"]
+  selectedObjectVariables: ProjectV1["variables"]["global"],
+  otherObjectVariables: ProjectV1["variables"]["global"]
 ): "number" | "string" | "boolean" {
   const asScalarType = (type: ProjectV1["variables"]["global"][number]["type"] | undefined): "number" | "string" | "boolean" =>
     type === "string" || type === "boolean" || type === "number" ? type : "number"
@@ -92,7 +93,10 @@ function getLeftValueExpectedType(
   if (left.source === "mouseAttribute") return "number"
   if (left.source === "attribute") return "number"
   if (left.source === "globalVariable") return asScalarType(globalVariables.find((v) => v.id === left.variableId)?.type)
-  if (left.source === "internalVariable") return asScalarType(selectedObjectVariables.find((v) => v.id === left.variableId)?.type)
+  if (left.source === "internalVariable") {
+    const vars = "target" in left && left.target === "other" ? otherObjectVariables : selectedObjectVariables
+    return asScalarType(vars.find((v) => v.id === left.variableId)?.type)
+  }
   return "number"
 }
 
@@ -439,7 +443,7 @@ export function ControlBlock({
       condition: ComparisonIfCondition,
       onChange: (next: ComparisonIfCondition) => void
     ) => {
-      const selectedType = getLeftValueExpectedType(condition.left, globalVariables, selectedObjectVariables)
+      const selectedType = getLeftValueExpectedType(condition.left, globalVariables, selectedObjectVariables, otherObjectVariables)
       return (
         <>
           <RightValuePicker
@@ -453,7 +457,7 @@ export function ControlBlock({
             allowedSources={["globalVariable", "internalVariable", "attribute"]}
             variant="blue"
             onChange={(nextLeft) => {
-              const nextType = getLeftValueExpectedType(nextLeft as ComparisonIfCondition["left"], globalVariables, selectedObjectVariables)
+              const nextType = getLeftValueExpectedType(nextLeft as ComparisonIfCondition["left"], globalVariables, selectedObjectVariables, otherObjectVariables)
               onChange({ left: nextLeft as ComparisonIfCondition["left"], operator: condition.operator, right: getDefaultRightValueForType(nextType) })
             }}
           />
