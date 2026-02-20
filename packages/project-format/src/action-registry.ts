@@ -87,6 +87,10 @@ export const ACTION_REGISTRY = [
     ui: { label: "Velocitat sprite", shortLabel: "Vel. sprite", categoryId: "objects", editorVisible: true }
   },
   {
+    type: "setObjectText",
+    ui: { label: "Text objecte", shortLabel: "Text", categoryId: "objects", editorVisible: true }
+  },
+  {
     type: "changeScore",
     ui: { label: "Canviar punts", shortLabel: "Punts", categoryId: "game", editorVisible: true }
   },
@@ -210,6 +214,7 @@ export function createObjectActionSchema<
   const valueOrSource = z.union([deps.valueSourceSchema, deps.legacyVariableReferenceSchema, deps.variableValueSchema])
   const numberOrSource = z.union([z.number(), deps.valueSourceSchema, deps.legacyVariableReferenceSchema])
   const stringOrSource = z.union([z.string().min(1), deps.valueSourceSchema, deps.legacyVariableReferenceSchema])
+  const durationMsOrSource = z.union([z.number().int().min(1), deps.valueSourceSchema, deps.legacyVariableReferenceSchema])
   const flowScopeSchema = z.enum(["global", "object"])
   const flowTargetSchema = z.enum(["self", "other", "instanceId"])
   return z.discriminatedUnion("type", [
@@ -272,7 +277,15 @@ export function createObjectActionSchema<
       id: z.string().min(1),
       type: z.literal("message"),
       text: stringOrSource,
-      durationMs: z.union([z.number().int().min(1), deps.valueSourceSchema, deps.legacyVariableReferenceSchema])
+      durationMs: durationMsOrSource
+    }),
+    z.object({
+      id: z.string().min(1),
+      type: z.literal("setObjectText"),
+      text: stringOrSource,
+      justification: z.enum(["left", "center", "right"]).default("center"),
+      mode: z.enum(["temporary", "persistent"]).default("temporary"),
+      durationMs: z.preprocess((value) => value === undefined ? 2000 : value, durationMsOrSource)
     }),
     z.object({
       id: z.string().min(1),
@@ -762,6 +775,7 @@ export function createEditorDefaultAction(type: ActionType, ctx: ActionDefaultsC
   }
   if (type === "destroySelf") return { type: "destroySelf" }
   if (type === "destroyOther") return { type: "destroyOther" }
+  if (type === "setObjectText") return { type: "setObjectText", text: "Text", justification: "center", mode: "temporary", durationMs: 2000 }
   if (type === "changeScore") return { type: "changeScore", delta: 1 }
   if (type === "endGame") return { type: "endGame", message: "Game over" }
   if (type === "message") return { type: "message", text: "Missatge", durationMs: 2000 }

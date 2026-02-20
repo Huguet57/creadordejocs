@@ -72,3 +72,52 @@ describe("room window actions", () => {
     ).toMatchObject({ type: "moveWindow", dx: 10, dy: -4 })
   })
 })
+
+describe("setObjectText action", () => {
+  it("registers setObjectText in objects category", () => {
+    const setObjectTextEntry = ACTION_REGISTRY.find((entry) => entry.type === "setObjectText")
+    expect(setObjectTextEntry?.ui.categoryId).toBe("objects")
+    expect(setObjectTextEntry?.ui.editorVisible).toBe(true)
+  })
+
+  it("provides default editor payload for setObjectText", () => {
+    const defaultAction = createEditorDefaultAction("setObjectText", defaultContext)
+    expect(defaultAction).toEqual({
+      type: "setObjectText",
+      text: "Text",
+      justification: "center",
+      mode: "temporary",
+      durationMs: 2000
+    })
+  })
+
+  it("accepts setObjectText in action schema and applies defaults", () => {
+    expect(
+      objectActionSchema.parse({
+        id: "action-set-object-text",
+        type: "setObjectText",
+        text: "Hola"
+      })
+    ).toMatchObject({
+      type: "setObjectText",
+      text: "Hola",
+      justification: "center",
+      mode: "temporary",
+      durationMs: 2000
+    })
+
+    expect(
+      objectActionSchema.parse({
+        id: "action-set-object-text-left",
+        type: "setObjectText",
+        text: { source: "literal", value: "Hola esquerra" },
+        justification: "left",
+        mode: "persistent"
+      })
+    ).toMatchObject({
+      type: "setObjectText",
+      justification: "left",
+      mode: "persistent"
+    })
+  })
+})

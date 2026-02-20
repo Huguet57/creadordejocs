@@ -30,6 +30,12 @@ export type CustomEventQueueEntry = {
   sourceInstanceId: string
 }
 
+export type RuntimeObjectTextEntry = {
+  text: string
+  justification: "left" | "center" | "right"
+  remainingMs: number | null
+}
+
 export type RuntimeState = {
   score: number
   gameOver: boolean
@@ -51,6 +57,7 @@ export type RuntimeState = {
   spriteOverrideByInstanceId: Record<string, string>
   spriteSpeedMsByInstanceId: Record<string, number>
   spriteAnimationElapsedMsByInstanceId: Record<string, number>
+  objectTextByInstanceId: Record<string, RuntimeObjectTextEntry>
   windowByRoomId: Record<string, { x: number; y: number }>
 }
 

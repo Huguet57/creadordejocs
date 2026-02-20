@@ -704,6 +704,56 @@ function executeActionFallback(
       }
     }
   }
+  if (action.type === "setObjectText") {
+    const text = resolveStringValue(action.text, result, ctx)
+    if (text === undefined) {
+      return { result }
+    }
+
+    if (text === "") {
+      if (!(result.instance.id in result.runtime.objectTextByInstanceId)) {
+        return { result }
+      }
+      const { [result.instance.id]: _removed, ...nextObjectTextByInstanceId } = result.runtime.objectTextByInstanceId
+      void _removed
+      return {
+        result: {
+          ...result,
+          runtime: {
+            ...result.runtime,
+            objectTextByInstanceId: nextObjectTextByInstanceId
+          }
+        }
+      }
+    }
+
+    const mode = action.mode ?? "temporary"
+    let remainingMs: number | null = null
+    if (mode === "temporary") {
+      const resolvedDurationMs = resolveNumberValue(action.durationMs ?? 2000, result, ctx)
+      if (resolvedDurationMs === undefined) {
+        return { result }
+      }
+      remainingMs = Math.max(1, Math.round(resolvedDurationMs))
+    }
+
+    return {
+      result: {
+        ...result,
+        runtime: {
+          ...result.runtime,
+          objectTextByInstanceId: {
+            ...result.runtime.objectTextByInstanceId,
+            [result.instance.id]: {
+              text,
+              justification: action.justification ?? "center",
+              remainingMs
+            }
+          }
+        }
+      }
+    }
+  }
   if (action.type === "playSound") {
     return {
       result: {
@@ -1445,6 +1495,7 @@ export const ACTION_RUNTIME_REGISTRY: ActionRuntimeRegistry = {
   changeScore: (action, result, ctx) => executeActionFallback(action, result, ctx),
   endGame: (action, result, ctx) => executeActionFallback(action, result, ctx),
   message: (action, result, ctx) => executeActionFallback(action, result, ctx),
+  setObjectText: (action, result, ctx) => executeActionFallback(action, result, ctx),
   playSound: (action, result, ctx) => executeActionFallback(action, result, ctx),
   changeVariable: (action, result, ctx) => executeActionFallback(action, result, ctx),
   randomizeVariable: (action, result, ctx) => executeActionFallback(action, result, ctx),

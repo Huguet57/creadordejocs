@@ -509,6 +509,7 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
                   }
 
                   const isDebugSelected = instanceDebug.debugEnabled && instanceEntry.id === instanceDebug.selectedInstanceId
+                  const objectTextEntry = runtimeState.objectTextByInstanceId[instanceEntry.id]
 
                   return (
                     <div
@@ -534,6 +535,16 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
                         />
                       ) : (
                         objectEntry?.name.slice(0, 2).toUpperCase() ?? "??"
+                      )}
+                      {objectTextEntry && (
+                        <div className="mvp24-run-instance-text pointer-events-none absolute inset-0 z-10 flex items-center px-1">
+                          <span
+                            className="w-full whitespace-pre-wrap [overflow-wrap:anywhere] text-[9px] leading-tight text-slate-900"
+                            style={{ textAlign: objectTextEntry.justification }}
+                          >
+                            {objectTextEntry.text}
+                          </span>
+                        </div>
                       )}
                     </div>
                   )

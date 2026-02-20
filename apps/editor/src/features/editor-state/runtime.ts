@@ -67,6 +67,7 @@ function clearRuntimeStateForRemovedInstances(runtime: RuntimeState, removedInst
   let nextSpriteOverride = runtime.spriteOverrideByInstanceId
   let nextSpriteSpeed = runtime.spriteSpeedMsByInstanceId
   let nextSpriteElapsed = runtime.spriteAnimationElapsedMsByInstanceId
+  let nextObjectText = runtime.objectTextByInstanceId
   for (const instanceId of removedInstanceIds) {
     if (instanceId in nextSpriteOverride) {
       const { [instanceId]: _overrideRemoved, ...rest } = nextSpriteOverride
@@ -83,6 +84,11 @@ function clearRuntimeStateForRemovedInstances(runtime: RuntimeState, removedInst
       void _elapsedRemoved
       nextSpriteElapsed = rest
     }
+    if (instanceId in nextObjectText) {
+      const { [instanceId]: _textRemoved, ...rest } = nextObjectText
+      void _textRemoved
+      nextObjectText = rest
+    }
   }
   return {
     ...runtime,
@@ -93,8 +99,46 @@ function clearRuntimeStateForRemovedInstances(runtime: RuntimeState, removedInst
     eventLocksByKey: filterEventLocksByRemovedInstances(runtime.eventLocksByKey, removedInstanceIds),
     spriteOverrideByInstanceId: nextSpriteOverride,
     spriteSpeedMsByInstanceId: nextSpriteSpeed,
-    spriteAnimationElapsedMsByInstanceId: nextSpriteElapsed
+    spriteAnimationElapsedMsByInstanceId: nextSpriteElapsed,
+    objectTextByInstanceId: nextObjectText
   }
+}
+
+function advanceObjectTextTimers(
+  objectTextByInstanceId: RuntimeState["objectTextByInstanceId"],
+  elapsedMs: number
+): RuntimeState["objectTextByInstanceId"] {
+  if (elapsedMs <= 0 || Object.keys(objectTextByInstanceId).length === 0) {
+    return objectTextByInstanceId
+  }
+
+  let changed = false
+  const nextEntries: RuntimeState["objectTextByInstanceId"] = {}
+  for (const [instanceId, entry] of Object.entries(objectTextByInstanceId)) {
+    if (entry.remainingMs === null) {
+      nextEntries[instanceId] = entry
+      continue
+    }
+
+    const nextRemainingMs = entry.remainingMs - elapsedMs
+    if (nextRemainingMs <= 0) {
+      changed = true
+      continue
+    }
+
+    if (nextRemainingMs !== entry.remainingMs) {
+      changed = true
+      nextEntries[instanceId] = {
+        ...entry,
+        remainingMs: nextRemainingMs
+      }
+      continue
+    }
+
+    nextEntries[instanceId] = entry
+  }
+
+  return changed ? nextEntries : objectTextByInstanceId
 }
 
 function isOutsideRoom(
@@ -534,6 +578,7 @@ export function createInitialRuntimeState(project?: ProjectV1): RuntimeState {
     spriteOverrideByInstanceId: {},
     spriteSpeedMsByInstanceId: {},
     spriteAnimationElapsedMsByInstanceId: {},
+    objectTextByInstanceId: {},
     windowByRoomId: project ? buildInitialWindowByRoomId(project) : {}
   }
 }
@@ -554,6 +599,7 @@ export function runRuntimeTick(
   const { width: roomWidth, height: roomHeight } = resolveRoomDimensions(room)
   const storedWindow = runtime.windowByRoomId[room.id] ?? { x: 0, y: 0 }
   const clampedWindow = clampWindowToRoom(storedWindow.x, storedWindow.y, roomWidth, roomHeight)
+  const nextObjectTextByInstanceId = advanceObjectTextTimers(runtime.objectTextByInstanceId, RUNTIME_TICK_MS)
   const hasStoredWindow = runtime.windowByRoomId[room.id] !== undefined
   const nextWindowByRoomId =
     hasStoredWindow && storedWindow.x === clampedWindow.x && storedWindow.y === clampedWindow.y
@@ -574,6 +620,7 @@ export function runRuntimeTick(
     nextRoomId: null,
     restartRoomRequested: false,
     customEventQueue: [],
+    objectTextByInstanceId: nextObjectTextByInstanceId,
     windowByRoomId: nextWindowByRoomId
   }
   nextRuntime = applyMouseBuiltinsToRuntime(nextRuntime, mouseInput, roomWidth, roomHeight)
@@ -841,6 +888,9 @@ export function runRuntimeTick(
       globalAliveInstanceIds.has(instanceId)
     )
   )
+  const keptObjectText = Object.fromEntries(
+    Object.entries(postAnimationRuntime.objectTextByInstanceId).filter(([instanceId]) => globalAliveInstanceIds.has(instanceId))
+  )
   const compactedRuntime: RuntimeState = {
     ...postAnimationRuntime,
     initializedInstanceIds: postAnimationRuntime.initializedInstanceIds.filter((instanceId) =>
@@ -856,6 +906,7 @@ export function runRuntimeTick(
     spriteOverrideByInstanceId: keptSpriteOverrides,
     spriteSpeedMsByInstanceId: keptSpriteSpeed,
     spriteAnimationElapsedMsByInstanceId: keptSpriteElapsed,
+    objectTextByInstanceId: keptObjectText,
     nextRoomId: null,
     restartRoomRequested: false
   }

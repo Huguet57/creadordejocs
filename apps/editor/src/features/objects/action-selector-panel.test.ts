@@ -18,6 +18,7 @@ describe("ActionSelectorPanel", () => {
     expect(markup).toContain("Afegir acció")
     expect(markup).toContain("Moure")
     expect(markup).toContain("Variable")
+    expect(markup).toContain("Text objecte")
   })
 
   it("renders collection groups only when enabled", () => {

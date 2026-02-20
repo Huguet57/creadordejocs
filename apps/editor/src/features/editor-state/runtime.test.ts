@@ -6246,6 +6246,228 @@ describe("window per room actions", () => {
     expect(secondTick.runtime.windowByRoomId["room-a"]).toEqual({ x: 320, y: 180 })
   })
 
+  function createSetObjectTextProject(
+    createItems: ProjectV1["objects"][number]["events"][number]["items"]
+  ): ProjectV1 {
+    return {
+      version: 1,
+      metadata: {
+        id: "project-set-object-text",
+        name: "Set object text runtime test",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: { sprites: [], sounds: [] },
+      variables: { global: [], objectByObjectId: {} },
+      objects: [
+        {
+          id: "object-text",
+          name: "Text object",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          width: 32,
+          height: 32,
+          events: [
+            {
+              id: "event-create",
+              type: "Create",
+              key: null,
+              keyboardMode: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: createItems
+            }
+          ]
+        }
+      ],
+      rooms: [
+        {
+          id: "room-main",
+          name: "Main",
+          instances: [{ id: "instance-text", objectId: "object-text", x: 10, y: 20 }]
+        }
+      ],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+  }
+
+  it("shows temporary object text and expires it when remaining time reaches zero", () => {
+    const project = createSetObjectTextProject([
+      {
+        id: "item-set-object-text",
+        type: "action",
+        action: {
+          id: "action-set-object-text",
+          type: "setObjectText",
+          text: { source: "literal", value: "Hola temporal" },
+          justification: "center",
+          mode: "temporary",
+          durationMs: { source: "literal", value: 160 }
+        }
+      }
+    ])
+
+    const firstTick = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    const secondTick = runRuntimeTick(firstTick.project, "room-main", new Set(), firstTick.runtime)
+    const thirdTick = runRuntimeTick(secondTick.project, "room-main", new Set(), secondTick.runtime)
+
+    expect(firstTick.runtime.objectTextByInstanceId["instance-text"]).toEqual({
+      text: "Hola temporal",
+      justification: "center",
+      remainingMs: 160
+    })
+    expect(secondTick.runtime.objectTextByInstanceId["instance-text"]?.remainingMs).toBe(80)
+    expect(thirdTick.runtime.objectTextByInstanceId["instance-text"]).toBeUndefined()
+  })
+
+  it("keeps persistent object text visible across ticks", () => {
+    const project = createSetObjectTextProject([
+      {
+        id: "item-set-object-text",
+        type: "action",
+        action: {
+          id: "action-set-object-text",
+          type: "setObjectText",
+          text: { source: "literal", value: "Sempre visible" },
+          justification: "right",
+          mode: "persistent",
+          durationMs: { source: "literal", value: 80 }
+        }
+      }
+    ])
+
+    const firstTick = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+    const secondTick = runRuntimeTick(firstTick.project, "room-main", new Set(), firstTick.runtime)
+    const thirdTick = runRuntimeTick(secondTick.project, "room-main", new Set(), secondTick.runtime)
+
+    expect(firstTick.runtime.objectTextByInstanceId["instance-text"]).toEqual({
+      text: "Sempre visible",
+      justification: "right",
+      remainingMs: null
+    })
+    expect(secondTick.runtime.objectTextByInstanceId["instance-text"]).toEqual({
+      text: "Sempre visible",
+      justification: "right",
+      remainingMs: null
+    })
+    expect(thirdTick.runtime.objectTextByInstanceId["instance-text"]).toEqual({
+      text: "Sempre visible",
+      justification: "right",
+      remainingMs: null
+    })
+  })
+
+  it("replaces object text and justification when setObjectText runs again", () => {
+    const project = createSetObjectTextProject([
+      {
+        id: "item-set-object-text-a",
+        type: "action",
+        action: {
+          id: "action-set-object-text-a",
+          type: "setObjectText",
+          text: { source: "literal", value: "Text inicial" },
+          justification: "left",
+          mode: "persistent",
+          durationMs: { source: "literal", value: 2000 }
+        }
+      },
+      {
+        id: "item-set-object-text-b",
+        type: "action",
+        action: {
+          id: "action-set-object-text-b",
+          type: "setObjectText",
+          text: { source: "literal", value: "Text final" },
+          justification: "center",
+          mode: "temporary",
+          durationMs: { source: "literal", value: 240 }
+        }
+      }
+    ])
+
+    const firstTick = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+
+    expect(firstTick.runtime.objectTextByInstanceId["instance-text"]).toEqual({
+      text: "Text final",
+      justification: "center",
+      remainingMs: 240
+    })
+  })
+
+  it("clears object text when resolved text is an empty string", () => {
+    const project = createSetObjectTextProject([
+      {
+        id: "item-set-object-text-a",
+        type: "action",
+        action: {
+          id: "action-set-object-text-a",
+          type: "setObjectText",
+          text: { source: "literal", value: "Text inicial" },
+          justification: "left",
+          mode: "persistent",
+          durationMs: { source: "literal", value: 2000 }
+        }
+      },
+      {
+        id: "item-set-object-text-b",
+        type: "action",
+        action: {
+          id: "action-set-object-text-b",
+          type: "setObjectText",
+          text: { source: "literal", value: "" },
+          justification: "center",
+          mode: "temporary",
+          durationMs: { source: "literal", value: 2000 }
+        }
+      }
+    ])
+
+    const firstTick = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+
+    expect(firstTick.runtime.objectTextByInstanceId["instance-text"]).toBeUndefined()
+  })
+
+  it("removes object text state when the instance is destroyed", () => {
+    const project = createSetObjectTextProject([
+      {
+        id: "item-set-object-text",
+        type: "action",
+        action: {
+          id: "action-set-object-text",
+          type: "setObjectText",
+          text: { source: "literal", value: "A punt de destruir" },
+          justification: "center",
+          mode: "persistent",
+          durationMs: { source: "literal", value: 2000 }
+        }
+      },
+      {
+        id: "item-destroy-self",
+        type: "action",
+        action: {
+          id: "action-destroy-self",
+          type: "destroySelf"
+        }
+      }
+    ])
+
+    const firstTick = runRuntimeTick(project, "room-main", new Set(), createInitialRuntimeState(project))
+
+    expect(firstTick.project.rooms[0]?.instances).toHaveLength(0)
+    expect(firstTick.runtime.objectTextByInstanceId["instance-text"]).toBeUndefined()
+  })
+
   it("clampToRoom and OutsideRoom use custom room dimensions", () => {
     const project: ProjectV1 = {
       version: 1,

@@ -662,6 +662,70 @@ export function ActionBlock({
           </>
         )}
 
+        {action.type === "setObjectText" && (
+          <>
+            <div className="action-block-object-text-field flex items-center gap-1 flex-1 min-w-[220px]">
+              <label className="text-[10px] font-medium opacity-60">Txt</label>
+              <RightValuePicker
+                value={action.text}
+                expectedType="string"
+                globalVariables={globalVariables}
+                internalVariables={internalVariableOptions}
+                otherInternalVariables={otherInternalVariableOptions}
+                allowOtherTarget={allowOtherTarget}
+                onChange={(nextValue) => onUpdate({ ...action, text: nextValue as typeof action.text })}
+              />
+            </div>
+            <div className="action-block-object-text-justification-field flex items-center gap-1">
+              <label className="text-[10px] font-medium opacity-60">Align</label>
+              <select
+                className="h-7 rounded border border-slate-300 bg-white/50 px-2 text-xs focus:outline-none"
+                value={action.justification ?? "center"}
+                onChange={(event) =>
+                  onUpdate({
+                    ...action,
+                    justification: event.target.value as typeof action.justification
+                  })
+                }
+              >
+                <option value="center">center</option>
+                <option value="left">left</option>
+                <option value="right">right</option>
+              </select>
+            </div>
+            <div className="action-block-object-text-mode-field flex items-center gap-1">
+              <label className="text-[10px] font-medium opacity-60">Mode</label>
+              <select
+                className="h-7 rounded border border-slate-300 bg-white/50 px-2 text-xs focus:outline-none"
+                value={action.mode ?? "temporary"}
+                onChange={(event) =>
+                  onUpdate({
+                    ...action,
+                    mode: event.target.value as typeof action.mode
+                  })
+                }
+              >
+                <option value="temporary">temporary</option>
+                <option value="persistent">persistent</option>
+              </select>
+            </div>
+            {(action.mode ?? "temporary") === "temporary" && (
+              <div className="action-block-object-text-duration-field flex items-center gap-1">
+                <label className="text-[10px] font-medium opacity-60">ms</label>
+                <RightValuePicker
+                  value={action.durationMs ?? asLiteralValue(2000)}
+                  expectedType="number"
+                  globalVariables={globalVariables}
+                  internalVariables={internalVariableOptions}
+                  otherInternalVariables={otherInternalVariableOptions}
+                  allowOtherTarget={allowOtherTarget}
+                  onChange={(nextValue) => onUpdate({ ...action, durationMs: nextValue as typeof action.durationMs })}
+                />
+              </div>
+            )}
+          </>
+        )}
+
         {action.type === "goToRoom" && (
           <select
             className="action-block-room-select h-7 min-w-[140px] rounded border border-slate-300 bg-white/50 px-2 text-xs focus:outline-none"
