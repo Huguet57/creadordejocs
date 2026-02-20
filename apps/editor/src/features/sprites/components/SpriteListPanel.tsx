@@ -461,11 +461,15 @@ export function SpriteListPanel({
           )
         })}
 
-        {parentId !== null && childFolders.length === 0 && childSprites.length === 0 && (
-          <p className="py-1 text-[11px] text-slate-400" style={{ paddingLeft: `${depth * 16 + 20}px` }}>
-            Carpeta buida
-          </p>
-        )}
+        {parentId !== null &&
+          childFolders.length === 0 &&
+          childSprites.length === 0 &&
+          !(isAdding && addingInFolderId === parentId) &&
+          creatingFolderParentId !== parentId && (
+            <p className="py-1 text-[11px] text-slate-400" style={{ paddingLeft: `${depth * 16 + 20}px` }}>
+              Carpeta buida
+            </p>
+          )}
 
         {creatingFolderParentId === parentId && (
           <div className="mvp16-sprite-create-folder-inline flex py-1 pr-2" style={{ paddingLeft: `${depth * 16 + 8}px` }}>
@@ -492,7 +496,7 @@ export function SpriteListPanel({
         )}
 
         {isAdding && addingInFolderId === parentId && (
-          <div className="mvp16-sprite-add-inline -mx-2 mt-2 flex flex-col gap-1.5 border-y border-slate-200 bg-white p-2 shadow-sm">
+          <div className="mvp16-sprite-add-inline -mx-2 flex flex-col gap-1.5 px-2 py-1.5 pr-2" style={{ paddingLeft: `${depth * 16 + 8}px` }}>
             <input
               ref={inputCallbackRef}
               value={newName}
