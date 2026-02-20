@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronRight, Image as ImageIcon } from "lucide-react"
+import { Box, ChevronDown, ChevronRight, Image as ImageIcon } from "lucide-react"
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import {
   buildFolderChildrenByParent,
@@ -19,17 +19,23 @@ type SelectableSpriteFolder = {
 }
 
 type SpriteDropdownPickerProps = {
-  selectedSpriteId: string
+  selectedSpriteId: string | null
   sprites: SelectableSprite[]
   folders: SelectableSpriteFolder[]
   onSelect: (spriteId: string) => void
+  noneOption?: { label: string; onSelect: () => void }
+  disabled?: boolean
+  fullWidth?: boolean
 }
 
 export function SpriteDropdownPicker({
   selectedSpriteId,
   sprites,
   folders,
-  onSelect
+  onSelect,
+  noneOption,
+  disabled = false,
+  fullWidth = false
 }: SpriteDropdownPickerProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [expandedFolderIds, setExpandedFolderIds] = useState<Set<string>>(new Set())
@@ -225,7 +231,8 @@ export function SpriteDropdownPicker({
     <div className="sprite-dropdown-picker-container relative" ref={containerRef}>
       <button
         type="button"
-        className="sprite-dropdown-picker-trigger flex h-7 max-w-[180px] items-center gap-1.5 rounded border border-slate-300 bg-white/50 px-2 text-xs hover:bg-white focus:outline-none"
+        className={`sprite-dropdown-picker-trigger flex h-7 items-center gap-1.5 rounded border border-slate-300 bg-white/50 px-2 text-xs hover:bg-white focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100 ${fullWidth ? "w-full" : "max-w-[180px]"}`}
+        disabled={disabled}
         onClick={() => setIsOpen(!isOpen)}
       >
         {selectedSprite?.previewSrc ? (
@@ -235,10 +242,14 @@ export function SpriteDropdownPicker({
             className="h-4 w-4 shrink-0 object-contain"
             style={{ imageRendering: "pixelated" }}
           />
+        ) : noneOption && selectedSpriteId === null ? (
+          <Box className="h-3.5 w-3.5 shrink-0 text-slate-400" />
         ) : (
           <ImageIcon className="h-3.5 w-3.5 shrink-0 text-slate-400" />
         )}
-        <span className="min-w-0 truncate">{selectedSprite?.name ?? "—"}</span>
+        <span className="min-w-0 truncate">
+          {selectedSprite?.name ?? (noneOption ? noneOption.label : "—")}
+        </span>
         <ChevronDown className="ml-auto h-3 w-3 shrink-0 text-slate-400" />
       </button>
       {isOpen && (
@@ -247,7 +258,25 @@ export function SpriteDropdownPicker({
           className="sprite-dropdown-picker-popover absolute z-50 min-w-[220px] overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
           style={{ maxHeight: "260px" }}
         >
-          {sprites.length === 0 ? (
+          {noneOption && (
+            <button
+              type="button"
+              className={`flex w-full items-center gap-2 rounded px-2 py-1 text-left text-xs ${
+                selectedSpriteId === null
+                  ? "bg-indigo-50 font-medium text-indigo-700"
+                  : "text-slate-700 hover:bg-slate-100"
+              }`}
+              style={{ paddingLeft: "8px" }}
+              onClick={() => {
+                noneOption.onSelect()
+                setIsOpen(false)
+              }}
+            >
+              <Box className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+              <span className="truncate">{noneOption.label}</span>
+            </button>
+          )}
+          {sprites.length === 0 && !noneOption ? (
             <p className="px-3 py-2 text-center text-xs text-slate-400">Cap sprite disponible</p>
           ) : (
             <>

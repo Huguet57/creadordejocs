@@ -1,16 +1,16 @@
 import {
   Box,
   Eraser,
-  Check,
   ChevronDown,
   ChevronRight,
   Paintbrush,
   Plus
 } from "lucide-react"
-import { useEffect, useMemo, useRef, useState, type DragEvent as ReactDragEvent } from "react"
+import { useMemo, useState, type DragEvent as ReactDragEvent } from "react"
 import type { ProjectV1 } from "@creadordejocs/project-format"
 import { WINDOW_HEIGHT, WINDOW_WIDTH } from "../editor-state/runtime-types.js"
 import { buildEntriesByFolder, buildFolderChildrenByParent } from "../shared/editor-sidebar/tree-utils.js"
+import { SpriteDropdownPicker } from "../objects/SpriteDropdownPicker.js"
 
 type ObjectFolder = NonNullable<ProjectV1["resources"]["objectFolders"]>[number]
 type SpriteFolder = NonNullable<ProjectV1["resources"]["spriteFolders"]>[number]
@@ -75,8 +75,6 @@ export function RoomObjectPickerPanel({
 }: RoomObjectPickerPanelProps) {
   const [expandedObjectFolderIds, setExpandedObjectFolderIds] = useState<Set<string>>(new Set())
   const [expandedSpriteFolderIds, setExpandedSpriteFolderIds] = useState<Set<string>>(new Set())
-  const [isBackgroundSelectorOpen, setIsBackgroundSelectorOpen] = useState(false)
-  const backgroundSelectorRef = useRef<HTMLDivElement | null>(null)
 
   const objectFoldersByParent = useMemo(
     () => buildFolderChildrenByParent<ObjectFolder>(objectFolders),
@@ -92,36 +90,6 @@ export function RoomObjectPickerPanel({
     [backgroundSprites]
   )
   const canPlaceObjects = hasActiveRoom && editMode === "objects"
-
-  const selectedBackgroundSprite = useMemo(
-    () => backgroundSprites.find((spriteEntry) => spriteEntry.id === backgroundSpriteId) ?? null,
-    [backgroundSprites, backgroundSpriteId]
-  )
-
-  useEffect(() => {
-    if (!isBackgroundSelectorOpen) {
-      return
-    }
-    const handleMouseDown = (event: MouseEvent) => {
-      if (backgroundSelectorRef.current && !backgroundSelectorRef.current.contains(event.target as Node)) {
-        setIsBackgroundSelectorOpen(false)
-      }
-    }
-    document.addEventListener("mousedown", handleMouseDown)
-    return () => document.removeEventListener("mousedown", handleMouseDown)
-  }, [isBackgroundSelectorOpen])
-
-  useEffect(() => {
-    if (!hasActiveRoom) {
-      setIsBackgroundSelectorOpen(false)
-    }
-  }, [hasActiveRoom])
-
-  useEffect(() => {
-    if (editMode !== "paintBackground") {
-      setIsBackgroundSelectorOpen(false)
-    }
-  }, [editMode])
 
   const toggleObjectFolder = (folderId: string) => {
     setExpandedObjectFolderIds((prev) => {
@@ -381,69 +349,26 @@ export function RoomObjectPickerPanel({
                 <span className="text-[10px] text-slate-400">{paintedStampCount} stamps</span>
               </div>
               <div className="space-y-2 p-3">
-                <div className="relative" ref={backgroundSelectorRef}>
+                <div>
                   <span className="mb-1 block text-xs font-medium text-slate-500">Background</span>
-                  <button
-                    type="button"
-                    className="flex h-8 w-full items-center gap-2 rounded border border-slate-300 bg-white px-2 text-left text-xs text-slate-700 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100"
+                  <SpriteDropdownPicker
+                    selectedSpriteId={backgroundSpriteId}
+                    sprites={backgroundSprites.map((s) => ({
+                      id: s.id,
+                      name: s.name,
+                      folderId: s.folderId ?? null,
+                      previewSrc: resolvedSpriteSources[s.id] ?? null,
+                    }))}
+                    folders={spriteFolders.map((f) => ({
+                      id: f.id,
+                      name: f.name,
+                      parentId: f.parentId ?? null,
+                    }))}
+                    onSelect={(spriteId) => onChangeBackgroundSprite(spriteId)}
+                    noneOption={{ label: "No background", onSelect: () => onChangeBackgroundSprite(null) }}
                     disabled={!hasActiveRoom}
-                    onClick={() => setIsBackgroundSelectorOpen((current) => !current)}
-                    aria-expanded={isBackgroundSelectorOpen}
-                    aria-haspopup="listbox"
-                  >
-                    {selectedBackgroundSprite && resolvedSpriteSources[selectedBackgroundSprite.id] ? (
-                      <img
-                        src={resolvedSpriteSources[selectedBackgroundSprite.id]}
-                        alt=""
-                        className="h-4 w-4 object-contain"
-                        style={{ imageRendering: "pixelated" }}
-                      />
-                    ) : (
-                      <Box className="h-3.5 w-3.5 text-slate-400" />
-                    )}
-                    <span className="truncate">{selectedBackgroundSprite?.name ?? "No background"}</span>
-                    <ChevronDown className="ml-auto h-3.5 w-3.5 text-slate-400" />
-                  </button>
-                  {isBackgroundSelectorOpen && (
-                    <div className="absolute bottom-[calc(100%+4px)] left-0 right-0 z-30 max-h-56 overflow-y-auto rounded border border-slate-200 bg-white shadow-lg">
-                      <button
-                        type="button"
-                        className="flex w-full items-center gap-1.5 px-2 py-1.5 text-left text-xs text-slate-700 hover:bg-slate-50"
-                        onClick={() => {
-                          onChangeBackgroundSprite(null)
-                          setIsBackgroundSelectorOpen(false)
-                        }}
-                      >
-                        <Box className="h-3 w-3 text-slate-400" />
-                        <span className="truncate">No background</span>
-                        {backgroundSpriteId === null && <Check className="ml-auto h-3 w-3 text-slate-400" />}
-                      </button>
-                      {backgroundSprites.map((spriteEntry) => (
-                        <button
-                          key={spriteEntry.id}
-                          type="button"
-                          className="flex w-full items-center gap-1.5 px-2 py-1.5 text-left text-xs text-slate-700 hover:bg-slate-50"
-                          onClick={() => {
-                            onChangeBackgroundSprite(spriteEntry.id)
-                            setIsBackgroundSelectorOpen(false)
-                          }}
-                        >
-                          {resolvedSpriteSources[spriteEntry.id] ? (
-                            <img
-                              src={resolvedSpriteSources[spriteEntry.id]}
-                              alt=""
-                              className="h-3.5 w-3.5 object-contain"
-                              style={{ imageRendering: "pixelated" }}
-                            />
-                          ) : (
-                            <Box className="h-3 w-3 text-slate-400" />
-                          )}
-                          <span className="truncate">{spriteEntry.name}</span>
-                          {spriteEntry.id === backgroundSpriteId && <Check className="ml-auto h-3 w-3 text-slate-400" />}
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                    fullWidth
+                  />
                 </div>
 
                 <button
