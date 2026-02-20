@@ -126,6 +126,20 @@ function EditorAppShell() {
     }
   }
 
+  const handleGoogleSignIn = async (): Promise<void> => {
+    setIsAuthSubmitting(true)
+    setAuthError(null)
+    try {
+      await controller.signInWithGoogle()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "No s'ha pogut iniciar sessio amb Google."
+      setAuthError(message)
+      console.error("[auth] google sign in failed:", error)
+    } finally {
+      setIsAuthSubmitting(false)
+    }
+  }
+
   // Sync URL when activeSection changes
   useEffect(() => {
     const sectionPath = buildEditorSectionPath(controller.activeSection)
@@ -245,6 +259,7 @@ function EditorAppShell() {
         onClose={closeAuthModal}
         onSignIn={handleSignIn}
         onSignUp={handleSignUp}
+        onSignInWithGoogle={handleGoogleSignIn}
       />
     </main>
   )

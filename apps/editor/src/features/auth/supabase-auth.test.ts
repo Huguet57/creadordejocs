@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest"
 import {
   getSupabaseAuthUser,
   signInWithEmailPassword,
+  signInWithGoogle,
   signUpWithEmailPassword,
   signOutFromSupabase,
   subscribeToSupabaseAuthUser
@@ -88,6 +89,19 @@ describe("supabase-auth", () => {
       email: "new-user@example.com",
       password: "secret-pass"
     })
+  })
+
+  it("starts Google OAuth sign-in request", async () => {
+    const signInWithOAuth = vi.fn().mockResolvedValue({ error: null })
+    const client = {
+      auth: {
+        signInWithOAuth
+      }
+    } as unknown as Parameters<typeof signInWithGoogle>[0]
+
+    await signInWithGoogle(client)
+
+    expect(signInWithOAuth).toHaveBeenCalledWith(expect.objectContaining({ provider: "google" }))
   })
 
   it("signs out current user", async () => {

@@ -9,6 +9,7 @@ test("opens email/password auth modal from header sign in button", async ({ page
   await expect(page.getByTestId("auth-signin-modal")).toBeVisible()
   await expect(page.getByTestId("auth-email-input")).toBeVisible()
   await expect(page.getByTestId("auth-password-input")).toBeVisible()
+  await expect(page.getByTestId("auth-google-button")).toBeVisible()
   await page.getByTestId("auth-cancel-button").click()
   await expect(page.getByTestId("auth-signin-modal")).toHaveCount(0)
 })

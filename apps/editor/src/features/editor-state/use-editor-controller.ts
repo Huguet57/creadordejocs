@@ -109,6 +109,7 @@ import {
 import {
   getSupabaseAuthUser,
   signInWithEmailPassword as signInWithSupabaseEmailPassword,
+  signInWithGoogle as signInWithSupabaseGoogle,
   signOutFromSupabase,
   signUpWithEmailPassword as signUpWithSupabaseEmailPassword,
   subscribeToSupabaseAuthUser,
@@ -543,6 +544,11 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
   const runSignUpWithEmailPassword = async (email: string, password: string): Promise<void> => {
     const supabase = getSupabaseClient()
     await signUpWithSupabaseEmailPassword(supabase, email, password)
+  }
+
+  const runSignInWithGoogle = async (): Promise<void> => {
+    const supabase = getSupabaseClient()
+    await signInWithSupabaseGoogle(supabase)
   }
 
   const runSignOut = async (): Promise<void> => {
@@ -1673,6 +1679,9 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
     },
     async signUpWithEmailPassword(email: string, password: string) {
       await runSignUpWithEmailPassword(email, password)
+    },
+    async signInWithGoogle() {
+      await runSignInWithGoogle()
     },
     async signOut() {
       await runSignOut()

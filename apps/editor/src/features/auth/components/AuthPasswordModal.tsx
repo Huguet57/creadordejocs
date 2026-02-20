@@ -13,6 +13,7 @@ type AuthPasswordModalProps = {
   onClose: () => void
   onSignIn: () => Promise<void> | void
   onSignUp: () => Promise<void> | void
+  onSignInWithGoogle: () => Promise<void> | void
 }
 
 export function AuthPasswordModal({
@@ -25,7 +26,8 @@ export function AuthPasswordModal({
   onPasswordChange,
   onClose,
   onSignIn,
-  onSignUp
+  onSignUp,
+  onSignInWithGoogle
 }: AuthPasswordModalProps) {
   if (!open) {
     return null
@@ -83,6 +85,17 @@ export function AuthPasswordModal({
             />
           </div>
           {errorMessage ? <p className="text-xs text-red-600">{errorMessage}</p> : null}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            data-testid="auth-google-button"
+            className="w-full"
+            disabled={isSubmitting}
+            onClick={() => void onSignInWithGoogle()}
+          >
+            Entrar amb Google
+          </Button>
           <div className="flex items-center justify-end gap-2 pt-1">
             <Button
               type="button"

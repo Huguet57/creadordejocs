@@ -102,6 +102,28 @@ export async function signUpWithEmailPassword(client: SupabaseClient | null, ema
   }
 }
 
+export async function signInWithGoogle(client: SupabaseClient | null): Promise<void> {
+  if (!client) {
+    throw new Error("Supabase auth is not configured.")
+  }
+
+  const redirectTo = import.meta.env.VITE_SUPABASE_AUTH_REDIRECT_TO
+  const { error } = await client.auth.signInWithOAuth({
+    provider: "google",
+    ...(redirectTo
+      ? {
+          options: {
+            redirectTo
+          }
+        }
+      : {})
+  })
+
+  if (error) {
+    throw new Error(`Could not sign in with Google: ${error.message}`)
+  }
+}
+
 export async function signOutFromSupabase(client: SupabaseClient | null): Promise<void> {
   if (!client) {
     return
