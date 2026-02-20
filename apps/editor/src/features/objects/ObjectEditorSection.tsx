@@ -324,6 +324,7 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
         onPinObject={handlePinObject}
         onOpenInNewTab={handlePinObject}
         onAddObject={(name, folderId) => controller.addObject(name, folderId)}
+        onDuplicateObject={(id) => controller.duplicateObject(id)}
         onDeleteObject={handleDeleteObjectById}
         onCreateFolder={(name, parentId) => controller.createObjectFolder(name, parentId)}
         onRenameFolder={(folderId, name) => controller.renameObjectFolder(folderId, name)}

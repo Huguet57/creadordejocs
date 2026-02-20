@@ -3,6 +3,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Copy,
   FolderPlus,
   Pencil,
   Plus,
@@ -44,6 +45,7 @@ type ObjectListPanelProps = {
   onPinObject: (id: string) => void
   onOpenInNewTab: (id: string) => void
   onAddObject: (name: string, folderId: string | null) => void
+  onDuplicateObject: (id: string) => void
   onDeleteObject: (id: string) => void
   onCreateFolder: (name: string, parentId: string | null) => string | null
   onRenameFolder: (folderId: string, name: string) => boolean
@@ -61,6 +63,7 @@ export function ObjectListPanel({
   onPinObject,
   onOpenInNewTab,
   onAddObject,
+  onDuplicateObject,
   onDeleteObject,
   onCreateFolder,
   onRenameFolder,
@@ -472,6 +475,17 @@ export function ObjectListPanel({
             >
               <Plus className="h-3.5 w-3.5 text-slate-400" />
               Open in a new tab
+            </button>
+            <button
+              type="button"
+              className="objlist-ctx-duplicate flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-slate-700 transition-colors hover:bg-slate-100"
+              onClick={() => {
+                onDuplicateObject(objectId)
+                closeContextMenu()
+              }}
+            >
+              <Copy className="h-3.5 w-3.5 text-slate-400" />
+              Duplicate
             </button>
             <div className="my-1 border-t border-slate-100" />
             <button

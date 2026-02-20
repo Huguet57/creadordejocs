@@ -826,6 +826,47 @@ export function quickCreateObject(
   }
 }
 
+export function duplicateObject(
+  project: ProjectV1,
+  objectId: string
+): { project: ProjectV1; objectId: string } | null {
+  const source = project.objects.find((entry) => entry.id === objectId)
+  if (!source) return null
+  const newObjectId = makeId("object")
+  const clonedEvents = source.events.map((event) => ({
+    ...JSON.parse(JSON.stringify(event)) as typeof event,
+    id: makeId("event"),
+    items: event.items.map((item) => cloneObjectEventItemForPaste(item))
+  }))
+  const sourceVariables = project.variables.objectByObjectId[objectId] ?? []
+  const clonedVariables = sourceVariables.map((v) => ({
+    ...JSON.parse(JSON.stringify(v)) as typeof v,
+    id: makeId("variable")
+  }))
+  return {
+    project: {
+      ...project,
+      objects: [
+        ...project.objects,
+        {
+          ...source,
+          id: newObjectId,
+          name: `${source.name} (copy)`,
+          events: clonedEvents
+        }
+      ],
+      variables: {
+        ...project.variables,
+        objectByObjectId: {
+          ...project.variables.objectByObjectId,
+          ...(clonedVariables.length > 0 ? { [newObjectId]: clonedVariables } : {})
+        }
+      }
+    },
+    objectId: newObjectId
+  }
+}
+
 export function createRoom(
   project: ProjectV1,
   name: string,

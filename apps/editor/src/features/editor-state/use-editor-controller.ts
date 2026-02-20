@@ -10,6 +10,7 @@ import {
   createObjectFolder as createObjectFolderModel,
   deleteSprite as deleteSpriteModel,
   duplicateSprite as duplicateSpriteModel,
+  duplicateObject as duplicateObjectModel,
   transformSpritePixels as transformSpritePixelsModel,
   deleteSpriteFolder as deleteSpriteFolderModel,
   deleteObjectFolder as deleteObjectFolderModel,
@@ -723,6 +724,13 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       })
       pushProjectChange(result.project, `Create object: ${trimmedName}`)
       setActiveObjectId(result.objectId)
+    },
+    duplicateObject(objectId: string) {
+      const result = duplicateObjectModel(project, objectId)
+      if (!result) return null
+      pushProjectChange(result.project, "Duplicate object")
+      setActiveObjectId(result.objectId)
+      return result.objectId
     },
     addGlobalVariable(name: string, type: VariableType, initialValue: VariableValue, itemType?: VariableItemType) {
       const result = addGlobalVariableModel(project, { name, type, initialValue, ...(itemType ? { itemType } : {}) })
