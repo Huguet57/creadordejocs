@@ -43,9 +43,9 @@ type ObjectListPanelProps = {
   activeObjectId: string | null
   spriteSources: Record<string, string>
   onSelectObject: (id: string) => void
-  onPinObject: (id: string) => void
   onOpenInNewTab: (id: string) => void
   onAddObject: (name: string, folderId: string | null) => void
+  onRenameObject: (objectId: string, name: string) => boolean
   onDuplicateObject: (id: string) => void
   onDeleteObject: (id: string) => void
   onCreateFolder: (name: string, parentId: string | null) => string | null
@@ -61,9 +61,9 @@ export function ObjectListPanel({
   activeObjectId,
   spriteSources,
   onSelectObject,
-  onPinObject,
   onOpenInNewTab,
   onAddObject,
+  onRenameObject,
   onDuplicateObject,
   onDeleteObject,
   onCreateFolder,
@@ -82,6 +82,7 @@ export function ObjectListPanel({
   const foldersById = useMemo(() => new Map(objectFolders.map((f) => [f.id, f])), [objectFolders])
   const [expandedFolderIds, setExpandedFolderIds] = useFolderExpansion("objects", foldersById)
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null)
+  const [renamingObjectId, setRenamingObjectId] = useState<string | null>(null)
   const [renamingValue, setRenamingValue] = useState("")
   const [creatingFolderParentId, setCreatingFolderParentId] = useState<string | null | undefined>(undefined)
   const [newFolderName, setNewFolderName] = useState("")
@@ -165,6 +166,22 @@ export function ObjectListPanel({
     const renamed = onRenameFolder(folderId, trimmed)
     if (!renamed) return
     setRenamingFolderId(null)
+  }
+
+  const startRenameObject = (objectId: string) => {
+    const obj = objects.find((entry) => entry.id === objectId)
+    if (!obj) return
+    setRenamingObjectId(objectId)
+    setRenamingValue(obj.name)
+  }
+
+  const commitRenameObject = () => {
+    if (!renamingObjectId) return
+    const trimmed = renamingValue.trim()
+    if (trimmed) {
+      onRenameObject(renamingObjectId, trimmed)
+    }
+    setRenamingObjectId(null)
   }
 
   const deleteFolder = (folderId: string) => {
@@ -355,6 +372,7 @@ export function ObjectListPanel({
 
         {childObjects.map((objectEntry: ObjectEntry) => {
           const isActive = activeObjectId === objectEntry.id
+          const isRenaming = renamingObjectId === objectEntry.id
           const spriteId = typeof objectEntry.spriteId === "string" ? objectEntry.spriteId : null
           const spriteSource = spriteId ? spriteSources[spriteId] : null
           return (
@@ -364,11 +382,11 @@ export function ObjectListPanel({
                 isActive ? "bg-blue-50" : "hover:bg-slate-100"
               }`}
               style={{ paddingLeft: `${depth * 16 + 8}px` }}
-              draggable
+              draggable={!isRenaming}
               onDragStart={(e) => handleDragStart(e, { type: "object", id: objectEntry.id })}
               onDragEnd={handleDragEnd}
               onClick={() => onSelectObject(objectEntry.id)}
-              onDoubleClick={() => onPinObject(objectEntry.id)}
+              onDoubleClick={() => startRenameObject(objectEntry.id)}
               onContextMenu={(e) => openContextMenu(e, objectEntry.id, null)}
             >
               <div className="flex flex-1 items-center gap-2 text-left min-w-0">
@@ -384,9 +402,27 @@ export function ObjectListPanel({
                     <Box className="h-3.5 w-3.5 text-slate-400" />
                   </span>
                 )}
-                <span className="truncate text-[12px] leading-tight text-slate-600">
-                  {objectEntry.name}
-                </span>
+                {isRenaming ? (
+                  <input
+                    ref={renameInputCallbackRef}
+                    className="h-5 w-full rounded border border-slate-300 bg-white px-1 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-400"
+                    value={renamingValue}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setRenamingValue(e.target.value)}
+                    onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
+                      blockUndoShortcuts(e)
+                      if (e.key === "Enter") commitRenameObject()
+                      if (e.key === "Escape") setRenamingObjectId(null)
+                      e.stopPropagation()
+                    }}
+                    onBlur={commitRenameObject}
+                    onClick={(e) => e.stopPropagation()}
+                    onDoubleClick={(e) => e.stopPropagation()}
+                  />
+                ) : (
+                  <span className="truncate text-[12px] leading-tight text-slate-600">
+                    {objectEntry.name}
+                  </span>
+                )}
               </div>
             </div>
           )
@@ -488,6 +524,17 @@ export function ObjectListPanel({
             >
               <Copy className="h-3.5 w-3.5 text-slate-400" />
               Duplicate
+            </button>
+            <button
+              type="button"
+              className="objlist-ctx-rename flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-slate-700 transition-colors hover:bg-slate-100"
+              onClick={() => {
+                startRenameObject(objectId)
+                closeContextMenu()
+              }}
+            >
+              <Pencil className="h-3.5 w-3.5 text-slate-400" />
+              Rename
             </button>
             <div className="my-1 border-t border-slate-100" />
             <button

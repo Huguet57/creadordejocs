@@ -34,6 +34,7 @@ import {
   moveRoomToFolder as moveRoomToFolderModel,
   renameSprite as renameSpriteModel,
   renameSpriteFolder as renameSpriteFolderModel,
+  renameObject as renameObjectModel,
   renameObjectFolder as renameObjectFolderModel,
   renameRoom as renameRoomModel,
   renameRoomFolder as renameRoomFolderModel,
@@ -616,6 +617,12 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       }
       pushProjectChange(result.project, `Create object folder: ${name.trim()}`)
       return result.folderId
+    },
+    renameObject(objectId: string, name: string) {
+      const next = renameObjectModel(project, objectId, name)
+      if (next === project) return false
+      pushProjectChange(next, "Rename object")
+      return true
     },
     renameObjectFolder(folderId: string, name: string) {
       const next = renameObjectFolderModel(project, folderId, name)

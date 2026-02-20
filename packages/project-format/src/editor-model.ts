@@ -1281,6 +1281,39 @@ export function moveObjectFolder(project: ProjectV1, folderId: string, newParent
   }
 }
 
+export function renameObject(project: ProjectV1, objectId: string, name: string): ProjectV1 {
+  const trimmedName = name.trim()
+  if (!trimmedName) {
+    return project
+  }
+  const currentObject = project.objects.find((entry) => entry.id === objectId)
+  if (!currentObject) {
+    return project
+  }
+  const folderId = currentObject.folderId ?? null
+  const normalizedCandidate = normalizeSpriteName(trimmedName)
+  const hasConflict = project.objects.some(
+    (entry) =>
+      entry.id !== objectId &&
+      (entry.folderId ?? null) === folderId &&
+      normalizeSpriteName(entry.name) === normalizedCandidate
+  )
+  if (hasConflict) {
+    return project
+  }
+  return {
+    ...project,
+    objects: project.objects.map((entry) =>
+      entry.id === objectId
+        ? {
+            ...entry,
+            name: trimmedName
+          }
+        : entry
+    )
+  }
+}
+
 export function moveObjectToFolder(project: ProjectV1, objectId: string, folderId: string | null): ProjectV1 {
   const normalizedFolderId = folderId ?? null
   const hasObject = project.objects.some((entry) => entry.id === objectId)

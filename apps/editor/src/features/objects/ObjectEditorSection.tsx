@@ -321,9 +321,9 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
         activeObjectId={controller.activeObjectId}
         spriteSources={resolvedSpriteSources}
         onSelectObject={handleSelectObject}
-        onPinObject={handlePinObject}
         onOpenInNewTab={handlePinObject}
         onAddObject={(name, folderId) => controller.addObject(name, folderId)}
+        onRenameObject={(id, name) => controller.renameObject(id, name)}
         onDuplicateObject={(id) => controller.duplicateObject(id)}
         onDeleteObject={handleDeleteObjectById}
         onCreateFolder={(name, parentId) => controller.createObjectFolder(name, parentId)}
