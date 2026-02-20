@@ -99,6 +99,31 @@ function stampToRect(stamp: RoomBackgroundPaintStamp, width: number, height: num
   }
 }
 
+function getIntersectingStampIndexes(input: {
+  stamps: RoomBackgroundPaintStamp[]
+  rect: Rect
+  fallbackWidth: number
+  fallbackHeight: number
+  resolveSpriteDimensions: ((spriteId: string) => SpriteDimensions | null) | undefined
+}): number[] {
+  const intersectingIndexes: number[] = []
+  for (let index = 0; index < input.stamps.length; index += 1) {
+    const stamp = input.stamps[index]
+    if (!stamp) continue
+    const dimensions = resolveNormalizedDimensions(
+      stamp.spriteId,
+      input.fallbackWidth,
+      input.fallbackHeight,
+      input.resolveSpriteDimensions
+    )
+    const stampRect = stampToRect(stamp, dimensions.width, dimensions.height)
+    if (rectanglesIntersect(input.rect, stampRect)) {
+      intersectingIndexes.push(index)
+    }
+  }
+  return intersectingIndexes
+}
+
 export function interpolatePaintStrokePositions(input: {
   from: Point
   to: Point
@@ -132,7 +157,7 @@ export function applyBrushStrokeToStamps(input: {
     spriteWidth: brushWidth,
     spriteHeight: brushHeight
   })
-  const next = [...input.stamps]
+  let next = [...input.stamps]
 
   for (const point of path) {
     const stamp: RoomBackgroundPaintStamp = {
@@ -141,21 +166,57 @@ export function applyBrushStrokeToStamps(input: {
       y: point.y
     }
     const candidateRect = stampToRect(stamp, brushWidth, brushHeight)
-    const isBlocked = next.some((existingStamp) => {
-      const existingDimensions = resolveNormalizedDimensions(
-        existingStamp.spriteId,
-        brushWidth,
-        brushHeight,
-        input.resolveSpriteDimensions
-      )
-      const existingRect = stampToRect(existingStamp, existingDimensions.width, existingDimensions.height)
-      return rectanglesIntersect(candidateRect, existingRect)
+    const intersectingIndexes = getIntersectingStampIndexes({
+      stamps: next,
+      rect: candidateRect,
+      fallbackWidth: brushWidth,
+      fallbackHeight: brushHeight,
+      resolveSpriteDimensions: input.resolveSpriteDimensions
     })
-    if (isBlocked) continue
+
+    if (intersectingIndexes.length > 0) {
+      const hasDifferentSpriteOverlap = intersectingIndexes.some(
+        (index) => next[index]?.spriteId !== input.spriteId
+      )
+      if (!hasDifferentSpriteOverlap) {
+        continue
+      }
+      const indexesToRemove = new Set(intersectingIndexes)
+      next = next.filter((_, index) => !indexesToRemove.has(index))
+    }
+
     next.push(stamp)
   }
 
   return next
+}
+
+export function canBrushStampApplyAtRect(input: {
+  stamps: RoomBackgroundPaintStamp[]
+  spriteId: string
+  rectX: number
+  rectY: number
+  rectWidth: number
+  rectHeight: number
+  resolveSpriteDimensions: (spriteId: string) => SpriteDimensions | null
+}): boolean {
+  const rect: Rect = {
+    x: input.rectX,
+    y: input.rectY,
+    width: normalizeSpriteDimension(input.rectWidth),
+    height: normalizeSpriteDimension(input.rectHeight)
+  }
+  const intersectingIndexes = getIntersectingStampIndexes({
+    stamps: input.stamps,
+    rect,
+    fallbackWidth: rect.width,
+    fallbackHeight: rect.height,
+    resolveSpriteDimensions: input.resolveSpriteDimensions
+  })
+  if (intersectingIndexes.length === 0) {
+    return true
+  }
+  return intersectingIndexes.some((index) => input.stamps[index]?.spriteId !== input.spriteId)
 }
 
 export function eraseStampsIntersectingRect(input: {

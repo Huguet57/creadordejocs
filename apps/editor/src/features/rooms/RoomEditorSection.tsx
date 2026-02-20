@@ -17,6 +17,7 @@ import { RoomObjectPickerPanel, type RoomBackgroundPaintTool, type RoomEditMode 
 import { RoomTabBar } from "./RoomTabBar.js"
 import {
   applyBrushStrokeToStamps,
+  canBrushStampApplyAtRect,
   eraseStampsAlongStroke,
   hasStampIntersectionWithRect,
   snapBackgroundPaintPosition,
@@ -642,8 +643,9 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
       const isBlocked =
         !paintBrushSpriteId ||
         !brushSprite ||
-        hasStampIntersectionWithRect({
+        !canBrushStampApplyAtRect({
           stamps: sourceStamps,
+          spriteId: paintBrushSpriteId,
           rectX: snappedPoint.x,
           rectY: snappedPoint.y,
           rectWidth: brushWidth,

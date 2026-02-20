@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   applyBrushStrokeToStamps,
+  canBrushStampApplyAtRect,
   eraseStampsAlongStroke,
   eraseTopmostStampAtPoint,
   snapBackgroundPaintPosition,
@@ -50,7 +51,7 @@ describe("room background paint utils", () => {
     ])
   })
 
-  it("skips brush stamps when candidate rect overlaps existing stamps", () => {
+  it("overwrites overlapping background when painting with a different sprite", () => {
     const painted = applyBrushStrokeToStamps({
       stamps: [
         { spriteId: "sprite-a", x: 0, y: 0 },
@@ -76,11 +77,60 @@ describe("room background paint utils", () => {
     })
 
     expect(painted).toEqual([
-      { spriteId: "sprite-a", x: 0, y: 0 },
-      { spriteId: "sprite-b", x: 64, y: 0 },
+      { spriteId: "sprite-c", x: 0, y: 0 },
       { spriteId: "sprite-c", x: 32, y: 0 },
+      { spriteId: "sprite-c", x: 64, y: 0 },
       { spriteId: "sprite-c", x: 96, y: 0 }
     ])
+  })
+
+  it("does not repaint when overlapped area already uses same sprite", () => {
+    const painted = applyBrushStrokeToStamps({
+      stamps: [
+        { spriteId: "sprite-c", x: 0, y: 0 }
+      ],
+      spriteId: "sprite-c",
+      from: { x: 0, y: 0 },
+      to: { x: 0, y: 0 },
+      spriteWidth: 32,
+      spriteHeight: 32,
+      resolveSpriteDimensions: () => ({ width: 32, height: 32 })
+    })
+
+    expect(painted).toEqual([
+      { spriteId: "sprite-c", x: 0, y: 0 }
+    ])
+  })
+
+  it("reports brush ghost as valid for overwrite and blocked for same-sprite overlap", () => {
+    const resolveSpriteDimensions = () => ({ width: 32, height: 32 })
+    const stamps: RoomBackgroundPaintStamp[] = [
+      { spriteId: "sprite-a", x: 0, y: 0 }
+    ]
+
+    expect(
+      canBrushStampApplyAtRect({
+        stamps,
+        spriteId: "sprite-b",
+        rectX: 0,
+        rectY: 0,
+        rectWidth: 32,
+        rectHeight: 32,
+        resolveSpriteDimensions
+      })
+    ).toBe(true)
+
+    expect(
+      canBrushStampApplyAtRect({
+        stamps,
+        spriteId: "sprite-a",
+        rectX: 0,
+        rectY: 0,
+        rectWidth: 32,
+        rectHeight: 32,
+        resolveSpriteDimensions
+      })
+    ).toBe(false)
   })
 
   it("erases all intersecting stamps along eraser stroke", () => {
