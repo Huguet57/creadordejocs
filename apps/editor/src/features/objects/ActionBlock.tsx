@@ -23,7 +23,6 @@ import { VariablePicker } from "./VariablePicker.js"
 import { RightValuePicker as BaseRightValuePicker } from "./RightValuePicker.js"
 import { CollectionVariablePicker } from "./CollectionVariablePicker.js"
 import { SpriteDropdownPicker } from "./SpriteDropdownPicker.js"
-import { ObjectTextLifetimePicker } from "./ObjectTextLifetimePicker.js"
 import type { ObjectEventType } from "../editor-state/types.js"
 import { ACTION_ICON_MAP } from "./action-icon-map.js"
 import {
@@ -759,20 +758,6 @@ export function ActionBlock({
                 <option value="left">left</option>
                 <option value="right">right</option>
               </select>
-            </div>
-            <div className="action-block-object-text-lifetime-field flex items-center gap-1">
-              <label className="text-[10px] font-medium opacity-60">Time</label>
-              <ObjectTextLifetimePicker
-                mode={action.mode}
-                durationMs={action.durationMs ?? asLiteralValue(2000)}
-                onChange={(nextValue) =>
-                  onUpdate({
-                    ...action,
-                    mode: nextValue.mode,
-                    durationMs: nextValue.durationMs as typeof action.durationMs
-                  })
-                }
-              />
             </div>
           </>
         )}
