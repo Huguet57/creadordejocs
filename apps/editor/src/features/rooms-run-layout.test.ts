@@ -65,6 +65,7 @@ function createRunControllerMock(): RunSectionController {
       name: "Run Room",
       instances: []
     },
+    roomTransition: "none",
     isRunning: false,
     run: vi.fn(),
     reset: vi.fn(),

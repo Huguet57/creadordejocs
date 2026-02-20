@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react"
-import type { ProjectV1 } from "@creadordejocs/project-format"
+import type { GoToRoomTransition, ProjectV1 } from "@creadordejocs/project-format"
 import {
   createInitialRuntimeState,
   runRuntimeTick,
@@ -21,6 +21,7 @@ export function usePlayRuntimeController(initialProject: ProjectV1): RunSectionC
   const [runtimeState, setRuntimeState] = useState<RuntimeState>(() => createInitialRuntimeState(initialProject))
   const [isRunning, setIsRunning] = useState(false)
   const [activeRoomId, setActiveRoomId] = useState<string>(() => initialProject.rooms[0]?.id ?? "")
+  const [roomTransition, setRoomTransition] = useState<GoToRoomTransition>("none")
   const [runSnapshot, setRunSnapshot] = useState<ProjectV1 | null>(null)
   const pressedKeysRef = useRef<Set<string>>(new Set())
   const justPressedKeysRef = useRef<Set<string>>(new Set())
@@ -49,6 +50,7 @@ export function usePlayRuntimeController(initialProject: ProjectV1): RunSectionC
     runtimeRef.current = fresh
     setRuntimeState(fresh)
     setIsRunning(false)
+    setRoomTransition("none")
     setRunSnapshot(null)
   }, [initialProject])
 
@@ -94,6 +96,7 @@ export function usePlayRuntimeController(initialProject: ProjectV1): RunSectionC
       projectRef.current = nextProject
       setRuntimeState(nextRuntime)
       setProject(nextProject)
+      setRoomTransition(result.roomTransition)
       if (result.activeRoomId !== currentRoomId) {
         setActiveRoomId(result.activeRoomId)
       }
@@ -151,6 +154,7 @@ export function usePlayRuntimeController(initialProject: ProjectV1): RunSectionC
     const freshRuntime = createInitialRuntimeState(project)
     runtimeRef.current = freshRuntime
     setRuntimeState(freshRuntime)
+    setRoomTransition("none")
     setIsRunning(true)
   }
 
@@ -161,6 +165,7 @@ export function usePlayRuntimeController(initialProject: ProjectV1): RunSectionC
     const freshRuntime = createInitialRuntimeState(baseProject)
     runtimeRef.current = freshRuntime
     setRuntimeState(freshRuntime)
+    setRoomTransition("none")
     setRunSnapshot(null)
     setIsRunning(false)
   }
@@ -186,6 +191,7 @@ export function usePlayRuntimeController(initialProject: ProjectV1): RunSectionC
     project,
     runtimeState,
     activeRoom,
+    roomTransition,
     isRunning,
     run,
     reset,

@@ -79,6 +79,7 @@ import {
   type ObjectEventItem,
   type ObjectControlBlockItem,
   type IfCondition,
+  type GoToRoomTransition,
   type VariableItemType,
   type VariableType,
   type VariableValue,
@@ -290,6 +291,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
   const [isRunning, setIsRunning] = useState(false)
   const [runSnapshot, setRunSnapshot] = useState<ProjectV1 | null>(null)
   const [runtimeState, setRuntimeState] = useState<RuntimeState>(() => createInitialRuntimeState(initial.project))
+  const [roomTransition, setRoomTransition] = useState<GoToRoomTransition>("none")
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("saved")
   const [importStatus, setImportStatus] = useState<"idle" | "importing" | "imported" | "error">("idle")
   const [isDirty, setIsDirty] = useState(false)
@@ -427,6 +429,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       runtimeRef.current = nextRuntime
       projectRef.current = nextProject
       setRuntimeState(nextRuntime)
+      setRoomTransition(result.roomTransition)
       setProject(nextProject)
       if (result.activeRoomId !== currentRoomId) {
         setActiveRoomId(result.activeRoomId)
@@ -537,6 +540,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
     setPast((value) => value.slice(0, -1))
     setProject(previous)
     setIsRunning(false)
+    setRoomTransition("none")
     setRunSnapshot(null)
     setIsDirty(true)
   }
@@ -567,6 +571,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
     saveStatus,
     importStatus,
     runtimeState,
+    roomTransition,
     undoAvailable: past.length > 0,
     redoAvailable: future.length > 0,
     addSprite(name: string, width = 32, height = 32, folderId: string | null = null) {
@@ -1293,6 +1298,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       const initialRuntime = createInitialRuntimeState(withTimeMetric)
       runtimeRef.current = initialRuntime
       setRuntimeState(initialRuntime)
+      setRoomTransition("none")
       setIsRunning(true)
       setActiveSection("run")
     },
@@ -1300,6 +1306,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       const nextResetState = resolveResetState(project, runSnapshot, activeRoomId)
       setProject(nextResetState.project)
       setIsRunning(false)
+      setRoomTransition("none")
       setRunSnapshot(nextResetState.runSnapshot)
       setActiveRoomId(nextResetState.roomId)
       runtimeMouseRef.current = {
@@ -1355,6 +1362,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       setActiveObjectId(result.focusObjectId)
       setActiveSection("objects")
       setIsRunning(false)
+      setRoomTransition("none")
       setRunSnapshot(null)
       setIsDirty(true)
     },
@@ -1372,6 +1380,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
         setProject(normalized.project)
         setActiveRoomId(normalized.roomId)
         setIsRunning(false)
+        setRoomTransition("none")
         setRunSnapshot(null)
         setIsDirty(false)
         setSaveStatus("saved")
@@ -1397,6 +1406,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
         setActiveSpriteId(null)
         setActiveSection("objects")
         setIsRunning(false)
+        setRoomTransition("none")
         setRunSnapshot(null)
         setIsDirty(true)
         setImportStatus("imported")
@@ -1421,6 +1431,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       setActiveSpriteId(null)
       setActiveSection("objects")
       setIsRunning(false)
+      setRoomTransition("none")
       setRunSnapshot(null)
       setIsDirty(true)
     },
@@ -1437,6 +1448,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       setActiveRoomId(normalized.roomId)
       setActiveObjectId(null)
       setIsRunning(false)
+      setRoomTransition("none")
       setRunSnapshot(null)
       setIsDirty(true)
     },

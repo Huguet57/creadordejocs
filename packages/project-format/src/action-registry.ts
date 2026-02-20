@@ -34,6 +34,9 @@ export type ActionDefaultsContext = {
   spriteIds: string[]
 }
 
+export const GO_TO_ROOM_TRANSITIONS = ["none", "fade", "slideLeft", "slideRight"] as const
+export type GoToRoomTransition = (typeof GO_TO_ROOM_TRANSITIONS)[number]
+
 type ActionUiMeta = {
   label: string
   shortLabel: string
@@ -217,6 +220,7 @@ export function createObjectActionSchema<
   const durationMsOrSource = z.union([z.number().int().min(1), deps.valueSourceSchema, deps.legacyVariableReferenceSchema])
   const flowScopeSchema = z.enum(["global", "object"])
   const flowTargetSchema = z.enum(["self", "other", "instanceId"])
+  const goToRoomTransitionSchema = z.enum(GO_TO_ROOM_TRANSITIONS)
   return z.discriminatedUnion("type", [
     z.object({
       id: z.string().min(1),
@@ -395,7 +399,8 @@ export function createObjectActionSchema<
     z.object({
       id: z.string().min(1),
       type: z.literal("goToRoom"),
-      roomId: z.string().min(1)
+      roomId: z.string().min(1),
+      transition: goToRoomTransitionSchema.optional()
     }),
     z.object({
       id: z.string().min(1),
@@ -716,7 +721,7 @@ export function createEditorDefaultAction(type: ActionType, ctx: ActionDefaultsC
   if (type === "goToRoom") {
     const firstRoom = ctx.roomIds[0]
     if (!firstRoom) return null
-    return { type: "goToRoom", roomId: firstRoom }
+    return { type: "goToRoom", roomId: firstRoom, transition: "none" }
   }
   if (type === "teleportWindow") return { type: "teleportWindow", mode: "position", x: 0, y: 0 }
   if (type === "moveWindow") return { type: "moveWindow", dx: 0, dy: 0 }

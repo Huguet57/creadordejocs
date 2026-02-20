@@ -3341,7 +3341,7 @@ describe("runtime regressions", () => {
     expect(spinner?.rotation).toBe(20)
   })
 
-  it("switches the active room when goToRoom is executed", () => {
+  it("switches the active room when goToRoom is executed with transition", () => {
     const project: ProjectV1 = {
       version: 1,
       metadata: {
@@ -3378,7 +3378,7 @@ describe("runtime regressions", () => {
                 {
                   id: "item-action-go-room",
                   type: "action",
-                  action: { id: "action-go-room", type: "goToRoom", roomId: "room-b" }
+                  action: { id: "action-go-room", type: "goToRoom", roomId: "room-b", transition: "fade" }
                 }
               ]
             }
@@ -3411,6 +3411,7 @@ describe("runtime regressions", () => {
     const result = runRuntimeTick(project, "room-a", new Set(), createInitialRuntimeState(project))
 
     expect(result.activeRoomId).toBe("room-b")
+    expect(result.roomTransition).toBe("fade")
   })
 
   it("keeps the same active room when goToRoom points to a missing room", () => {
@@ -3478,6 +3479,80 @@ describe("runtime regressions", () => {
     const result = runRuntimeTick(project, "room-a", new Set(), createInitialRuntimeState(project))
 
     expect(result.activeRoomId).toBe("room-a")
+    expect(result.roomTransition).toBe("none")
+  })
+
+  it("falls back to none transition when goToRoom does not specify transition", () => {
+    const project: ProjectV1 = {
+      version: 1,
+      metadata: {
+        id: "project-go-to-room-without-transition",
+        name: "Go to room without transition",
+        locale: "ca",
+        createdAtIso: new Date().toISOString()
+      },
+      resources: {
+        sprites: [],
+        sounds: []
+      },
+      variables: {
+        global: [],
+        objectByObjectId: {}
+      },
+      objects: [
+        {
+          id: "object-portal",
+          name: "Portal",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step",
+              type: "Step",
+              key: null,
+              targetObjectId: null,
+              intervalMs: null,
+              items: [
+                {
+                  id: "item-action-go-room",
+                  type: "action",
+                  action: { id: "action-go-room", type: "goToRoom", roomId: "room-b" }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      rooms: [
+        {
+          id: "room-a",
+          name: "Room A",
+          instances: [{ id: "instance-portal", objectId: "object-portal", x: 10, y: 10 }]
+        },
+        {
+          id: "room-b",
+          name: "Room B",
+          instances: []
+        }
+      ],
+      scenes: [],
+      metrics: {
+        appStart: 0,
+        projectLoad: 0,
+        runtimeErrors: 0,
+        tutorialCompletion: 0,
+        stuckRate: 0,
+        timeToFirstPlayableFunMs: null
+      }
+    }
+
+    const result = runRuntimeTick(project, "room-a", new Set(), createInitialRuntimeState(project))
+
+    expect(result.activeRoomId).toBe("room-b")
+    expect(result.roomTransition).toBe("none")
   })
 
   it("preserves object instance variables across room switches and resumes on return", () => {

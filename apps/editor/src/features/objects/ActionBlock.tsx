@@ -1,12 +1,20 @@
 import {
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Move,
+  Sparkles,
+  Map,
   X,
   GripVertical
 } from "lucide-react"
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import { Button } from "../../components/ui/button.js"
 import {
   ACTION_REGISTRY,
+  GO_TO_ROOM_TRANSITIONS,
+  type GoToRoomTransition,
   type ObjectActionDraft,
   type ProjectV1,
   type ValueExpression
@@ -74,6 +82,20 @@ type ActionContextMenuState = {
 function asLiteralValue(value: string | number | boolean): ValueExpression {
   return { source: "literal", value }
 }
+
+const GO_TO_ROOM_TRANSITION_LABELS: Record<GoToRoomTransition, string> = {
+  none: "None",
+  fade: "Fade",
+  slideLeft: "Slide Left",
+  slideRight: "Slide Right"
+}
+
+const GO_TO_ROOM_TRANSITION_ICONS = {
+  none: X,
+  fade: Sparkles,
+  slideLeft: ChevronLeft,
+  slideRight: ChevronRight
+} satisfies Record<GoToRoomTransition, React.ComponentType<{ className?: string }>>
 
 export function ActionBlock({
   action,
@@ -173,6 +195,13 @@ export function ActionBlock({
   const emitPayloadType: ScalarType =
     action.type === "emitCustomEvent" ? inferPayloadType(action.payload, variableContext) : "number"
   const [contextMenu, setContextMenu] = useState<ActionContextMenuState>(null)
+  const [isRoomSelectorOpen, setIsRoomSelectorOpen] = useState(false)
+  const [isRoomTransitionSelectorOpen, setIsRoomTransitionSelectorOpen] = useState(false)
+  const roomSelectorRef = useRef<HTMLDivElement>(null)
+  const roomTransitionSelectorRef = useRef<HTMLDivElement>(null)
+  const selectedRoom = action.type === "goToRoom" ? rooms.find((room) => room.id === action.roomId) ?? null : null
+  const selectedRoomTransition: GoToRoomTransition = action.type === "goToRoom" ? (action.transition ?? "none") : "none"
+  const SelectedRoomTransitionIcon = GO_TO_ROOM_TRANSITION_ICONS[selectedRoomTransition]
   const RightValuePicker = (
     props: Omit<React.ComponentProps<typeof BaseRightValuePicker>, "iterationVariables">
   ) => (
@@ -227,6 +256,43 @@ export function ActionBlock({
     window.addEventListener("mousedown", closeContextMenu)
     return () => window.removeEventListener("mousedown", closeContextMenu)
   }, [contextMenu])
+
+  useEffect(() => {
+    if (!isRoomSelectorOpen && !isRoomTransitionSelectorOpen) {
+      return
+    }
+
+    const handleMouseDown = (event: MouseEvent) => {
+      if (
+        isRoomSelectorOpen &&
+        roomSelectorRef.current &&
+        !roomSelectorRef.current.contains(event.target as Node)
+      ) {
+        setIsRoomSelectorOpen(false)
+      }
+      if (
+        isRoomTransitionSelectorOpen &&
+        roomTransitionSelectorRef.current &&
+        !roomTransitionSelectorRef.current.contains(event.target as Node)
+      ) {
+        setIsRoomTransitionSelectorOpen(false)
+      }
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsRoomSelectorOpen(false)
+        setIsRoomTransitionSelectorOpen(false)
+      }
+    }
+
+    window.addEventListener("mousedown", handleMouseDown)
+    window.addEventListener("keydown", handleKeyDown)
+    return () => {
+      window.removeEventListener("mousedown", handleMouseDown)
+      window.removeEventListener("keydown", handleKeyDown)
+    }
+  }, [isRoomSelectorOpen, isRoomTransitionSelectorOpen])
 
   return (
     <div
@@ -716,17 +782,97 @@ export function ActionBlock({
         )}
 
         {action.type === "goToRoom" && (
-          <select
-            className="action-block-room-select h-7 min-w-[140px] rounded border border-slate-300 bg-white/50 px-2 text-xs focus:outline-none"
-            value={action.roomId}
-            onChange={(event) => onUpdate({ ...action, roomId: event.target.value })}
-          >
-            {rooms.map((room) => (
-              <option key={room.id} value={room.id}>
-                {room.name}
-              </option>
-            ))}
-          </select>
+          <div className="action-block-go-to-room-fields flex flex-wrap items-center gap-2">
+            <div ref={roomSelectorRef} className="action-block-room-select-container relative">
+              <button
+                type="button"
+                className="action-block-room-select-trigger inline-flex h-7 min-w-[140px] max-w-[180px] items-center gap-1.5 rounded border border-slate-300 bg-white/50 px-2 text-xs text-slate-700 hover:bg-white focus:outline-none"
+                onClick={() => {
+                  setIsRoomSelectorOpen((previousOpenState) => !previousOpenState)
+                  setIsRoomTransitionSelectorOpen(false)
+                }}
+                aria-expanded={isRoomSelectorOpen}
+                aria-haspopup="listbox"
+              >
+                <Map className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                <span className="truncate">{selectedRoom?.name ?? "Sala no disponible"}</span>
+                <ChevronDown className="ml-auto h-3 w-3 shrink-0 text-slate-400" />
+              </button>
+              {isRoomSelectorOpen && (
+                <div className="action-block-room-select-menu absolute left-0 top-[calc(100%+4px)] z-30 min-w-[190px] overflow-hidden rounded border border-slate-200 bg-white py-1 shadow-lg">
+                  {rooms.length === 0 ? (
+                    <p className="px-3 py-2 text-xs text-slate-400">Cap sala disponible</p>
+                  ) : (
+                    rooms.map((room) => {
+                      const selected = room.id === action.roomId
+                      return (
+                        <button
+                          key={room.id}
+                          type="button"
+                          className={`action-block-room-select-option flex w-full items-center gap-1.5 px-2 py-1.5 text-left text-xs ${
+                            selected
+                              ? "bg-indigo-50 font-medium text-indigo-700"
+                              : "text-slate-700 hover:bg-slate-100"
+                          }`}
+                          onClick={() => {
+                            onUpdate({ ...action, roomId: room.id })
+                            setIsRoomSelectorOpen(false)
+                          }}
+                        >
+                          <Map className="h-3 w-3 shrink-0 text-slate-400" />
+                          <span className="truncate">{room.name}</span>
+                          {selected && <Check className="ml-auto h-3 w-3 shrink-0 text-slate-400" />}
+                        </button>
+                      )
+                    })
+                  )}
+                </div>
+              )}
+            </div>
+            <div ref={roomTransitionSelectorRef} className="action-block-room-transition-select-container relative">
+              <button
+                type="button"
+                className="action-block-room-transition-select-trigger inline-flex h-7 min-w-[128px] items-center gap-1.5 rounded border border-slate-300 bg-white/50 px-2 text-xs text-slate-700 hover:bg-white focus:outline-none"
+                onClick={() => {
+                  setIsRoomTransitionSelectorOpen((previousOpenState) => !previousOpenState)
+                  setIsRoomSelectorOpen(false)
+                }}
+                aria-expanded={isRoomTransitionSelectorOpen}
+                aria-haspopup="listbox"
+              >
+                <SelectedRoomTransitionIcon className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                <span className="truncate">{GO_TO_ROOM_TRANSITION_LABELS[selectedRoomTransition]}</span>
+                <ChevronDown className="ml-auto h-3 w-3 shrink-0 text-slate-400" />
+              </button>
+              {isRoomTransitionSelectorOpen && (
+                <div className="action-block-room-transition-select-menu absolute left-0 top-[calc(100%+4px)] z-30 min-w-[170px] overflow-hidden rounded border border-slate-200 bg-white py-1 shadow-lg">
+                  {GO_TO_ROOM_TRANSITIONS.map((transition) => {
+                    const selected = selectedRoomTransition === transition
+                    const TransitionIcon = GO_TO_ROOM_TRANSITION_ICONS[transition]
+                    return (
+                      <button
+                        key={transition}
+                        type="button"
+                        className={`action-block-room-transition-select-option flex w-full items-center gap-1.5 px-2 py-1.5 text-left text-xs ${
+                          selected
+                            ? "bg-indigo-50 font-medium text-indigo-700"
+                            : "text-slate-700 hover:bg-slate-100"
+                        }`}
+                        onClick={() => {
+                          onUpdate({ ...action, transition })
+                          setIsRoomTransitionSelectorOpen(false)
+                        }}
+                      >
+                        <TransitionIcon className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                        <span className="truncate">{GO_TO_ROOM_TRANSITION_LABELS[transition]}</span>
+                        {selected && <Check className="ml-auto h-3 w-3 shrink-0 text-slate-400" />}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
         )}
 
         {action.type === "restartRoom" && <span className="text-[10px] font-medium text-slate-500">Sala actual</span>}

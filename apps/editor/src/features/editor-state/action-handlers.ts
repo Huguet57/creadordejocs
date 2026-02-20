@@ -1347,7 +1347,8 @@ function executeActionFallback(
         ...result,
         runtime: {
           ...result.runtime,
-          nextRoomId: action.roomId
+          nextRoomId: action.roomId,
+          nextRoomTransition: action.transition ?? "none"
         }
       }
     }

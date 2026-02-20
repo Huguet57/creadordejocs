@@ -23,3 +23,46 @@
     Arial,
     sans-serif;
 }
+
+@keyframes mvp15-room-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes mvp15-room-slide-left-in {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes mvp15-room-slide-right-in {
+  from {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.mvp15-room-transition-fade {
+  animation: mvp15-room-fade-in 220ms ease-out;
+}
+
+.mvp15-room-transition-slide-left {
+  animation: mvp15-room-slide-left-in 220ms ease-out;
+}
+
+.mvp15-room-transition-slide-right {
+  animation: mvp15-room-slide-right-in 220ms ease-out;
+}

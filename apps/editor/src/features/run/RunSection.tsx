@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Play, RotateCcw } from "lucide-react"
-import type { ProjectV1 } from "@creadordejocs/project-format"
+import type { GoToRoomTransition, ProjectV1 } from "@creadordejocs/project-format"
 import { Button } from "../../components/ui/button.js"
 import {
   DEFAULT_SPRITE_SPEED_MS,
@@ -15,6 +15,7 @@ import type { RuntimeMouseButton, RuntimeState } from "../editor-state/runtime.j
 import { resolveSpritePreviewSource, spritePixelsToDataUrl } from "../sprites/utils/sprite-preview-source.js"
 import { InstanceDebugPanel } from "./InstanceDebugPanel.js"
 import { isInstanceVisibleInWindow, mapPointerToWorldCoordinates, toScreenCoordinates } from "./run-window-utils.js"
+import { getRoomTransitionAnimationClass, ROOM_TRANSITION_DURATION_MS } from "./room-transition-utils.js"
 import { useInstanceDebug } from "./use-instance-debug.js"
 
 type RunSectionProps = {
@@ -26,6 +27,7 @@ export type RunSectionController = {
   project: ProjectV1
   runtimeState: RuntimeState
   activeRoom: ProjectV1["rooms"][number] | null
+  roomTransition: GoToRoomTransition
   isRunning: boolean
   run: () => void
   reset: () => void
@@ -57,7 +59,9 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
   const isPlayMode = mode === "play"
   const { runtimeState } = controller
   const [resolvedSpriteSources, setResolvedSpriteSources] = useState<Record<string, string>>({})
+  const [roomTransitionClass, setRoomTransitionClass] = useState<string | null>(null)
   const canvasRef = useRef<HTMLDivElement>(null)
+  const previousRoomIdRef = useRef<string | null>(controller.activeRoom?.id ?? null)
 
   const instanceDebug = useInstanceDebug({
     isRunning: controller.isRunning,
@@ -155,6 +159,28 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
     }
     return result
   }, [sprites])
+
+  useEffect(() => {
+    const currentRoomId = controller.activeRoom?.id ?? null
+    const previousRoomId = previousRoomIdRef.current
+    previousRoomIdRef.current = currentRoomId
+
+    if (!currentRoomId || !previousRoomId || currentRoomId === previousRoomId) {
+      return
+    }
+
+    const animationClass = getRoomTransitionAnimationClass(controller.roomTransition)
+    if (!animationClass) {
+      setRoomTransitionClass(null)
+      return
+    }
+
+    setRoomTransitionClass(animationClass)
+    const timeout = window.setTimeout(() => {
+      setRoomTransitionClass(null)
+    }, ROOM_TRANSITION_DURATION_MS)
+    return () => window.clearTimeout(timeout)
+  }, [controller.activeRoom?.id, controller.roomTransition])
 
   useEffect(() => {
     let cancelled = false
@@ -431,7 +457,7 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
             <div className="mvp17-run-canvas-wrapper relative" style={{ width: WINDOW_WIDTH }}>
               <div
                 ref={canvasRef}
-                className="mvp15-run-canvas relative overflow-hidden border-b border-slate-200 bg-white"
+                className={`mvp15-run-canvas relative overflow-hidden border-b border-slate-200 bg-white ${roomTransitionClass ?? ""}`}
                 style={{ width: WINDOW_WIDTH, height: WINDOW_HEIGHT, ...runCanvasBackgroundStyle }}
               >
                 {!controller.isRunning && (

@@ -1,4 +1,4 @@
-import type { ProjectV1, ObjectEventItemType } from "@creadordejocs/project-format"
+import type { GoToRoomTransition, ObjectEventItemType, ProjectV1 } from "@creadordejocs/project-format"
 import type { RuntimeToast } from "./message-toast-utils.js"
 
 export const WINDOW_WIDTH = 768
@@ -49,6 +49,7 @@ export type RuntimeState = {
   mouse: { x: number; y: number }
   objectInstanceVariables: Record<string, Record<string, RuntimeVariableValue>>
   nextRoomId: string | null
+  nextRoomTransition: GoToRoomTransition | null
   restartRoomRequested: boolean
   timerElapsedByEventId: Record<string, number>
   waitElapsedByInstanceActionId: Record<string, number>

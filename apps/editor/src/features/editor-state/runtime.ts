@@ -1,4 +1,4 @@
-import type { ProjectV1 } from "@creadordejocs/project-format"
+import type { GoToRoomTransition, ProjectV1 } from "@creadordejocs/project-format"
 import {
   filterEventLocksByAliveInstances,
   filterEventLocksByRemovedInstances,
@@ -570,6 +570,7 @@ export function createInitialRuntimeState(project?: ProjectV1): RuntimeState {
     mouse: { x: 0, y: 0 },
     objectInstanceVariables: {},
     nextRoomId: null,
+    nextRoomTransition: null,
     restartRoomRequested: false,
     timerElapsedByEventId: {},
     waitElapsedByInstanceActionId: {},
@@ -591,10 +592,16 @@ export function runRuntimeTick(
   justPressedKeys = new Set<string>(),
   justReleasedKeys = new Set<string>(),
   mouseInput: RuntimeMouseInput = DEFAULT_RUNTIME_MOUSE_INPUT
-): { project: ProjectV1; runtime: RuntimeState; activeRoomId: string; restartRoomRequested: boolean } {
+): {
+  project: ProjectV1
+  runtime: RuntimeState
+  activeRoomId: string
+  roomTransition: GoToRoomTransition
+  restartRoomRequested: boolean
+} {
   const room = project.rooms.find((roomEntry) => roomEntry.id === roomId)
   if (!room || runtime.gameOver) {
-    return { project, runtime, activeRoomId: roomId, restartRoomRequested: false }
+    return { project, runtime, activeRoomId: roomId, roomTransition: "none", restartRoomRequested: false }
   }
   const { width: roomWidth, height: roomHeight } = resolveRoomDimensions(room)
   const storedWindow = runtime.windowByRoomId[room.id] ?? { x: 0, y: 0 }
@@ -618,6 +625,7 @@ export function runRuntimeTick(
     },
     mouse: runtime.mouse,
     nextRoomId: null,
+    nextRoomTransition: null,
     restartRoomRequested: false,
     customEventQueue: [],
     objectTextByInstanceId: nextObjectTextByInstanceId,
@@ -908,13 +916,19 @@ export function runRuntimeTick(
     spriteAnimationElapsedMsByInstanceId: keptSpriteElapsed,
     objectTextByInstanceId: keptObjectText,
     nextRoomId: null,
+    nextRoomTransition: null,
     restartRoomRequested: false
   }
+
+  const nextActiveRoomId = customEventResult.runtime.nextRoomId ?? roomId
+  const roomTransition: GoToRoomTransition =
+    nextActiveRoomId !== roomId ? (customEventResult.runtime.nextRoomTransition ?? "none") : "none"
 
   return {
     project: nextProject,
     runtime: compactedRuntime,
-    activeRoomId: customEventResult.runtime.nextRoomId ?? roomId,
+    activeRoomId: nextActiveRoomId,
+    roomTransition,
     restartRoomRequested: customEventResult.runtime.restartRoomRequested
   }
 }

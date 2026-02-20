@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import { z } from "zod"
 import {
   ACTION_REGISTRY,
+  GO_TO_ROOM_TRANSITIONS,
   createEditorDefaultAction,
   createObjectActionSchema,
   type ActionDefaultsContext
@@ -70,6 +71,45 @@ describe("room window actions", () => {
         dy: -4
       })
     ).toMatchObject({ type: "moveWindow", dx: 10, dy: -4 })
+  })
+})
+
+describe("goToRoom transitions", () => {
+  it("provides default editor payload with transition none", () => {
+    const goToRoomDefault = createEditorDefaultAction("goToRoom", defaultContext)
+    expect(goToRoomDefault).toEqual({ type: "goToRoom", roomId: "room-a", transition: "none" })
+  })
+
+  it("accepts goToRoom with and without transition", () => {
+    expect(
+      objectActionSchema.parse({
+        id: "action-go-room",
+        type: "goToRoom",
+        roomId: "room-b"
+      })
+    ).toMatchObject({ type: "goToRoom", roomId: "room-b" })
+
+    for (const transition of GO_TO_ROOM_TRANSITIONS) {
+      expect(
+        objectActionSchema.parse({
+          id: `action-go-room-${transition}`,
+          type: "goToRoom",
+          roomId: "room-b",
+          transition
+        })
+      ).toMatchObject({ type: "goToRoom", roomId: "room-b", transition })
+    }
+  })
+
+  it("rejects invalid goToRoom transition values", () => {
+    expect(() =>
+      objectActionSchema.parse({
+        id: "action-go-room-invalid",
+        type: "goToRoom",
+        roomId: "room-b",
+        transition: "zoom"
+      })
+    ).toThrow()
   })
 })
 
