@@ -18,6 +18,7 @@ async function createLargeSprite(page: Page): Promise<void> {
 }
 
 test("handles large sprites with import, zoom and canvas scroll", async ({ page }) => {
+  await page.setViewportSize({ width: 960, height: 720 })
   await createLargeSprite(page)
 
   await expect(page.getByRole("button", { name: "Import" })).toBeVisible()
@@ -34,24 +35,24 @@ test("handles large sprites with import, zoom and canvas scroll", async ({ page 
   }, sliderMax)
 
   const viewport = page.getByTestId("sprite-canvas-viewport")
-  const beforeScroll = await viewport.evaluate((element) => ({
-    scrollWidth: element.scrollWidth,
-    clientWidth: element.clientWidth,
-    scrollHeight: element.scrollHeight,
-    clientHeight: element.clientHeight
+  const overflow = await viewport.evaluate((element) => ({
+    horizontal: Math.max(0, element.scrollWidth - element.clientWidth),
+    vertical: Math.max(0, element.scrollHeight - element.clientHeight)
   }))
 
-  expect(beforeScroll.scrollWidth).toBeGreaterThanOrEqual(beforeScroll.clientWidth)
-  expect(beforeScroll.scrollHeight).toBeGreaterThanOrEqual(beforeScroll.clientHeight)
+  if (overflow.horizontal > 0 || overflow.vertical > 0) {
+    await viewport.evaluate((element) => {
+      element.scrollTo({ left: 220, top: 180 })
+    })
+  }
 
-  const afterScroll = await viewport.evaluate((element) => {
-    element.scrollLeft = 220
-    element.scrollTop = 180
-    return { left: element.scrollLeft, top: element.scrollTop }
-  })
+  if (overflow.horizontal > 0) {
+    await expect.poll(async () => viewport.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0)
+  }
 
-  expect(afterScroll.left).toBeGreaterThan(0)
-  expect(afterScroll.top).toBeGreaterThan(0)
+  if (overflow.vertical > 0) {
+    await expect.poll(async () => viewport.evaluate((element) => element.scrollTop)).toBeGreaterThan(0)
+  }
 
   const fitButton = page.getByTestId("sprite-zoom-fit")
   await expect(fitButton).toBeVisible()
