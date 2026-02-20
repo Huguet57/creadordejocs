@@ -14,6 +14,7 @@ import {
 import { VariablePicker } from "./VariablePicker.js"
 import { RightValuePicker as BaseRightValuePicker } from "./RightValuePicker.js"
 import { CollectionVariablePicker } from "./CollectionVariablePicker.js"
+import { SpriteDropdownPicker } from "./SpriteDropdownPicker.js"
 import type { ObjectEventType } from "../editor-state/types.js"
 import { ACTION_ICON_MAP } from "./action-icon-map.js"
 import {
@@ -44,7 +45,8 @@ type ActionBlockProps = {
   onPaste: () => void
   canPaste: boolean
   selectableObjects: { id: string; name: string }[]
-  selectableSprites: { id: string; name: string }[]
+  selectableSprites: { id: string; name: string; folderId: string | null; previewSrc: string | null }[]
+  spriteFolders: { id: string; name: string; parentId: string | null }[]
   globalVariables: ProjectV1["variables"]["global"]
   roomInstances: ProjectV1["rooms"][number]["instances"]
   rooms: ProjectV1["rooms"]
@@ -81,6 +83,7 @@ export function ActionBlock({
   canPaste,
   selectableObjects,
   selectableSprites,
+  spriteFolders,
   globalVariables,
   roomInstances,
   rooms,
@@ -1191,15 +1194,12 @@ export function ActionBlock({
 
         {action.type === "changeSprite" && (
           <>
-            <select
-              className="action-block-change-sprite-select h-7 rounded border border-slate-300 bg-white/50 px-2 text-xs focus:outline-none"
-              value={action.spriteId}
-              onChange={(e) => onUpdate({ ...action, spriteId: e.target.value })}
-            >
-              {selectableSprites.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
+            <SpriteDropdownPicker
+              selectedSpriteId={action.spriteId}
+              sprites={selectableSprites}
+              folders={spriteFolders}
+              onSelect={(spriteId) => onUpdate({ ...action, spriteId })}
+            />
             {allowOtherTarget && (
               <div className="flex gap-0.5 rounded border border-slate-200">
                 <button

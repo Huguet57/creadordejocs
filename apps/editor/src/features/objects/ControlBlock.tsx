@@ -27,7 +27,8 @@ import {
 type ControlBlockProps = {
   item: ObjectControlBlockItem
   selectableTargetObjects: { id: string; name: string }[]
-  selectableSprites: { id: string; name: string }[]
+  selectableSprites: { id: string; name: string; folderId: string | null; previewSrc: string | null }[]
+  spriteFolders: { id: string; name: string; parentId: string | null }[]
   globalVariables: ProjectV1["variables"]["global"]
   selectedObjectVariables: ProjectV1["variables"]["global"]
   otherObjectVariables?: ProjectV1["variables"]["global"]
@@ -121,6 +122,7 @@ export function ControlBlock({
   item,
   selectableTargetObjects,
   selectableSprites,
+  spriteFolders,
   globalVariables,
   selectedObjectVariables,
   otherObjectVariables = [],
@@ -329,6 +331,7 @@ export function ControlBlock({
               canPaste={canPasteAction}
               selectableObjects={selectableTargetObjects}
               selectableSprites={selectableSprites}
+              spriteFolders={spriteFolders}
               globalVariables={globalVariables}
               roomInstances={roomInstances}
               rooms={rooms}
@@ -369,6 +372,7 @@ export function ControlBlock({
               item={branchItem}
               selectableTargetObjects={selectableTargetObjects}
               selectableSprites={selectableSprites}
+              spriteFolders={spriteFolders}
               globalVariables={globalVariables}
               selectedObjectVariables={selectedObjectVariables}
               otherObjectVariables={otherObjectVariables}

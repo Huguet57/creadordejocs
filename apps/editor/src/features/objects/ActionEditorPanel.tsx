@@ -36,7 +36,8 @@ type ActionEditorPanelProps = {
   selectedObject: ProjectV1["objects"][0] | null
   activeEvent: ObjectEventEntry | null
   selectableTargetObjects: { id: string; name: string; spriteSrc: string | null }[]
-  selectableSprites: { id: string; name: string }[]
+  selectableSprites: { id: string; name: string; folderId: string | null; previewSrc: string | null }[]
+  spriteFolders: { id: string; name: string; parentId: string | null }[]
   globalVariables: ProjectV1["variables"]["global"]
   selectedObjectVariables: ProjectV1["variables"]["global"]
   objectVariablesByObjectId: ProjectV1["variables"]["objectByObjectId"]
@@ -85,6 +86,7 @@ export function ActionEditorPanel({
   activeEvent,
   selectableTargetObjects,
   selectableSprites,
+  spriteFolders,
   globalVariables,
   selectedObjectVariables,
   objectVariablesByObjectId,
@@ -588,6 +590,7 @@ export function ActionEditorPanel({
                           canPaste={canPasteAction}
                           selectableObjects={selectableTargetObjects}
                           selectableSprites={selectableSprites}
+                          spriteFolders={spriteFolders}
                           globalVariables={globalVariables}
                           roomInstances={roomInstances}
                           rooms={rooms}
@@ -642,6 +645,7 @@ export function ActionEditorPanel({
                           item={item}
                           selectableTargetObjects={selectableTargetObjects}
                           selectableSprites={selectableSprites}
+                          spriteFolders={spriteFolders}
                           globalVariables={globalVariables}
                           selectedObjectVariables={selectedObjectVariables}
                           otherObjectVariables={otherVariablesForCollision}

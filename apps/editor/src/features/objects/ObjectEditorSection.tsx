@@ -413,7 +413,17 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
                 selectedObject={selectedObject}
                 activeEvent={activeEvent}
                 selectableTargetObjects={selectableTargetObjects}
-                selectableSprites={sprites.map((s) => ({ id: s.id, name: s.name }))}
+                selectableSprites={sprites.map((s) => ({
+                  id: s.id,
+                  name: s.name,
+                  folderId: s.folderId ?? null,
+                  previewSrc: resolvedSpriteSources[s.id] ?? null,
+                }))}
+                spriteFolders={(controller.project.resources.spriteFolders ?? []).map((f) => ({
+                  id: f.id,
+                  name: f.name,
+                  parentId: f.parentId ?? null,
+                }))}
                 globalVariables={controller.project.variables.global}
                 selectedObjectVariables={selectedObjectVariableDefinitions}
                 objectVariablesByObjectId={controller.project.variables.objectByObjectId}
