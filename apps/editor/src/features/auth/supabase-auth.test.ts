@@ -59,6 +59,21 @@ describe("supabase-auth", () => {
     expect(unsubscribe).toHaveBeenCalled()
   })
 
+  it("returns null when auth session is missing", async () => {
+    const getUser = vi.fn().mockResolvedValue({
+      data: { user: null },
+      error: { message: "Auth session missing!" }
+    })
+
+    const client = {
+      auth: {
+        getUser
+      }
+    } as unknown as Parameters<typeof getSupabaseAuthUser>[0]
+
+    await expect(getSupabaseAuthUser(client)).resolves.toBeNull()
+  })
+
   it("signs in with email and password", async () => {
     const signInWithPassword = vi.fn().mockResolvedValue({ error: null })
     const client = {
@@ -102,6 +117,37 @@ describe("supabase-auth", () => {
     await signInWithGoogle(client)
 
     expect(signInWithOAuth).toHaveBeenCalledWith(expect.objectContaining({ provider: "google" }))
+  })
+
+  it("uses /editor as fallback Google redirect when env is unset", async () => {
+    const signInWithOAuth = vi.fn().mockResolvedValue({ error: null })
+    const client = {
+      auth: {
+        signInWithOAuth
+      }
+    } as unknown as Parameters<typeof signInWithGoogle>[0]
+
+    const previousWindow = (globalThis as { window?: unknown }).window
+    ;(globalThis as { window?: { location: { origin: string } } }).window = {
+      location: {
+        origin: "http://localhost:5173"
+      }
+    }
+
+    try {
+      await signInWithGoogle(client)
+    } finally {
+      ;(globalThis as { window?: unknown }).window = previousWindow
+    }
+
+    expect(signInWithOAuth).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: "google",
+        options: {
+          redirectTo: "http://localhost:5173/editor"
+        }
+      })
+    )
   })
 
   it("signs out current user", async () => {

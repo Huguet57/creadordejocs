@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest"
-import { normalizePathname, resolveAppRoute, resolveEditorSection, resolvePlayShareId, buildEditorSectionPath } from "./route-utils.js"
+import {
+  normalizePathname,
+  resolveAppRoute,
+  resolveEditorSection,
+  resolvePlayShareId,
+  buildEditorSectionPath,
+  hasAuthCallbackParams,
+  shouldRouteAuthCallbackToEditor,
+  buildEditorAuthCallbackPath
+} from "./route-utils.js"
 
 describe("normalizePathname", () => {
   it("keeps root path unchanged", () => {
@@ -125,5 +134,47 @@ describe("buildEditorSectionPath", () => {
 
   it("builds path for templates", () => {
     expect(buildEditorSectionPath("templates")).toBe("/editor/templates")
+  })
+})
+
+describe("hasAuthCallbackParams", () => {
+  it("detects auth callback params in query string", () => {
+    expect(hasAuthCallbackParams("?code=abc", "")).toBe(true)
+  })
+
+  it("detects auth callback params in hash fragment", () => {
+    expect(hasAuthCallbackParams("", "#access_token=token123")).toBe(true)
+  })
+
+  it("returns false when no known auth params are present", () => {
+    expect(hasAuthCallbackParams("?foo=bar", "#section-1")).toBe(false)
+  })
+})
+
+describe("shouldRouteAuthCallbackToEditor", () => {
+  it("routes OAuth callback from landing to editor", () => {
+    expect(shouldRouteAuthCallbackToEditor("/", "?code=abc", "")).toBe(true)
+  })
+
+  it("does not reroute when already on editor route", () => {
+    expect(shouldRouteAuthCallbackToEditor("/editor", "?code=abc", "")).toBe(false)
+  })
+
+  it("does not reroute regular landing navigation", () => {
+    expect(shouldRouteAuthCallbackToEditor("/", "", "")).toBe(false)
+  })
+})
+
+describe("buildEditorAuthCallbackPath", () => {
+  it("preserves callback query and hash", () => {
+    expect(buildEditorAuthCallbackPath("?code=abc", "#state=xyz")).toBe("/editor?code=abc#state=xyz")
+  })
+
+  it("normalizes missing query/hash prefixes", () => {
+    expect(buildEditorAuthCallbackPath("code=abc", "access_token=123")).toBe("/editor?code=abc#access_token=123")
+  })
+
+  it("returns plain /editor when no callback params exist", () => {
+    expect(buildEditorAuthCallbackPath("", "")).toBe("/editor")
   })
 })

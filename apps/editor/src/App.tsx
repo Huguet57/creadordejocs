@@ -10,7 +10,15 @@ import { EditorWorkspace } from "./layout/EditorWorkspace.js"
 import { ImportDropdown } from "./layout/ImportDropdown.js"
 import { PlayPage } from "./features/play/PlayPage.js"
 import { ShareDropdown } from "./layout/ShareDropdown.js"
-import { resolveAppRoute, resolveEditorSection, resolvePlayShareId, buildEditorSectionPath, type AppRoute } from "./route-utils.js"
+import {
+  resolveAppRoute,
+  resolveEditorSection,
+  resolvePlayShareId,
+  buildEditorSectionPath,
+  shouldRouteAuthCallbackToEditor,
+  buildEditorAuthCallbackPath,
+  type AppRoute
+} from "./route-utils.js"
 
 const landingTitle = "Creador de jocs online | Com crear un joc gratis | CreadorDeJocs"
 const editorTitle = "Editor de jocs online | CreadorDeJocs"
@@ -266,7 +274,14 @@ function EditorAppShell() {
 }
 
 export function App() {
-  const [route, setRoute] = useState<AppRoute>(() => resolveAppRoute(window.location.pathname))
+  const [route, setRoute] = useState<AppRoute>(() => {
+    if (shouldRouteAuthCallbackToEditor(window.location.pathname, window.location.search, window.location.hash)) {
+      const callbackPath = buildEditorAuthCallbackPath(window.location.search, window.location.hash)
+      window.history.replaceState({}, "", callbackPath)
+      return "editor"
+    }
+    return resolveAppRoute(window.location.pathname)
+  })
 
   useEffect(() => {
     const handlePopState = () => {

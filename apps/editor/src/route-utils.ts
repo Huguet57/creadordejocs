@@ -55,3 +55,44 @@ export function resolveEditorSection(pathname: string): EditorSection | null {
 export function buildEditorSectionPath(section: EditorSection): string {
   return `/editor/${section}`
 }
+
+const AUTH_CALLBACK_PARAM_KEYS = ["access_token", "code", "error", "error_description", "id_token", "refresh_token"] as const
+
+function normalizeSearchParamString(value: string): string {
+  if (!value) {
+    return ""
+  }
+  return value.startsWith("?") ? value : `?${value}`
+}
+
+function normalizeHashParamString(value: string): string {
+  if (!value) {
+    return ""
+  }
+  return value.startsWith("#") ? value : `#${value}`
+}
+
+function hasKnownAuthParam(paramString: string): boolean {
+  if (!paramString) {
+    return false
+  }
+
+  const params = new URLSearchParams(paramString)
+  return AUTH_CALLBACK_PARAM_KEYS.some((key) => params.has(key))
+}
+
+export function hasAuthCallbackParams(search: string, hash: string): boolean {
+  const normalizedSearch = normalizeSearchParamString(search)
+  const normalizedHash = normalizeHashParamString(hash)
+  return hasKnownAuthParam(normalizedSearch) || hasKnownAuthParam(normalizedHash.replace(/^#/, ""))
+}
+
+export function shouldRouteAuthCallbackToEditor(pathname: string, search: string, hash: string): boolean {
+  return resolveAppRoute(pathname) !== "editor" && hasAuthCallbackParams(search, hash)
+}
+
+export function buildEditorAuthCallbackPath(search: string, hash: string): string {
+  const normalizedSearch = normalizeSearchParamString(search)
+  const normalizedHash = normalizeHashParamString(hash)
+  return `/editor${normalizedSearch}${normalizedHash}`
+}

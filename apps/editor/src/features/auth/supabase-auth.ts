@@ -20,6 +20,24 @@ function resolveUserFromSession(session: Session | null): SupabaseAuthUser | nul
   }
 }
 
+function isMissingAuthSessionError(errorMessage: string | undefined): boolean {
+  if (!errorMessage) {
+    return false
+  }
+  return errorMessage.toLowerCase().includes("auth session missing")
+}
+
+function resolveGoogleOAuthRedirectTo(): string | undefined {
+  const configuredRedirectTo = import.meta.env.VITE_SUPABASE_AUTH_REDIRECT_TO?.trim()
+  if (configuredRedirectTo) {
+    return configuredRedirectTo
+  }
+  if (typeof window === "undefined") {
+    return undefined
+  }
+  return `${window.location.origin}/editor`
+}
+
 export async function getSupabaseAuthUser(client: SupabaseClient | null): Promise<SupabaseAuthUser | null> {
   if (!client) {
     return null
@@ -27,6 +45,9 @@ export async function getSupabaseAuthUser(client: SupabaseClient | null): Promis
 
   const { data, error } = await client.auth.getUser()
   if (error) {
+    if (isMissingAuthSessionError(error.message)) {
+      return null
+    }
     throw new Error(`Could not get Supabase user: ${error.message}`)
   }
 
@@ -107,7 +128,7 @@ export async function signInWithGoogle(client: SupabaseClient | null): Promise<v
     throw new Error("Supabase auth is not configured.")
   }
 
-  const redirectTo = import.meta.env.VITE_SUPABASE_AUTH_REDIRECT_TO
+  const redirectTo = resolveGoogleOAuthRedirectTo()
   const { error } = await client.auth.signInWithOAuth({
     provider: "google",
     ...(redirectTo
