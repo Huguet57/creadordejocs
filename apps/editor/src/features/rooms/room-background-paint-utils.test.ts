@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   applyBrushStrokeToStamps,
+  eraseStampsAlongStroke,
   eraseTopmostStampAtPoint,
   snapBackgroundPaintPosition,
   type RoomBackgroundPaintStamp
@@ -31,21 +32,88 @@ describe("room background paint utils", () => {
     ).toEqual({ x: 96, y: 64 })
   })
 
-  it("interpolates drag strokes without gaps in sprite-grid steps", () => {
+  it("interpolates drag strokes using original sprite size without gaps", () => {
     const painted = applyBrushStrokeToStamps({
       stamps: [],
       spriteId: "sprite-a",
       from: { x: 0, y: 0 },
-      to: { x: 96, y: 64 },
-      spriteWidth: 32,
-      spriteHeight: 32
+      to: { x: 144, y: 32 },
+      spriteWidth: 48,
+      spriteHeight: 16
     })
 
     expect(painted).toEqual([
       { spriteId: "sprite-a", x: 0, y: 0 },
-      { spriteId: "sprite-a", x: 32, y: 32 },
-      { spriteId: "sprite-a", x: 64, y: 32 },
-      { spriteId: "sprite-a", x: 96, y: 64 }
+      { spriteId: "sprite-a", x: 48, y: 16 },
+      { spriteId: "sprite-a", x: 96, y: 16 },
+      { spriteId: "sprite-a", x: 144, y: 32 }
+    ])
+  })
+
+  it("skips brush stamps when candidate rect overlaps existing stamps", () => {
+    const painted = applyBrushStrokeToStamps({
+      stamps: [
+        { spriteId: "sprite-a", x: 0, y: 0 },
+        { spriteId: "sprite-b", x: 64, y: 0 }
+      ],
+      spriteId: "sprite-c",
+      from: { x: 0, y: 0 },
+      to: { x: 96, y: 0 },
+      spriteWidth: 32,
+      spriteHeight: 32,
+      resolveSpriteDimensions: (spriteId) => {
+        if (spriteId === "sprite-a") {
+          return { width: 32, height: 32 }
+        }
+        if (spriteId === "sprite-b") {
+          return { width: 16, height: 16 }
+        }
+        if (spriteId === "sprite-c") {
+          return { width: 32, height: 32 }
+        }
+        return null
+      }
+    })
+
+    expect(painted).toEqual([
+      { spriteId: "sprite-a", x: 0, y: 0 },
+      { spriteId: "sprite-b", x: 64, y: 0 },
+      { spriteId: "sprite-c", x: 32, y: 0 },
+      { spriteId: "sprite-c", x: 96, y: 0 }
+    ])
+  })
+
+  it("erases all intersecting stamps along eraser stroke", () => {
+    const erased = eraseStampsAlongStroke({
+      stamps: [
+        { spriteId: "sprite-a", x: 0, y: 0 },
+        { spriteId: "sprite-b", x: 32, y: 0 },
+        { spriteId: "sprite-c", x: 64, y: 0 },
+        { spriteId: "sprite-d", x: 96, y: 32 }
+      ],
+      from: { x: 0, y: 0 },
+      to: { x: 64, y: 0 },
+      eraserWidth: 32,
+      eraserHeight: 32,
+      resolveSpriteDimensions: (spriteId) => {
+        if (spriteId === "sprite-a") {
+          return { width: 16, height: 16 }
+        }
+        if (spriteId === "sprite-b") {
+          return { width: 32, height: 32 }
+        }
+        if (spriteId === "sprite-c") {
+          return { width: 16, height: 16 }
+        }
+        if (spriteId === "sprite-d") {
+          return { width: 16, height: 16 }
+        }
+        return null
+      }
+    })
+
+    expect(erased).toEqual([
+      { spriteId: "sprite-d", x: 96, y: 32 }
     ])
   })
 
