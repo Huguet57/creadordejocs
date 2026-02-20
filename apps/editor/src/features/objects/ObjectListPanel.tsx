@@ -23,6 +23,7 @@ import {
 import type { ProjectV1 } from "@creadordejocs/project-format"
 import { EditorSidebarLayout } from "../shared/editor-sidebar/EditorSidebarLayout.js"
 import { buildEntriesByFolder, buildFolderChildrenByParent, isFolderDescendant } from "../shared/editor-sidebar/tree-utils.js"
+import { useFolderExpansion } from "../shared/editor-sidebar/use-folder-expansion.js"
 
 type ObjectFolder = NonNullable<ProjectV1["resources"]["objectFolders"]>[number]
 type ObjectEntry = ProjectV1["objects"][number]
@@ -78,7 +79,8 @@ export function ObjectListPanel({
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null)
   const contextMenuRef = useRef<HTMLDivElement>(null)
 
-  const [expandedFolderIds, setExpandedFolderIds] = useState<Set<string>>(new Set())
+  const foldersById = useMemo(() => new Map(objectFolders.map((f) => [f.id, f])), [objectFolders])
+  const [expandedFolderIds, setExpandedFolderIds] = useFolderExpansion("objects", foldersById)
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null)
   const [renamingValue, setRenamingValue] = useState("")
   const [creatingFolderParentId, setCreatingFolderParentId] = useState<string | null | undefined>(undefined)

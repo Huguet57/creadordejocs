@@ -22,6 +22,7 @@ import {
 import type { ProjectV1 } from "@creadordejocs/project-format"
 import { EditorSidebarLayout } from "../shared/editor-sidebar/EditorSidebarLayout.js"
 import { buildEntriesByFolder, buildFolderChildrenByParent, isFolderDescendant } from "../shared/editor-sidebar/tree-utils.js"
+import { useFolderExpansion } from "../shared/editor-sidebar/use-folder-expansion.js"
 
 type RoomFolder = NonNullable<ProjectV1["resources"]["roomFolders"]>[number]
 type RoomEntry = ProjectV1["rooms"][number]
@@ -75,7 +76,8 @@ export function RoomListPanel({
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null)
   const contextMenuRef = useRef<HTMLDivElement>(null)
 
-  const [expandedFolderIds, setExpandedFolderIds] = useState<Set<string>>(new Set())
+  const foldersById = useMemo(() => new Map(roomFolders.map((f) => [f.id, f])), [roomFolders])
+  const [expandedFolderIds, setExpandedFolderIds] = useFolderExpansion("rooms", foldersById)
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null)
   const [renamingRoomId, setRenamingRoomId] = useState<string | null>(null)
   const [renamingValue, setRenamingValue] = useState("")
