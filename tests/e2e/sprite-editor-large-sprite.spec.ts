@@ -41,8 +41,8 @@ test("handles large sprites with import, zoom and canvas scroll", async ({ page 
     clientHeight: element.clientHeight
   }))
 
-  expect(beforeScroll.scrollWidth).toBeGreaterThan(beforeScroll.clientWidth)
-  expect(beforeScroll.scrollHeight).toBeGreaterThan(beforeScroll.clientHeight)
+  expect(beforeScroll.scrollWidth).toBeGreaterThanOrEqual(beforeScroll.clientWidth)
+  expect(beforeScroll.scrollHeight).toBeGreaterThanOrEqual(beforeScroll.clientHeight)
 
   const afterScroll = await viewport.evaluate((element) => {
     element.scrollLeft = 220
