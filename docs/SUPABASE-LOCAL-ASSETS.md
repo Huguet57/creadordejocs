@@ -43,7 +43,7 @@ VITE_SUPABASE_URL=http://127.0.0.1:54421
 VITE_SUPABASE_ANON_KEY=<anon-key-from-supabase-status>
 VITE_SUPABASE_BUCKET=game-assets
 VITE_ENABLE_SUPABASE_AUTH=true
-VITE_SUPABASE_AUTH_REDIRECT_TO=http://127.0.0.1:5173/editor
+VITE_SUPABASE_AUTH_REDIRECT_TO=http://localhost:5173/editor
 ```
 
 ## 4) Create public bucket for MVP
