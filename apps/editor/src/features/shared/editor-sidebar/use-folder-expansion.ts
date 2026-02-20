@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react"
+import { getKvStorageProvider } from "../../storage/get-kv-storage-provider.js"
 
 const STORAGE_PREFIX = "creadordejocs:folder-expansion:"
 
@@ -15,7 +16,7 @@ export function useFolderExpansion(
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => {
     const key = STORAGE_PREFIX + storageKey
     try {
-      const raw = localStorage.getItem(key)
+      const raw = getKvStorageProvider().getItem(key)
       if (raw) {
         const parsed: unknown = JSON.parse(raw)
         if (Array.isArray(parsed)) {
@@ -70,7 +71,7 @@ export function useFolderExpansion(
   // Persist to localStorage
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_PREFIX + storageKey, JSON.stringify([...expandedIds]))
+      getKvStorageProvider().setItem(STORAGE_PREFIX + storageKey, JSON.stringify([...expandedIds]))
     } catch {
       // Ignore quota errors
     }

@@ -1,4 +1,5 @@
 import { generateUUID, loadProjectV1, serializeProjectV1, type ProjectV1 } from "@creadordejocs/project-format"
+import { getKvStorageProvider } from "./storage/get-kv-storage-provider.js"
 
 export const LOCAL_PROJECT_KEY = "creadordejocs.editor.project.v1"
 export const LOCAL_SNAPSHOTS_KEY = "creadordejocs.editor.snapshots.v1"
@@ -15,11 +16,11 @@ export type LocalSnapshot = {
 
 export function saveProjectLocally(project: ProjectV1): void {
   const serialized = serializeProjectV1(project)
-  localStorage.setItem(LOCAL_PROJECT_KEY, serialized)
+  getKvStorageProvider().setItem(LOCAL_PROJECT_KEY, serialized)
 }
 
 export function loadProjectFromLocalStorage(): ProjectV1 | null {
-  const source = localStorage.getItem(LOCAL_PROJECT_KEY)
+  const source = getKvStorageProvider().getItem(LOCAL_PROJECT_KEY)
   if (!source) {
     return null
   }
@@ -32,7 +33,7 @@ export function loadProjectFromLocalStorage(): ProjectV1 | null {
 }
 
 export function loadSnapshotsFromLocalStorage(): LocalSnapshot[] {
-  const source = localStorage.getItem(LOCAL_SNAPSHOTS_KEY)
+  const source = getKvStorageProvider().getItem(LOCAL_SNAPSHOTS_KEY)
   if (!source) {
     return []
   }
@@ -69,7 +70,7 @@ export function saveCheckpointSnapshot(project: ProjectV1, label: string): Local
     projectSource: serializeProjectV1(project)
   }
   const merged = [next, ...snapshots].slice(0, MAX_SNAPSHOTS)
-  localStorage.setItem(LOCAL_SNAPSHOTS_KEY, JSON.stringify(merged))
+  getKvStorageProvider().setItem(LOCAL_SNAPSHOTS_KEY, JSON.stringify(merged))
   return merged
 }
 
