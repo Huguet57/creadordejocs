@@ -57,7 +57,6 @@ function createProps(overrides: Partial<PanelProps> = {}): PanelProps {
     paintBrushSpriteId: "spr-root",
     onPaintBrushSpriteChange: vi.fn(),
     paintedStampCount: 2,
-    onClearBackgroundPaint: vi.fn(),
     ...overrides
   }
 }

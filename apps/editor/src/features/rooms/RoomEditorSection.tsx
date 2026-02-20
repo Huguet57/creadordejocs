@@ -843,13 +843,6 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                 paintBrushSpriteId={paintBrushSpriteId}
                 onPaintBrushSpriteChange={setPaintBrushSpriteId}
                 paintedStampCount={activeDisplayedPaintStamps.length}
-                onClearBackgroundPaint={() => {
-                  if (!controller.activeRoom) {
-                    return
-                  }
-                  controller.updateRoomBackgroundPaintStamps(controller.activeRoom.id, [])
-                  setPaintStrokeDraft(null)
-                }}
               />
 
               <div className="flex min-w-0 flex-1 flex-col">

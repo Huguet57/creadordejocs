@@ -45,7 +45,6 @@ type RoomObjectPickerPanelProps = {
   paintBrushSpriteId: string | null
   onPaintBrushSpriteChange: (spriteId: string | null) => void
   paintedStampCount: number
-  onClearBackgroundPaint: () => void
 }
 
 export function RoomObjectPickerPanel({
@@ -73,7 +72,6 @@ export function RoomObjectPickerPanel({
   paintBrushSpriteId,
   onPaintBrushSpriteChange,
   paintedStampCount,
-  onClearBackgroundPaint
 }: RoomObjectPickerPanelProps) {
   const [expandedObjectFolderIds, setExpandedObjectFolderIds] = useState<Set<string>>(new Set())
   const [expandedSpriteFolderIds, setExpandedSpriteFolderIds] = useState<Set<string>>(new Set())
@@ -98,10 +96,6 @@ export function RoomObjectPickerPanel({
   const selectedBackgroundSprite = useMemo(
     () => backgroundSprites.find((spriteEntry) => spriteEntry.id === backgroundSpriteId) ?? null,
     [backgroundSprites, backgroundSpriteId]
-  )
-  const selectedPaintBrushSprite = useMemo(
-    () => backgroundSprites.find((spriteEntry) => spriteEntry.id === paintBrushSpriteId) ?? null,
-    [backgroundSprites, paintBrushSpriteId]
   )
 
   useEffect(() => {
@@ -452,10 +446,6 @@ export function RoomObjectPickerPanel({
                   )}
                 </div>
 
-                <div className="rounded border border-slate-200 bg-white px-2 py-1.5 text-[11px] text-slate-500">
-                  Brush: {selectedPaintBrushSprite?.name ?? "No brush sprite"}
-                </div>
-
                 <button
                   type="button"
                   className={`flex h-8 w-full items-center justify-center gap-1 rounded border px-2 text-xs ${
@@ -470,14 +460,6 @@ export function RoomObjectPickerPanel({
                   Eraser
                 </button>
 
-                <button
-                  type="button"
-                  className="h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
-                  disabled={!hasActiveRoom || paintedStampCount === 0}
-                  onClick={onClearBackgroundPaint}
-                >
-                  Clear painted background
-                </button>
               </div>
             </div>
           </>
