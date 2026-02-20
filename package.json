@@ -24,7 +24,7 @@
     "check:quick": "npm run lint && npm run typecheck && npm run test:unit",
     "test": "npm run test:unit && npm run test:e2e",
     "build": "tsc -b --pretty false",
-    "prepare": "husky || true"
+    "prepare": "husky"
   },
   "devDependencies": {
     "@playwright/test": "^1.52.0",
