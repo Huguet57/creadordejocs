@@ -306,6 +306,26 @@ export function shouldResetWhenSwitchingSection(
   return isRunning && currentSection === "run" && nextSection !== "run"
 }
 
+export function isQuotaExceededError(error: unknown): boolean {
+  if (!error || typeof error !== "object") {
+    return false
+  }
+
+  const maybeStorageError = error as { name?: unknown; message?: unknown; code?: unknown }
+  if (maybeStorageError.name === "QuotaExceededError") {
+    return true
+  }
+  if (maybeStorageError.code === 22 || maybeStorageError.code === 1014) {
+    return true
+  }
+  if (typeof maybeStorageError.message !== "string") {
+    return false
+  }
+
+  const normalized = maybeStorageError.message.toLowerCase()
+  return normalized.includes("quota") && (normalized.includes("exceed") || normalized.includes("full"))
+}
+
 export function useEditorController(initialSectionOverride?: EditorSection) {
   const initial = createInitialEditorState()
   const [project, setProject] = useState<ProjectV1>(initial.project)
@@ -428,6 +448,13 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       pushProjectToSupabase(source, summary.updatedAtIso)
     } catch (err) {
       console.error("[persistProject] Save failed:", err)
+      if (isQuotaExceededError(err) && isAuthenticated) {
+        console.warn("[persistProject] Local storage quota exceeded. Falling back to Supabase-only save.")
+        pushProjectToSupabase(source)
+        setSaveStatus("saved")
+        setIsDirty(false)
+        return
+      }
       setSaveStatus("error")
     }
   }

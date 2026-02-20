@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   getRuntimeKeyFromKeyboardEvent,
   isSpriteCompatibleWithObjectSize,
+  isQuotaExceededError,
   resolveNextActiveSpriteIdAfterDelete,
   countSpriteAssignments,
   resolveInitialSection,
@@ -164,5 +165,19 @@ describe("countSpriteAssignments", () => {
     const objectThree = quickCreateObject(objectTwo.project, { name: "Obj3", spriteId: null })
 
     expect(countSpriteAssignments(objectThree.project, spriteResult.spriteId)).toBe(2)
+  })
+})
+
+describe("isQuotaExceededError", () => {
+  it("returns true for QuotaExceededError name", () => {
+    expect(isQuotaExceededError({ name: "QuotaExceededError" })).toBe(true)
+  })
+
+  it("returns true when message contains exceeded quota", () => {
+    expect(isQuotaExceededError(new Error("Setting the value exceeded the quota"))).toBe(true)
+  })
+
+  it("returns false for non-quota errors", () => {
+    expect(isQuotaExceededError(new Error("Network failed"))).toBe(false)
   })
 })
