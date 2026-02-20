@@ -685,7 +685,7 @@ export function ActionBlock({
         )}
 
         {action.type === "endGame" && (
-          <div className="flex items-center gap-1 flex-1">
+          <div className="flex items-center gap-1">
             <label className="text-[10px] font-medium opacity-60">Msg</label>
             <RightValuePicker
               value={action.message}
@@ -701,7 +701,7 @@ export function ActionBlock({
 
         {action.type === "message" && (
           <>
-            <div className="action-block-message-text-field flex items-center gap-1 flex-1">
+            <div className="action-block-message-text-field flex items-center gap-1">
               <label className="text-[10px] font-medium opacity-60">Msg</label>
               <RightValuePicker
                 value={action.text}
