@@ -11,7 +11,11 @@ export const caMessages = {
   runDebugInstanceInspection: "Inspecció d'instància",
   runDebugObject: "Objecte",
   runDebugNone: "Cap",
-  runDebugVariables: "Variables"
+  runDebugVariables: "Variables",
+  syncIdle: "Sync idle",
+  syncing: "Syncing...",
+  synced: "Synced",
+  syncError: "Sync error"
 } as const
 
 export type EditorMessageKey = keyof typeof caMessages

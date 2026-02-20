@@ -3,16 +3,21 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import { InMemoryKvProvider } from "./storage/in-memory-kv-provider.js"
 import { resetKvStorageProvider, setKvStorageProvider } from "./storage/get-kv-storage-provider.js"
 import {
-  LOCAL_PROJECT_KEY,
-  LOCAL_SNAPSHOTS_KEY,
+  createLocalProject,
+  deleteLocalProject,
+  ensureLocalProjectState,
+  getActiveProjectIdFromLocalStorage,
+  listLocalProjects,
   loadProjectFromLocalStorage,
   loadSnapshotProject,
   loadSnapshotsFromLocalStorage,
+  renameLocalProject,
   saveCheckpointSnapshot,
-  saveProjectLocally
+  saveProjectLocally,
+  setActiveProjectIdInLocalStorage
 } from "./project-storage.js"
 
-describe("project-storage", () => {
+describe("project-storage (multi-project)", () => {
   let kv: InMemoryKvProvider
 
   beforeEach(() => {
@@ -24,72 +29,80 @@ describe("project-storage", () => {
     resetKvStorageProvider()
   })
 
-  describe("saveProjectLocally / loadProjectFromLocalStorage", () => {
-    it("round-trips a project through save and load", () => {
-      const project = createEmptyProjectV1("Test Game")
-      saveProjectLocally(project)
+  it("creates initial local project state when storage is empty", () => {
+    const state = ensureLocalProjectState(() => createEmptyProjectV1("Primer joc"))
 
-      const loaded = loadProjectFromLocalStorage()
-      expect(loaded).not.toBeNull()
-      expect(loaded!.metadata.name).toBe("Test Game")
-    })
-
-    it("returns null when no project is stored", () => {
-      expect(loadProjectFromLocalStorage()).toBeNull()
-    })
-
-    it("returns null when stored data is corrupted", () => {
-      kv.setItem(LOCAL_PROJECT_KEY, "not valid json {{{")
-      expect(loadProjectFromLocalStorage()).toBeNull()
-    })
-
-    it("stores under the expected key", () => {
-      saveProjectLocally(createEmptyProjectV1("Key Test"))
-      expect(kv.getItem(LOCAL_PROJECT_KEY)).not.toBeNull()
-    })
+    expect(state.project.metadata.name).toBe("Primer joc")
+    expect(state.activeProjectId).toBe(state.project.metadata.id)
+    expect(listLocalProjects()).toHaveLength(1)
+    expect(getActiveProjectIdFromLocalStorage()).toBe(state.project.metadata.id)
   })
 
-  describe("snapshots", () => {
-    it("saves and loads a checkpoint snapshot", () => {
-      const project = createEmptyProjectV1("Snapshot Game")
-      const snapshots = saveCheckpointSnapshot(project, "before refactor")
+  it("creates a second project and can switch active project", () => {
+    const initial = ensureLocalProjectState(() => createEmptyProjectV1("Joc A"))
+    const second = createLocalProject(createEmptyProjectV1("Joc B"))
 
-      expect(snapshots).toHaveLength(1)
-      expect(snapshots[0]!.label).toBe("before refactor")
-    })
+    expect(listLocalProjects()).toHaveLength(2)
+    expect(getActiveProjectIdFromLocalStorage()).toBe(second.projectId)
 
-    it("limits snapshots to 8", () => {
-      const project = createEmptyProjectV1("Many Snapshots")
-      for (let i = 0; i < 10; i++) {
-        saveCheckpointSnapshot(project, `snapshot ${i}`)
-      }
+    const switched = setActiveProjectIdInLocalStorage(initial.activeProjectId)
+    expect(switched).toBe(true)
+    expect(getActiveProjectIdFromLocalStorage()).toBe(initial.activeProjectId)
 
-      const loaded = loadSnapshotsFromLocalStorage()
-      expect(loaded).toHaveLength(8)
-      expect(loaded[0]!.label).toBe("snapshot 9")
-    })
+    const loaded = loadProjectFromLocalStorage()
+    expect(loaded?.metadata.name).toBe("Joc A")
+  })
 
-    it("returns empty array when no snapshots exist", () => {
-      expect(loadSnapshotsFromLocalStorage()).toEqual([])
-    })
+  it("renames an existing project", () => {
+    const state = ensureLocalProjectState(() => createEmptyProjectV1("Abans"))
 
-    it("returns empty array when stored snapshots are corrupted", () => {
-      kv.setItem(LOCAL_SNAPSHOTS_KEY, "not json")
-      expect(loadSnapshotsFromLocalStorage()).toEqual([])
-    })
+    const renamed = renameLocalProject(state.activeProjectId, "Despres")
 
-    it("loads a specific snapshot project by id", () => {
-      const project = createEmptyProjectV1("Loadable")
-      const snapshots = saveCheckpointSnapshot(project, "checkpoint")
-      const snapshotId = snapshots[0]!.id
+    expect(renamed).not.toBeNull()
+    expect(listLocalProjects()[0]?.name).toBe("Despres")
+    expect(loadProjectFromLocalStorage(state.activeProjectId)?.metadata.name).toBe("Despres")
+  })
 
-      const loaded = loadSnapshotProject(snapshotId)
-      expect(loaded).not.toBeNull()
-      expect(loaded!.metadata.name).toBe("Loadable")
-    })
+  it("deletes a project and reassigns active project to the remaining one", () => {
+    const first = ensureLocalProjectState(() => createEmptyProjectV1("Joc 1"))
+    const second = createLocalProject(createEmptyProjectV1("Joc 2"))
 
-    it("returns null for a non-existent snapshot id", () => {
-      expect(loadSnapshotProject("does-not-exist")).toBeNull()
-    })
+    deleteLocalProject(second.projectId)
+
+    expect(listLocalProjects()).toHaveLength(1)
+    expect(getActiveProjectIdFromLocalStorage()).toBe(first.activeProjectId)
+    expect(loadProjectFromLocalStorage(first.activeProjectId)?.metadata.name).toBe("Joc 1")
+  })
+
+  it("stores snapshots per project id", () => {
+    const first = ensureLocalProjectState(() => createEmptyProjectV1("Joc 1"))
+    const second = createLocalProject(createEmptyProjectV1("Joc 2"))
+
+    const snapA = saveCheckpointSnapshot(createEmptyProjectV1("Joc 1 state"), "first checkpoint", first.activeProjectId)
+    const snapB = saveCheckpointSnapshot(createEmptyProjectV1("Joc 2 state"), "second checkpoint", second.projectId)
+
+    expect(loadSnapshotsFromLocalStorage(first.activeProjectId)).toHaveLength(1)
+    expect(loadSnapshotsFromLocalStorage(second.projectId)).toHaveLength(1)
+
+    const restoredA = loadSnapshotProject(snapA[0]!.id, first.activeProjectId)
+    const restoredB = loadSnapshotProject(snapB[0]!.id, second.projectId)
+
+    expect(restoredA?.metadata.name).toBe("Joc 1 state")
+    expect(restoredB?.metadata.name).toBe("Joc 2 state")
+  })
+
+  it("updates project summary timestamp when saving active project", () => {
+    const state = ensureLocalProjectState(() => createEmptyProjectV1("Timer"))
+    const initialSummary = listLocalProjects()[0]
+
+    const next = createEmptyProjectV1("Timer edited")
+    next.metadata.id = state.activeProjectId
+    saveProjectLocally(next)
+
+    const updatedSummary = listLocalProjects()[0]
+    expect(updatedSummary).toBeDefined()
+    expect(updatedSummary?.projectId).toBe(state.activeProjectId)
+    expect(updatedSummary?.name).toBe("Timer edited")
+    expect(updatedSummary!.updatedAtIso >= (initialSummary?.updatedAtIso ?? "")).toBe(true)
   })
 })

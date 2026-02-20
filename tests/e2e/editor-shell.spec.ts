@@ -7,6 +7,8 @@ test.beforeEach(async ({ page }) => {
 test("navigates sidebar sections and keeps modular editors available", async ({ page }) => {
   await expect(page.getByTestId("header-import-trigger")).toBeVisible()
   await expect(page.getByTestId("header-share-trigger")).toBeVisible()
+  await expect(page.getByTestId("auth-button")).toBeVisible()
+  await expect(page.getByTestId("sync-now-button")).toBeVisible()
   await expect(page.getByTestId("sidebar-share")).toHaveCount(0)
 
   await page.getByTestId("sidebar-sprites").click()
@@ -20,6 +22,18 @@ test("navigates sidebar sections and keeps modular editors available", async ({ 
 
   await page.getByTestId("sidebar-run").click()
   await expect(page.getByText("Run", { exact: true }).first()).toBeVisible()
+})
+
+test("creates and switches local projects from Game menu", async ({ page }) => {
+  await page.getByTestId("header-import-trigger").click()
+  await page.getByTestId("header-create-blank-item").click()
+
+  await page.getByTestId("header-import-trigger").click()
+  const projectItems = page.getByRole("menuitemradio")
+  await expect(projectItems).toHaveCount(2)
+
+  await projectItems.first().click()
+  await expect(page.getByTestId("header-import-trigger")).toBeVisible()
 })
 
 test("creates sprite, object and object listener", async ({ page }) => {

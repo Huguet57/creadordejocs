@@ -25,6 +25,13 @@ function formatStatus(status: "idle" | "saved" | "saving" | "error"): string {
   return "Saved"
 }
 
+function formatSyncStatus(status: "idle" | "syncing" | "synced" | "error"): string {
+  if (status === "syncing") return "Syncing..."
+  if (status === "synced") return "Synced"
+  if (status === "error") return "Sync error"
+  return "Sync idle"
+}
+
 function setMetaContent(selector: string, content: string): void {
   const metaTag = document.querySelector(selector)
   if (!metaTag) {
@@ -63,6 +70,27 @@ function EditorAppShell() {
   const isInitialMountRef = useRef(true)
   const controllerRef = useRef(controller)
   controllerRef.current = controller
+
+  const handleAuthClick = async (): Promise<void> => {
+    if (controller.isAuthenticated) {
+      try {
+        await controller.signOut()
+      } catch (error) {
+        console.error("[auth] sign out failed:", error)
+      }
+      return
+    }
+
+    const email = window.prompt("Correu electronic per iniciar sessio")
+    if (!email) {
+      return
+    }
+    try {
+      await controller.signInWithMagicLink(email)
+    } catch (error) {
+      console.error("[auth] sign in failed:", error)
+    }
+  }
 
   // Sync URL when activeSection changes
   useEffect(() => {
@@ -109,8 +137,30 @@ function EditorAppShell() {
             <p data-testid="save-status" className="mvp19-header-save-status ml-2 text-xs text-slate-400">
               {formatStatus(controller.saveStatus)}
             </p>
+            <p data-testid="sync-status" className="mvp19-header-sync-status text-xs text-slate-400">
+              {formatSyncStatus(controller.syncStatus)}
+            </p>
           </div>
           <div className="flex items-center gap-1">
+            <Button
+              data-testid="sync-now-button"
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs text-slate-500 hover:text-slate-800"
+              disabled={!controller.isAuthenticated || controller.syncStatus === "syncing"}
+              onClick={() => void controller.syncNow()}
+            >
+              Sync now
+            </Button>
+            <Button
+              data-testid="auth-button"
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs text-slate-500 hover:text-slate-800"
+              onClick={() => void handleAuthClick()}
+            >
+              {controller.isAuthenticated ? "Sign out" : "Sign in"}
+            </Button>
             <Button
               data-testid="undo-button"
               variant="ghost"

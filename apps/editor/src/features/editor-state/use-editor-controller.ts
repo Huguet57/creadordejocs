@@ -75,6 +75,9 @@ import {
   addBlockAction as addBlockActionModel,
   updateBlockAction as updateBlockActionModel,
   removeBlockAction as removeBlockActionModel,
+  generateUUID,
+  loadProjectV1,
+  serializeProjectV1,
   type ObjectActionDraft,
   type ObjectEventItem,
   type ObjectControlBlockItem,
@@ -86,14 +89,26 @@ import {
   type ProjectV1
 } from "@creadordejocs/project-format"
 import {
+  createLocalProject,
+  deleteLocalProject,
+  ensureLocalProjectState,
+  getActiveProjectIdFromLocalStorage,
+  listLocalProjects,
   loadProjectFromLocalStorage,
   loadSnapshotProject,
   loadSnapshotsFromLocalStorage,
+  renameLocalProject,
   saveCheckpointSnapshot,
+  saveProjectByIdLocally,
   saveProjectLocally,
+  setActiveProjectIdInLocalStorage,
+  type LocalProjectSummary,
   type LocalSnapshot,
   type SaveStatus
 } from "../project-storage.js"
+import { getSupabaseAuthUser, signInWithMagicLink as signInWithSupabaseMagicLink, signOutFromSupabase, subscribeToSupabaseAuthUser, type SupabaseAuthUser } from "../auth/supabase-auth.js"
+import { mergeProjectCatalog } from "../storage/project-sync.js"
+import { deleteUserProject, listUserProjects, upsertUserProject } from "../storage/supabase-project-storage.js"
 import { importProjectFromFile } from "../templates/import-project.js"
 import { selectActiveRoom, selectObject } from "./selectors.js"
 import { createTemplateProject, type GameTemplateId } from "./game-templates.js"
@@ -114,6 +129,7 @@ import {
 import { intersectsInstances } from "./runtime-types.js"
 import type { EditorSection, ObjectEventKey, ObjectEventType, ObjectKeyboardMode, ObjectMouseMode } from "./types.js"
 import { resolveAssetSource } from "../assets/asset-source-resolver.js"
+import { getSupabaseClient } from "../../lib/supabase.js"
 
 const AUTOSAVE_MS = 4000
 
@@ -248,13 +264,24 @@ export function spriteAssignedObjectNames(project: ProjectV1, spriteId: string):
   return names
 }
 
-function createInitialEditorState(): { project: ProjectV1; roomId: string } {
-  const loaded = loadProjectFromLocalStorage()
-  if (loaded) {
-    return ensureProjectHasRoom(loaded)
+function createInitialEditorState(): {
+  project: ProjectV1
+  roomId: string
+  activeProjectId: string
+  projects: LocalProjectSummary[]
+} {
+  const ensured = ensureLocalProjectState(() => incrementMetric(createEmptyProjectV1("Primer joc autònom"), "appStart"))
+  const normalized = ensureProjectHasRoom(ensured.project)
+  if (normalized.project !== ensured.project) {
+    saveProjectByIdLocally(ensured.activeProjectId, normalized.project, { setActive: true })
   }
 
-  return ensureProjectHasRoom(incrementMetric(createEmptyProjectV1("Primer joc autònom"), "appStart"))
+  return {
+    project: normalized.project,
+    roomId: normalized.roomId,
+    activeProjectId: ensured.activeProjectId,
+    projects: listLocalProjects()
+  }
 }
 
 export function resolveResetState(
@@ -282,6 +309,8 @@ export function shouldResetWhenSwitchingSection(
 export function useEditorController(initialSectionOverride?: EditorSection) {
   const initial = createInitialEditorState()
   const [project, setProject] = useState<ProjectV1>(initial.project)
+  const [projects, setProjects] = useState<LocalProjectSummary[]>(initial.projects)
+  const [activeProjectId, setActiveProjectId] = useState<string>(initial.activeProjectId)
   const [activeSection, setActiveSection] = useState<EditorSection>(
     () => initialSectionOverride ?? resolveInitialSection(initial.project)
   )
@@ -293,11 +322,13 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
   const [runtimeState, setRuntimeState] = useState<RuntimeState>(() => createInitialRuntimeState(initial.project))
   const [roomTransition, setRoomTransition] = useState<GoToRoomTransition>("none")
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("saved")
+  const [syncStatus, setSyncStatus] = useState<"idle" | "syncing" | "synced" | "error">("idle")
+  const [authUser, setAuthUser] = useState<SupabaseAuthUser | null>(null)
   const [importStatus, setImportStatus] = useState<"idle" | "importing" | "imported" | "error">("idle")
   const [isDirty, setIsDirty] = useState(false)
   const [past, setPast] = useState<ProjectV1[]>([])
   const [future, setFuture] = useState<ProjectV1[]>([])
-  const [snapshots, setSnapshots] = useState<LocalSnapshot[]>(() => loadSnapshotsFromLocalStorage())
+  const [snapshots, setSnapshots] = useState<LocalSnapshot[]>(() => loadSnapshotsFromLocalStorage(initial.activeProjectId))
   const [startedAtMs] = useState<number>(() => Date.now())
   const pressedKeysRef = useRef<Set<string>>(new Set())
   const justPressedKeysRef = useRef<Set<string>>(new Set())
@@ -316,9 +347,59 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
   runSnapshotRef.current = runSnapshot
   const activeRoomIdRef = useRef<string>(activeRoomId)
   activeRoomIdRef.current = activeRoomId
+  const lastAutoSyncUserIdRef = useRef<string | null>(null)
+  const syncNowRef = useRef<() => Promise<void>>(() => Promise.resolve())
+
+  const isAuthenticated = authUser !== null
 
   const activeRoom = useMemo(() => selectActiveRoom(project, activeRoomId), [project, activeRoomId])
   const selectedObject = useMemo(() => selectObject(project, activeObjectId), [project, activeObjectId])
+
+  const applyProjectState = (projectId: string, sourceProject: ProjectV1, nextSection?: EditorSection): void => {
+    const normalized = ensureProjectHasRoom(sourceProject)
+    const runtime = createInitialRuntimeState(normalized.project)
+    runtimeRef.current = runtime
+    setRuntimeState(runtime)
+    setProject(normalized.project)
+    setActiveProjectId(projectId)
+    setActiveRoomId(normalized.roomId)
+    setActiveObjectId(null)
+    setActiveSpriteId(null)
+    setIsRunning(false)
+    setRoomTransition("none")
+    setRunSnapshot(null)
+    setPast([])
+    setFuture([])
+    setIsDirty(false)
+    setSaveStatus("saved")
+    setSnapshots(loadSnapshotsFromLocalStorage(projectId))
+    if (nextSection) {
+      setActiveSection(nextSection)
+    }
+  }
+
+  const refreshProjectSummaries = (): void => {
+    setProjects(listLocalProjects())
+  }
+
+  const pushProjectToSupabase = (source: ProjectV1, updatedAtIso?: string): void => {
+    const userId = authUser?.id
+    const supabase = getSupabaseClient()
+    if (!supabase || !userId) {
+      return
+    }
+
+    setSyncStatus("syncing")
+    void upsertUserProject(supabase, userId, {
+      project: source,
+      ...(updatedAtIso ? { updatedAtIso } : {})
+    })
+      .then(() => setSyncStatus("synced"))
+      .catch((error) => {
+        console.error("[pushProjectToSupabase] Could not sync project:", error)
+        setSyncStatus("error")
+      })
+  }
 
   const pushProjectChange = (next: ProjectV1, checkpointLabel?: string): void => {
     setPast((previous) => [...previous.slice(-39), project])
@@ -327,7 +408,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
     setIsDirty(true)
     if (checkpointLabel) {
       try {
-        setSnapshots(saveCheckpointSnapshot(next, checkpointLabel))
+        setSnapshots(saveCheckpointSnapshot(next, checkpointLabel, activeProjectId))
       } catch {
         // localStorage may be full or unavailable — skip snapshot silently
       }
@@ -337,17 +418,138 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
   const persistProject = (source: ProjectV1, withSnapshotLabel?: string): void => {
     try {
       setSaveStatus("saving")
-      saveProjectLocally(source)
+      const summary = saveProjectByIdLocally(activeProjectId, source, { setActive: true })
+      refreshProjectSummaries()
       setSaveStatus("saved")
       setIsDirty(false)
       if (withSnapshotLabel) {
-        setSnapshots(saveCheckpointSnapshot(source, withSnapshotLabel))
+        setSnapshots(saveCheckpointSnapshot(source, withSnapshotLabel, activeProjectId))
       }
+      pushProjectToSupabase(source, summary.updatedAtIso)
     } catch (err) {
       console.error("[persistProject] Save failed:", err)
       setSaveStatus("error")
     }
   }
+
+  const runSyncNow = async (): Promise<void> => {
+    const userId = authUser?.id
+    const supabase = getSupabaseClient()
+    if (!supabase || !userId) {
+      setSyncStatus("idle")
+      return
+    }
+
+    try {
+      if (isDirty) {
+        persistProject(project)
+      }
+
+      setSyncStatus("syncing")
+
+      const localEntries = listLocalProjects()
+        .map((summary) => {
+          const localProject = loadProjectFromLocalStorage(summary.projectId)
+          if (!localProject) {
+            return null
+          }
+
+          return {
+            projectId: summary.projectId,
+            name: localProject.metadata.name,
+            projectSource: serializeProjectV1(localProject),
+            updatedAtIso: summary.updatedAtIso
+          }
+        })
+        .filter((entry): entry is NonNullable<typeof entry> => entry !== null)
+
+      const remoteEntries = await listUserProjects(supabase, userId)
+      const merged = mergeProjectCatalog(localEntries, remoteEntries)
+
+      for (const entry of merged.merged) {
+        try {
+          const parsed = loadProjectV1(entry.projectSource)
+          saveProjectByIdLocally(entry.projectId, parsed, {
+            updatedAtIso: entry.updatedAtIso,
+            setActive: entry.projectId === getActiveProjectIdFromLocalStorage()
+          })
+        } catch {
+          // Ignore malformed remote entries and keep local state.
+        }
+      }
+
+      for (const entry of merged.toUpload) {
+        try {
+          const parsed = loadProjectV1(entry.projectSource)
+          await upsertUserProject(supabase, userId, { project: parsed, updatedAtIso: entry.updatedAtIso })
+        } catch (error) {
+          console.error("[syncNow] Could not upload project:", error)
+        }
+      }
+
+      refreshProjectSummaries()
+      const nextActiveProjectId = getActiveProjectIdFromLocalStorage()
+      const nextProject = loadProjectFromLocalStorage(nextActiveProjectId ?? undefined)
+      if (nextActiveProjectId && nextProject) {
+        applyProjectState(nextActiveProjectId, nextProject)
+      }
+      setSyncStatus("synced")
+    } catch (error) {
+      console.error("[syncNow] Sync failed:", error)
+      setSyncStatus("error")
+    }
+  }
+  syncNowRef.current = runSyncNow
+
+  const runSignInWithMagicLink = async (email: string): Promise<void> => {
+    const supabase = getSupabaseClient()
+    await signInWithSupabaseMagicLink(supabase, email)
+  }
+
+  const runSignOut = async (): Promise<void> => {
+    const supabase = getSupabaseClient()
+    await signOutFromSupabase(supabase)
+    setSyncStatus("idle")
+  }
+
+  useEffect(() => {
+    const supabase = getSupabaseClient()
+    if (!supabase) {
+      return
+    }
+
+    let disposed = false
+    void getSupabaseAuthUser(supabase)
+      .then((user) => {
+        if (!disposed) {
+          setAuthUser(user)
+        }
+      })
+      .catch((error) => {
+        console.error("[auth] Could not load current session:", error)
+      })
+
+    const unsubscribe = subscribeToSupabaseAuthUser(supabase, (user) => {
+      if (disposed) {
+        return
+      }
+      setAuthUser(user)
+      if (!user) {
+        lastAutoSyncUserIdRef.current = null
+        return
+      }
+      if (lastAutoSyncUserIdRef.current === user.id) {
+        return
+      }
+      lastAutoSyncUserIdRef.current = user.id
+      void syncNowRef.current()
+    })
+
+    return () => {
+      disposed = true
+      unsubscribe()
+    }
+  }, [])
 
   useEffect(() => {
     if (!isDirty) {
@@ -362,17 +564,17 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
   useEffect(() => {
     const onBeforeUnload = (): void => {
       if (isDirty) {
-        saveProjectLocally(project)
+        saveProjectLocally(project, activeProjectId)
       }
     }
     window.addEventListener("beforeunload", onBeforeUnload)
     return () => window.removeEventListener("beforeunload", onBeforeUnload)
-  }, [isDirty, project])
+  }, [activeProjectId, isDirty, project])
 
   useEffect(() => {
     const persistIfDirty = (): void => {
       if (isDirty) {
-        saveProjectLocally(project)
+        saveProjectLocally(project, activeProjectId)
       }
     }
     const onVisibilityChange = (): void => {
@@ -386,7 +588,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       window.removeEventListener("pagehide", persistIfDirty)
       document.removeEventListener("visibilitychange", onVisibilityChange)
     }
-  }, [isDirty, project])
+  }, [activeProjectId, isDirty, project])
 
   useEffect(() => {
     if (!isRunning || !activeRoomId) {
@@ -556,6 +758,8 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
 
   return {
     project,
+    projects,
+    activeProjectId,
     activeSection,
     setActiveSection,
     activeRoomId,
@@ -569,6 +773,8 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
     isRunning,
     snapshots,
     saveStatus,
+    syncStatus,
+    isAuthenticated,
     importStatus,
     runtimeState,
     roomTransition,
@@ -1353,6 +1559,82 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
     saveNow() {
       persistProject(project, "Manual save")
     },
+    switchProject(projectId: string) {
+      if (!projectId || projectId === activeProjectId) {
+        return
+      }
+
+      if (isDirty) {
+        persistProject(project)
+      }
+
+      const loaded = loadProjectFromLocalStorage(projectId)
+      if (!loaded) {
+        setSaveStatus("error")
+        return
+      }
+
+      setActiveProjectIdInLocalStorage(projectId)
+      applyProjectState(projectId, loaded, resolveInitialSection(loaded))
+      refreshProjectSummaries()
+    },
+    renameActiveProject(name: string) {
+      const renamed = renameLocalProject(activeProjectId, name)
+      if (!renamed) {
+        return false
+      }
+
+      const updatedProject = loadProjectFromLocalStorage(activeProjectId)
+      if (!updatedProject) {
+        return false
+      }
+
+      setProject(updatedProject)
+      setSaveStatus("saved")
+      refreshProjectSummaries()
+      pushProjectToSupabase(updatedProject, renamed.updatedAtIso)
+      return true
+    },
+    async deleteActiveProject() {
+      const deletingProjectId = activeProjectId
+      deleteLocalProject(deletingProjectId)
+
+      let nextActiveProjectId = getActiveProjectIdFromLocalStorage()
+      if (!nextActiveProjectId) {
+        const blank = ensureProjectHasRoom(createEmptyProjectV1("Nou joc"))
+        const created = createLocalProject(blank.project)
+        nextActiveProjectId = created.projectId
+      }
+
+      const nextProject = loadProjectFromLocalStorage(nextActiveProjectId)
+      if (nextProject && nextActiveProjectId) {
+        setActiveProjectIdInLocalStorage(nextActiveProjectId)
+        applyProjectState(nextActiveProjectId, nextProject, resolveInitialSection(nextProject))
+      }
+      refreshProjectSummaries()
+
+      const supabase = getSupabaseClient()
+      const userId = authUser?.id
+      if (supabase && userId) {
+        setSyncStatus("syncing")
+        try {
+          await deleteUserProject(supabase, userId, deletingProjectId)
+          setSyncStatus("synced")
+        } catch (error) {
+          console.error("[deleteActiveProject] Could not delete remote project:", error)
+          setSyncStatus("error")
+        }
+      }
+    },
+    async syncNow() {
+      await runSyncNow()
+    },
+    async signInWithMagicLink(email: string) {
+      await runSignInWithMagicLink(email)
+    },
+    async signOut() {
+      await runSignOut()
+    },
     loadTemplate(templateId: GameTemplateId) {
       const result = createTemplateProject(templateId)
       setPast((value) => [...value.slice(-39), project])
@@ -1369,46 +1651,61 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
     loadSavedProject() {
       try {
         setSaveStatus("saving")
-        const loaded = loadProjectFromLocalStorage()
+        const loaded = loadProjectFromLocalStorage(activeProjectId)
         if (!loaded) {
           setSaveStatus("error")
           return
         }
-        const normalized = ensureProjectHasRoom(loaded)
-        setPast((value) => [...value.slice(-39), project])
-        setFuture([])
-        setProject(normalized.project)
-        setActiveRoomId(normalized.roomId)
-        setIsRunning(false)
-        setRoomTransition("none")
-        setRunSnapshot(null)
-        setIsDirty(false)
+        applyProjectState(activeProjectId, loaded)
         setSaveStatus("saved")
       } catch {
         setSaveStatus("error")
       }
     },
-    async importProjectFromJsonFile(file: File) {
-      const confirmed = window.confirm("Aixo sobreescriura el joc actual. Vols continuar?")
-      if (!confirmed) {
-        setImportStatus("idle")
-        return false
+    async importProjectFromJsonFile(file: File, mode: "create-new" | "replace-active" = "replace-active") {
+      if (mode === "replace-active") {
+        const confirmed = window.confirm("Aixo sobreescriura el joc actual. Vols continuar?")
+        if (!confirmed) {
+          setImportStatus("idle")
+          return false
+        }
       }
+
       try {
         setImportStatus("importing")
         const loaded = await importProjectFromFile(file)
-        const normalized = ensureProjectHasRoom(loaded)
-        setPast((value) => [...value.slice(-39), project])
-        setFuture([])
-        setProject(normalized.project)
-        setActiveRoomId(normalized.roomId)
-        setActiveObjectId(null)
-        setActiveSpriteId(null)
-        setActiveSection("objects")
-        setIsRunning(false)
-        setRoomTransition("none")
-        setRunSnapshot(null)
-        setIsDirty(true)
+        const normalized = ensureProjectHasRoom(loaded).project
+
+        if (mode === "create-new") {
+          const existingProjectIds = new Set(listLocalProjects().map((entry) => entry.projectId))
+          const importedProjectId = existingProjectIds.has(normalized.metadata.id) ? generateUUID() : normalized.metadata.id
+          const importedProject: ProjectV1 = {
+            ...normalized,
+            metadata: {
+              ...normalized.metadata,
+              id: importedProjectId
+            }
+          }
+          const summary = createLocalProject(importedProject)
+          setActiveProjectIdInLocalStorage(summary.projectId)
+          applyProjectState(summary.projectId, importedProject, resolveInitialSection(importedProject))
+          refreshProjectSummaries()
+          pushProjectToSupabase(importedProject, summary.updatedAtIso)
+          setImportStatus("imported")
+          return true
+        }
+
+        const replacedProject: ProjectV1 = {
+          ...normalized,
+          metadata: {
+            ...normalized.metadata,
+            id: activeProjectId
+          }
+        }
+        const summary = saveProjectByIdLocally(activeProjectId, replacedProject, { setActive: true })
+        applyProjectState(activeProjectId, replacedProject, resolveInitialSection(replacedProject))
+        refreshProjectSummaries()
+        pushProjectToSupabase(replacedProject, summary.updatedAtIso)
         setImportStatus("imported")
         return true
       } catch {
@@ -1420,37 +1717,24 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       setImportStatus("idle")
     },
     createBlankProject() {
-      const confirmed = window.confirm("Això crearà un joc nou en blanc. Es perdran els canvis no desats. Vols continuar?")
-      if (!confirmed) return
-      const normalized = ensureProjectHasRoom(createEmptyProjectV1("Nou joc"))
-      setPast((value) => [...value.slice(-39), project])
-      setFuture([])
-      setProject(normalized.project)
-      setActiveRoomId(normalized.roomId)
-      setActiveObjectId(null)
-      setActiveSpriteId(null)
-      setActiveSection("objects")
-      setIsRunning(false)
-      setRoomTransition("none")
-      setRunSnapshot(null)
-      setIsDirty(true)
+      const blankProject = ensureProjectHasRoom(createEmptyProjectV1("Nou joc")).project
+      const summary = createLocalProject(blankProject)
+      setActiveProjectIdInLocalStorage(summary.projectId)
+      applyProjectState(summary.projectId, blankProject, resolveInitialSection(blankProject))
+      refreshProjectSummaries()
+      pushProjectToSupabase(blankProject, summary.updatedAtIso)
     },
     restoreSnapshot(snapshotId: string) {
-      const restored = loadSnapshotProject(snapshotId)
+      const restored = loadSnapshotProject(snapshotId, activeProjectId)
       if (!restored) {
         setSaveStatus("error")
         return
       }
-      const normalized = ensureProjectHasRoom(restored)
-      setPast((value) => [...value.slice(-39), project])
-      setFuture([])
-      setProject(normalized.project)
-      setActiveRoomId(normalized.roomId)
-      setActiveObjectId(null)
-      setIsRunning(false)
-      setRoomTransition("none")
-      setRunSnapshot(null)
-      setIsDirty(true)
+      const normalized = ensureProjectHasRoom(restored).project
+      const summary = saveProjectByIdLocally(activeProjectId, normalized, { setActive: true })
+      applyProjectState(activeProjectId, normalized)
+      refreshProjectSummaries()
+      pushProjectToSupabase(normalized, summary.updatedAtIso)
     },
     undo,
     redo
