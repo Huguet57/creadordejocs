@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { Redo2, Save, Undo2 } from "lucide-react"
 import { Button } from "./components/ui/button.js"
+import { AuthSignInModal } from "./features/auth/components/AuthSignInModal.js"
 import { shouldResetWhenSwitchingSection, useEditorController } from "./features/editor-state/use-editor-controller.js"
 import { LandingPage } from "./features/landing/LandingPage.js"
 import type { EditorSection } from "./features/editor-state/types.js"
@@ -23,13 +24,6 @@ function formatStatus(status: "idle" | "saved" | "saving" | "error"): string {
   if (status === "saved") return "Saved"
   if (status === "error") return "Error"
   return "Saved"
-}
-
-function formatSyncStatus(status: "idle" | "syncing" | "synced" | "error"): string {
-  if (status === "syncing") return "Syncing..."
-  if (status === "synced") return "Synced"
-  if (status === "error") return "Sync error"
-  return "Sync idle"
 }
 
 function setMetaContent(selector: string, content: string): void {
@@ -69,7 +63,19 @@ function EditorAppShell() {
   const isPopStateRef = useRef(false)
   const isInitialMountRef = useRef(true)
   const controllerRef = useRef(controller)
+  const [isSignInModalOpen, setIsSignInModalOpen] = useState(false)
+  const [signInEmail, setSignInEmail] = useState("")
+  const [signInError, setSignInError] = useState<string | null>(null)
+  const [isSendingMagicLink, setIsSendingMagicLink] = useState(false)
   controllerRef.current = controller
+
+  const closeSignInModal = (): void => {
+    if (isSendingMagicLink) {
+      return
+    }
+    setIsSignInModalOpen(false)
+    setSignInError(null)
+  }
 
   const handleAuthClick = async (): Promise<void> => {
     if (controller.isAuthenticated) {
@@ -81,14 +87,29 @@ function EditorAppShell() {
       return
     }
 
-    const email = window.prompt("Correu electronic per iniciar sessio")
+    setSignInError(null)
+    setIsSignInModalOpen(true)
+  }
+
+  const handleSignInSubmit = async (): Promise<void> => {
+    const email = signInEmail.trim()
     if (!email) {
+      setSignInError("Introdueix un correu electronic valid.")
       return
     }
+
+    setIsSendingMagicLink(true)
+    setSignInError(null)
     try {
       await controller.signInWithMagicLink(email)
+      setIsSignInModalOpen(false)
+      setSignInEmail("")
     } catch (error) {
+      const message = error instanceof Error ? error.message : "No s'ha pogut enviar el magic link."
+      setSignInError(message)
       console.error("[auth] sign in failed:", error)
+    } finally {
+      setIsSendingMagicLink(false)
     }
   }
 
@@ -137,21 +158,8 @@ function EditorAppShell() {
             <p data-testid="save-status" className="mvp19-header-save-status ml-2 text-xs text-slate-400">
               {formatStatus(controller.saveStatus)}
             </p>
-            <p data-testid="sync-status" className="mvp19-header-sync-status text-xs text-slate-400">
-              {formatSyncStatus(controller.syncStatus)}
-            </p>
           </div>
           <div className="flex items-center gap-1">
-            <Button
-              data-testid="sync-now-button"
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 text-xs text-slate-500 hover:text-slate-800"
-              disabled={!controller.isAuthenticated || controller.syncStatus === "syncing"}
-              onClick={() => void controller.syncNow()}
-            >
-              Sync now
-            </Button>
             <Button
               data-testid="auth-button"
               variant="ghost"
@@ -212,6 +220,15 @@ function EditorAppShell() {
           <EditorWorkspace controller={controller} />
         </div>
       </div>
+      <AuthSignInModal
+        open={isSignInModalOpen}
+        email={signInEmail}
+        errorMessage={signInError}
+        isSubmitting={isSendingMagicLink}
+        onEmailChange={setSignInEmail}
+        onClose={closeSignInModal}
+        onSubmit={handleSignInSubmit}
+      />
     </main>
   )
 }
