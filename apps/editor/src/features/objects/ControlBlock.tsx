@@ -526,35 +526,59 @@ export function ControlBlock({
             <Plus className="h-3.5 w-3.5" />
           </button>
         )}
-        {compoundCondition && (
-          <div className="control-block-if-compound basis-full flex items-center gap-2 py-2 px-3 bg-blue-100 border-b border-blue-200">
-            <select
-              className="control-block-if-logic h-5 rounded border border-blue-300 bg-blue-50 px-1.5 text-[11px] font-bold text-blue-700 uppercase tracking-wider focus:border-blue-400 focus:outline-none shrink-0"
-              value={compoundCondition.logic}
-              onChange={(e) => onUpdateIfCondition(item.id, { ...compoundCondition, logic: e.target.value as "AND" | "OR" })}
-            >
-              <option value="AND">AND</option>
-              <option value="OR">OR</option>
-            </select>
-            {renderConditionEditor(
-              ensureComparisonIfCondition(compoundCondition.conditions[1], fallbackComparisonCondition),
-              (nextCondition) => {
-                const nextConditions = [...compoundCondition.conditions]
-                if (nextConditions.length < 2) nextConditions.push(fallbackComparisonCondition)
-                nextConditions[1] = nextCondition
-                onUpdateIfCondition(item.id, { ...compoundCondition, conditions: nextConditions })
-              }
-            )}
-            <button
-              type="button"
-              className="control-block-if-remove-cond h-6 w-6 flex items-center justify-center rounded text-slate-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity ml-auto shrink-0"
-              onClick={() => onUpdateIfCondition(item.id, currentPrimaryCondition)}
-              title="Treure segona condició"
-            >
-              <Trash className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        )}
+        {compoundCondition && compoundCondition.conditions.slice(1).map((cond, idx) => {
+          const conditionIndex = idx + 1
+          return (
+            <div key={conditionIndex} className="control-block-if-compound order-1 basis-full flex items-center gap-2 py-2 px-3 bg-blue-100">
+              <select
+                className="control-block-if-logic h-5 rounded border border-blue-300 bg-blue-50 px-1.5 text-[11px] font-bold text-blue-700 uppercase tracking-wider focus:border-blue-400 focus:outline-none shrink-0"
+                value={compoundCondition.logic}
+                onChange={(e) => onUpdateIfCondition(item.id, { ...compoundCondition, logic: e.target.value as "AND" | "OR" })}
+              >
+                <option value="AND">AND</option>
+                <option value="OR">OR</option>
+              </select>
+              {renderConditionEditor(
+                ensureComparisonIfCondition(cond, fallbackComparisonCondition),
+                (nextCondition) => {
+                  const nextConditions = [...compoundCondition.conditions]
+                  nextConditions[conditionIndex] = nextCondition
+                  onUpdateIfCondition(item.id, { ...compoundCondition, conditions: nextConditions })
+                }
+              )}
+              <button
+                type="button"
+                className="control-block-if-add-cond h-6 w-6 flex items-center justify-center rounded text-blue-400 hover:text-blue-600 hover:bg-blue-50 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                onClick={() => {
+                  const newCondition = defaultIfCondition
+                    ? ensureComparisonIfCondition(defaultIfCondition, fallbackComparisonCondition)
+                    : fallbackComparisonCondition
+                  const nextConditions = [...compoundCondition.conditions]
+                  nextConditions.splice(conditionIndex + 1, 0, newCondition)
+                  onUpdateIfCondition(item.id, { ...compoundCondition, conditions: nextConditions })
+                }}
+                title="Afegir condició"
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                className="control-block-if-remove-cond h-6 w-6 flex items-center justify-center rounded text-slate-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                onClick={() => {
+                  if (compoundCondition.conditions.length <= 2) {
+                    onUpdateIfCondition(item.id, currentPrimaryCondition)
+                  } else {
+                    const nextConditions = compoundCondition.conditions.filter((_, i) => i !== conditionIndex)
+                    onUpdateIfCondition(item.id, { ...compoundCondition, conditions: nextConditions })
+                  }
+                }}
+                title="Treure condició"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )
+        })}
       </>
     )
   }
@@ -812,9 +836,9 @@ export function ControlBlock({
   }
 
   return (
-    <div className="control-block-container relative bg-white">
+    <div className="control-block-container relative shrink-0 bg-white">
       <div
-        className={`control-block-header group flex items-center gap-2 py-2 px-3 ${color.bg} border-b ${color.border}`}
+        className={`control-block-header group flex flex-wrap items-center gap-2 py-2 px-3 ${color.bg} border-b ${color.border}`}
         onContextMenu={(e) => {
           e.preventDefault()
           setContextMenu({ x: e.clientX, y: e.clientY })

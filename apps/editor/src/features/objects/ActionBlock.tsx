@@ -295,7 +295,7 @@ export function ActionBlock({
 
   return (
     <div
-      className={`action-block-container group relative flex flex-wrap items-center gap-3 py-2 px-3 bg-slate-50 hover:bg-slate-100/60 transition-colors ${
+      className={`action-block-container group relative flex shrink-0 items-center gap-3 py-2 px-3 bg-slate-50 hover:bg-slate-100/60 transition-colors ${
         isDragging ? "mvp18-action-block-dragging opacity-45" : ""
       }`}
       onContextMenu={(event) => {
@@ -359,7 +359,7 @@ export function ActionBlock({
         </span>
       </div>
 
-      <div className="action-block-fields flex-1 flex items-center gap-3 flex-wrap">
+      <div className="action-block-fields flex items-center gap-3">
         {action.type === "destroyOther" && collisionTargetName && (
           <span className="action-block-destroy-target-pill inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">
             {collisionTargetName}
@@ -1437,7 +1437,7 @@ export function ActionBlock({
         )}
       </div>
 
-      <div className="action-block-controls flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+      <div className="action-block-controls ml-auto flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
         <Button
           variant="ghost"
           size="icon"
