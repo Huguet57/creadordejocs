@@ -404,6 +404,12 @@ export function RoomListPanel({
           )
         })}
 
+        {parentId !== null && childFolders.length === 0 && childRooms.length === 0 && (
+          <p className="py-1 text-[11px] text-slate-400" style={{ paddingLeft: `${depth * 16 + 20}px` }}>
+            Carpeta buida
+          </p>
+        )}
+
         {creatingFolderParentId === parentId && (
           <div className="roomlist-create-folder-inline -mx-2 flex min-h-[34px] items-center px-2 py-1 pr-2" style={{ paddingLeft: `${depth * 16 + 8}px` }}>
             <span className="roomlist-create-folder-chevron mr-2 inline-flex h-5 w-5 shrink-0 items-center justify-center text-slate-400">

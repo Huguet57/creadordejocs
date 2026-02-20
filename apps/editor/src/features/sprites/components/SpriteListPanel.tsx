@@ -461,6 +461,12 @@ export function SpriteListPanel({
           )
         })}
 
+        {parentId !== null && childFolders.length === 0 && childSprites.length === 0 && (
+          <p className="py-1 text-[11px] text-slate-400" style={{ paddingLeft: `${depth * 16 + 20}px` }}>
+            Carpeta buida
+          </p>
+        )}
+
         {creatingFolderParentId === parentId && (
           <div className="mvp16-sprite-create-folder-inline flex py-1 pr-2" style={{ paddingLeft: `${depth * 16 + 8}px` }}>
             <span className="mvp16-sprite-create-folder-chevron mr-2 inline-flex h-5 w-5 shrink-0 items-center justify-center text-slate-400">
