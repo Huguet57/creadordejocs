@@ -341,7 +341,8 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       if (withSnapshotLabel) {
         setSnapshots(saveCheckpointSnapshot(source, withSnapshotLabel))
       }
-    } catch {
+    } catch (err) {
+      console.error("[persistProject] Save failed:", err)
       setSaveStatus("error")
     }
   }
