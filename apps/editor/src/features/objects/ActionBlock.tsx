@@ -765,10 +765,6 @@ export function ActionBlock({
               <ObjectTextLifetimePicker
                 mode={action.mode}
                 durationMs={action.durationMs ?? asLiteralValue(2000)}
-                globalVariables={globalVariables}
-                internalVariables={internalVariableOptions}
-                otherInternalVariables={otherInternalVariableOptions}
-                allowOtherTarget={allowOtherTarget}
                 onChange={(nextValue) =>
                   onUpdate({
                     ...action,

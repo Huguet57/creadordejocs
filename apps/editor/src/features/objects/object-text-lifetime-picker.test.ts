@@ -9,8 +9,6 @@ describe("ObjectTextLifetimePicker", () => {
       createElement(ObjectTextLifetimePicker, {
         mode: "persistent",
         durationMs: { source: "literal", value: 2000 },
-        globalVariables: [],
-        internalVariables: [],
         onChange: vi.fn()
       })
     )
@@ -23,8 +21,6 @@ describe("ObjectTextLifetimePicker", () => {
       createElement(ObjectTextLifetimePicker, {
         mode: "temporary",
         durationMs: { source: "literal", value: 1500 },
-        globalVariables: [],
-        internalVariables: [],
         onChange: vi.fn()
       })
     )
