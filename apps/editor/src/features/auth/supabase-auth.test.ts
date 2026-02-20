@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest"
 import {
   getSupabaseAuthUser,
-  signInWithGoogle,
+  signInWithEmailPassword,
+  signUpWithEmailPassword,
   signOutFromSupabase,
   subscribeToSupabaseAuthUser
 } from "./supabase-auth.js"
@@ -57,18 +58,35 @@ describe("supabase-auth", () => {
     expect(unsubscribe).toHaveBeenCalled()
   })
 
-  it("starts Google OAuth sign-in request", async () => {
-    const signInWithOAuth = vi.fn().mockResolvedValue({ error: null })
+  it("signs in with email and password", async () => {
+    const signInWithPassword = vi.fn().mockResolvedValue({ error: null })
     const client = {
       auth: {
-        signInWithOAuth
+        signInWithPassword
       }
-    } as unknown as Parameters<typeof signInWithGoogle>[0]
+    } as unknown as Parameters<typeof signInWithEmailPassword>[0]
 
-    await signInWithGoogle(client)
+    await signInWithEmailPassword(client, "  user@example.com ", "secret-pass")
 
-    expect(signInWithOAuth).toHaveBeenCalledWith({
-      provider: "google"
+    expect(signInWithPassword).toHaveBeenCalledWith({
+      email: "user@example.com",
+      password: "secret-pass"
+    })
+  })
+
+  it("signs up with email and password", async () => {
+    const signUp = vi.fn().mockResolvedValue({ error: null })
+    const client = {
+      auth: {
+        signUp
+      }
+    } as unknown as Parameters<typeof signUpWithEmailPassword>[0]
+
+    await signUpWithEmailPassword(client, "new-user@example.com", "secret-pass")
+
+    expect(signUp).toHaveBeenCalledWith({
+      email: "new-user@example.com",
+      password: "secret-pass"
     })
   })
 

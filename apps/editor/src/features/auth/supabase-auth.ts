@@ -59,25 +59,46 @@ export function subscribeToSupabaseAuthUser(
   }
 }
 
-export async function signInWithGoogle(client: SupabaseClient | null): Promise<void> {
+function normalizeAuthCredentials(email: string, password: string): { email: string; password: string } {
+  const trimmedEmail = email.trim()
+  if (!trimmedEmail) {
+    throw new Error("Email is required.")
+  }
+  if (!password || password.length < 6) {
+    throw new Error("Password must have at least 6 characters.")
+  }
+  return { email: trimmedEmail, password }
+}
+
+export async function signInWithEmailPassword(client: SupabaseClient | null, email: string, password: string): Promise<void> {
   if (!client) {
     throw new Error("Supabase auth is not configured.")
   }
 
-  const redirectTo = import.meta.env.VITE_SUPABASE_AUTH_REDIRECT_TO
-  const { error } = await client.auth.signInWithOAuth({
-    provider: "google",
-    ...(redirectTo
-      ? {
-          options: {
-            redirectTo
-          }
-        }
-      : {})
+  const credentials = normalizeAuthCredentials(email, password)
+  const { error } = await client.auth.signInWithPassword({
+    email: credentials.email,
+    password: credentials.password
   })
 
   if (error) {
-    throw new Error(`Could not sign in with Google: ${error.message}`)
+    throw new Error(`Could not sign in: ${error.message}`)
+  }
+}
+
+export async function signUpWithEmailPassword(client: SupabaseClient | null, email: string, password: string): Promise<void> {
+  if (!client) {
+    throw new Error("Supabase auth is not configured.")
+  }
+
+  const credentials = normalizeAuthCredentials(email, password)
+  const { error } = await client.auth.signUp({
+    email: credentials.email,
+    password: credentials.password
+  })
+
+  if (error) {
+    throw new Error(`Could not sign up: ${error.message}`)
   }
 }
 

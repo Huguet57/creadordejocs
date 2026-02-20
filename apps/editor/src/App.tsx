@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { Redo2, Save, Undo2 } from "lucide-react"
 import { Button } from "./components/ui/button.js"
+import { AuthPasswordModal } from "./features/auth/components/AuthPasswordModal.js"
 import { shouldResetWhenSwitchingSection, useEditorController } from "./features/editor-state/use-editor-controller.js"
 import { LandingPage } from "./features/landing/LandingPage.js"
 import type { EditorSection } from "./features/editor-state/types.js"
@@ -62,9 +63,20 @@ function EditorAppShell() {
   const isPopStateRef = useRef(false)
   const isInitialMountRef = useRef(true)
   const controllerRef = useRef(controller)
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
+  const [authEmail, setAuthEmail] = useState("")
+  const [authPassword, setAuthPassword] = useState("")
   const [authError, setAuthError] = useState<string | null>(null)
-  const [isStartingGoogleSignIn, setIsStartingGoogleSignIn] = useState(false)
+  const [isAuthSubmitting, setIsAuthSubmitting] = useState(false)
   controllerRef.current = controller
+
+  const closeAuthModal = (): void => {
+    if (isAuthSubmitting) {
+      return
+    }
+    setIsAuthModalOpen(false)
+    setAuthError(null)
+  }
 
   const handleAuthClick = async (): Promise<void> => {
     if (controller.isAuthenticated) {
@@ -78,16 +90,39 @@ function EditorAppShell() {
       return
     }
 
-    setIsStartingGoogleSignIn(true)
+    setAuthError(null)
+    setIsAuthModalOpen(true)
+  }
+
+  const handleSignIn = async (): Promise<void> => {
+    setIsAuthSubmitting(true)
     setAuthError(null)
     try {
-      await controller.signInWithGoogle()
+      await controller.signInWithEmailPassword(authEmail, authPassword)
+      setIsAuthModalOpen(false)
+      setAuthPassword("")
     } catch (error) {
-      const message = error instanceof Error ? error.message : "No s'ha pogut iniciar sessio amb Google."
+      const message = error instanceof Error ? error.message : "No s'ha pogut iniciar sessio."
       setAuthError(message)
       console.error("[auth] sign in failed:", error)
     } finally {
-      setIsStartingGoogleSignIn(false)
+      setIsAuthSubmitting(false)
+    }
+  }
+
+  const handleSignUp = async (): Promise<void> => {
+    setIsAuthSubmitting(true)
+    setAuthError(null)
+    try {
+      await controller.signUpWithEmailPassword(authEmail, authPassword)
+      setIsAuthModalOpen(false)
+      setAuthPassword("")
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "No s'ha pogut crear el compte."
+      setAuthError(message)
+      console.error("[auth] sign up failed:", error)
+    } finally {
+      setIsAuthSubmitting(false)
     }
   }
 
@@ -144,10 +179,9 @@ function EditorAppShell() {
               variant="ghost"
               size="sm"
               className="h-7 px-2 text-xs text-slate-500 hover:text-slate-800"
-              disabled={isStartingGoogleSignIn}
               onClick={() => void handleAuthClick()}
             >
-              {controller.isAuthenticated ? "Sign out" : isStartingGoogleSignIn ? "Connecting..." : "Sign in with Google"}
+              {controller.isAuthenticated ? "Sign out" : "Sign in"}
             </Button>
             <Button
               data-testid="undo-button"
@@ -200,6 +234,18 @@ function EditorAppShell() {
           <EditorWorkspace controller={controller} />
         </div>
       </div>
+      <AuthPasswordModal
+        open={isAuthModalOpen}
+        email={authEmail}
+        password={authPassword}
+        errorMessage={authError}
+        isSubmitting={isAuthSubmitting}
+        onEmailChange={setAuthEmail}
+        onPasswordChange={setAuthPassword}
+        onClose={closeAuthModal}
+        onSignIn={handleSignIn}
+        onSignUp={handleSignUp}
+      />
     </main>
   )
 }

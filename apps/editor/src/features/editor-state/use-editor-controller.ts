@@ -106,7 +106,14 @@ import {
   type LocalSnapshot,
   type SaveStatus
 } from "../project-storage.js"
-import { getSupabaseAuthUser, signInWithGoogle as signInWithSupabaseGoogle, signOutFromSupabase, subscribeToSupabaseAuthUser, type SupabaseAuthUser } from "../auth/supabase-auth.js"
+import {
+  getSupabaseAuthUser,
+  signInWithEmailPassword as signInWithSupabaseEmailPassword,
+  signOutFromSupabase,
+  signUpWithEmailPassword as signUpWithSupabaseEmailPassword,
+  subscribeToSupabaseAuthUser,
+  type SupabaseAuthUser
+} from "../auth/supabase-auth.js"
 import { mergeProjectCatalog } from "../storage/project-sync.js"
 import { deleteUserProject, listUserProjects, upsertUserProject } from "../storage/supabase-project-storage.js"
 import { importProjectFromFile } from "../templates/import-project.js"
@@ -528,9 +535,14 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
   }
   syncNowRef.current = runSyncNow
 
-  const runSignInWithGoogle = async (): Promise<void> => {
+  const runSignInWithEmailPassword = async (email: string, password: string): Promise<void> => {
     const supabase = getSupabaseClient()
-    await signInWithSupabaseGoogle(supabase)
+    await signInWithSupabaseEmailPassword(supabase, email, password)
+  }
+
+  const runSignUpWithEmailPassword = async (email: string, password: string): Promise<void> => {
+    const supabase = getSupabaseClient()
+    await signUpWithSupabaseEmailPassword(supabase, email, password)
   }
 
   const runSignOut = async (): Promise<void> => {
@@ -1656,8 +1668,11 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
     async syncNow() {
       await runSyncNow()
     },
-    async signInWithGoogle() {
-      await runSignInWithGoogle()
+    async signInWithEmailPassword(email: string, password: string) {
+      await runSignInWithEmailPassword(email, password)
+    },
+    async signUpWithEmailPassword(email: string, password: string) {
+      await runSignUpWithEmailPassword(email, password)
     },
     async signOut() {
       await runSignOut()
