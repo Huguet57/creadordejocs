@@ -47,7 +47,7 @@ type SpriteListPanelProps = {
   onAddSprite: (name: string, width: number, height: number, folderId: string | null) => void
   onCreateFolder: (name: string, parentId: string | null) => string | null
   onRenameSprite: (spriteId: string, name: string) => boolean
-  onDuplicateSprite: (spriteId: string) => void
+  onDuplicateSprite: (spriteId: string) => string | null
   onDeleteSprite: (spriteId: string) => boolean
   onMoveSpriteToFolder: (spriteId: string, folderId: string | null) => boolean
   onRenameFolder: (folderId: string, name: string) => boolean
@@ -198,6 +198,15 @@ export function SpriteListPanel({
     }
     onRenameSprite(renamingSpriteId, trimmed)
     setRenamingSpriteId(null)
+  }
+
+  const handleDuplicateSprite = (spriteId: string) => {
+    const sourceSprite = sprites.find((entry) => entry.id === spriteId)
+    const newId = onDuplicateSprite(spriteId)
+    if (newId && sourceSprite) {
+      setRenamingSpriteId(newId)
+      setRenameValue(`${sourceSprite.name} (copy)`)
+    }
   }
 
   const deleteFolder = (folderId: string) => {
@@ -620,7 +629,7 @@ export function SpriteListPanel({
               type="button"
               className="mvp16-sprite-ctx-duplicate flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-slate-700 transition-colors hover:bg-slate-100"
               onClick={() => {
-                onDuplicateSprite(spriteId)
+                handleDuplicateSprite(spriteId)
                 closeContextMenu()
               }}
             >
