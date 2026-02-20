@@ -22,6 +22,8 @@ const HANDLE_RADIUS = 7
 const CANVAS_PAD = 80
 const SQUARE_IMAGE_INITIAL_MARGIN_RATIO = 0.1
 const MAX_OUTSIDE_RATIO = 0.1
+const MAX_DISPLAY_PX_PER_SRC_PX = 16
+const MAX_CANVAS_DIM = 8192
 
 type DragMode = "move" | "nw" | "ne" | "sw" | "se" | null
 
@@ -118,6 +120,8 @@ export function SpriteImportCropModal({
   const [dragMode, setDragMode] = useState<DragMode>(null)
   const [dragOrigin, setDragOrigin] = useState<{ mx: number; my: number; crop: CropRect } | null>(null)
   const [hoverMode, setHoverMode] = useState<DragMode>(null)
+  const [zoomLevel, setZoomLevel] = useState(1)
+  const sourceBoxRef = useRef<HTMLDivElement | null>(null)
 
   const imgW = imageElement?.naturalWidth ?? 1
   const imgH = imageElement?.naturalHeight ?? 1
@@ -125,11 +129,17 @@ export function SpriteImportCropModal({
   const isSquareImg = imgW === imgH
   const effectiveW = isSquareImg ? imgW * (1 + 2 * SQUARE_IMAGE_INITIAL_MARGIN_RATIO) : imgW
   const effectiveH = isSquareImg ? imgH * (1 + 2 * SQUARE_IMAGE_INITIAL_MARGIN_RATIO) : imgH
-  const displayScale = Math.min(SOURCE_BOX_W / effectiveW, SOURCE_BOX_H / effectiveH, 1)
+  const baseScale = Math.min(SOURCE_BOX_W / effectiveW, SOURCE_BOX_H / effectiveH, 1)
+  const displayScale = baseScale * zoomLevel
   const imgDisplayW = Math.round(imgW * displayScale)
   const imgDisplayH = Math.round(imgH * displayScale)
   const canvasW = imgDisplayW + CANVAS_PAD * 2
   const canvasH = imgDisplayH + CANVAS_PAD * 2
+
+  const maxZoomRaw = MAX_DISPLAY_PX_PER_SRC_PX / baseScale
+  const maxZoomByCanvas = (MAX_CANVAS_DIM - CANVAS_PAD * 2) / (Math.max(imgW, imgH) * baseScale)
+  const maxZoom = Math.max(2, Math.min(maxZoomRaw, maxZoomByCanvas, 40))
+  const zoomStep = maxZoom <= 5 ? 0.25 : maxZoom <= 12 ? 0.5 : 1
 
   const previewCell = resolvePreviewCellSize(targetWidth, targetHeight)
   const previewW = Math.max(1, Math.round(targetWidth * previewCell))
@@ -143,8 +153,17 @@ export function SpriteImportCropModal({
     const initial = fitAspectCrop(imageElement.naturalWidth, imageElement.naturalHeight, targetWidth, targetHeight)
     initialCropRef.current = initial
     setCrop(initial)
+    setZoomLevel(1)
     previewInitRef.current = false
   }, [imageElement, isOpen, targetWidth, targetHeight])
+
+  useEffect(() => {
+    const box = sourceBoxRef.current
+    if (!box) return
+    const s = baseScale * zoomLevel
+    box.scrollLeft = Math.max(0, CANVAS_PAD + (crop.x + crop.width / 2) * s - SOURCE_BOX_W / 2)
+    box.scrollTop = Math.max(0, CANVAS_PAD + (crop.y + crop.height / 2) * s - SOURCE_BOX_H / 2)
+  }, [zoomLevel]) // intentionally only zoomLevel — avoid re-centering on every crop drag
 
   const isInitialCrop = crop.x === initialCropRef.current.x
     && crop.y === initialCropRef.current.y
@@ -164,14 +183,18 @@ export function SpriteImportCropModal({
     if (!ctx) return
     ctx.imageSmoothingEnabled = false
 
-    const checkerSize = 8
-    for (let cy = 0; cy < canvasH; cy += checkerSize) {
-      for (let cx = 0; cx < canvasW; cx += checkerSize) {
-        const isLight = ((cx / checkerSize) + (cy / checkerSize)) % 2 === 0
-        ctx.fillStyle = isLight ? "#ffffff" : "#e2e2e2"
-        ctx.fillRect(cx, cy, checkerSize, checkerSize)
-      }
-    }
+    const checkerTile = document.createElement("canvas")
+    checkerTile.width = 16
+    checkerTile.height = 16
+    const cCtx = checkerTile.getContext("2d")!
+    cCtx.fillStyle = "#ffffff"
+    cCtx.fillRect(0, 0, 16, 16)
+    cCtx.fillStyle = "#e2e2e2"
+    cCtx.fillRect(8, 0, 8, 8)
+    cCtx.fillRect(0, 8, 8, 8)
+    const checkerPattern = ctx.createPattern(checkerTile, "repeat")!
+    ctx.fillStyle = checkerPattern
+    ctx.fillRect(0, 0, canvasW, canvasH)
 
     ctx.globalAlpha = 0.35
     ctx.drawImage(imageElement, CANVAS_PAD, CANVAS_PAD, imgDisplayW, imgDisplayH)
@@ -270,6 +293,7 @@ export function SpriteImportCropModal({
     if (!mode) return
     setDragMode(mode)
     setDragOrigin({ mx: event.clientX, my: event.clientY, crop: { ...crop } })
+    if (sourceBoxRef.current) sourceBoxRef.current.style.overflow = "hidden"
   }
 
   const handlePointerMove = (event: React.MouseEvent<HTMLCanvasElement>) => {
@@ -360,6 +384,7 @@ export function SpriteImportCropModal({
   const handlePointerUp = () => {
     setDragMode(null)
     setDragOrigin(null)
+    if (sourceBoxRef.current) sourceBoxRef.current.style.overflow = "auto"
   }
 
   if (!isOpen || !imageElement) return null
@@ -380,18 +405,33 @@ export function SpriteImportCropModal({
           <div className="mvp16-import-crop-source flex flex-col items-center gap-2">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Imatge original</span>
             <div
-              className="mvp16-import-crop-source-box flex items-center justify-center overflow-hidden border border-slate-200"
-              style={{ width: SOURCE_BOX_W, height: SOURCE_BOX_H }}
+              ref={sourceBoxRef}
+              className="mvp16-import-crop-source-box border border-slate-200"
+              style={{ width: SOURCE_BOX_W, height: SOURCE_BOX_H, overflow: "auto" }}
             >
               <canvas
                 ref={sourceCanvasRef}
-                className="mvp16-import-crop-canvas"
-                style={{ width: canvasW, height: canvasH, cursor: activeCursor }}
+                className="mvp16-import-crop-canvas block"
+                style={{ width: canvasW, height: canvasH, cursor: activeCursor, margin: "auto" }}
                 onMouseDown={handlePointerDown}
                 onMouseMove={handlePointerMove}
                 onMouseUp={handlePointerUp}
                 onMouseLeave={handlePointerUp}
               />
+            </div>
+            <div className="flex items-center gap-2 text-[10px] text-slate-500">
+              <span className="font-medium">Zoom</span>
+              <input
+                type="range"
+                min={1}
+                max={maxZoom}
+                step={zoomStep}
+                value={zoomLevel}
+                disabled={dragMode !== null}
+                onChange={(e) => setZoomLevel(Number(e.target.value))}
+                className="w-28"
+              />
+              <span className="w-10 text-right tabular-nums">{Math.round(zoomLevel * 100)}%</span>
             </div>
             <p className="text-[10px] text-slate-400">
               Crop: {crop.width} x {crop.height} px
