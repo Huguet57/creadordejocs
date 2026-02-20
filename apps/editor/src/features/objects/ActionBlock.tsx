@@ -15,6 +15,7 @@ import { VariablePicker } from "./VariablePicker.js"
 import { RightValuePicker as BaseRightValuePicker } from "./RightValuePicker.js"
 import { CollectionVariablePicker } from "./CollectionVariablePicker.js"
 import { SpriteDropdownPicker } from "./SpriteDropdownPicker.js"
+import { ObjectTextLifetimePicker } from "./ObjectTextLifetimePicker.js"
 import type { ObjectEventType } from "../editor-state/types.js"
 import { ACTION_ICON_MAP } from "./action-icon-map.js"
 import {
@@ -693,36 +694,24 @@ export function ActionBlock({
                 <option value="right">right</option>
               </select>
             </div>
-            <div className="action-block-object-text-mode-field flex items-center gap-1">
-              <label className="text-[10px] font-medium opacity-60">Mode</label>
-              <select
-                className="h-7 rounded border border-slate-300 bg-white/50 px-2 text-xs focus:outline-none"
-                value={action.mode ?? "temporary"}
-                onChange={(event) =>
+            <div className="action-block-object-text-lifetime-field flex items-center gap-1">
+              <label className="text-[10px] font-medium opacity-60">Time</label>
+              <ObjectTextLifetimePicker
+                mode={action.mode}
+                durationMs={action.durationMs ?? asLiteralValue(2000)}
+                globalVariables={globalVariables}
+                internalVariables={internalVariableOptions}
+                otherInternalVariables={otherInternalVariableOptions}
+                allowOtherTarget={allowOtherTarget}
+                onChange={(nextValue) =>
                   onUpdate({
                     ...action,
-                    mode: event.target.value as typeof action.mode
+                    mode: nextValue.mode,
+                    durationMs: nextValue.durationMs as typeof action.durationMs
                   })
                 }
-              >
-                <option value="temporary">temporary</option>
-                <option value="persistent">persistent</option>
-              </select>
+              />
             </div>
-            {(action.mode ?? "temporary") === "temporary" && (
-              <div className="action-block-object-text-duration-field flex items-center gap-1">
-                <label className="text-[10px] font-medium opacity-60">ms</label>
-                <RightValuePicker
-                  value={action.durationMs ?? asLiteralValue(2000)}
-                  expectedType="number"
-                  globalVariables={globalVariables}
-                  internalVariables={internalVariableOptions}
-                  otherInternalVariables={otherInternalVariableOptions}
-                  allowOtherTarget={allowOtherTarget}
-                  onChange={(nextValue) => onUpdate({ ...action, durationMs: nextValue as typeof action.durationMs })}
-                />
-              </div>
-            )}
           </>
         )}
 
