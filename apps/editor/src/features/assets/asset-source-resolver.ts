@@ -1,4 +1,4 @@
-import { resolveIndexedDbAssetSourceToObjectUrl } from "./providers/indexeddb-asset-storage-provider.js"
+import { getAssetStorageProvider } from "./asset-storage-provider.js"
 
 export async function resolveAssetSource(assetSource: string): Promise<string | null> {
   const normalized = assetSource.trim()
@@ -6,9 +6,6 @@ export async function resolveAssetSource(assetSource: string): Promise<string | 
     return null
   }
 
-  if (normalized.startsWith("asset://indexeddb/")) {
-    return resolveIndexedDbAssetSourceToObjectUrl(normalized)
-  }
-
-  return normalized
+  const provider = await getAssetStorageProvider()
+  return provider.resolve(normalized)
 }

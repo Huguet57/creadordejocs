@@ -37,22 +37,22 @@ export class IndexedDbAssetStorageProvider implements AssetStorageProvider {
       storagePath: id
     }
   }
-}
 
-export async function resolveIndexedDbAssetSourceToObjectUrl(assetSource: string): Promise<string | null> {
-  if (!assetSource.startsWith(SOURCE_PREFIX)) {
-    return null
+  async resolve(assetSource: string): Promise<string | null> {
+    if (!assetSource.startsWith(SOURCE_PREFIX)) {
+      return null
+    }
+    const id = assetSource.slice(SOURCE_PREFIX.length)
+    if (!id) {
+      return null
+    }
+    const db = await openDatabase()
+    const record = await getRecord(db, id)
+    if (!record) {
+      return null
+    }
+    return URL.createObjectURL(record.blob)
   }
-  const id = assetSource.slice(SOURCE_PREFIX.length)
-  if (!id) {
-    return null
-  }
-  const db = await openDatabase()
-  const record = await getRecord(db, id)
-  if (!record) {
-    return null
-  }
-  return URL.createObjectURL(record.blob)
 }
 
 function openDatabase(): Promise<IDBDatabase> {

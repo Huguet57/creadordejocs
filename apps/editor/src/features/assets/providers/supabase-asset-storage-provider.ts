@@ -3,6 +3,13 @@ import type { AssetStorageProvider, UploadAssetInput, UploadAssetResult } from "
 import { createSupabaseClientFromEnv, getSupabaseBucketName } from "../../../lib/supabase.js"
 
 export class SupabaseAssetStorageProvider implements AssetStorageProvider {
+  resolve(assetSource: string): Promise<string | null> {
+    if (!assetSource) {
+      return Promise.resolve(null)
+    }
+    return Promise.resolve(assetSource)
+  }
+
   async upload({ file, kind, resourceId }: UploadAssetInput): Promise<UploadAssetResult> {
     const bucket = getSupabaseBucketName()
     const storagePath = buildStoragePath({ fileName: file.name, kind, resourceId })

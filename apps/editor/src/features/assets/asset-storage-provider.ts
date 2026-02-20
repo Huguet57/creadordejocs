@@ -14,6 +14,7 @@ export type UploadAssetResult = {
 
 export type AssetStorageProvider = {
   upload(input: UploadAssetInput): Promise<UploadAssetResult>
+  resolve(assetSource: string): Promise<string | null>
 }
 
 let providerPromise: Promise<AssetStorageProvider> | null = null
