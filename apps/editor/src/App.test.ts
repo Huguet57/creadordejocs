@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
 import { createElement } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
-import { handleSidebarSectionChange } from "./App.js"
+import { handleSidebarSectionChange, shouldSkipInitialEditorHistorySync } from "./App.js"
 import { EditorSidebarCompact } from "./layout/EditorSidebarCompact.js"
 import { ACTION_CATEGORIES } from "./features/editor-state/types.js"
 
@@ -73,5 +73,19 @@ describe("sound-free editor UI", () => {
 
     expect(markup).toContain("sidebar-templates")
     expect(markup).not.toContain("Import")
+  })
+})
+
+describe("shouldSkipInitialEditorHistorySync", () => {
+  it("returns true when oauth callback code is present", () => {
+    expect(shouldSkipInitialEditorHistorySync("?code=abc", "")).toBe(true)
+  })
+
+  it("returns true when oauth access token is present in hash", () => {
+    expect(shouldSkipInitialEditorHistorySync("", "#access_token=token")).toBe(true)
+  })
+
+  it("returns false for regular editor URL without auth callback params", () => {
+    expect(shouldSkipInitialEditorHistorySync("", "")).toBe(false)
   })
 })

@@ -15,6 +15,7 @@ import {
   resolveEditorSection,
   resolvePlayShareId,
   buildEditorSectionPath,
+  hasAuthCallbackParams,
   shouldRouteAuthCallbackToEditor,
   buildEditorAuthCallbackPath,
   type AppRoute
@@ -63,6 +64,10 @@ export function handleSidebarSectionChange(
     reset()
   }
   setActiveSection(nextSection)
+}
+
+export function shouldSkipInitialEditorHistorySync(search: string, hash: string): boolean {
+  return hasAuthCallbackParams(search, hash)
 }
 
 function EditorAppShell() {
@@ -157,6 +162,9 @@ function EditorAppShell() {
     }
     if (isInitialMountRef.current) {
       isInitialMountRef.current = false
+      if (shouldSkipInitialEditorHistorySync(window.location.search, window.location.hash)) {
+        return
+      }
       window.history.replaceState({}, "", sectionPath)
       return
     }
