@@ -730,7 +730,7 @@ export function ActionBlock({
 
         {action.type === "setObjectText" && (
           <>
-            <div className="action-block-object-text-field flex items-center gap-1 flex-1 min-w-[220px]">
+            <div className="action-block-object-text-field flex items-center gap-1">
               <label className="text-[10px] font-medium opacity-60">Txt</label>
               <RightValuePicker
                 value={action.text}
