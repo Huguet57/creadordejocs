@@ -165,6 +165,23 @@ export function SpriteImportCropModal({
     box.scrollTop = Math.max(0, CANVAS_PAD + (crop.y + crop.height / 2) * s - SOURCE_BOX_H / 2)
   }, [zoomLevel]) // intentionally only zoomLevel — avoid re-centering on every crop drag
 
+  // Pinch-to-zoom (trackpad) / ctrl+wheel zoom
+  // Listens on document in capture phase so we intercept before the browser zooms the page
+  useEffect(() => {
+    if (!isOpen || !imageElement) return
+
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey) return
+      e.preventDefault()
+
+      const delta = -e.deltaY * 0.01
+      setZoomLevel((prev) => clamp(prev + delta, 1, maxZoom))
+    }
+
+    document.addEventListener("wheel", onWheel, { passive: false, capture: true })
+    return () => document.removeEventListener("wheel", onWheel, { capture: true })
+  }, [isOpen, imageElement, maxZoom, zoomStep])
+
   const isInitialCrop = crop.x === initialCropRef.current.x
     && crop.y === initialCropRef.current.y
     && crop.width === initialCropRef.current.width
