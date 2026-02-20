@@ -117,6 +117,7 @@ export function useSpritePixelActions({
           selectionMask: selection.size > 0 ? selection : undefined
         })
         onPixelsChange(next)
+        onSelectionChange(new Set())
         return
       }
 

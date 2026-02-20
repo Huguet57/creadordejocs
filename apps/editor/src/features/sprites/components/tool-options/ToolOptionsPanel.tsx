@@ -1,6 +1,6 @@
 import type { ChangeEvent } from "react"
 import type { SpriteEditorTool, SpriteToolOptionsMap, SpriteToolOptionsState } from "../../types/sprite-editor.js"
-import { normalizeHexRgba } from "../../utils/pixel-rgba.js"
+import { normalizeHexRgba, TRANSPARENT_RGBA } from "../../utils/pixel-rgba.js"
 
 const DEFAULT_PALETTE = [
   "#000000FF", "#FFFFFFFF", "#FF0000FF", "#00FF00FF", "#0000FFFF",
@@ -50,6 +50,19 @@ function ColorSection({ normalizedActive, spriteColors, onColorChange }: ColorSe
       <div className="mvp16-sprite-tool-options-palette flex flex-col gap-1.5">
         <p className="text-[10px] font-medium text-slate-600">Paleta</p>
         <div className="mvp16-sprite-tool-options-palette-grid grid grid-cols-5 gap-0.5">
+          <button
+            type="button"
+            className={`mvp16-sprite-tool-options-palette-swatch h-5 w-full rounded-sm border ${
+              normalizedActive === TRANSPARENT_RGBA ? "border-indigo-500 ring-1 ring-indigo-300" : "border-slate-300"
+            }`}
+            style={{
+              backgroundImage: "linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%), linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%)",
+              backgroundSize: "6px 6px",
+              backgroundPosition: "0 0, 3px 3px"
+            }}
+            onClick={() => onColorChange(TRANSPARENT_RGBA)}
+            title="Transparent"
+          />
           {DEFAULT_PALETTE.map((color) => (
             <button
               key={color}
