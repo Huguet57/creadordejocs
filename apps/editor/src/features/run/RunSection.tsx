@@ -310,7 +310,7 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
   }, [activeRoomBackgroundSprite, activeRoomBackgroundSource, windowPosition.x, windowPosition.y])
 
   return (
-    <div className={`mvp15-run-container flex w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm ${isPlayMode ? "min-h-[560px]" : "h-[600px]"}`}>
+    <div className={`mvp15-run-container flex w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm ${isPlayMode ? "min-h-[560px]" : "h-full"}`}>
       {!isPlayMode && (
         <aside className="flex w-[200px] flex-col border-r border-slate-200 bg-slate-50">
           <div className="flex items-center justify-between border-b border-slate-200 p-3">

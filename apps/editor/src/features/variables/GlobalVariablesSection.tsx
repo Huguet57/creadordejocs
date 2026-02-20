@@ -359,7 +359,7 @@ export function GlobalVariablesSection({ controller }: GlobalVariablesSectionPro
   }
 
   return (
-    <section className="mvpv2-global-vars-section flex h-[600px] w-full flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+    <section className="mvpv2-global-vars-section flex h-full w-full flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
       <header className="mvpv2-global-vars-header flex items-center justify-between border-b border-slate-200 px-4 py-3">
         <div>
           <h2 className="text-sm font-semibold text-slate-900">Global Variables</h2>

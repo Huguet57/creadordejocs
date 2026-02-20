@@ -10,6 +10,13 @@
   box-sizing: border-box;
 }
 
+html,
+body,
+#root {
+  height: 100%;
+  overflow: hidden;
+}
+
 .mvp1-editor-body {
   margin: 0;
   font-family:

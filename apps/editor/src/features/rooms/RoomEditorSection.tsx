@@ -755,7 +755,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
   )
 
   return (
-    <div className="mvp15-room-editor-container flex h-[600px] w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+    <div className="mvp15-room-editor-container flex h-full w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
       {/* Left panel: Room list with folders */}
       <RoomListPanel
         rooms={projectRooms}
@@ -786,7 +786,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
 
         <div className="flex min-h-0 flex-1 flex-col bg-slate-50/50">
           {!activeRoom ? (
-            <div className="flex h-full items-center justify-center text-slate-400">
+            <div className="flex h-full items-center justify-center p-4 text-center text-sm text-slate-400">
               <p>Select a room to start editing</p>
             </div>
           ) : (

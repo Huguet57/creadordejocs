@@ -49,7 +49,7 @@ export function SoundEditorSection({ controller }: SoundEditorSectionProps) {
   const sounds = controller.project.resources.sounds
 
   return (
-    <div className="mvp15-sound-editor-container flex h-[600px] w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+    <div className="mvp15-sound-editor-container flex h-full w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
       {/* Left panel: Sound list */}
       <aside className="flex w-[220px] flex-col border-r border-slate-200 bg-slate-50">
         <div className="flex items-center justify-between border-b border-slate-200 p-3">

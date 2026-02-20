@@ -98,10 +98,10 @@ function EditorAppShell() {
 
   return (
     <main
-      className="mvp15-editor-shell min-h-screen bg-slate-50 px-4 py-4 text-slate-900"
+      className="mvp15-editor-shell flex h-screen flex-col overflow-hidden bg-slate-50 px-4 py-4 text-slate-900"
       onContextMenu={(event) => event.preventDefault()}
     >
-      <div className="mvp15-editor-frame mx-auto flex max-w-7xl flex-col gap-3">
+      <div className="mvp15-editor-frame flex min-h-0 flex-1 flex-col gap-3">
         <div className="flex items-center justify-between px-1">
           <div className="mvp19-header-left flex items-center gap-1">
             <ImportDropdown controller={controller} />
@@ -146,7 +146,7 @@ function EditorAppShell() {
           </div>
         </div>
 
-        <div className="mvp15-editor-layout grid gap-3 lg:grid-cols-[64px_1fr]">
+        <div className="mvp15-editor-layout grid min-h-0 flex-1 grid-cols-[64px_1fr] gap-3">
           <EditorSidebarCompact
             activeSection={controller.activeSection}
             onSectionChange={(section) => {

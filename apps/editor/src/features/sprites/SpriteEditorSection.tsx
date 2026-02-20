@@ -415,7 +415,7 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
   }, [canvasViewportElement, selectedSprite, setZoom, maxZoom, zoomStep])
 
   return (
-    <div className="mvp16-sprite-editor-shell flex h-[600px] w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+    <div className="mvp16-sprite-editor-shell flex h-full w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
       <SpriteListPanel
         sprites={spriteListEntries}
         spriteFolders={(controller.project.resources.spriteFolders ?? []).map((folderEntry) => ({
@@ -586,7 +586,7 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
             </div>
           </div>
         ) : (
-          <div className="flex flex-1 items-center justify-center bg-slate-50 text-sm text-slate-400">
+          <div className="flex flex-1 items-center justify-center bg-slate-50 p-4 text-center text-sm text-slate-400">
             Select a sprite to start editing.
           </div>
         )}

@@ -314,7 +314,7 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
   )
 
   return (
-    <div className="mvp15-object-editor-container flex h-[600px] w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+    <div className="mvp15-object-editor-container flex h-full w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
       <ObjectListPanel
         objects={projectObjects}
         objectFolders={controller.project.resources.objectFolders ?? []}
@@ -536,7 +536,7 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
             )}
           </div>
         ) : (
-          <div className="flex flex-1 items-center justify-center bg-slate-50 text-slate-400">
+          <div className="flex flex-1 items-center justify-center bg-slate-50 p-4 text-center text-sm text-slate-400">
             <p>Select an object to start editing</p>
           </div>
         )}
