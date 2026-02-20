@@ -74,6 +74,7 @@ test("keeps pencil, select and move usable on large sprites", async ({ page }) =
   const startX = box.x + 24
   const startY = box.y + 24
 
+  await page.locator("button[title='#000000FF']").click()
   await page.mouse.click(startX, startY)
   await expect(page.locator(".mvp16-sprite-frame-preview").first()).toBeVisible()
 
