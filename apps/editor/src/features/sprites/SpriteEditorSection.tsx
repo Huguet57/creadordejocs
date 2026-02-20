@@ -587,7 +587,7 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
           </div>
         ) : (
           <div className="flex flex-1 items-center justify-center bg-slate-50 p-4 text-center text-sm text-slate-400">
-            Select a sprite to start editing.
+            Select a sprite to start editing
           </div>
         )}
       </div>
