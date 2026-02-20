@@ -23,6 +23,16 @@ import {
   snapBackgroundPaintPosition,
   type RoomBackgroundPaintStamp
 } from "./room-background-paint-utils.js"
+import {
+  buildRoomStateSignatures,
+  closeRoomTab,
+  ensureActiveRoomTabVisible,
+  pinRoomTab,
+  promoteActivePreviewTabIfRoomChanged,
+  pruneRoomTabs,
+  selectRoomPreviewTab,
+  type RoomTabState
+} from "./room-tab-state.js"
 
 const ROOM_GRID_SIZE = 32
 const DRAG_SNAP_SIZE = 4
@@ -119,11 +129,15 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
   const paintStrokeDraftRef = useRef<RoomBackgroundPaintStamp[] | null>(null)
 
   // Tab state (VSCode-like: preview + pinned)
-  const [openTabs, setOpenTabs] = useState<{ id: string; pinned: boolean }[]>([])
-  const instanceCountRef = useRef<number>(0)
+  const [openTabs, setOpenTabs] = useState<RoomTabState[]>([])
+  const roomStateSignatureByIdRef = useRef<Record<string, string>>({})
 
   const sprites = controller.project.resources.sprites
   const projectRooms = controller.project.rooms
+  const activeRoom = useMemo(
+    () => (controller.activeRoomId ? projectRooms.find((roomEntry) => roomEntry.id === controller.activeRoomId) ?? null : null),
+    [controller.activeRoomId, projectRooms]
+  )
 
   const spriteById = useMemo(
     () => Object.fromEntries(sprites.map((spriteEntry) => [spriteEntry.id, spriteEntry])),
@@ -134,26 +148,27 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
     [controller.project.objects]
   )
   const activeRoomPositionCounts = useMemo(
-    () => getPositionCountsByCoordinate(controller.activeRoom?.instances ?? []),
-    [controller.activeRoom]
+    () => getPositionCountsByCoordinate(activeRoom?.instances ?? []),
+    [activeRoom]
   )
   const sortedActiveRoomInstances = useMemo(
-    () => sortInstancesByLayer(controller.activeRoom?.instances ?? []),
-    [controller.activeRoom?.instances]
+    () => sortInstancesByLayer(activeRoom?.instances ?? []),
+    [activeRoom?.instances]
   )
   const activeRoomDimensions = useMemo(
-    () => resolveRoomDimensions(controller.activeRoom),
-    [controller.activeRoom]
+    () => resolveRoomDimensions(activeRoom),
+    [activeRoom]
   )
   const activeRoomWidth = activeRoomDimensions.width
   const activeRoomHeight = activeRoomDimensions.height
   const zoom = zoomPercent / 100
   const isPaintMode = editMode === "paintBackground"
-  const activeRoomBackgroundSpriteId = controller.activeRoom?.backgroundSpriteId ?? null
+  const activeRoomBackgroundSpriteId = activeRoom?.backgroundSpriteId ?? null
   const activeRoomBackgroundSprite = activeRoomBackgroundSpriteId ? spriteById[activeRoomBackgroundSpriteId] : undefined
   const activeRoomBackgroundSource = activeRoomBackgroundSprite ? resolvedSpriteSources[activeRoomBackgroundSprite.id] : undefined
-  const activeRoomPaintStamps = controller.activeRoom?.backgroundPaintStamps ?? []
+  const activeRoomPaintStamps = activeRoom?.backgroundPaintStamps ?? []
   const activeDisplayedPaintStamps = paintStrokeDraft ?? activeRoomPaintStamps
+  const hasActiveRoom = activeRoom !== null
   const resolvedPaintStampEntries = useMemo(
     () =>
       activeDisplayedPaintStamps
@@ -216,37 +231,24 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
   useEffect(() => {
     const currentRoomIds = new Set(projectRooms.map((r) => r.id))
     setOpenTabs((prev) => {
-      const cleaned = prev.filter((tabEntry) => currentRoomIds.has(tabEntry.id))
+      const cleaned = pruneRoomTabs(prev, currentRoomIds)
       return cleaned.length === prev.length ? prev : cleaned
     })
   }, [projectRooms])
 
   // Ensure active room is visible in tabs
   useEffect(() => {
-    if (controller.activeRoomId) {
-      const activeId = controller.activeRoomId
-      setOpenTabs((prev) => {
-        if (prev.some((tabEntry) => tabEntry.id === activeId)) {
-          return prev
-        }
-        return [...prev.filter((tabEntry) => tabEntry.pinned), { id: activeId, pinned: false }]
-      })
-    }
+    setOpenTabs((prev) => ensureActiveRoomTabVisible(prev, controller.activeRoomId))
   }, [controller.activeRoomId])
 
-  // Auto-promote to pinned when instances change
+  // Auto-promote preview room tab to pinned when active room data changes.
   useEffect(() => {
-    const currentCount = controller.activeRoom?.instances.length ?? 0
-    if (controller.activeRoomId && instanceCountRef.current !== currentCount && instanceCountRef.current !== 0) {
-      const activeId = controller.activeRoomId
-      setOpenTabs((prev) =>
-        prev.map((tabEntry) =>
-          tabEntry.id === activeId && !tabEntry.pinned ? { ...tabEntry, pinned: true } : tabEntry
-        )
-      )
-    }
-    instanceCountRef.current = currentCount
-  }, [controller.activeRoom?.instances.length, controller.activeRoomId])
+    const currentSignatures = buildRoomStateSignatures(projectRooms)
+    setOpenTabs((prev) =>
+      promoteActivePreviewTabIfRoomChanged(prev, controller.activeRoomId, roomStateSignatureByIdRef.current, currentSignatures)
+    )
+    roomStateSignatureByIdRef.current = currentSignatures
+  }, [controller.activeRoomId, projectRooms])
 
   useEffect(() => {
     return () => {
@@ -296,7 +298,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
   }, [])
 
   useEffect(() => {
-    if (!controller.activeRoom) {
+    if (!hasActiveRoom) {
       setPlacingObjectId(null)
       setPlacementGhost(null)
       setEditMode("objects")
@@ -310,7 +312,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
       setPlacingObjectId(null)
       setPlacementGhost(null)
     }
-  }, [controller.activeRoom, objectById, placingObjectId])
+  }, [hasActiveRoom, objectById, placingObjectId])
 
   useEffect(() => {
     if (paintBrushSpriteId && !spriteById[paintBrushSpriteId]) {
@@ -327,7 +329,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
     setPaintHoverGhost(null)
     isPaintStrokeActiveRef.current = false
     lastPaintPointRef.current = null
-  }, [controller.activeRoom?.id])
+  }, [activeRoom?.id])
 
   useEffect(() => {
     paintStrokeDraftRef.current = paintStrokeDraft
@@ -352,65 +354,45 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
   useEffect(() => {
     setRoomWidthInput(String(activeRoomWidth))
     setRoomHeightInput(String(activeRoomHeight))
-  }, [controller.activeRoom?.id, activeRoomWidth, activeRoomHeight])
+  }, [activeRoom?.id, activeRoomWidth, activeRoomHeight])
 
   const handleSelectRoom = (id: string) => {
     controller.setActiveRoomId(id)
-    setOpenTabs((prev) => {
-      const existing = prev.find((tabEntry) => tabEntry.id === id)
-      const pinnedTabs = prev.filter((tabEntry) => tabEntry.pinned)
-      if (existing?.pinned) {
-        return [...pinnedTabs]
-      }
-      return [...pinnedTabs, { id, pinned: false }]
-    })
+    setOpenTabs((prev) => selectRoomPreviewTab(prev, id))
   }
 
   const handlePinRoom = (id: string) => {
     controller.setActiveRoomId(id)
-    setOpenTabs((prev) => {
-      const tabIndex = prev.findIndex((tabEntry) => tabEntry.id === id)
-      if (tabIndex === -1) {
-        return [...prev, { id, pinned: true }]
-      }
-      return prev.map((tabEntry, index) => (index === tabIndex ? { ...tabEntry, pinned: true } : tabEntry))
-    })
+    setOpenTabs((prev) => pinRoomTab(prev, id))
   }
 
   const handleCloseTab = (tabId: string) => {
-    const currentIndex = openTabs.findIndex((tabEntry) => tabEntry.id === tabId)
-    const remainingTabs = openTabs.filter((tabEntry) => tabEntry.id !== tabId)
-    setOpenTabs(remainingTabs)
-
-    if (controller.activeRoomId === tabId) {
-      const nextTabId =
-        remainingTabs.length > 0 ? (remainingTabs[Math.min(currentIndex, remainingTabs.length - 1)]?.id ?? null) : null
-      controller.setActiveRoomId(nextTabId ?? "")
+    const result = closeRoomTab(openTabs, tabId, controller.activeRoomId)
+    setOpenTabs(result.tabs)
+    if (result.nextActiveRoomId !== controller.activeRoomId) {
+      controller.setActiveRoomId(result.nextActiveRoomId)
     }
   }
 
   const handleDeleteRoom = (roomId: string) => {
-    const currentIndex = openTabs.findIndex((tabEntry) => tabEntry.id === roomId)
-    const remainingTabs = openTabs.filter((tabEntry) => tabEntry.id !== roomId)
-
     controller.deleteRoom(roomId)
 
-    setOpenTabs(remainingTabs)
-    if (controller.activeRoomId === roomId && remainingTabs.length > 0) {
-      const nextTabId = remainingTabs[Math.min(currentIndex, remainingTabs.length - 1)]?.id ?? null
-      controller.setActiveRoomId(nextTabId ?? "")
+    const result = closeRoomTab(openTabs, roomId, controller.activeRoomId)
+    setOpenTabs(result.tabs)
+    if (result.nextActiveRoomId !== controller.activeRoomId) {
+      controller.setActiveRoomId(result.nextActiveRoomId)
     }
   }
 
   const commitRoomSize = (nextWidthRaw: string, nextHeightRaw: string) => {
-    if (!controller.activeRoom) {
+    if (!activeRoom) {
       return
     }
     const parsedWidth = Number.parseInt(nextWidthRaw, 10)
     const parsedHeight = Number.parseInt(nextHeightRaw, 10)
     const safeWidth = Number.isFinite(parsedWidth) ? parsedWidth : activeRoomWidth
     const safeHeight = Number.isFinite(parsedHeight) ? parsedHeight : activeRoomHeight
-    controller.updateRoomSize(controller.activeRoom.id, safeWidth, safeHeight)
+    controller.updateRoomSize(activeRoom.id, safeWidth, safeHeight)
   }
 
   const handleObjectPickerDragStart = (event: ReactDragEvent, objectId: string) => {
@@ -444,7 +426,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
       setPlacementGhost(null)
       return
     }
-    if (!controller.activeRoom || !placingObjectId) {
+    if (!activeRoom || !placingObjectId) {
       setPlacementGhost(null)
       return
     }
@@ -470,7 +452,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
     })
     const isBlocked = wouldOverlapSolid({
       project: controller.project,
-      roomInstances: controller.activeRoom.instances,
+      roomInstances: activeRoom.instances,
       objectId: placingObjectId,
       x: position.x,
       y: position.y
@@ -489,7 +471,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
     if (isPaintMode) {
       return
     }
-    if (!placingObjectId || !controller.activeRoom) {
+    if (!placingObjectId || !activeRoom) {
       return
     }
     if (placementGhost?.objectId !== placingObjectId) {
@@ -551,7 +533,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
       }
     }
 
-    if (!controller.activeRoom) {
+    if (!activeRoom) {
       return { valid: false, nextPoint: null, nextStamps: sourceStamps }
     }
 
@@ -688,7 +670,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
   }
 
   const updatePaintHoverGhost = (event: ReactMouseEvent<HTMLDivElement>) => {
-    if (!isPaintMode || !controller.activeRoom) {
+    if (!isPaintMode || !activeRoom) {
       setPaintHoverGhost(null)
       return
     }
@@ -698,7 +680,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
   }
 
   const startPaintStroke = (event: ReactMouseEvent<HTMLDivElement>) => {
-    if (!isPaintMode || !controller.activeRoom) {
+    if (!isPaintMode || !activeRoom) {
       return
     }
     const roomPoint = resolveRoomPointFromMouseEvent(event)
@@ -735,7 +717,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
     }
     isPaintStrokeActiveRef.current = false
     lastPaintPointRef.current = null
-    const roomId = controller.activeRoom?.id
+    const roomId = activeRoom?.id
     const draftStamps = paintStrokeDraftRef.current
     if (roomId && draftStamps && !areSamePaintStamps(draftStamps, activeRoomPaintStamps)) {
       controller.updateRoomBackgroundPaintStamps(roomId, draftStamps)
@@ -803,9 +785,9 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
         />
 
         <div className="flex min-h-0 flex-1 flex-col bg-slate-50/50">
-          {!controller.activeRoom ? (
+          {!activeRoom ? (
             <div className="flex h-full items-center justify-center text-slate-400">
-              <p>Select or create a room</p>
+              <p>Select a room to start editing</p>
             </div>
           ) : (
             <div className="flex min-h-0 flex-1">
@@ -816,7 +798,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                 spriteFolders={controller.project.resources.spriteFolders ?? []}
                 resolvedSpriteSources={resolvedSpriteSources}
                 placingObjectId={placingObjectId}
-                hasActiveRoom={Boolean(controller.activeRoom)}
+                hasActiveRoom={hasActiveRoom}
                 onTogglePlacement={(objectId) => {
                   setPlacingObjectId((current) => (current === objectId ? null : objectId))
                   setPlacementGhost(null)
@@ -831,10 +813,10 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                 backgroundSpriteId={activeRoomBackgroundSpriteId}
                 backgroundSprites={sprites}
                 onChangeBackgroundSprite={(spriteId) => {
-                  if (!controller.activeRoom) {
+                  if (!activeRoom) {
                     return
                   }
-                  controller.updateRoomBackground(controller.activeRoom.id, spriteId)
+                  controller.updateRoomBackground(activeRoom.id, spriteId)
                 }}
                 editMode={editMode}
                 onEditModeChange={setEditMode}
@@ -917,7 +899,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                     if (isPaintMode) {
                       return
                     }
-                    if (!controller.activeRoom) return
+                    if (!activeRoom) return
                     const draggedObjectId = event.dataTransfer.getData(OBJECT_DRAG_DATA_KEY) || draggingObjectId
                     if (draggedObjectId) {
                       const objectEntry = objectById[draggedObjectId]
@@ -948,7 +930,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                         height: instanceHeight,
                         isBlocked: wouldOverlapSolid({
                           project: controller.project,
-                          roomInstances: controller.activeRoom.instances,
+                          roomInstances: activeRoom.instances,
                           objectId: draggedObjectId,
                           x: position.x,
                           y: position.y
@@ -957,7 +939,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                       return
                     }
                     if (!draggingInstanceId) return
-                    const instanceEntry = controller.activeRoom.instances.find((candidate) => candidate.id === draggingInstanceId)
+                    const instanceEntry = activeRoom.instances.find((candidate) => candidate.id === draggingInstanceId)
                     if (!instanceEntry) return
                     const objectEntry = instanceEntry
                       ? controller.project.objects.find((candidate) => candidate.id === instanceEntry.objectId)
@@ -986,7 +968,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                       height: instanceHeight,
                       isBlocked: wouldOverlapSolid({
                         project: controller.project,
-                        roomInstances: controller.activeRoom.instances,
+                        roomInstances: activeRoom.instances,
                         objectId: instanceEntry.objectId,
                         x: position.x,
                         y: position.y,
@@ -1008,7 +990,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                     if (isPaintMode) {
                       return
                     }
-                    if (!controller.activeRoom) return
+                    if (!activeRoom) return
                     const draggedObjectId = event.dataTransfer.getData(OBJECT_DRAG_DATA_KEY) || draggingObjectId
                     if (draggedObjectId) {
                       const objectEntry = objectById[draggedObjectId]
@@ -1034,7 +1016,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                       })
                       const isBlocked = wouldOverlapSolid({
                         project: controller.project,
-                        roomInstances: controller.activeRoom.instances,
+                        roomInstances: activeRoom.instances,
                         objectId: draggedObjectId,
                         x: position.x,
                         y: position.y
@@ -1056,7 +1038,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                       return
                     }
                     const instanceId = event.dataTransfer.getData("text/plain")
-                    const instanceEntry = controller.activeRoom.instances.find((candidate) => candidate.id === instanceId)
+                    const instanceEntry = activeRoom.instances.find((candidate) => candidate.id === instanceId)
                     if (!instanceEntry) return
                     const objectEntry = instanceEntry
                       ? controller.project.objects.find((candidate) => candidate.id === instanceEntry.objectId)
@@ -1078,7 +1060,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                     })
                     const isBlocked = wouldOverlapSolid({
                       project: controller.project,
-                      roomInstances: controller.activeRoom.instances,
+                      roomInstances: activeRoom.instances,
                       objectId: instanceEntry.objectId,
                       x: position.x,
                       y: position.y,
