@@ -11,7 +11,7 @@
     "editor:build": "npm run build -w @creadordejocs/editor",
     "deploy": "npx vercel --prod --yes",
     "supabase:init": "npx supabase init",
-    "supabase:start": "npx supabase start",
+    "supabase:start": "sh ./scripts/supabase-start.sh",
     "supabase:status": "npx supabase status",
     "supabase:stop": "npx supabase stop",
     "typecheck": "tsc -p tsconfig.eslint.json --pretty false --noEmit",
