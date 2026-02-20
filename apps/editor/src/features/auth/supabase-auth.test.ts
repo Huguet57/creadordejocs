@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
 import {
   getSupabaseAuthUser,
+  resolveGoogleOAuthRedirectFromContext,
   signInWithEmailPassword,
   signInWithGoogle,
   signUpWithEmailPassword,
@@ -32,6 +33,30 @@ async function withWindow<T>(windowMock: BrowserWindowLike, fn: () => Promise<T>
 }
 
 describe("supabase-auth", () => {
+  it("keeps configured localhost redirect when app also runs on localhost", () => {
+    expect(
+      resolveGoogleOAuthRedirectFromContext("http://localhost:5173/editor", "http://localhost:5173")
+    ).toBe("http://localhost:5173/editor")
+  })
+
+  it("overrides localhost redirect with public origin in production", () => {
+    expect(
+      resolveGoogleOAuthRedirectFromContext("http://localhost:5173/editor", "https://creadordejocs.cat")
+    ).toBe("https://creadordejocs.cat/editor")
+  })
+
+  it("uses current origin when redirect is not configured", () => {
+    expect(resolveGoogleOAuthRedirectFromContext(undefined, "https://creadordejocs.cat")).toBe(
+      "https://creadordejocs.cat/editor"
+    )
+  })
+
+  it("returns configured public redirect as-is", () => {
+    expect(
+      resolveGoogleOAuthRedirectFromContext("https://creadordejocs.cat/editor", "https://creadordejocs.cat")
+    ).toBe("https://creadordejocs.cat/editor")
+  })
+
   it("returns current auth user from session when session exists", async () => {
     const getUser = vi.fn()
     const getSession = vi.fn().mockResolvedValue({

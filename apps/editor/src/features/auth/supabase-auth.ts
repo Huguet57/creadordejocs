@@ -137,15 +137,54 @@ function isMissingAuthSessionError(errorMessage: string | undefined): boolean {
   return errorMessage.toLowerCase().includes("auth session missing")
 }
 
-function resolveGoogleOAuthRedirectTo(): string | undefined {
-  const configuredRedirectTo = import.meta.env.VITE_SUPABASE_AUTH_REDIRECT_TO?.trim()
-  if (configuredRedirectTo) {
-    return configuredRedirectTo
+function isLoopbackHostname(hostname: string | null): boolean {
+  if (!hostname) {
+    return false
   }
-  if (typeof window === "undefined") {
+  const normalized = hostname.toLowerCase()
+  return normalized === "localhost" || normalized === "127.0.0.1" || normalized === "::1" || normalized.endsWith(".localhost")
+}
+
+function getHostnameFromUrl(urlValue: string): string | null {
+  try {
+    return new URL(urlValue).hostname
+  } catch {
+    return null
+  }
+}
+
+function trimTrailingSlash(value: string): string {
+  return value.endsWith("/") ? value.slice(0, -1) : value
+}
+
+export function resolveGoogleOAuthRedirectFromContext(
+  configuredRedirectTo: string | undefined,
+  currentOrigin: string | undefined
+): string | undefined {
+  const configured = configuredRedirectTo?.trim()
+  const origin = currentOrigin?.trim()
+
+  if (configured) {
+    if (origin) {
+      const configuredHost = getHostnameFromUrl(configured)
+      const currentHost = getHostnameFromUrl(origin)
+      if (isLoopbackHostname(configuredHost) && currentHost && !isLoopbackHostname(currentHost)) {
+        return `${trimTrailingSlash(origin)}/editor`
+      }
+    }
+    return configured
+  }
+
+  if (!origin) {
     return undefined
   }
-  return `${window.location.origin}/editor`
+  return `${trimTrailingSlash(origin)}/editor`
+}
+
+function resolveGoogleOAuthRedirectTo(): string | undefined {
+  const configuredRedirectTo = import.meta.env.VITE_SUPABASE_AUTH_REDIRECT_TO
+  const currentOrigin = typeof window !== "undefined" ? window.location.origin : undefined
+  return resolveGoogleOAuthRedirectFromContext(configuredRedirectTo, currentOrigin)
 }
 
 export async function getSupabaseAuthUser(client: SupabaseClient | null): Promise<SupabaseAuthUser | null> {
