@@ -49,6 +49,7 @@ import {
   updateSpriteAssetSource,
   updateObjectProperties,
   updateRoomBackgroundSprite,
+  updateRoomBackgroundPaintStamps,
   addSpriteFrame,
   duplicateSpriteFrame,
   deleteSpriteFrame,
@@ -392,12 +393,20 @@ describe("editor model helpers", () => {
       roomId: roomResult.roomId,
       backgroundSpriteId: spriteResult.spriteId
     })
-    const verifiedAssignment = updateObjectSpriteId(withRoomBackground, objectResult.objectId, spriteResult.spriteId)
+    const withRoomPaint = updateRoomBackgroundPaintStamps(withRoomBackground, {
+      roomId: roomResult.roomId,
+      stamps: [
+        { spriteId: spriteResult.spriteId, x: 0, y: 0 },
+        { spriteId: spriteResult.spriteId, x: 32, y: 0 }
+      ]
+    })
+    const verifiedAssignment = updateObjectSpriteId(withRoomPaint, objectResult.objectId, spriteResult.spriteId)
     const afterDelete = deleteSprite(verifiedAssignment, spriteResult.spriteId)
 
     expect(afterDelete.resources.sprites).toHaveLength(0)
     expect(afterDelete.objects.find((entry) => entry.id === objectResult.objectId)?.spriteId).toBeNull()
     expect(afterDelete.rooms.find((entry) => entry.id === roomResult.roomId)?.backgroundSpriteId).toBeNull()
+    expect(afterDelete.rooms.find((entry) => entry.id === roomResult.roomId)?.backgroundPaintStamps).toEqual([])
   })
 
   it("adds and edits object events", () => {

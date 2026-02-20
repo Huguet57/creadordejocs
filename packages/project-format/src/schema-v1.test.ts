@@ -93,6 +93,32 @@ describe("schema v1 room folders", () => {
     expect(parsed.rooms[0]!.backgroundSpriteId).toBe("sprite-1")
   })
 
+  it("parses rooms with painted background stamps", () => {
+    const project = createEmptyProjectV1("Room paint")
+    project.rooms = [
+      {
+        id: "room-1",
+        name: "Level 1",
+        width: 1200,
+        height: 700,
+        backgroundSpriteId: "sprite-base",
+        backgroundPaintStamps: [
+          { spriteId: "sprite-a", x: 64, y: 32 },
+          { spriteId: "sprite-b", x: 96, y: 32 }
+        ],
+        instances: []
+      } as typeof project.rooms[number] & {
+        backgroundPaintStamps: { spriteId: string; x: number; y: number }[]
+      }
+    ]
+
+    const parsed = ProjectSchemaV1.parse(project)
+    expect(parsed.rooms[0]!.backgroundPaintStamps).toEqual([
+      { spriteId: "sprite-a", x: 64, y: 32 },
+      { spriteId: "sprite-b", x: 96, y: 32 }
+    ])
+  })
+
   it("parses a legacy project without roomFolders", () => {
     const project = createEmptyProjectV1("Legacy")
     // Explicitly remove roomFolders to simulate legacy data
@@ -122,6 +148,7 @@ describe("schema v1 room folders", () => {
     expect(parsed.rooms[0]!.width).toBeUndefined()
     expect(parsed.rooms[0]!.height).toBeUndefined()
     expect(parsed.rooms[0]!.backgroundSpriteId).toBeUndefined()
+    expect(parsed.rooms[0]!.backgroundPaintStamps).toBeUndefined()
   })
 
   it("parses room instances with and without layer", () => {

@@ -13,8 +13,15 @@ import { WINDOW_HEIGHT, WINDOW_WIDTH, resolveRoomDimensions } from "../editor-st
 import { getPositionCountsByCoordinate, getPositionKey, wouldOverlapSolid } from "./room-placement-utils.js"
 import { resolveSpritePreviewSource } from "../sprites/utils/sprite-preview-source.js"
 import { RoomListPanel } from "./RoomListPanel.js"
-import { RoomObjectPickerPanel } from "./RoomObjectPickerPanel.js"
+import { RoomObjectPickerPanel, type RoomBackgroundPaintTool, type RoomEditMode } from "./RoomObjectPickerPanel.js"
 import { RoomTabBar } from "./RoomTabBar.js"
+import {
+  applyBrushStrokeToStamps,
+  eraseTopmostStampAtPoint,
+  interpolatePaintStrokePositions,
+  snapBackgroundPaintPosition,
+  type RoomBackgroundPaintStamp
+} from "./room-background-paint-utils.js"
 
 const ROOM_GRID_SIZE = 32
 const DRAG_SNAP_SIZE = 4
@@ -38,6 +45,11 @@ type RoomPlacementGhost = {
   width: number
   height: number
   isBlocked: boolean
+}
+
+type RoomPoint = {
+  x: number
+  y: number
 }
 
 export function snapToGrid(value: number, gridSize: number): number {
@@ -82,11 +94,18 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
   const [draggingObjectId, setDraggingObjectId] = useState<string | null>(null)
   const [placingObjectId, setPlacingObjectId] = useState<string | null>(null)
   const [placementGhost, setPlacementGhost] = useState<RoomPlacementGhost | null>(null)
+  const [editMode, setEditMode] = useState<RoomEditMode>("objects")
+  const [paintTool, setPaintTool] = useState<RoomBackgroundPaintTool>("brush")
+  const [paintBrushSpriteId, setPaintBrushSpriteId] = useState<string | null>(null)
+  const [paintStrokeDraft, setPaintStrokeDraft] = useState<RoomBackgroundPaintStamp[] | null>(null)
   const [showGrid, setShowGrid] = useState(true)
   const [roomWidthInput, setRoomWidthInput] = useState<string>(String(WINDOW_WIDTH))
   const [roomHeightInput, setRoomHeightInput] = useState<string>(String(WINDOW_HEIGHT))
   const [zoomPercent, setZoomPercent] = useState<number>(100)
   const transparentDragImageRef = useRef<HTMLDivElement | null>(null)
+  const isPaintStrokeActiveRef = useRef(false)
+  const lastPaintPointRef = useRef<RoomPoint | null>(null)
+  const paintStrokeDraftRef = useRef<RoomBackgroundPaintStamp[] | null>(null)
 
   // Tab state (VSCode-like: preview + pinned)
   const [openTabs, setOpenTabs] = useState<{ id: string; pinned: boolean }[]>([])
@@ -118,9 +137,32 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
   const activeRoomWidth = activeRoomDimensions.width
   const activeRoomHeight = activeRoomDimensions.height
   const zoom = zoomPercent / 100
+  const isPaintMode = editMode === "paintBackground"
   const activeRoomBackgroundSpriteId = controller.activeRoom?.backgroundSpriteId ?? null
   const activeRoomBackgroundSprite = activeRoomBackgroundSpriteId ? spriteById[activeRoomBackgroundSpriteId] : undefined
   const activeRoomBackgroundSource = activeRoomBackgroundSprite ? resolvedSpriteSources[activeRoomBackgroundSprite.id] : undefined
+  const activeRoomPaintStamps = controller.activeRoom?.backgroundPaintStamps ?? []
+  const activeDisplayedPaintStamps = paintStrokeDraft ?? activeRoomPaintStamps
+  const resolvedPaintStampEntries = useMemo(
+    () =>
+      activeDisplayedPaintStamps
+        .map((stamp, index) => {
+          const spriteEntry = spriteById[stamp.spriteId]
+          if (!spriteEntry) {
+            return null
+          }
+          return {
+            key: `${index}-${stamp.spriteId}-${stamp.x}-${stamp.y}`,
+            x: stamp.x,
+            y: stamp.y,
+            width: Math.max(1, Math.round(spriteEntry.width)),
+            height: Math.max(1, Math.round(spriteEntry.height)),
+            source: resolvedSpriteSources[spriteEntry.id]
+          }
+        })
+        .filter((entry): entry is NonNullable<typeof entry> => entry !== null),
+    [activeDisplayedPaintStamps, spriteById, resolvedSpriteSources]
+  )
 
   const roomCanvasBackgroundStyle = useMemo(() => {
     const backgroundImages: string[] = []
@@ -233,6 +275,9 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
       }
       setPlacingObjectId(null)
       setPlacementGhost(null)
+      isPaintStrokeActiveRef.current = false
+      lastPaintPointRef.current = null
+      setPaintStrokeDraft(null)
     }
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
@@ -242,6 +287,10 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
     if (!controller.activeRoom) {
       setPlacingObjectId(null)
       setPlacementGhost(null)
+      setEditMode("objects")
+      setPaintStrokeDraft(null)
+      isPaintStrokeActiveRef.current = false
+      lastPaintPointRef.current = null
       return
     }
     if (placingObjectId && !objectById[placingObjectId]) {
@@ -249,6 +298,40 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
       setPlacementGhost(null)
     }
   }, [controller.activeRoom, objectById, placingObjectId])
+
+  useEffect(() => {
+    if (paintBrushSpriteId && !spriteById[paintBrushSpriteId]) {
+      setPaintBrushSpriteId(null)
+      return
+    }
+    if (!paintBrushSpriteId && sprites.length > 0) {
+      setPaintBrushSpriteId(sprites[0]?.id ?? null)
+    }
+  }, [paintBrushSpriteId, spriteById, sprites])
+
+  useEffect(() => {
+    setPaintStrokeDraft(null)
+    isPaintStrokeActiveRef.current = false
+    lastPaintPointRef.current = null
+  }, [controller.activeRoom?.id])
+
+  useEffect(() => {
+    paintStrokeDraftRef.current = paintStrokeDraft
+  }, [paintStrokeDraft])
+
+  useEffect(() => {
+    if (editMode === "paintBackground") {
+      setPlacingObjectId(null)
+      setPlacementGhost(null)
+      setDraggingObjectId(null)
+      setDraggingInstanceId(null)
+      setDragPreview(null)
+      return
+    }
+    setPaintStrokeDraft(null)
+    isPaintStrokeActiveRef.current = false
+    lastPaintPointRef.current = null
+  }, [editMode])
 
   useEffect(() => {
     setRoomWidthInput(String(activeRoomWidth))
@@ -315,6 +398,9 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
   }
 
   const handleObjectPickerDragStart = (event: ReactDragEvent, objectId: string) => {
+    if (isPaintMode) {
+      return
+    }
     event.dataTransfer.setData(OBJECT_DRAG_DATA_KEY, objectId)
     event.dataTransfer.effectAllowed = "copy"
     if (!transparentDragImageRef.current) {
@@ -338,6 +424,10 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
   }
 
   const updatePlacementGhost = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (isPaintMode) {
+      setPlacementGhost(null)
+      return
+    }
     if (!controller.activeRoom || !placingObjectId) {
       setPlacementGhost(null)
       return
@@ -380,6 +470,9 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
   }
 
   const handleRoomCanvasClick = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (isPaintMode) {
+      return
+    }
     if (!placingObjectId || !controller.activeRoom) {
       return
     }
@@ -392,6 +485,179 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
     }
     controller.addInstanceToActiveRoom(placingObjectId, placementGhost.x, placementGhost.y)
   }
+
+  const areSamePaintStamps = (
+    left: RoomBackgroundPaintStamp[],
+    right: RoomBackgroundPaintStamp[]
+  ): boolean => {
+    if (left.length !== right.length) {
+      return false
+    }
+    for (let index = 0; index < left.length; index += 1) {
+      const leftStamp = left[index]
+      const rightStamp = right[index]
+      if (!leftStamp || !rightStamp) {
+        return false
+      }
+      if (
+        leftStamp.spriteId !== rightStamp.spriteId ||
+        leftStamp.x !== rightStamp.x ||
+        leftStamp.y !== rightStamp.y
+      ) {
+        return false
+      }
+    }
+    return true
+  }
+
+  const resolveRoomPointFromMouseEvent = (event: ReactMouseEvent<HTMLDivElement>): RoomPoint => {
+    const rect = event.currentTarget.getBoundingClientRect()
+    const rawX = Math.floor((event.clientX - rect.left) / zoom)
+    const rawY = Math.floor((event.clientY - rect.top) / zoom)
+    return {
+      x: Math.max(0, Math.min(Math.max(0, activeRoomWidth - 1), rawX)),
+      y: Math.max(0, Math.min(Math.max(0, activeRoomHeight - 1), rawY))
+    }
+  }
+
+  const applyPaintAtPoint = (
+    point: RoomPoint,
+    sourceStamps: RoomBackgroundPaintStamp[]
+  ): { valid: boolean; nextPoint: RoomPoint | null; nextStamps: RoomBackgroundPaintStamp[] } => {
+    if (!controller.activeRoom) {
+      return { valid: false, nextPoint: null, nextStamps: sourceStamps }
+    }
+
+    if (paintTool === "brush") {
+      if (!paintBrushSpriteId) {
+        return { valid: false, nextPoint: null, nextStamps: sourceStamps }
+      }
+      const brushSprite = spriteById[paintBrushSpriteId]
+      if (!brushSprite) {
+        return { valid: false, nextPoint: null, nextStamps: sourceStamps }
+      }
+      const snappedPoint = snapBackgroundPaintPosition({
+        pointerX: point.x,
+        pointerY: point.y,
+        spriteWidth: brushSprite.width,
+        spriteHeight: brushSprite.height,
+        roomWidth: activeRoomWidth,
+        roomHeight: activeRoomHeight
+      })
+      const fromPoint = lastPaintPointRef.current ?? snappedPoint
+      const nextStamps = applyBrushStrokeToStamps({
+        stamps: sourceStamps,
+        spriteId: paintBrushSpriteId,
+        from: fromPoint,
+        to: snappedPoint,
+        spriteWidth: brushSprite.width,
+        spriteHeight: brushSprite.height
+      })
+      return {
+        valid: true,
+        nextPoint: snappedPoint,
+        nextStamps
+      }
+    }
+
+    const eraserSprite = paintBrushSpriteId ? spriteById[paintBrushSpriteId] : null
+    const eraserWidth = eraserSprite?.width ?? ROOM_GRID_SIZE
+    const eraserHeight = eraserSprite?.height ?? ROOM_GRID_SIZE
+    const snappedPoint = snapBackgroundPaintPosition({
+      pointerX: point.x,
+      pointerY: point.y,
+      spriteWidth: eraserWidth,
+      spriteHeight: eraserHeight,
+      roomWidth: activeRoomWidth,
+      roomHeight: activeRoomHeight
+    })
+    const fromPoint = lastPaintPointRef.current ?? snappedPoint
+    const eraserPath = interpolatePaintStrokePositions({
+      from: fromPoint,
+      to: snappedPoint,
+      spriteWidth: eraserWidth,
+      spriteHeight: eraserHeight
+    })
+    let nextStamps = sourceStamps
+    for (const eraserPoint of eraserPath) {
+      nextStamps = eraseTopmostStampAtPoint({
+        stamps: nextStamps,
+        pointX: eraserPoint.x,
+        pointY: eraserPoint.y,
+        resolveSpriteDimensions: (spriteId) => {
+          const spriteEntry = spriteById[spriteId]
+          if (!spriteEntry) {
+            return null
+          }
+          return {
+            width: spriteEntry.width,
+            height: spriteEntry.height
+          }
+        }
+      })
+    }
+
+    return {
+      valid: true,
+      nextPoint: snappedPoint,
+      nextStamps
+    }
+  }
+
+  const startPaintStroke = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (!isPaintMode || !controller.activeRoom) {
+      return
+    }
+    const roomPoint = resolveRoomPointFromMouseEvent(event)
+    const result = applyPaintAtPoint(roomPoint, activeRoomPaintStamps)
+    if (!result.valid) {
+      return
+    }
+    isPaintStrokeActiveRef.current = true
+    lastPaintPointRef.current = result.nextPoint
+    setPaintStrokeDraft(result.nextStamps)
+  }
+
+  const updatePaintStroke = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (!isPaintMode || !isPaintStrokeActiveRef.current) {
+      return
+    }
+    const roomPoint = resolveRoomPointFromMouseEvent(event)
+    const baseStamps = paintStrokeDraftRef.current ?? activeRoomPaintStamps
+    const result = applyPaintAtPoint(roomPoint, baseStamps)
+    if (!result.valid) {
+      return
+    }
+    lastPaintPointRef.current = result.nextPoint
+    setPaintStrokeDraft(result.nextStamps)
+  }
+
+  const commitPaintStroke = () => {
+    if (!isPaintStrokeActiveRef.current) {
+      return
+    }
+    isPaintStrokeActiveRef.current = false
+    lastPaintPointRef.current = null
+    const roomId = controller.activeRoom?.id
+    const draftStamps = paintStrokeDraftRef.current
+    if (roomId && draftStamps && !areSamePaintStamps(draftStamps, activeRoomPaintStamps)) {
+      controller.updateRoomBackgroundPaintStamps(roomId, draftStamps)
+    }
+    setPaintStrokeDraft(null)
+  }
+
+  useEffect(() => {
+    if (!isPaintMode) {
+      return
+    }
+    const handleMouseUp = () => {
+      commitPaintStroke()
+    }
+    window.addEventListener("mouseup", handleMouseUp)
+    return () => {
+      window.removeEventListener("mouseup", handleMouseUp)
+    }
+  }, [isPaintMode, commitPaintStroke])
 
   const tabData = useMemo(
     () =>
@@ -472,6 +738,20 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                   }
                   controller.updateRoomBackground(controller.activeRoom.id, spriteId)
                 }}
+                editMode={editMode}
+                onEditModeChange={setEditMode}
+                paintTool={paintTool}
+                onPaintToolChange={setPaintTool}
+                paintBrushSpriteId={paintBrushSpriteId}
+                onPaintBrushSpriteChange={setPaintBrushSpriteId}
+                paintedStampCount={activeDisplayedPaintStamps.length}
+                onClearBackgroundPaint={() => {
+                  if (!controller.activeRoom) {
+                    return
+                  }
+                  controller.updateRoomBackgroundPaintStamps(controller.activeRoom.id, [])
+                  setPaintStrokeDraft(null)
+                }}
               />
 
               <div className="flex min-w-0 flex-1 flex-col">
@@ -501,7 +781,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
               <div className="min-h-0 flex-1 overflow-auto">
                 <div
                   className={`mvp15-room-canvas mvp18-room-grid-canvas relative border border-slate-200 bg-white ${
-                    placingObjectId ? "cursor-crosshair" : ""
+                    isPaintMode || placingObjectId ? "cursor-crosshair" : ""
                   }`}
                   style={{
                     width: activeRoomWidth * zoom,
@@ -510,17 +790,40 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                     ...roomCanvasBackgroundStyle
                   }}
                   onMouseMove={(event) => {
+                    if (isPaintMode) {
+                      updatePaintStroke(event)
+                      return
+                    }
                     if (!placingObjectId) {
                       return
                     }
                     updatePlacementGhost(event)
                   }}
                   onMouseLeave={() => {
+                    if (isPaintMode) {
+                      commitPaintStroke()
+                    }
                     setPlacementGhost(null)
+                  }}
+                  onMouseDown={(event) => {
+                    if (!isPaintMode) {
+                      return
+                    }
+                    event.preventDefault()
+                    startPaintStroke(event)
+                  }}
+                  onMouseUp={() => {
+                    if (!isPaintMode) {
+                      return
+                    }
+                    commitPaintStroke()
                   }}
                   onClick={handleRoomCanvasClick}
                   onDragOver={(event) => {
                     event.preventDefault()
+                    if (isPaintMode) {
+                      return
+                    }
                     if (!controller.activeRoom) return
                     const draggedObjectId = event.dataTransfer.getData(OBJECT_DRAG_DATA_KEY) || draggingObjectId
                     if (draggedObjectId) {
@@ -599,6 +902,9 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                     })
                   }}
                   onDragLeave={(event) => {
+                    if (isPaintMode) {
+                      return
+                    }
                     if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
                       setDragPreview(null)
                       setPlacementGhost(null)
@@ -606,6 +912,9 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                   }}
                   onDrop={(event) => {
                     event.preventDefault()
+                    if (isPaintMode) {
+                      return
+                    }
                     if (!controller.activeRoom) return
                     const draggedObjectId = event.dataTransfer.getData(OBJECT_DRAG_DATA_KEY) || draggingObjectId
                     if (draggedObjectId) {
@@ -711,6 +1020,29 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                       aria-hidden
                     />
                   )}
+                  {resolvedPaintStampEntries.map((stampEntry) => (
+                    <div
+                      key={stampEntry.key}
+                      className="pointer-events-none absolute z-[1]"
+                      style={{
+                        left: stampEntry.x * zoom,
+                        top: stampEntry.y * zoom,
+                        width: stampEntry.width * zoom,
+                        height: stampEntry.height * zoom
+                      }}
+                    >
+                      {stampEntry.source ? (
+                        <img
+                          src={stampEntry.source}
+                          alt=""
+                          className="h-full w-full object-contain"
+                          style={{ imageRendering: "pixelated" }}
+                        />
+                      ) : (
+                        <div className="h-full w-full border border-dashed border-slate-300 bg-slate-100/70" />
+                      )}
+                    </div>
+                  ))}
                   {sortedActiveRoomInstances.map((instanceEntry) => {
                     const objectEntry = objectById[instanceEntry.objectId]
                     const spriteEntry = objectEntry?.spriteId ? spriteById[objectEntry.spriteId] : undefined
@@ -723,15 +1055,22 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                     return (
                       <div
                         key={instanceEntry.id}
-                        className={`mvp15-room-instance group absolute flex cursor-move items-center justify-center rounded text-[10px] ${spriteSource ? "" : isInvisible ? "border border-dashed border-blue-400 bg-blue-100 text-blue-400" : "bg-blue-500 text-white"} ${draggingInstanceId === instanceEntry.id ? "opacity-30" : isInvisible ? "opacity-50" : ""}`}
+                        className={`mvp15-room-instance group absolute flex items-center justify-center rounded text-[10px] ${
+                          isPaintMode ? "cursor-default" : "cursor-move"
+                        } ${spriteSource ? "" : isInvisible ? "border border-dashed border-blue-400 bg-blue-100 text-blue-400" : "bg-blue-500 text-white"} ${
+                          isPaintMode ? "opacity-40" : draggingInstanceId === instanceEntry.id ? "opacity-30" : isInvisible ? "opacity-50" : ""
+                        }`}
                         style={{
                           left: instanceEntry.x * zoom,
                           top: instanceEntry.y * zoom,
                           width: instanceWidth * zoom,
                           height: instanceHeight * zoom
                         }}
-                        draggable
+                        draggable={!isPaintMode}
                         onDragStart={(event) => {
+                          if (isPaintMode) {
+                            return
+                          }
                           event.dataTransfer.setData("text/plain", instanceEntry.id)
                           event.dataTransfer.effectAllowed = "move"
                           if (!transparentDragImageRef.current) {
@@ -749,6 +1088,9 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                           setDraggingInstanceId(instanceEntry.id)
                         }}
                         onDragEnd={() => {
+                          if (isPaintMode) {
+                            return
+                          }
                           setDragPreview(null)
                           setDraggingInstanceId(null)
                         }}
@@ -760,7 +1102,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                       >
                         <div
                           className={`absolute -left-1.5 top-full z-30 items-center rounded-full border border-slate-300 bg-white text-[9px] font-semibold text-slate-600 shadow-sm ${
-                            draggingInstanceId ? "hidden" : "hidden group-hover:flex"
+                            draggingInstanceId || isPaintMode ? "hidden" : "hidden group-hover:flex"
                           }`}
                           title={`Layer ${instanceLayer}`}
                         >
@@ -812,7 +1154,9 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                         )}
                         <button
                           type="button"
-                          className={`absolute -right-1.5 -top-1.5 h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white ${draggingInstanceId ? "hidden" : "hidden group-hover:flex"}`}
+                          className={`absolute -right-1.5 -top-1.5 h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white ${
+                            draggingInstanceId || isPaintMode ? "hidden" : "hidden group-hover:flex"
+                          }`}
                           onClick={(e) => {
                             e.stopPropagation()
                             controller.removeInstance(instanceEntry.id)
@@ -824,7 +1168,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                       </div>
                     )
                   })}
-                  {placementGhost && (
+                  {!isPaintMode && placementGhost && (
                     <div
                       className={`mvp20-room-placement-ghost pointer-events-none absolute z-10 rounded border-2 ${
                         placementGhost.isBlocked
@@ -840,7 +1184,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                       aria-hidden
                     />
                   )}
-                  {dragPreview && (
+                  {!isPaintMode && dragPreview && (
                     <div
                       className={`mvp19-room-drag-ghost pointer-events-none absolute z-10 rounded border-2 ${
                         dragPreview.isBlocked ? "border-red-400 bg-red-400/20" : "border-blue-400 bg-blue-400/20"

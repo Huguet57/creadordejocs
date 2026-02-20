@@ -102,6 +102,47 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
   const activeRoomBackgroundSpriteId = controller.activeRoom?.backgroundSpriteId ?? null
   const activeRoomBackgroundSprite = activeRoomBackgroundSpriteId ? spriteById[activeRoomBackgroundSpriteId] : undefined
   const activeRoomBackgroundSource = activeRoomBackgroundSprite ? resolvedSpriteSources[activeRoomBackgroundSprite.id] : undefined
+  const activeRoomPaintStamps = controller.activeRoom?.backgroundPaintStamps ?? []
+  const resolvedRoomPaintStamps = useMemo(
+    () =>
+      activeRoomPaintStamps
+        .map((stamp, index) => {
+          const spriteEntry = spriteById[stamp.spriteId]
+          if (!spriteEntry) {
+            return null
+          }
+          const width = Math.max(1, Math.round(spriteEntry.width))
+          const height = Math.max(1, Math.round(spriteEntry.height))
+          if (
+            !isInstanceVisibleInWindow({
+              instanceX: stamp.x,
+              instanceY: stamp.y,
+              instanceWidth: width,
+              instanceHeight: height,
+              windowX: windowPosition.x,
+              windowY: windowPosition.y
+            })
+          ) {
+            return null
+          }
+          const screenPosition = toScreenCoordinates(
+            stamp.x,
+            stamp.y,
+            windowPosition.x,
+            windowPosition.y
+          )
+          return {
+            key: `${index}-${stamp.spriteId}-${stamp.x}-${stamp.y}`,
+            x: screenPosition.x,
+            y: screenPosition.y,
+            width,
+            height,
+            source: resolvedSpriteSources[spriteEntry.id]
+          }
+        })
+        .filter((entry): entry is NonNullable<typeof entry> => entry !== null),
+    [activeRoomPaintStamps, spriteById, windowPosition.x, windowPosition.y, resolvedSpriteSources]
+  )
 
   const resolvedSpriteFrameUrls = useMemo(() => {
     const result: Record<string, string[]> = {}
@@ -401,6 +442,29 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
                     </div>
                   </div>
                 )}
+                {resolvedRoomPaintStamps.map((stampEntry) => (
+                  <div
+                    key={stampEntry.key}
+                    className="mvp20-run-painted-stamp absolute"
+                    style={{
+                      left: stampEntry.x,
+                      top: stampEntry.y,
+                      width: stampEntry.width,
+                      height: stampEntry.height
+                    }}
+                  >
+                    {stampEntry.source ? (
+                      <img
+                        src={stampEntry.source}
+                        alt=""
+                        className="h-full w-full object-contain"
+                        style={{ imageRendering: "pixelated" }}
+                      />
+                    ) : (
+                      <div className="h-full w-full border border-dashed border-slate-300 bg-slate-100/70" />
+                    )}
+                  </div>
+                ))}
                 {sortedActiveRoomInstances.map((instanceEntry) => {
                   const objectEntry = controller.project.objects.find((entry) => entry.id === instanceEntry.objectId)
                   const instanceWidth = objectEntry?.width ?? 32

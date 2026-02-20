@@ -515,6 +515,12 @@ const RoomInstanceSchema = z.object({
   rotation: z.number().optional()
 })
 
+const RoomBackgroundPaintStampSchema = z.object({
+  spriteId: z.string().min(1),
+  x: z.number(),
+  y: z.number()
+})
+
 const RoomSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
@@ -522,6 +528,7 @@ const RoomSchema = z.object({
   width: z.number().int().min(1).optional(),
   height: z.number().int().min(1).optional(),
   backgroundSpriteId: z.string().nullable().optional(),
+  backgroundPaintStamps: z.array(RoomBackgroundPaintStampSchema).optional(),
   instances: z.array(RoomInstanceSchema)
 })
 

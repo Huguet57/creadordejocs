@@ -763,6 +763,7 @@ Located at `project.rooms[]`.
   "width": 768,
   "height": 512,
   "backgroundSpriteId": null,
+  "backgroundPaintStamps": [],
   "instances": [
     { "id": "instance-{uuid}", "objectId": "object-{uuid}", "x": 100, "y": 200 }
   ]
@@ -773,6 +774,7 @@ Located at `project.rooms[]`.
 |---|---|---|---|
 | `width`, `height` | positive int | `768 x 512` | Room dimensions in pixels. |
 | `backgroundSpriteId` | `string \| null` | `null` | Sprite ID for background, or `null`. |
+| `backgroundPaintStamps` | `array` | `[]` | Ordered painted stamps rendered over the base background. |
 | `instances` | array | `[]` | Placed object instances. |
 
 Each instance:
@@ -780,6 +782,10 @@ Each instance:
 - `objectId`: must reference an existing object
 - `x`, `y`: position in the room (number)
 - `rotation`: optional number (degrees)
+
+Each `backgroundPaintStamps` entry:
+- `spriteId`: must reference an existing sprite
+- `x`, `y`: top-left paint position in room coordinates
 
 Multiple instances of the same object can exist in one room.
 

@@ -81,6 +81,7 @@ export type SpriteFolder = NonNullable<ProjectV1["resources"]["spriteFolders"]>[
 export type ObjectFolder = NonNullable<ProjectV1["resources"]["objectFolders"]>[number]
 export type RoomFolder = NonNullable<ProjectV1["resources"]["roomFolders"]>[number]
 export type RoomEntry = ProjectV1["rooms"][number]
+export type RoomBackgroundPaintStamp = NonNullable<RoomEntry["backgroundPaintStamps"]>[number]
 export type SpriteResource = ProjectV1["resources"]["sprites"][number]
 
 export type AddObjectEventInput = {
@@ -891,6 +892,7 @@ export function createRoom(
           width: DEFAULT_ROOM_WIDTH,
           height: DEFAULT_ROOM_HEIGHT,
           backgroundSpriteId: null,
+          backgroundPaintStamps: [],
           instances: []
         }
       ]
@@ -1402,10 +1404,12 @@ export function deleteSprite(project: ProjectV1, spriteId: string): ProjectV1 {
         : objectEntry
     ),
     rooms: project.rooms.map((roomEntry) =>
-      roomEntry.backgroundSpriteId === spriteId
+      roomEntry.backgroundSpriteId === spriteId ||
+      (roomEntry.backgroundPaintStamps ?? []).some((stamp) => stamp.spriteId === spriteId)
         ? {
             ...roomEntry,
-            backgroundSpriteId: null
+            backgroundSpriteId: roomEntry.backgroundSpriteId === spriteId ? null : roomEntry.backgroundSpriteId,
+            backgroundPaintStamps: (roomEntry.backgroundPaintStamps ?? []).filter((stamp) => stamp.spriteId !== spriteId)
           }
         : roomEntry
     )
@@ -2521,6 +2525,11 @@ export type UpdateRoomBackgroundSpriteInput = {
   backgroundSpriteId: string | null
 }
 
+export type UpdateRoomBackgroundPaintStampsInput = {
+  roomId: string
+  stamps: RoomBackgroundPaintStamp[]
+}
+
 function getNormalizedObjectDimensionForRoomClamp(value: number | undefined): number {
   if (typeof value !== "number" || !Number.isFinite(value)) {
     return DEFAULT_SPRITE_SIZE
@@ -2607,6 +2616,77 @@ export function updateRoomBackgroundSprite(project: ProjectV1, input: UpdateRoom
     return {
       ...room,
       backgroundSpriteId: nextBackgroundSpriteId
+    }
+  })
+
+  if (!changed) {
+    return project
+  }
+
+  return {
+    ...project,
+    rooms: nextRooms
+  }
+}
+
+function normalizeRoomBackgroundPaintStamps(stamps: RoomBackgroundPaintStamp[]): RoomBackgroundPaintStamp[] {
+  return stamps
+    .filter(
+      (stamp) =>
+        typeof stamp.spriteId === "string" &&
+        stamp.spriteId.trim().length > 0 &&
+        Number.isFinite(stamp.x) &&
+        Number.isFinite(stamp.y)
+    )
+    .map((stamp) => ({
+      spriteId: stamp.spriteId,
+      x: Math.round(stamp.x),
+      y: Math.round(stamp.y)
+    }))
+}
+
+function areRoomBackgroundPaintStampsEqual(
+  left: RoomBackgroundPaintStamp[] | undefined,
+  right: RoomBackgroundPaintStamp[]
+): boolean {
+  const safeLeft = left ?? []
+  if (safeLeft.length !== right.length) {
+    return false
+  }
+  for (let index = 0; index < safeLeft.length; index += 1) {
+    const leftStamp = safeLeft[index]
+    const rightStamp = right[index]
+    if (!leftStamp || !rightStamp) {
+      return false
+    }
+    if (
+      leftStamp.spriteId !== rightStamp.spriteId ||
+      leftStamp.x !== rightStamp.x ||
+      leftStamp.y !== rightStamp.y
+    ) {
+      return false
+    }
+  }
+  return true
+}
+
+export function updateRoomBackgroundPaintStamps(
+  project: ProjectV1,
+  input: UpdateRoomBackgroundPaintStampsInput
+): ProjectV1 {
+  const normalizedStamps = normalizeRoomBackgroundPaintStamps(input.stamps)
+  let changed = false
+  const nextRooms = project.rooms.map((room) => {
+    if (room.id !== input.roomId) {
+      return room
+    }
+    if (areRoomBackgroundPaintStampsEqual(room.backgroundPaintStamps, normalizedStamps)) {
+      return room
+    }
+    changed = true
+    return {
+      ...room,
+      backgroundPaintStamps: normalizedStamps
     }
   })
 

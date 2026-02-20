@@ -59,6 +59,7 @@ import {
   updateObjectProperties,
   updateRoomSize as updateRoomSizeModel,
   updateRoomBackgroundSprite as updateRoomBackgroundSpriteModel,
+  updateRoomBackgroundPaintStamps as updateRoomBackgroundPaintStampsModel,
   updateObjectSpriteId,
   updateSoundAssetSource,
   updateSpriteAssetSource,
@@ -848,6 +849,20 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       const next = updateRoomBackgroundSpriteModel(project, { roomId, backgroundSpriteId })
       if (next === project) return false
       pushProjectChange(next, "Update room background")
+      return true
+    },
+    updateRoomBackgroundPaintStamps(
+      roomId: string,
+      stamps: NonNullable<ProjectV1["rooms"][number]["backgroundPaintStamps"]>
+    ) {
+      const spriteIds = new Set(project.resources.sprites.map((entry) => entry.id))
+      const hasUnknownSprite = stamps.some((stamp) => !spriteIds.has(stamp.spriteId))
+      if (hasUnknownSprite) {
+        return false
+      }
+      const next = updateRoomBackgroundPaintStampsModel(project, { roomId, stamps })
+      if (next === project) return false
+      pushProjectChange(next, "Update room painted background")
       return true
     },
     updateSpriteSource(spriteId: string, source: string) {

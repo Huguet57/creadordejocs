@@ -13,7 +13,9 @@ import {
   quickCreateSprite,
   addRoomInstance,
   updateRoomSize,
-  updateRoomBackgroundSprite
+  updateRoomBackgroundSprite,
+  updateRoomBackgroundPaintStamps,
+  deleteSprite
 } from "./editor-model.js"
 
 function projectWithRoom(name: string, folderId: string | null = null) {
@@ -45,6 +47,7 @@ describe("createRoom with folderId", () => {
     expect(room!.width).toBe(768)
     expect(room!.height).toBe(512)
     expect(room!.backgroundSpriteId).toBeNull()
+    expect(room!.backgroundPaintStamps).toEqual([])
   })
 
   it("creates a room with null folderId by default", () => {
@@ -113,6 +116,56 @@ describe("updateRoomBackgroundSprite", () => {
     })
     const roomCleared = cleared.rooms.find((entry) => entry.id === roomResult.roomId)
     expect(roomCleared?.backgroundSpriteId).toBeNull()
+  })
+})
+
+describe("updateRoomBackgroundPaintStamps", () => {
+  it("sets and clears room background painted stamps", () => {
+    const initial = createEmptyProjectV1("test")
+    const spriteResult = quickCreateSprite(initial, "Grass")
+    const roomResult = createRoom(spriteResult.project, "Room")
+
+    const withPaint = updateRoomBackgroundPaintStamps(roomResult.project, {
+      roomId: roomResult.roomId,
+      stamps: [
+        { spriteId: spriteResult.spriteId, x: 0, y: 0 },
+        { spriteId: spriteResult.spriteId, x: 32, y: 0 }
+      ]
+    })
+    const roomWithPaint = withPaint.rooms.find((entry) => entry.id === roomResult.roomId)
+    expect(roomWithPaint?.backgroundPaintStamps).toEqual([
+      { spriteId: spriteResult.spriteId, x: 0, y: 0 },
+      { spriteId: spriteResult.spriteId, x: 32, y: 0 }
+    ])
+
+    const cleared = updateRoomBackgroundPaintStamps(withPaint, {
+      roomId: roomResult.roomId,
+      stamps: []
+    })
+    const roomCleared = cleared.rooms.find((entry) => entry.id === roomResult.roomId)
+    expect(roomCleared?.backgroundPaintStamps).toEqual([])
+  })
+})
+
+describe("deleteSprite", () => {
+  it("removes painted background stamps that reference the deleted sprite", () => {
+    const initial = createEmptyProjectV1("test")
+    const spriteA = quickCreateSprite(initial, "A")
+    const spriteB = quickCreateSprite(spriteA.project, "B")
+    const roomResult = createRoom(spriteB.project, "Room")
+
+    const withPaint = updateRoomBackgroundPaintStamps(roomResult.project, {
+      roomId: roomResult.roomId,
+      stamps: [
+        { spriteId: spriteA.spriteId, x: 0, y: 0 },
+        { spriteId: spriteB.spriteId, x: 32, y: 0 },
+        { spriteId: spriteA.spriteId, x: 64, y: 0 }
+      ]
+    })
+
+    const afterDelete = deleteSprite(withPaint, spriteA.spriteId)
+    const room = afterDelete.rooms.find((entry) => entry.id === roomResult.roomId)
+    expect(room?.backgroundPaintStamps).toEqual([{ spriteId: spriteB.spriteId, x: 32, y: 0 }])
   })
 })
 
