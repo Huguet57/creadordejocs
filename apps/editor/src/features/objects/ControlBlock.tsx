@@ -526,7 +526,7 @@ export function ControlBlock({
             <Plus className="h-3.5 w-3.5" />
           </button>
         )}
-        {compoundCondition && compoundCondition.conditions.slice(1).map((cond, idx) => {
+        {compoundCondition?.conditions.slice(1).map((cond, idx) => {
           const conditionIndex = idx + 1
           return (
             <div key={conditionIndex} className="control-block-if-compound order-1 basis-full flex items-center gap-2 py-2 px-3 bg-blue-100">

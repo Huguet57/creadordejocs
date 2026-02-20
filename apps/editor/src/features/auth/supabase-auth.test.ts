@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
 import {
   getSupabaseAuthUser,
-  signInWithMagicLink,
+  signInWithGoogle,
   signOutFromSupabase,
   subscribeToSupabaseAuthUser
 } from "./supabase-auth.js"
@@ -57,21 +57,18 @@ describe("supabase-auth", () => {
     expect(unsubscribe).toHaveBeenCalled()
   })
 
-  it("sends magic link sign-in request", async () => {
-    const signInWithOtp = vi.fn().mockResolvedValue({ error: null })
+  it("starts Google OAuth sign-in request", async () => {
+    const signInWithOAuth = vi.fn().mockResolvedValue({ error: null })
     const client = {
       auth: {
-        signInWithOtp
+        signInWithOAuth
       }
-    } as unknown as Parameters<typeof signInWithMagicLink>[0]
+    } as unknown as Parameters<typeof signInWithGoogle>[0]
 
-    await signInWithMagicLink(client, "user@example.com")
+    await signInWithGoogle(client)
 
-    expect(signInWithOtp).toHaveBeenCalledWith({
-      email: "user@example.com",
-      options: {
-        shouldCreateUser: true
-      }
+    expect(signInWithOAuth).toHaveBeenCalledWith({
+      provider: "google"
     })
   })
 

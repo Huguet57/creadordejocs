@@ -59,27 +59,25 @@ export function subscribeToSupabaseAuthUser(
   }
 }
 
-export async function signInWithMagicLink(client: SupabaseClient | null, email: string): Promise<void> {
+export async function signInWithGoogle(client: SupabaseClient | null): Promise<void> {
   if (!client) {
     throw new Error("Supabase auth is not configured.")
   }
 
-  const trimmedEmail = email.trim()
-  if (!trimmedEmail) {
-    throw new Error("Email is required.")
-  }
-
   const redirectTo = import.meta.env.VITE_SUPABASE_AUTH_REDIRECT_TO
-  const { error } = await client.auth.signInWithOtp({
-    email: trimmedEmail,
-    options: {
-      shouldCreateUser: true,
-      ...(redirectTo ? { emailRedirectTo: redirectTo } : {})
-    }
+  const { error } = await client.auth.signInWithOAuth({
+    provider: "google",
+    ...(redirectTo
+      ? {
+          options: {
+            redirectTo
+          }
+        }
+      : {})
   })
 
   if (error) {
-    throw new Error(`Could not send magic link: ${error.message}`)
+    throw new Error(`Could not sign in with Google: ${error.message}`)
   }
 }
 

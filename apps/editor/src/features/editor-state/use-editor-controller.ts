@@ -106,7 +106,7 @@ import {
   type LocalSnapshot,
   type SaveStatus
 } from "../project-storage.js"
-import { getSupabaseAuthUser, signInWithMagicLink as signInWithSupabaseMagicLink, signOutFromSupabase, subscribeToSupabaseAuthUser, type SupabaseAuthUser } from "../auth/supabase-auth.js"
+import { getSupabaseAuthUser, signInWithGoogle as signInWithSupabaseGoogle, signOutFromSupabase, subscribeToSupabaseAuthUser, type SupabaseAuthUser } from "../auth/supabase-auth.js"
 import { mergeProjectCatalog } from "../storage/project-sync.js"
 import { deleteUserProject, listUserProjects, upsertUserProject } from "../storage/supabase-project-storage.js"
 import { importProjectFromFile } from "../templates/import-project.js"
@@ -528,9 +528,9 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
   }
   syncNowRef.current = runSyncNow
 
-  const runSignInWithMagicLink = async (email: string): Promise<void> => {
+  const runSignInWithGoogle = async (): Promise<void> => {
     const supabase = getSupabaseClient()
-    await signInWithSupabaseMagicLink(supabase, email)
+    await signInWithSupabaseGoogle(supabase)
   }
 
   const runSignOut = async (): Promise<void> => {
@@ -1656,8 +1656,8 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
     async syncNow() {
       await runSyncNow()
     },
-    async signInWithMagicLink(email: string) {
-      await runSignInWithMagicLink(email)
+    async signInWithGoogle() {
+      await runSignInWithGoogle()
     },
     async signOut() {
       await runSignOut()

@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { Redo2, Save, Undo2 } from "lucide-react"
 import { Button } from "./components/ui/button.js"
-import { AuthSignInModal } from "./features/auth/components/AuthSignInModal.js"
 import { shouldResetWhenSwitchingSection, useEditorController } from "./features/editor-state/use-editor-controller.js"
 import { LandingPage } from "./features/landing/LandingPage.js"
 import type { EditorSection } from "./features/editor-state/types.js"
@@ -63,53 +62,32 @@ function EditorAppShell() {
   const isPopStateRef = useRef(false)
   const isInitialMountRef = useRef(true)
   const controllerRef = useRef(controller)
-  const [isSignInModalOpen, setIsSignInModalOpen] = useState(false)
-  const [signInEmail, setSignInEmail] = useState("")
-  const [signInError, setSignInError] = useState<string | null>(null)
-  const [isSendingMagicLink, setIsSendingMagicLink] = useState(false)
+  const [authError, setAuthError] = useState<string | null>(null)
+  const [isStartingGoogleSignIn, setIsStartingGoogleSignIn] = useState(false)
   controllerRef.current = controller
-
-  const closeSignInModal = (): void => {
-    if (isSendingMagicLink) {
-      return
-    }
-    setIsSignInModalOpen(false)
-    setSignInError(null)
-  }
 
   const handleAuthClick = async (): Promise<void> => {
     if (controller.isAuthenticated) {
       try {
+        setAuthError(null)
         await controller.signOut()
       } catch (error) {
         console.error("[auth] sign out failed:", error)
+        setAuthError(error instanceof Error ? error.message : "No s'ha pogut tancar la sessio.")
       }
       return
     }
 
-    setSignInError(null)
-    setIsSignInModalOpen(true)
-  }
-
-  const handleSignInSubmit = async (): Promise<void> => {
-    const email = signInEmail.trim()
-    if (!email) {
-      setSignInError("Introdueix un correu electronic valid.")
-      return
-    }
-
-    setIsSendingMagicLink(true)
-    setSignInError(null)
+    setIsStartingGoogleSignIn(true)
+    setAuthError(null)
     try {
-      await controller.signInWithMagicLink(email)
-      setIsSignInModalOpen(false)
-      setSignInEmail("")
+      await controller.signInWithGoogle()
     } catch (error) {
-      const message = error instanceof Error ? error.message : "No s'ha pogut enviar el magic link."
-      setSignInError(message)
+      const message = error instanceof Error ? error.message : "No s'ha pogut iniciar sessio amb Google."
+      setAuthError(message)
       console.error("[auth] sign in failed:", error)
     } finally {
-      setIsSendingMagicLink(false)
+      setIsStartingGoogleSignIn(false)
     }
   }
 
@@ -160,14 +138,16 @@ function EditorAppShell() {
             </p>
           </div>
           <div className="flex items-center gap-1">
+            {authError ? <p className="mr-2 text-xs text-red-600">{authError}</p> : null}
             <Button
               data-testid="auth-button"
               variant="ghost"
               size="sm"
               className="h-7 px-2 text-xs text-slate-500 hover:text-slate-800"
+              disabled={isStartingGoogleSignIn}
               onClick={() => void handleAuthClick()}
             >
-              {controller.isAuthenticated ? "Sign out" : "Sign in"}
+              {controller.isAuthenticated ? "Sign out" : isStartingGoogleSignIn ? "Connecting..." : "Sign in with Google"}
             </Button>
             <Button
               data-testid="undo-button"
@@ -220,15 +200,6 @@ function EditorAppShell() {
           <EditorWorkspace controller={controller} />
         </div>
       </div>
-      <AuthSignInModal
-        open={isSignInModalOpen}
-        email={signInEmail}
-        errorMessage={signInError}
-        isSubmitting={isSendingMagicLink}
-        onEmailChange={setSignInEmail}
-        onClose={closeSignInModal}
-        onSubmit={handleSignInSubmit}
-      />
     </main>
   )
 }

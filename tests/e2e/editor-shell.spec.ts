@@ -4,12 +4,8 @@ test.beforeEach(async ({ page }) => {
   await page.goto("/editor")
 })
 
-test("opens auth modal from header sign in button", async ({ page }) => {
-  await page.getByTestId("auth-button").click()
-  await expect(page.getByTestId("auth-signin-modal")).toBeVisible()
-  await expect(page.getByTestId("auth-email-input")).toBeVisible()
-  await page.getByTestId("auth-cancel-button").click()
-  await expect(page.getByTestId("auth-signin-modal")).toHaveCount(0)
+test("shows Google sign in action in header", async ({ page }) => {
+  await expect(page.getByTestId("auth-button")).toHaveText("Sign in with Google")
 })
 
 test("navigates sidebar sections and keeps modular editors available", async ({ page }) => {
