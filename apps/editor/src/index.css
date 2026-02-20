@@ -56,13 +56,13 @@
 }
 
 .mvp15-room-transition-fade {
-  animation: mvp15-room-fade-in 220ms ease-out;
+  animation: mvp15-room-fade-in 420ms ease-out;
 }
 
 .mvp15-room-transition-slide-left {
-  animation: mvp15-room-slide-left-in 220ms ease-out;
+  animation: mvp15-room-slide-left-in 420ms ease-out;
 }
 
 .mvp15-room-transition-slide-right {
-  animation: mvp15-room-slide-right-in 220ms ease-out;
+  animation: mvp15-room-slide-right-in 420ms ease-out;
 }
