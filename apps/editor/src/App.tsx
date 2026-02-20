@@ -204,15 +204,17 @@ function EditorAppShell() {
           </div>
           <div className="flex items-center gap-1">
             {authError ? <p className="mr-2 text-xs text-red-600">{authError}</p> : null}
-            <Button
-              data-testid="auth-button"
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 text-xs text-slate-500 hover:text-slate-800"
-              onClick={() => void handleAuthClick()}
-            >
-              {controller.isAuthenticated ? "Sign out" : "Sign in"}
-            </Button>
+            {controller.authLoading ? null : (
+              <Button
+                data-testid="auth-button"
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs text-slate-500 hover:text-slate-800"
+                onClick={() => void handleAuthClick()}
+              >
+                {controller.isAuthenticated ? "Sign out" : "Sign in"}
+              </Button>
+            )}
             <Button
               data-testid="undo-button"
               variant="ghost"

@@ -352,6 +352,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("saved")
   const [syncStatus, setSyncStatus] = useState<"idle" | "syncing" | "synced" | "error">("idle")
   const [authUser, setAuthUser] = useState<SupabaseAuthUser | null>(null)
+  const [authLoading, setAuthLoading] = useState(true)
   const [importStatus, setImportStatus] = useState<"idle" | "importing" | "imported" | "error">("idle")
   const [isDirty, setIsDirty] = useState(false)
   const [past, setPast] = useState<ProjectV1[]>([])
@@ -560,6 +561,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
   useEffect(() => {
     const supabase = getSupabaseClient()
     if (!supabase) {
+      setAuthLoading(false)
       return
     }
 
@@ -588,6 +590,11 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       })
       .catch((error) => {
         console.error("[auth] Could not load current session:", error)
+      })
+      .finally(() => {
+        if (!disposed) {
+          setAuthLoading(false)
+        }
       })
 
     return () => {
@@ -820,6 +827,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
     saveStatus,
     syncStatus,
     isAuthenticated,
+    authLoading,
     importStatus,
     runtimeState,
     roomTransition,
