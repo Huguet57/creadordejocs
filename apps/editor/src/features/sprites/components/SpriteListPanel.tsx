@@ -13,6 +13,7 @@ import {
 import { Button } from "../../../components/ui/button.js"
 import { EditorSidebarLayout } from "../../shared/editor-sidebar/EditorSidebarLayout.js"
 import { buildEntriesByFolder, buildFolderChildrenByParent, isFolderDescendant } from "../../shared/editor-sidebar/tree-utils.js"
+import { useFolderExpansion } from "../../shared/editor-sidebar/use-folder-expansion.js"
 
 const DEFAULT_SPRITE_DIMENSION = 32
 const DND_MIME = "application/x-sprite-tree-node"
@@ -87,7 +88,8 @@ export function SpriteListPanel({
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null)
   const contextMenuRef = useRef<HTMLDivElement>(null)
 
-  const [expandedFolderIds, setExpandedFolderIds] = useState<Set<string>>(() => new Set())
+  const foldersById = useMemo(() => new Map(spriteFolders.map((entry) => [entry.id, entry])), [spriteFolders])
+  const [expandedFolderIds, setExpandedFolderIds] = useFolderExpansion("sprites", foldersById)
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null)
   const [renamingSpriteId, setRenamingSpriteId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState("")
@@ -98,7 +100,6 @@ export function SpriteListPanel({
   const [dropTargetIsRoot, setDropTargetIsRoot] = useState(false)
   const autoExpandTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const foldersById = useMemo(() => new Map(spriteFolders.map((entry) => [entry.id, entry])), [spriteFolders])
   const folderChildrenByParent = useMemo(() => buildFolderChildrenByParent<SpriteFolderEntry>(spriteFolders), [spriteFolders])
   const spritesByFolder = useMemo(() => buildEntriesByFolder<SpriteListEntry>(sprites), [sprites])
 
@@ -320,26 +321,6 @@ export function SpriteListPanel({
       autoExpandTimerRef.current = null
     }
   }
-
-  useEffect(() => {
-    setExpandedFolderIds((previous) => {
-      const next = new Set(previous)
-      let changed = false
-      for (const folderEntry of spriteFolders) {
-        if (!next.has(folderEntry.id)) {
-          next.add(folderEntry.id)
-          changed = true
-        }
-      }
-      for (const expandedId of [...next]) {
-        if (!foldersById.has(expandedId)) {
-          next.delete(expandedId)
-          changed = true
-        }
-      }
-      return changed ? next : previous
-    })
-  }, [foldersById, spriteFolders])
 
   useEffect(() => {
     if (renamingFolderId && !foldersById.has(renamingFolderId)) {
