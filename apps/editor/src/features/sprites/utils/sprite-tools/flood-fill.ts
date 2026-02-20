@@ -10,6 +10,7 @@ type FloodFillInput = {
   y: number
   targetColor: string
   connectivity: SpriteToolConnectivity
+  selectionMask?: Set<number> | undefined
 }
 
 function buildNeighborOffsets(connectivity: SpriteToolConnectivity): [number, number][] {
@@ -24,7 +25,7 @@ function buildNeighborOffsets(connectivity: SpriteToolConnectivity): [number, nu
   ]
 }
 
-export function floodFillPixels({ width, height, pixelsRgba, x, y, targetColor, connectivity }: FloodFillInput): string[] {
+export function floodFillPixels({ width, height, pixelsRgba, x, y, targetColor, connectivity, selectionMask }: FloodFillInput): string[] {
   if (x < 0 || y < 0 || x >= width || y >= height) return pixelsRgba
 
   const safePixels = normalizePixelGrid(pixelsRgba, width, height)
@@ -47,6 +48,7 @@ export function floodFillPixels({ width, height, pixelsRgba, x, y, targetColor, 
     const currentIndex = getSpritePixelIndex(currentX, currentY, width)
     if (visited.has(currentIndex)) continue
     visited.add(currentIndex)
+    if (selectionMask && !selectionMask.has(currentIndex)) continue
     if (safePixels[currentIndex] !== sourceColor) continue
 
     nextPixels[currentIndex] = normalizedTarget

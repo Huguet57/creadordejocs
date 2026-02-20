@@ -15,6 +15,7 @@ type BucketFillInput = {
   x: number
   y: number
   targetColor: string
+  selectionMask?: Set<number> | undefined
 }
 
 type SelectContiguousInput = {
@@ -54,6 +55,7 @@ type UseSpritePixelActionsInput = {
   pixelsRgba: string[]
   activeColor: string
   toolOptions: SpriteToolOptionsState
+  selection: Set<number>
   onPixelsChange: (pixelsRgba: string[]) => void
   onActiveColorChange: (nextColor: string) => void
   onSelectionChange: (selectedIndexes: Set<number>) => void
@@ -65,6 +67,7 @@ export function useSpritePixelActions({
   pixelsRgba,
   activeColor,
   toolOptions,
+  selection,
   onPixelsChange,
   onActiveColorChange,
   onSelectionChange
@@ -79,6 +82,7 @@ export function useSpritePixelActions({
       const pixelIndex = getSpritePixelIndex(x, y, width)
 
       if (tool === "pencil") {
+        if (selection.size > 0 && !selection.has(pixelIndex)) return
         const next = [...safePixels]
         next[pixelIndex] = normalizeHexRgba(activeColor)
         onPixelsChange(next)
@@ -90,6 +94,7 @@ export function useSpritePixelActions({
         const eraserRadius = toolOptions.eraser.radius
         const indicesToErase = getPixelIndicesInRadius(x, y, eraserRadius, width, height)
         for (const idx of indicesToErase) {
+          if (selection.size > 0 && !selection.has(idx)) continue
           next[idx] = TRANSPARENT_RGBA
         }
         onPixelsChange(next)
@@ -101,13 +106,15 @@ export function useSpritePixelActions({
       }
 
       if (tool === "bucket_fill") {
+        if (selection.size > 0 && !selection.has(pixelIndex)) return
         const next = applyBucketFillTool({
           width,
           height,
           pixelsRgba: safePixels,
           x,
           y,
-          targetColor: activeColor
+          targetColor: activeColor,
+          selectionMask: selection.size > 0 ? selection : undefined
         })
         onPixelsChange(next)
         return
@@ -131,7 +138,7 @@ export function useSpritePixelActions({
         onActiveColorChange(pickedColor)
       }
     },
-    [activeColor, height, onActiveColorChange, onPixelsChange, onSelectionChange, pixelsRgba, toolOptions, width]
+    [activeColor, height, onActiveColorChange, onPixelsChange, onSelectionChange, pixelsRgba, selection, toolOptions, width]
   )
 
   return {

@@ -61,7 +61,7 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
     if (activeTool !== "color_picker") {
       setPickerPreviewColor(null)
     }
-    const selectionTools = new Set(["magic_wand", "select", "move"])
+    const selectionTools = new Set(["magic_wand", "select", "move", "pencil", "eraser", "bucket_fill"])
     if (!selectionTools.has(activeTool)) {
       setSelection(new Set())
     }
@@ -306,6 +306,7 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
     pixelsRgba: selectedSpritePixels,
     activeColor,
     toolOptions,
+    selection,
     onPixelsChange: handlePixelsChange,
     onActiveColorChange: setActiveColor,
     onSelectionChange: setSelection

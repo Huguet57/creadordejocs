@@ -12,7 +12,7 @@ export const SPRITE_TOOL_REGISTRY: SpriteToolDefinition[] = [
   { id: "pencil", label: "Pencil", usesColor: true, cursor: "crosshair" },
   { id: "eraser", label: "Eraser", usesColor: false, cursor: "cell" },
   { id: "bucket_fill", label: "Bucket", usesColor: true, cursor: "copy" },
-  { id: "magic_wand", label: "Wand", usesColor: false, cursor: "pointer", hidden: true },
+  { id: "magic_wand", label: "Wand", usesColor: false, cursor: "pointer" },
   { id: "color_picker", label: "Picker", usesColor: false, cursor: "crosshair" },
   { id: "select", label: "Select", usesColor: false, cursor: "crosshair" },
   { id: "move", label: "Move", usesColor: false, cursor: "move" }
