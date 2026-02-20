@@ -34,6 +34,12 @@ export type MoveRoomInstanceInput = {
   y: number
 }
 
+export type UpdateRoomInstanceLayerInput = {
+  roomId: string
+  instanceId: string
+  layer: number
+}
+
 export type UpdateObjectPropertiesInput = {
   objectId: string
   x: number
@@ -931,7 +937,7 @@ export function addRoomInstance(
               ...room,
               instances: [
                 ...room.instances,
-                { id: instanceId, objectId: input.objectId, x: input.x, y: input.y }
+                { id: instanceId, objectId: input.objectId, x: input.x, y: input.y, layer: 0 }
               ]
             }
           : room
@@ -2591,6 +2597,32 @@ export function moveRoomInstance(project: ProjectV1, input: MoveRoomInstanceInpu
             instances: room.instances.map((instance) =>
               instance.id === input.instanceId
                 ? { ...instance, x: input.x, y: input.y }
+                : instance
+            )
+          }
+        : room
+    )
+  }
+}
+
+function normalizeInstanceLayer(layer: number): number {
+  if (!Number.isFinite(layer)) {
+    return 0
+  }
+  return Math.max(0, Math.floor(layer))
+}
+
+export function updateRoomInstanceLayer(project: ProjectV1, input: UpdateRoomInstanceLayerInput): ProjectV1 {
+  const normalizedLayer = normalizeInstanceLayer(input.layer)
+  return {
+    ...project,
+    rooms: project.rooms.map((room) =>
+      room.id === input.roomId
+        ? {
+            ...room,
+            instances: room.instances.map((instance) =>
+              instance.id === input.instanceId
+                ? { ...instance, layer: normalizedLayer }
                 : instance
             )
           }

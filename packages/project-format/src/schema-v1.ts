@@ -511,6 +511,7 @@ const RoomInstanceSchema = z.object({
   objectId: z.string().min(1),
   x: z.number(),
   y: z.number(),
+  layer: z.number().int().optional(),
   rotation: z.number().optional()
 })
 

@@ -660,6 +660,7 @@ function executeActionFallback(
             objectId: action.objectId,
             x: isAbsolute ? resolvedX : centerX + resolvedX,
             y: isAbsolute ? resolvedY : centerY + resolvedY,
+            layer: 0,
             rotation: 0
           }
         ]

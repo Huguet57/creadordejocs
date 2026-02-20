@@ -1,4 +1,5 @@
 import { WINDOW_HEIGHT, WINDOW_WIDTH, clampValue } from "../editor-state/runtime-types.js"
+import { sortInstancesByLayer } from "../editor-state/instance-layer-utils.js"
 
 export function mapPointerToWorldCoordinates(params: {
   clientX: number
@@ -54,11 +55,12 @@ const DEFAULT_INSTANCE_SIZE = 32
 export function hitTestInstances(params: {
   worldX: number
   worldY: number
-  instances: readonly { id: string; objectId: string; x: number; y: number }[]
+  instances: readonly { id: string; objectId: string; x: number; y: number; layer?: number | undefined }[]
   objects: readonly { id: string; width?: number | undefined; height?: number | undefined; visible?: boolean | undefined }[]
 }): string | null {
-  for (let i = params.instances.length - 1; i >= 0; i--) {
-    const inst = params.instances[i]
+  const sortedInstances = sortInstancesByLayer(params.instances)
+  for (let i = sortedInstances.length - 1; i >= 0; i--) {
+    const inst = sortedInstances[i]
     if (!inst) continue
     const obj = params.objects.find((o) => o.id === inst.objectId)
     if (!obj || obj.visible === false) continue

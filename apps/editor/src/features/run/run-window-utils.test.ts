@@ -85,6 +85,14 @@ describe("hitTestInstances", () => {
     expect(hitTestInstances({ worldX: 115, worldY: 115, instances, objects })).toBe("inst-top")
   })
 
+  it("returns the topmost instance by layer when overlapping", () => {
+    const instances = [
+      { id: "inst-higher-layer", objectId: "obj-a", x: 100, y: 100, layer: 5 },
+      { id: "inst-lower-layer", objectId: "obj-a", x: 100, y: 100, layer: 1 }
+    ]
+    expect(hitTestInstances({ worldX: 110, worldY: 110, instances, objects })).toBe("inst-higher-layer")
+  })
+
   it("skips invisible instances", () => {
     const invisibleObjects = [{ id: "obj-inv", width: 32, height: 32, visible: false }]
     const instances = [{ id: "inst-1", objectId: "obj-inv", x: 100, y: 100 }]

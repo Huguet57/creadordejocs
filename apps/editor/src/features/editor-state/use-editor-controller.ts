@@ -29,6 +29,7 @@ import {
   moveObjectFolder as moveObjectFolderModel,
   moveObjectToFolder as moveObjectToFolderModel,
   moveRoomInstance,
+  updateRoomInstanceLayer,
   moveRoomFolder as moveRoomFolderModel,
   moveRoomToFolder as moveRoomToFolderModel,
   renameSprite as renameSpriteModel,
@@ -1196,6 +1197,29 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       pushProjectChange(
         moveRoomInstance(project, { roomId: activeRoom.id, instanceId, x, y }),
         "Move instance"
+      )
+    },
+    shiftInstanceLayer(instanceId: string, delta: number) {
+      if (!activeRoom || !Number.isFinite(delta) || delta === 0) return
+      const instanceEntry = activeRoom.instances.find((instance) => instance.id === instanceId)
+      if (!instanceEntry) return
+      const normalizedDelta = Math.trunc(delta)
+      if (normalizedDelta === 0) return
+      const currentLayer =
+        typeof instanceEntry.layer === "number" && Number.isFinite(instanceEntry.layer)
+          ? Math.max(0, Math.floor(instanceEntry.layer))
+          : 0
+      const nextLayer = Math.max(0, currentLayer + normalizedDelta)
+      if (nextLayer === currentLayer) {
+        return
+      }
+      pushProjectChange(
+        updateRoomInstanceLayer(project, {
+          roomId: activeRoom.id,
+          instanceId,
+          layer: nextLayer
+        }),
+        normalizedDelta > 0 ? "Raise instance layer" : "Lower instance layer"
       )
     },
     removeInstance(instanceId: string) {

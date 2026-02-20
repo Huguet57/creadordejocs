@@ -21,6 +21,7 @@ import {
   moveSpriteFolder,
   moveSpriteToFolder,
   moveRoomInstance,
+  updateRoomInstanceLayer,
   renameSprite,
   renameObjectFolder,
   renameSpriteFolder,
@@ -114,6 +115,35 @@ describe("editor model helpers", () => {
     expect(updated.objects[0]?.height).toBe(48)
     expect((updated.objects[0] as { visible?: boolean } | undefined)?.visible).toBe(false)
     expect((updated.objects[0] as { solid?: boolean } | undefined)?.solid).toBe(true)
+  })
+
+  it("starts room instances at layer 0 and lets you raise/lower layers", () => {
+    const initial = createEmptyProjectV1("Room layers")
+    const objectResult = quickCreateObject(initial, { name: "Token" })
+    const roomResult = createRoom(objectResult.project, "Main room")
+    const instanceResult = addRoomInstance(roomResult.project, {
+      roomId: roomResult.roomId,
+      objectId: objectResult.objectId,
+      x: 24,
+      y: 48
+    })
+    const instanceId = instanceResult.instanceId
+
+    expect(instanceResult.project.rooms[0]?.instances[0]?.layer).toBe(0)
+
+    const raised = updateRoomInstanceLayer(instanceResult.project, {
+      roomId: roomResult.roomId,
+      instanceId,
+      layer: 3
+    })
+    expect(raised.rooms[0]?.instances[0]?.layer).toBe(3)
+
+    const clamped = updateRoomInstanceLayer(raised, {
+      roomId: roomResult.roomId,
+      instanceId,
+      layer: -9
+    })
+    expect(clamped.rooms[0]?.instances[0]?.layer).toBe(0)
   })
 
   it("updates upload-ready asset source metadata", () => {

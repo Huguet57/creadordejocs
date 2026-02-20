@@ -6,8 +6,9 @@ import {
   type DragEvent as ReactDragEvent,
   type MouseEvent as ReactMouseEvent
 } from "react"
-import { EyeOff, X } from "lucide-react"
+import { ChevronDown, ChevronUp, EyeOff, X } from "lucide-react"
 import type { EditorController } from "../editor-state/use-editor-controller.js"
+import { resolveInstanceLayer, sortInstancesByLayer } from "../editor-state/instance-layer-utils.js"
 import { WINDOW_HEIGHT, WINDOW_WIDTH, resolveRoomDimensions } from "../editor-state/runtime-types.js"
 import { getPositionCountsByCoordinate, getPositionKey, wouldOverlapSolid } from "./room-placement-utils.js"
 import { resolveSpritePreviewSource } from "../sprites/utils/sprite-preview-source.js"
@@ -105,6 +106,10 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
   const activeRoomPositionCounts = useMemo(
     () => getPositionCountsByCoordinate(controller.activeRoom?.instances ?? []),
     [controller.activeRoom]
+  )
+  const sortedActiveRoomInstances = useMemo(
+    () => sortInstancesByLayer(controller.activeRoom?.instances ?? []),
+    [controller.activeRoom?.instances]
   )
   const activeRoomDimensions = useMemo(
     () => resolveRoomDimensions(controller.activeRoom),
@@ -706,7 +711,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                       aria-hidden
                     />
                   )}
-                  {controller.activeRoom.instances.map((instanceEntry) => {
+                  {sortedActiveRoomInstances.map((instanceEntry) => {
                     const objectEntry = objectById[instanceEntry.objectId]
                     const spriteEntry = objectEntry?.spriteId ? spriteById[objectEntry.spriteId] : undefined
                     const spriteSource = spriteEntry ? resolvedSpriteSources[spriteEntry.id] : undefined
@@ -714,6 +719,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                     const instanceHeight = objectEntry?.height ?? DEFAULT_INSTANCE_SIZE
                     const stackedCount = activeRoomPositionCounts.get(getPositionKey(instanceEntry.x, instanceEntry.y)) ?? 1
                     const isInvisible = objectEntry?.visible === false
+                    const instanceLayer = resolveInstanceLayer(instanceEntry)
                     return (
                       <div
                         key={instanceEntry.id}
@@ -752,6 +758,40 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                             : "Instance"
                         }
                       >
+                        <div
+                          className={`absolute -left-1.5 top-full z-30 items-center rounded-full border border-slate-300 bg-white text-[9px] font-semibold text-slate-600 shadow-sm ${
+                            draggingInstanceId ? "hidden" : "hidden group-hover:flex"
+                          }`}
+                          title={`Layer ${instanceLayer}`}
+                        >
+                          <button
+                            type="button"
+                            className="h-4 w-4 rounded-l-full text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={(event) => {
+                              event.preventDefault()
+                              event.stopPropagation()
+                              controller.shiftInstanceLayer(instanceEntry.id, -1)
+                            }}
+                            title="Baixar capa"
+                          >
+                            <ChevronDown className="mx-auto h-2.5 w-2.5" />
+                          </button>
+                          <span className="min-w-[1.1rem] px-0.5 text-center leading-none">{instanceLayer}</span>
+                          <button
+                            type="button"
+                            className="h-4 w-4 rounded-r-full text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={(event) => {
+                              event.preventDefault()
+                              event.stopPropagation()
+                              controller.shiftInstanceLayer(instanceEntry.id, 1)
+                            }}
+                            title="Pujar capa"
+                          >
+                            <ChevronUp className="mx-auto h-2.5 w-2.5" />
+                          </button>
+                        </div>
                         {spriteSource ? (
                           <img
                             className={`mvp15-room-instance-sprite h-full w-full object-contain ${isInvisible ? "opacity-40" : ""}`}

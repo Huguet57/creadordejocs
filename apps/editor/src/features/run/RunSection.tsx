@@ -10,6 +10,7 @@ import {
   clampWindowToRoom,
   resolveRoomDimensions
 } from "../editor-state/runtime-types.js"
+import { sortInstancesByLayer } from "../editor-state/instance-layer-utils.js"
 import type { RuntimeMouseButton, RuntimeState } from "../editor-state/runtime.js"
 import { resolveSpritePreviewSource, spritePixelsToDataUrl } from "../sprites/utils/sprite-preview-source.js"
 import { InstanceDebugPanel } from "./InstanceDebugPanel.js"
@@ -88,6 +89,10 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
     { id: "mouse.x", name: "mouse.x", value: mouseX },
     { id: "mouse.y", name: "mouse.y", value: mouseY }
   ]
+  const sortedActiveRoomInstances = useMemo(
+    () => sortInstancesByLayer(controller.activeRoom?.instances ?? []),
+    [controller.activeRoom?.instances]
+  )
 
   const sprites = controller.project.resources.sprites
   const spriteById = useMemo(
@@ -396,7 +401,7 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
                     </div>
                   </div>
                 )}
-                {controller.activeRoom.instances.map((instanceEntry) => {
+                {sortedActiveRoomInstances.map((instanceEntry) => {
                   const objectEntry = controller.project.objects.find((entry) => entry.id === instanceEntry.objectId)
                   const instanceWidth = objectEntry?.width ?? 32
                   const instanceHeight = objectEntry?.height ?? 32

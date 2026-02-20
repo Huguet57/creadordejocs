@@ -123,4 +123,22 @@ describe("schema v1 room folders", () => {
     expect(parsed.rooms[0]!.height).toBeUndefined()
     expect(parsed.rooms[0]!.backgroundSpriteId).toBeUndefined()
   })
+
+  it("parses room instances with and without layer", () => {
+    const project = createEmptyProjectV1("Room layers")
+    project.rooms = [
+      {
+        id: "room-1",
+        name: "Sala 1",
+        instances: [
+          { id: "instance-legacy", objectId: "object-a", x: 10, y: 10 },
+          { id: "instance-layered", objectId: "object-a", x: 20, y: 20, layer: 4 }
+        ]
+      } as typeof project.rooms[number]
+    ]
+
+    const parsed = ProjectSchemaV1.parse(project)
+    expect(parsed.rooms[0]!.instances[0]!.layer).toBeUndefined()
+    expect(parsed.rooms[0]!.instances[1]!.layer).toBe(4)
+  })
 })
