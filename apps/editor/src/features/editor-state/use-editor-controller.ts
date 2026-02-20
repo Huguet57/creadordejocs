@@ -564,16 +564,6 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
     }
 
     let disposed = false
-    void getSupabaseAuthUser(supabase)
-      .then((user) => {
-        if (!disposed) {
-          setAuthUser(user)
-        }
-      })
-      .catch((error) => {
-        console.error("[auth] Could not load current session:", error)
-      })
-
     const unsubscribe = subscribeToSupabaseAuthUser(supabase, (user) => {
       if (disposed) {
         return
@@ -589,6 +579,16 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       lastAutoSyncUserIdRef.current = user.id
       void syncNowRef.current()
     })
+
+    void getSupabaseAuthUser(supabase)
+      .then((user) => {
+        if (!disposed) {
+          setAuthUser(user)
+        }
+      })
+      .catch((error) => {
+        console.error("[auth] Could not load current session:", error)
+      })
 
     return () => {
       disposed = true
