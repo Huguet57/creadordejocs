@@ -1,4 +1,4 @@
-import { createEmptyProjectV1 } from "@creadordejocs/project-format"
+import { createEmptyProjectV1, serializeProjectV1 } from "@creadordejocs/project-format"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import { InMemoryKvProvider } from "./storage/in-memory-kv-provider.js"
 import { resetKvStorageProvider, setKvStorageProvider } from "./storage/get-kv-storage-provider.js"
@@ -6,8 +6,13 @@ import {
   createLocalProject,
   deleteLocalProject,
   ensureLocalProjectState,
+  hasLegacyLocalProjects,
+  importLegacyLocalProjectsToScope,
   getActiveProjectIdFromLocalStorage,
+  LEGACY_LOCAL_PROJECT_KEY_PREFIX,
+  LEGACY_LOCAL_PROJECTS_INDEX_KEY,
   listLocalProjects,
+  listLegacyLocalProjects,
   loadProjectFromLocalStorage,
   loadSnapshotProject,
   loadSnapshotsFromLocalStorage,
@@ -104,5 +109,59 @@ describe("project-storage (multi-project)", () => {
     expect(updatedSummary?.projectId).toBe(state.activeProjectId)
     expect(updatedSummary?.name).toBe("Timer edited")
     expect(updatedSummary!.updatedAtIso >= (initialSummary?.updatedAtIso ?? "")).toBe(true)
+  })
+
+  it("isolates project catalogs by scopeUserId", () => {
+    const scopeA = "user-a"
+    const scopeB = "user-b"
+
+    const stateA = ensureLocalProjectState(() => createEmptyProjectV1("Scope A"), scopeA)
+    const stateB = ensureLocalProjectState(() => createEmptyProjectV1("Scope B"), scopeB)
+
+    expect(stateA.activeProjectId).not.toBe(stateB.activeProjectId)
+    expect(listLocalProjects(scopeA)).toHaveLength(1)
+    expect(listLocalProjects(scopeB)).toHaveLength(1)
+    expect(listLocalProjects(scopeA)[0]?.name).toBe("Scope A")
+    expect(listLocalProjects(scopeB)[0]?.name).toBe("Scope B")
+    expect(loadProjectFromLocalStorage(stateA.activeProjectId, scopeA)?.metadata.name).toBe("Scope A")
+    expect(loadProjectFromLocalStorage(stateB.activeProjectId, scopeB)?.metadata.name).toBe("Scope B")
+    expect(loadProjectFromLocalStorage(stateA.activeProjectId, scopeB)).toBeNull()
+  })
+
+  it("supports manual import of legacy v2 local projects into a scoped catalog", () => {
+    const legacyProject = createEmptyProjectV1("Legacy project")
+    legacyProject.metadata.id = "legacy-project-1"
+    const legacyUpdatedAt = "2026-02-20T10:00:00.000Z"
+
+    kv.setItem(
+      LEGACY_LOCAL_PROJECTS_INDEX_KEY,
+      JSON.stringify({
+        version: 2,
+        activeProjectId: legacyProject.metadata.id,
+        projects: [
+          {
+            projectId: legacyProject.metadata.id,
+            name: legacyProject.metadata.name,
+            updatedAtIso: legacyUpdatedAt
+          }
+        ]
+      })
+    )
+    kv.setItem(`${LEGACY_LOCAL_PROJECT_KEY_PREFIX}${legacyProject.metadata.id}`, serializeProjectV1(legacyProject))
+
+    expect(hasLegacyLocalProjects()).toBe(true)
+    expect(listLegacyLocalProjects()).toHaveLength(1)
+
+    const targetScope = "user-migrated"
+    expect(listLocalProjects(targetScope)).toEqual([])
+
+    const imported = importLegacyLocalProjectsToScope(targetScope)
+    expect(imported.imported).toBe(1)
+
+    const scopedProjects = listLocalProjects(targetScope)
+    expect(scopedProjects).toHaveLength(1)
+    expect(scopedProjects[0]?.projectId).toBe(legacyProject.metadata.id)
+    expect(scopedProjects[0]?.name).toBe("Legacy project")
+    expect(loadProjectFromLocalStorage(legacyProject.metadata.id, targetScope)?.metadata.name).toBe("Legacy project")
   })
 })

@@ -4,7 +4,7 @@ import type { AssetStorageProvider, UploadAssetInput, UploadAssetResult } from "
 const DB_NAME = "creadordejocs-assets-db"
 const DB_VERSION = 1
 const STORE_NAME = "uploaded_assets"
-const SOURCE_PREFIX = "asset://indexeddb/"
+export const INDEXEDDB_ASSET_SOURCE_PREFIX = "asset://indexeddb/"
 
 type StoredAssetRecord = {
   id: string
@@ -33,16 +33,16 @@ export class IndexedDbAssetStorageProvider implements AssetStorageProvider {
     await putRecord(db, record)
 
     return {
-      assetSource: `${SOURCE_PREFIX}${id}`,
+      assetSource: `${INDEXEDDB_ASSET_SOURCE_PREFIX}${id}`,
       storagePath: id
     }
   }
 
   async resolve(assetSource: string): Promise<string | null> {
-    if (!assetSource.startsWith(SOURCE_PREFIX)) {
+    if (!assetSource.startsWith(INDEXEDDB_ASSET_SOURCE_PREFIX)) {
       return null
     }
-    const id = assetSource.slice(SOURCE_PREFIX.length)
+    const id = assetSource.slice(INDEXEDDB_ASSET_SOURCE_PREFIX.length)
     if (!id) {
       return null
     }
@@ -52,6 +52,18 @@ export class IndexedDbAssetStorageProvider implements AssetStorageProvider {
       return null
     }
     return URL.createObjectURL(record.blob)
+  }
+
+  async getFileByStoragePath(storagePath: string): Promise<File | null> {
+    const db = await openDatabase()
+    const record = await getRecord(db, storagePath)
+    if (!record) {
+      return null
+    }
+
+    return new File([record.blob], record.fileName, {
+      type: record.mimeType
+    })
   }
 }
 

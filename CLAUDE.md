@@ -59,7 +59,7 @@ npm workspaces monorepo with four workspaces referenced in the root `tsconfig.js
 - **TypeScript strict** everywhere — `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`, `useUnknownInCatchVariables` are all enabled.
 - **`type` over `interface`** — ESLint enforces `@typescript-eslint/consistent-type-definitions: ["error", "type"]`.
 - **i18n**: Catalan (`ca`) is the initial locale. User-facing strings go in `apps/editor/src/i18n/ca.ts`. Locale keys are shared by meaning, not UI location.
-- **Asset storage**: configurable via `VITE_ASSET_STORAGE_PROVIDER` env var (`indexeddb` default, `supabase` optional). See `apps/editor/.env.example`.
+- **Asset storage**: configurable via `VITE_ASSET_STORAGE_PROVIDER` env var (`supabase` default with IndexedDB fallback queue, `indexeddb` local-only). See `apps/editor/.env.example`.
 - **Project schema**: defined with Zod in `packages/project-format/src/schema-v1.ts`. The schema handles migration from legacy `actions` arrays to structured `items` (if/repeat/forEach blocks).
 
 ## Design Principles

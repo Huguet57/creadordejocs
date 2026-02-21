@@ -3,6 +3,7 @@ import type { Session, SupabaseClient } from "@supabase/supabase-js"
 export type SupabaseAuthUser = {
   id: string
   email: string | null
+  isAnonymous: boolean
 }
 
 function noopUnsubscribe(): void {
@@ -33,8 +34,36 @@ function resolveUserFromSession(session: Session | null): SupabaseAuthUser | nul
   }
   return {
     id: user.id,
-    email: user.email ?? null
+    email: user.email ?? null,
+    isAnonymous: resolveAnonymousFlagFromUser(user)
   }
+}
+
+type UserLikeForAnonymousResolution = {
+  is_anonymous?: boolean
+  app_metadata?: {
+    provider?: string
+    providers?: string[]
+  } | null
+  identities?: { provider?: string | null }[] | null
+}
+
+function resolveAnonymousFlagFromUser(user: UserLikeForAnonymousResolution): boolean {
+  if (typeof user.is_anonymous === "boolean") {
+    return user.is_anonymous
+  }
+
+  const provider = user.app_metadata?.provider
+  if (provider === "anonymous") {
+    return true
+  }
+
+  const providers = user.app_metadata?.providers
+  if (Array.isArray(providers) && providers.includes("anonymous")) {
+    return true
+  }
+
+  return (user.identities ?? []).some((identity) => identity.provider === "anonymous")
 }
 
 function normalizeSearch(value: string): string {
@@ -248,8 +277,37 @@ export async function getSupabaseAuthUser(client: SupabaseClient | null): Promis
 
   return {
     id: data.user.id,
-    email: data.user.email ?? null
+    email: data.user.email ?? null,
+    isAnonymous: resolveAnonymousFlagFromUser(data.user)
   }
+}
+
+export async function ensureSupabaseUser(client: SupabaseClient | null): Promise<SupabaseAuthUser | null> {
+  if (!client) {
+    return null
+  }
+
+  const existingUser = await getSupabaseAuthUser(client)
+  if (existingUser) {
+    return existingUser
+  }
+
+  const { data, error } = await client.auth.signInAnonymously()
+  if (error) {
+    throw new Error(`Could not sign in anonymously: ${error.message}`)
+  }
+
+  const createdUser = resolveUserFromSession(data.session ?? null)
+  if (createdUser) {
+    return createdUser
+  }
+
+  const fallbackUser = await getSupabaseAuthUser(client)
+  if (fallbackUser) {
+    return fallbackUser
+  }
+
+  throw new Error("Could not create anonymous session.")
 }
 
 export function subscribeToSupabaseAuthUser(

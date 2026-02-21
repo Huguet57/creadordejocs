@@ -1,4 +1,4 @@
-import { Download, FileUp, FilePlus2, Pencil, Trash2, ChevronDown, FolderOpen } from "lucide-react"
+import { Download, FileUp, FilePlus2, Pencil, Trash2, ChevronDown, FolderOpen, RefreshCw } from "lucide-react"
 import { useRef, useState, type ChangeEvent } from "react"
 import { Button } from "../components/ui/button.js"
 import {
@@ -24,6 +24,7 @@ type ImportDropdownProps = {
 export function ImportDropdown({ controller }: ImportDropdownProps) {
   const [exportStatus, setExportStatus] = useState<"idle" | "error">("idle")
   const [pendingImportMode, setPendingImportMode] = useState<"create-new" | "replace-active">("replace-active")
+  const [legacyImportMessage, setLegacyImportMessage] = useState<string | null>(null)
   const importInputRef = useRef<HTMLInputElement | null>(null)
 
   const exportCurrentProject = (): void => {
@@ -68,6 +69,15 @@ export function ImportDropdown({ controller }: ImportDropdownProps) {
     await controller.deleteActiveProject()
   }
 
+  const importLegacyLocalProjects = (): void => {
+    const imported = controller.importLegacyLocalProjectsNow()
+    if (imported > 0) {
+      setLegacyImportMessage(`${imported} projecte(s) importat(s).`)
+      return
+    }
+    setLegacyImportMessage("No hi ha projectes legacy per importar.")
+  }
+
   return (
     <>
       <DropdownMenu>
@@ -106,6 +116,10 @@ export function ImportDropdown({ controller }: ImportDropdownProps) {
           <DropdownMenuItem data-testid="header-delete-project-item" onSelect={() => void deleteActiveProject()}>
             <Trash2 className="h-4 w-4 text-slate-500" />
             Esborrar projecte actiu...
+          </DropdownMenuItem>
+          <DropdownMenuItem data-testid="header-import-legacy-item" onSelect={importLegacyLocalProjects}>
+            <RefreshCw className="h-4 w-4 text-slate-500" />
+            Importar projectes locals antics...
           </DropdownMenuItem>
 
           <DropdownMenuSeparator />
@@ -157,6 +171,12 @@ export function ImportDropdown({ controller }: ImportDropdownProps) {
             <>
               <DropdownMenuSeparator />
               <div className="mvp19-import-dropdown-import-error px-2 py-1 text-xs text-red-600">No s&apos;ha pogut importar el fitxer.</div>
+            </>
+          )}
+          {legacyImportMessage && (
+            <>
+              <DropdownMenuSeparator />
+              <div className="mvp19-import-dropdown-legacy-import px-2 py-1 text-xs text-slate-600">{legacyImportMessage}</div>
             </>
           )}
         </DropdownMenuContent>

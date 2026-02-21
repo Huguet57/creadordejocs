@@ -1,3 +1,5 @@
+import { generateUUID, loadProjectV1, serializeProjectV1 } from "@creadordejocs/project-format"
+
 export type SyncCatalogEntry = {
   projectId: string
   name: string
@@ -8,6 +10,7 @@ export type SyncCatalogEntry = {
 export type MergeProjectCatalogResult = {
   merged: SyncCatalogEntry[]
   toUpload: SyncCatalogEntry[]
+  conflictCopies: SyncCatalogEntry[]
 }
 
 function compareIsoDate(left: string, right: string): number {
@@ -29,6 +32,7 @@ export function mergeProjectCatalog(local: SyncCatalogEntry[], remote: SyncCatal
 
   const merged: SyncCatalogEntry[] = []
   const toUpload: SyncCatalogEntry[] = []
+  const conflictCopies: SyncCatalogEntry[] = []
 
   for (const projectId of allProjectIds) {
     const localEntry = localById.get(projectId)
@@ -42,7 +46,12 @@ export function mergeProjectCatalog(local: SyncCatalogEntry[], remote: SyncCatal
       } else if (dateDiff < 0) {
         merged.push(remoteEntry)
       } else {
-        merged.push(localEntry)
+        if (localEntry.projectSource !== remoteEntry.projectSource) {
+          merged.push(remoteEntry)
+          conflictCopies.push(createConflictCopy(localEntry))
+        } else {
+          merged.push(remoteEntry)
+        }
       }
       continue
     }
@@ -63,9 +72,52 @@ export function mergeProjectCatalog(local: SyncCatalogEntry[], remote: SyncCatal
 
   merged.sort(byDateDesc)
   toUpload.sort(byDateDesc)
+  conflictCopies.sort(byDateDesc)
 
   return {
     merged,
-    toUpload
+    toUpload,
+    conflictCopies
   }
+}
+
+function createConflictCopy(localEntry: SyncCatalogEntry): SyncCatalogEntry {
+  const conflictProjectId = generateUUID()
+  const createdAtIso = new Date().toISOString()
+  const conflictName = `${localEntry.name} (conflict ${formatConflictTimestamp(createdAtIso)})`
+
+  try {
+    const parsed = loadProjectV1(localEntry.projectSource)
+    const withConflictMetadata = {
+      ...parsed,
+      metadata: {
+        ...parsed.metadata,
+        id: conflictProjectId,
+        name: conflictName
+      }
+    }
+    return {
+      projectId: conflictProjectId,
+      name: conflictName,
+      projectSource: serializeProjectV1(withConflictMetadata),
+      updatedAtIso: createdAtIso
+    }
+  } catch {
+    return {
+      projectId: conflictProjectId,
+      name: conflictName,
+      projectSource: localEntry.projectSource,
+      updatedAtIso: createdAtIso
+    }
+  }
+}
+
+function formatConflictTimestamp(isoDate: string): string {
+  const date = new Date(isoDate)
+  const year = String(date.getFullYear())
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  const hours = String(date.getHours()).padStart(2, "0")
+  const minutes = String(date.getMinutes()).padStart(2, "0")
+  return `${year}-${month}-${day} ${hours}:${minutes}`
 }

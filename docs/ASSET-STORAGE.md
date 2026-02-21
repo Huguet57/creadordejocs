@@ -7,12 +7,12 @@ The editor uses an abstract storage provider for sprite/sound uploads.
 Set in `apps/editor/.env.local`:
 
 ```env
-VITE_ASSET_STORAGE_PROVIDER=indexeddb
+VITE_ASSET_STORAGE_PROVIDER=supabase
 ```
 
 Supported values:
-- `indexeddb` (default)
-- `supabase` (optional adapter)
+- `supabase` (default, with local fallback queue)
+- `indexeddb` (local-only)
 
 ## Why this design
 
@@ -28,13 +28,12 @@ Each provider returns:
 
 The editor only depends on this contract and does not care which backend is used.
 
-## IndexedDB provider (current default)
+## Supabase provider (default)
 
-- Upload stores the file blob in browser IndexedDB.
-- `assetSource` is stored as `asset://indexeddb/<id>`.
-- Works offline and requires no backend.
-
-## Supabase provider (optional)
+- Upload tries Supabase first.
+- If upload fails (offline/network error), file is stored in browser IndexedDB.
+- Fallback `assetSource` is stored as `asset://indexeddb/<id>`.
+- A local outbox retries pending uploads and promotes local sources to remote URLs when sync succeeds.
 
 To use it, set:
 
@@ -44,5 +43,11 @@ VITE_SUPABASE_URL=http://127.0.0.1:54321
 VITE_SUPABASE_ANON_KEY=<anon-key>
 VITE_SUPABASE_BUCKET=game-assets
 ```
+
+## IndexedDB provider (local-only mode)
+
+- Upload stores the file blob in browser IndexedDB.
+- `assetSource` is stored as `asset://indexeddb/<id>`.
+- Works offline and requires no backend.
 
 The existing setup guide is in `docs/SUPABASE-LOCAL-ASSETS.md`.

@@ -37,16 +37,13 @@ describe("supabase-project-storage", () => {
   })
 
   it("upserts project_source for a user project", async () => {
-    const single = vi.fn().mockResolvedValue({
+    const rpc = vi.fn().mockResolvedValue({
       data: {
         updated_at: "2026-02-20T11:00:00.000Z"
       },
       error: null
     })
-    const select = vi.fn().mockReturnValue({ single })
-    const upsert = vi.fn().mockReturnValue({ select })
-    const from = vi.fn().mockReturnValue({ upsert })
-    const client = { from } as unknown as Parameters<typeof upsertUserProject>[0]
+    const client = { rpc } as unknown as Parameters<typeof upsertUserProject>[0]
 
     const project = createEmptyProjectV1("Sync me")
     project.metadata.id = "project-42"
@@ -57,16 +54,13 @@ describe("supabase-project-storage", () => {
       updatedAtIso
     })
 
-    expect(upsert).toHaveBeenCalledWith(
-      {
-        user_id: "user-1",
-        project_id: "project-42",
-        name: "Sync me",
-        project_source: serializeProjectV1(project),
-        updated_at: updatedAtIso
-      },
-      { onConflict: "user_id,project_id" }
-    )
+    expect(rpc).toHaveBeenCalledWith("upsert_project_if_newer", {
+      p_user_id: "user-1",
+      p_project_id: "project-42",
+      p_name: "Sync me",
+      p_project_source: serializeProjectV1(project),
+      p_updated_at: updatedAtIso
+    })
     expect(result.updatedAtIso).toBe(updatedAtIso)
   })
 

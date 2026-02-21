@@ -8,6 +8,10 @@ type ProjectSelectRow = {
   updated_at: string
 }
 
+type UpsertProjectRpcRow = {
+  updated_at: string
+}
+
 export type UserProjectRecord = {
   projectId: string
   name: string
@@ -50,25 +54,25 @@ export async function upsertUserProject(
   input: UpsertUserProjectInput
 ): Promise<{ updatedAtIso: string }> {
   const updatedAtIso = input.updatedAtIso ?? new Date().toISOString()
-  const payload = {
-    user_id: userId,
-    project_id: input.project.metadata.id,
-    name: input.project.metadata.name,
-    project_source: serializeProjectV1(input.project),
-    updated_at: updatedAtIso
+  const rpcResponse = (await client.rpc("upsert_project_if_newer", {
+    p_user_id: userId,
+    p_project_id: input.project.metadata.id,
+    p_name: input.project.metadata.name,
+    p_project_source: serializeProjectV1(input.project),
+    p_updated_at: updatedAtIso
+  })) as {
+    data: UpsertProjectRpcRow[] | UpsertProjectRpcRow | null
+    error: { message: string } | null
   }
-
-  const { data, error } = await client
-    .from("projects")
-    .upsert(payload, { onConflict: "user_id,project_id" })
-    .select("updated_at")
-    .single()
+  const data = rpcResponse.data
+  const error = rpcResponse.error
 
   if (error) {
     throw new Error(`Could not upsert user project: ${error.message}`)
   }
 
-  const updatedAt = (data as { updated_at?: string } | null)?.updated_at ?? updatedAtIso
+  const resolvedData = Array.isArray(data) ? (data[0] as { updated_at?: string } | undefined) : (data as { updated_at?: string } | null)
+  const updatedAt = resolvedData?.updated_at ?? updatedAtIso
   return { updatedAtIso: updatedAt }
 }
 

@@ -1,24 +1,29 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { resolveAssetSource } from "./asset-source-resolver.js"
 
-const resolveMock = vi.fn((source: string) => {
-  if (source.startsWith("asset://mock/")) {
-    return Promise.resolve(`blob:resolved-${source}`)
-  }
-  return Promise.resolve(source)
-})
+const remoteResolveMock = vi.fn((source: string) => Promise.resolve(`remote:${source}`))
+const indexedDbResolveMock = vi.fn((source: string) => Promise.resolve(`local:${source}`))
 
 vi.mock("./asset-storage-provider.js", () => ({
   getAssetStorageProvider: () =>
     Promise.resolve({
       upload: vi.fn(),
-      resolve: (...args: [string]) => resolveMock(...args)
+      resolve: (...args: [string]) => remoteResolveMock(...args)
     })
+}))
+
+vi.mock("./providers/indexeddb-asset-storage-provider.js", () => ({
+  IndexedDbAssetStorageProvider: class {
+    resolve(assetSource: string) {
+      return indexedDbResolveMock(assetSource)
+    }
+  }
 }))
 
 describe("resolveAssetSource", () => {
   afterEach(() => {
-    resolveMock.mockClear()
+    remoteResolveMock.mockClear()
+    indexedDbResolveMock.mockClear()
   })
 
   it("returns null for empty string", async () => {
@@ -29,28 +34,29 @@ describe("resolveAssetSource", () => {
     expect(await resolveAssetSource("   ")).toBeNull()
   })
 
-  it("does not call provider for empty input", async () => {
-    await resolveAssetSource("")
-    expect(resolveMock).not.toHaveBeenCalled()
-  })
-
-  it("delegates to provider.resolve for non-empty input", async () => {
-    await resolveAssetSource("asset://mock/sprite.png")
-    expect(resolveMock).toHaveBeenCalledWith("asset://mock/sprite.png")
-  })
-
-  it("trims whitespace before delegating", async () => {
-    await resolveAssetSource("  https://example.com/img.png  ")
-    expect(resolveMock).toHaveBeenCalledWith("https://example.com/img.png")
-  })
-
-  it("returns the provider resolve result", async () => {
-    const result = await resolveAssetSource("asset://mock/sprite.png")
-    expect(result).toBe("blob:resolved-asset://mock/sprite.png")
-  })
-
-  it("passes through https URLs via provider", async () => {
+  it("returns https URL as-is without provider lookup", async () => {
     const result = await resolveAssetSource("https://cdn.example.com/image.png")
     expect(result).toBe("https://cdn.example.com/image.png")
+    expect(remoteResolveMock).not.toHaveBeenCalled()
+    expect(indexedDbResolveMock).not.toHaveBeenCalled()
+  })
+
+  it("resolves indexeddb sources with IndexedDb provider", async () => {
+    const result = await resolveAssetSource("asset://indexeddb/sprite-1")
+    expect(result).toBe("local:asset://indexeddb/sprite-1")
+    expect(indexedDbResolveMock).toHaveBeenCalledWith("asset://indexeddb/sprite-1")
+    expect(remoteResolveMock).not.toHaveBeenCalled()
+  })
+
+  it("delegates non-indexeddb non-http sources to configured provider", async () => {
+    const result = await resolveAssetSource("asset://supabase/sprite-1")
+    expect(result).toBe("remote:asset://supabase/sprite-1")
+    expect(remoteResolveMock).toHaveBeenCalledWith("asset://supabase/sprite-1")
+  })
+
+  it("trims whitespace before resolving", async () => {
+    const result = await resolveAssetSource("  asset://indexeddb/sprite-2  ")
+    expect(result).toBe("local:asset://indexeddb/sprite-2")
+    expect(indexedDbResolveMock).toHaveBeenCalledWith("asset://indexeddb/sprite-2")
   })
 })

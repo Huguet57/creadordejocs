@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
 import {
+  ensureSupabaseUser,
   getSupabaseAuthUser,
   resolveGoogleOAuthRedirectFromContext,
   signInWithEmailPassword,
@@ -84,7 +85,7 @@ describe("supabase-auth", () => {
 
     const result = await getSupabaseAuthUser(client)
 
-    expect(result).toEqual({ id: "user-1", email: "user@example.com" })
+    expect(result).toEqual({ id: "user-1", email: "user@example.com", isAnonymous: false })
     expect(getUser).not.toHaveBeenCalled()
     expect(exchangeCodeForSession).not.toHaveBeenCalled()
     expect(setSession).not.toHaveBeenCalled()
@@ -118,7 +119,7 @@ describe("supabase-auth", () => {
 
     const result = await getSupabaseAuthUser(client)
 
-    expect(result).toEqual({ id: "user-2", email: "fallback@example.com" })
+    expect(result).toEqual({ id: "user-2", email: "fallback@example.com", isAnonymous: false })
     expect(getUser).toHaveBeenCalledTimes(1)
   })
 
@@ -188,7 +189,8 @@ describe("supabase-auth", () => {
       async () => {
         await expect(getSupabaseAuthUser(client)).resolves.toEqual({
           id: "oauth-user",
-          email: "oauth@example.com"
+          email: "oauth@example.com",
+          isAnonymous: false
         })
       }
     )
@@ -239,7 +241,8 @@ describe("supabase-auth", () => {
       async () => {
         await expect(getSupabaseAuthUser(client)).resolves.toEqual({
           id: "implicit-user",
-          email: "implicit@example.com"
+          email: "implicit@example.com",
+          isAnonymous: false
         })
       }
     )
@@ -312,7 +315,7 @@ describe("supabase-auth", () => {
       callback("SIGNED_IN", { user: { id: "user-2", email: null } })
     }
 
-    expect(onChange).toHaveBeenCalledWith({ id: "user-2", email: null })
+    expect(onChange).toHaveBeenCalledWith({ id: "user-2", email: null, isAnonymous: false })
 
     teardown()
     expect(unsubscribe).toHaveBeenCalled()
@@ -332,6 +335,125 @@ describe("supabase-auth", () => {
       email: "user@example.com",
       password: "secret-pass"
     })
+  })
+
+  it("returns auth user with isAnonymous=true when Supabase session is anonymous", async () => {
+    const getUser = vi.fn()
+    const getSession = vi.fn().mockResolvedValue({
+      data: {
+        session: {
+          user: {
+            id: "anon-user-1",
+            email: null,
+            is_anonymous: true
+          }
+        }
+      },
+      error: null
+    })
+    const exchangeCodeForSession = vi.fn()
+    const setSession = vi.fn()
+
+    const client = {
+      auth: {
+        exchangeCodeForSession,
+        setSession,
+        getSession,
+        getUser
+      }
+    } as unknown as Parameters<typeof getSupabaseAuthUser>[0]
+
+    const result = await getSupabaseAuthUser(client)
+
+    expect(result).toEqual({ id: "anon-user-1", email: null, isAnonymous: true })
+    expect(getUser).not.toHaveBeenCalled()
+  })
+
+  it("ensureSupabaseUser returns existing authenticated user without anonymous sign-in", async () => {
+    const signInAnonymously = vi.fn()
+    const getUser = vi.fn()
+    const getSession = vi.fn().mockResolvedValue({
+      data: {
+        session: {
+          user: {
+            id: "user-existing",
+            email: "existing@example.com"
+          }
+        }
+      },
+      error: null
+    })
+    const exchangeCodeForSession = vi.fn()
+    const setSession = vi.fn()
+
+    const client = {
+      auth: {
+        signInAnonymously,
+        exchangeCodeForSession,
+        setSession,
+        getSession,
+        getUser
+      }
+    } as unknown as Parameters<typeof ensureSupabaseUser>[0]
+
+    const result = await ensureSupabaseUser(client)
+
+    expect(result).toEqual({ id: "user-existing", email: "existing@example.com", isAnonymous: false })
+    expect(signInAnonymously).not.toHaveBeenCalled()
+  })
+
+  it("ensureSupabaseUser signs in anonymously when there is no active session", async () => {
+    const signInAnonymously = vi.fn().mockResolvedValue({
+      data: {
+        session: {
+          user: {
+            id: "anon-created",
+            email: null,
+            is_anonymous: true
+          }
+        }
+      },
+      error: null
+    })
+    const getSession = vi
+      .fn()
+      .mockResolvedValueOnce({
+        data: { session: null },
+        error: null
+      })
+      .mockResolvedValueOnce({
+        data: {
+          session: {
+            user: {
+              id: "anon-created",
+              email: null,
+              is_anonymous: true
+            }
+          }
+        },
+        error: null
+      })
+    const getUser = vi.fn().mockResolvedValue({
+      data: { user: null },
+      error: { message: "Auth session missing!" }
+    })
+    const exchangeCodeForSession = vi.fn()
+    const setSession = vi.fn()
+
+    const client = {
+      auth: {
+        signInAnonymously,
+        exchangeCodeForSession,
+        setSession,
+        getSession,
+        getUser
+      }
+    } as unknown as Parameters<typeof ensureSupabaseUser>[0]
+
+    const result = await ensureSupabaseUser(client)
+
+    expect(signInAnonymously).toHaveBeenCalledTimes(1)
+    expect(result).toEqual({ id: "anon-created", email: null, isAnonymous: true })
   })
 
   it("signs up with email and password", async () => {

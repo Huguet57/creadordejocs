@@ -20,6 +20,7 @@ describe("project-sync mergeProjectCatalog", () => {
     expect(result.merged[0]?.name).toBe("Local")
     expect(result.toUpload).toHaveLength(1)
     expect(result.toUpload[0]?.name).toBe("Local")
+    expect(result.conflictCopies).toEqual([])
   })
 
   it("keeps remote version when remote updatedAt is newer", () => {
@@ -31,6 +32,7 @@ describe("project-sync mergeProjectCatalog", () => {
     expect(result.merged).toHaveLength(1)
     expect(result.merged[0]?.name).toBe("Remote")
     expect(result.toUpload).toEqual([])
+    expect(result.conflictCopies).toEqual([])
   })
 
   it("includes local-only project and schedules upload", () => {
@@ -42,6 +44,7 @@ describe("project-sync mergeProjectCatalog", () => {
     expect(result.merged).toHaveLength(1)
     expect(result.merged[0]?.projectId).toBe("project-local-only")
     expect(result.toUpload).toHaveLength(1)
+    expect(result.conflictCopies).toEqual([])
   })
 
   it("includes remote-only project without scheduling upload", () => {
@@ -50,6 +53,7 @@ describe("project-sync mergeProjectCatalog", () => {
     expect(result.merged).toHaveLength(1)
     expect(result.merged[0]?.projectId).toBe("project-remote-only")
     expect(result.toUpload).toEqual([])
+    expect(result.conflictCopies).toEqual([])
   })
 
   it("does not schedule upload when timestamps are equal", () => {
@@ -61,5 +65,23 @@ describe("project-sync mergeProjectCatalog", () => {
 
     expect(result.toUpload).toEqual([])
     expect(result.merged[0]?.updatedAtIso).toBe(timestamp)
+    expect(result.conflictCopies).toEqual([])
+  })
+
+  it("when timestamps are equal but content differs, keeps remote and emits local conflict copy", () => {
+    const timestamp = "2026-02-20T10:00:00.000Z"
+    const result = mergeProjectCatalog(
+      [local({ name: "Local version", projectSource: "{\"version\":1,\"id\":\"local\"}", updatedAtIso: timestamp })],
+      [local({ name: "Remote version", projectSource: "{\"version\":1,\"id\":\"remote\"}", updatedAtIso: timestamp })]
+    )
+
+    expect(result.merged).toHaveLength(1)
+    expect(result.merged[0]?.name).toBe("Remote version")
+    expect(result.toUpload).toEqual([])
+    expect(result.conflictCopies).toHaveLength(1)
+    expect(result.conflictCopies[0]?.projectId).not.toBe("project-1")
+    expect(result.conflictCopies[0]?.name).toContain("Local version")
+    expect(result.conflictCopies[0]?.name).toContain("conflict")
+    expect(result.conflictCopies[0]?.projectSource).toContain("\"local\"")
   })
 })
