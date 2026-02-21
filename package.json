@@ -8,7 +8,7 @@
   ],
   "scripts": {
     "editor:dev": "npm run dev -w @creadordejocs/editor",
-    "editor:build": "npm run build -w @creadordejocs/editor",
+    "editor:build": "npm run build -w @creadordejocs/project-format && npm run build -w @creadordejocs/editor",
     "deploy": "npx vercel --prod --yes",
     "supabase:init": "npx supabase init",
     "supabase:start": "sh ./scripts/supabase-start.sh",
