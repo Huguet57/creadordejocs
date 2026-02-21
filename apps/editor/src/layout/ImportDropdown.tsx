@@ -94,14 +94,16 @@ export function ImportDropdown({ controller }: ImportDropdownProps) {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="mvp19-import-dropdown-content w-72">
           <DropdownMenuLabel>Projectes</DropdownMenuLabel>
-          <DropdownMenuRadioGroup value={controller.activeProjectId} onValueChange={(value) => void controller.switchProject(value)}>
-            {controller.projects.map((projectSummary) => (
-              <DropdownMenuRadioItem key={projectSummary.projectId} value={projectSummary.projectId}>
-                <FolderOpen className="h-4 w-4 text-slate-500" />
-                <span className="truncate">{projectSummary.name}</span>
-              </DropdownMenuRadioItem>
-            ))}
-          </DropdownMenuRadioGroup>
+          <div className="max-h-60 overflow-y-auto">
+            <DropdownMenuRadioGroup value={controller.activeProjectId} onValueChange={(value) => void controller.switchProject(value)}>
+              {controller.projects.map((projectSummary) => (
+                <DropdownMenuRadioItem key={projectSummary.projectId} value={projectSummary.projectId}>
+                  <FolderOpen className="h-4 w-4 text-slate-500" />
+                  <span className="truncate">{projectSummary.name}</span>
+                </DropdownMenuRadioItem>
+              ))}
+            </DropdownMenuRadioGroup>
+          </div>
 
           <DropdownMenuSeparator />
 
