@@ -18,6 +18,7 @@ export const LOCAL_PROJECT_KEY = "creadordejocs.editor.project.v1"
 export const LOCAL_SNAPSHOTS_KEY = "creadordejocs.editor.snapshots.v1"
 
 const MAX_SNAPSHOTS = 8
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 export type SaveStatus = "idle" | "saved" | "saving" | "error"
 
@@ -85,6 +86,18 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isValidDate(value: string): boolean {
   return Number.isFinite(Date.parse(value))
+}
+
+function isUuid(value: string): boolean {
+  return UUID_PATTERN.test(value.trim())
+}
+
+function normalizeProjectId(projectId: string): string {
+  const trimmed = projectId.trim()
+  if (trimmed && isUuid(trimmed)) {
+    return trimmed
+  }
+  return generateUUID()
 }
 
 function isLocalProjectSummary(value: unknown): value is LocalProjectSummary {
@@ -214,6 +227,39 @@ function loadLegacyProjectsIndex(): LocalProjectsIndexV2 {
   return parseIndexFromRaw(source)
 }
 
+function persistLegacyProjectsIndex(index: LocalProjectsIndexV2): void {
+  const normalized = normalizeIndex(index)
+  getKvStorageProvider().setItem(LEGACY_LOCAL_PROJECTS_INDEX_KEY, JSON.stringify(normalized))
+}
+
+function clearImportedLegacyEntries(legacyIndex: LocalProjectsIndexV2, importedProjectIds: Set<string>): void {
+  if (!importedProjectIds.size) {
+    return
+  }
+
+  for (const projectId of importedProjectIds) {
+    getKvStorageProvider().removeItem(legacyProjectKey(projectId))
+    getKvStorageProvider().removeItem(legacySnapshotKey(projectId))
+  }
+
+  const remainingProjects = legacyIndex.projects.filter((summary) => !importedProjectIds.has(summary.projectId))
+  if (!remainingProjects.length) {
+    getKvStorageProvider().removeItem(LEGACY_LOCAL_PROJECTS_INDEX_KEY)
+    return
+  }
+
+  const nextActiveProjectId =
+    legacyIndex.activeProjectId && remainingProjects.some((entry) => entry.projectId === legacyIndex.activeProjectId)
+      ? legacyIndex.activeProjectId
+      : (remainingProjects[0]?.projectId ?? null)
+
+  persistLegacyProjectsIndex({
+    version: 2,
+    activeProjectId: nextActiveProjectId,
+    projects: remainingProjects
+  })
+}
+
 export function loadProjectsIndexFromLocalStorage(scopeUserId?: string | null): LocalProjectsIndexV2 {
   const source = getKvStorageProvider().getItem(projectsIndexKey(scopeUserId))
   return parseIndexFromRaw(source)
@@ -257,29 +303,43 @@ export function saveProjectByIdLocally(
   options: SaveProjectOptions = {},
   scopeUserId?: string | null
 ): LocalProjectSummary {
-  const targetProject = withProjectId(project, projectId)
+  const normalizedProjectId = normalizeProjectId(projectId)
+  const targetProject = withProjectId(project, normalizedProjectId)
   const updatedAtIso = options.updatedAtIso ?? nowIso()
   const summary: LocalProjectSummary = {
-    projectId,
+    projectId: normalizedProjectId,
     name: normalizeProjectName(targetProject.metadata.name),
     updatedAtIso
   }
 
-  getKvStorageProvider().setItem(projectKey(projectId, scopeUserId), serializeProjectV1(targetProject))
+  const snapshotsToCarry = normalizedProjectId !== projectId ? loadSnapshotsFromLocalStorage(projectId, scopeUserId) : []
+  getKvStorageProvider().setItem(projectKey(normalizedProjectId, scopeUserId), serializeProjectV1(targetProject))
+  if (normalizedProjectId !== projectId) {
+    if (snapshotsToCarry.length > 0) {
+      getKvStorageProvider().setItem(snapshotKey(normalizedProjectId, scopeUserId), JSON.stringify(snapshotsToCarry.slice(0, MAX_SNAPSHOTS)))
+    }
+    getKvStorageProvider().removeItem(projectKey(projectId, scopeUserId))
+    getKvStorageProvider().removeItem(snapshotKey(projectId, scopeUserId))
+  }
 
   const index = loadProjectsIndexFromLocalStorage(scopeUserId)
-  const projects = index.projects.some((entry) => entry.projectId === projectId)
-    ? index.projects.map((entry) => (entry.projectId === projectId ? summary : entry))
+  const projects = index.projects.some((entry) => entry.projectId === normalizedProjectId || entry.projectId === projectId)
+    ? index.projects.map((entry) => (entry.projectId === normalizedProjectId || entry.projectId === projectId ? summary : entry))
     : [...index.projects, summary]
 
-  const activeProjectId = options.setActive ? projectId : (index.activeProjectId ?? projectId)
+  const activeProjectId =
+    options.setActive
+      ? normalizedProjectId
+      : index.activeProjectId === projectId
+        ? normalizedProjectId
+        : (index.activeProjectId ?? normalizedProjectId)
   saveIndex({ version: 2, activeProjectId, projects }, scopeUserId)
 
   return summary
 }
 
 export function createLocalProject(project: ProjectV1, scopeUserId?: string | null): LocalProjectSummary {
-  const projectId = project.metadata.id || generateUUID()
+  const projectId = normalizeProjectId(project.metadata.id || generateUUID())
   return saveProjectByIdLocally(projectId, project, { setActive: true }, scopeUserId)
 }
 
@@ -370,6 +430,20 @@ export function ensureLocalProjectState(
       continue
     }
 
+    if (!isUuid(summary.projectId) || loaded.metadata.id !== summary.projectId) {
+      const migrated = saveProjectByIdLocally(
+        summary.projectId,
+        loaded,
+        {
+          updatedAtIso: summary.updatedAtIso,
+          setActive: summary.projectId === index.activeProjectId
+        },
+        scopeUserId
+      )
+      checked.push(migrated)
+      continue
+    }
+
     const normalized: LocalProjectSummary = {
       projectId: summary.projectId,
       name: normalizeProjectName(loaded.metadata.name),
@@ -389,8 +463,9 @@ export function ensureLocalProjectState(
     }
   }
 
-  const activeProjectId = checked.some((entry) => entry.projectId === index.activeProjectId)
-    ? index.activeProjectId!
+  const activeFromStorage = loadProjectsIndexFromLocalStorage(scopeUserId).activeProjectId
+  const activeProjectId = checked.some((entry) => entry.projectId === activeFromStorage)
+    ? activeFromStorage!
     : checked[0]!.projectId
   const activeProject = loadProjectFromLocalStorage(activeProjectId, scopeUserId)
 
@@ -504,14 +579,17 @@ export function hasLegacyLocalProjects(): boolean {
 export function importLegacyLocalProjectsToScope(scopeUserId?: string | null): { imported: number; activeProjectId: string | null } {
   const legacyIndex = loadLegacyProjectsIndex()
   let imported = 0
+  const cleanedLegacyProjectIds = new Set<string>()
 
   for (const summary of legacyIndex.projects) {
     const project = loadLegacyProjectFromLocalStorage(summary.projectId)
     if (!project) {
+      // Legacy index can reference missing/corrupt records; prune them so prompts don't loop forever.
+      cleanedLegacyProjectIds.add(summary.projectId)
       continue
     }
 
-    saveProjectByIdLocally(
+    const savedSummary = saveProjectByIdLocally(
       summary.projectId,
       project,
       {
@@ -524,12 +602,17 @@ export function importLegacyLocalProjectsToScope(scopeUserId?: string | null): {
     const snapshots = loadLegacySnapshotsFromLocalStorage(summary.projectId)
     if (snapshots.length > 0) {
       getKvStorageProvider().setItem(
-        snapshotKey(summary.projectId, scopeUserId),
+        snapshotKey(savedSummary.projectId, scopeUserId),
         JSON.stringify(snapshots.slice(0, MAX_SNAPSHOTS))
       )
     }
 
     imported += 1
+    cleanedLegacyProjectIds.add(summary.projectId)
+  }
+
+  if (cleanedLegacyProjectIds.size > 0) {
+    clearImportedLegacyEntries(legacyIndex, cleanedLegacyProjectIds)
   }
 
   return {

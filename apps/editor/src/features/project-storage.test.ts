@@ -11,6 +11,10 @@ import {
   getActiveProjectIdFromLocalStorage,
   LEGACY_LOCAL_PROJECT_KEY_PREFIX,
   LEGACY_LOCAL_PROJECTS_INDEX_KEY,
+  LEGACY_LOCAL_SNAPSHOTS_KEY_PREFIX,
+  LOCAL_PROJECT_KEY_PREFIX,
+  LOCAL_PROJECTS_INDEX_KEY,
+  LOCAL_SNAPSHOTS_KEY_PREFIX,
   listLocalProjects,
   listLegacyLocalProjects,
   loadProjectFromLocalStorage,
@@ -19,6 +23,7 @@ import {
   renameLocalProject,
   saveCheckpointSnapshot,
   saveProjectLocally,
+  saveProjectByIdLocally,
   setActiveProjectIdInLocalStorage
 } from "./project-storage.js"
 
@@ -56,6 +61,33 @@ describe("project-storage (multi-project)", () => {
 
     const loaded = loadProjectFromLocalStorage()
     expect(loaded?.metadata.name).toBe("Joc A")
+  })
+
+  it("normalizes non-UUID project ids when creating locally", () => {
+    const imported = createEmptyProjectV1("Imported non uuid")
+    imported.metadata.id = "proj-pkmn-0000-4000-8000-000000000000"
+
+    const summary = createLocalProject(imported)
+    const loaded = loadProjectFromLocalStorage(summary.projectId)
+
+    expect(summary.projectId).not.toBe("proj-pkmn-0000-4000-8000-000000000000")
+    expect(summary.projectId).toMatch(/^[0-9a-f-]{36}$/i)
+    expect(loaded?.metadata.id).toBe(summary.projectId)
+  })
+
+  it("migrates snapshots when saving with a legacy non-UUID project id", () => {
+    const legacyProject = createEmptyProjectV1("Legacy id")
+    legacyProject.metadata.id = "proj-pkmn-0000-4000-8000-000000000000"
+    const legacySummary = saveProjectByIdLocally(legacyProject.metadata.id, legacyProject, { setActive: true })
+
+    saveCheckpointSnapshot(legacyProject, "legacy-snapshot", legacySummary.projectId)
+
+    const updated = createEmptyProjectV1("Legacy id updated")
+    updated.metadata.id = legacySummary.projectId
+    const saved = saveProjectByIdLocally(legacySummary.projectId, updated, { setActive: true })
+
+    expect(saved.projectId).toMatch(/^[0-9a-f-]{36}$/i)
+    expect(loadSnapshotsFromLocalStorage(saved.projectId)).toHaveLength(1)
   })
 
   it("renames an existing project", () => {
@@ -111,6 +143,48 @@ describe("project-storage (multi-project)", () => {
     expect(updatedSummary!.updatedAtIso >= (initialSummary?.updatedAtIso ?? "")).toBe(true)
   })
 
+  it("migrates legacy non-UUID active project ids during ensureLocalProjectState", () => {
+    const legacyId = "proj-pkmn-0000-4000-8000-000000000000"
+    const legacyProject = createEmptyProjectV1("Legacy non uuid")
+    legacyProject.metadata.id = legacyId
+
+    kv.setItem(
+      LOCAL_PROJECTS_INDEX_KEY,
+      JSON.stringify({
+        version: 2,
+        activeProjectId: legacyId,
+        projects: [
+          {
+            projectId: legacyId,
+            name: legacyProject.metadata.name,
+            updatedAtIso: "2026-02-20T10:00:00.000Z"
+          }
+        ]
+      })
+    )
+    kv.setItem(`${LOCAL_PROJECT_KEY_PREFIX}__local__.${legacyId}`, serializeProjectV1(legacyProject))
+    kv.setItem(
+      `${LOCAL_SNAPSHOTS_KEY_PREFIX}__local__.${legacyId}`,
+      JSON.stringify([
+        {
+          id: "legacy-snapshot",
+          label: "old",
+          savedAtIso: "2026-02-20T09:00:00.000Z",
+          projectSource: serializeProjectV1(legacyProject)
+        }
+      ])
+    )
+
+    const state = ensureLocalProjectState(() => createEmptyProjectV1("should-not-be-used"))
+
+    expect(state.activeProjectId).not.toBe(legacyId)
+    expect(state.activeProjectId).toMatch(/^[0-9a-f-]{36}$/i)
+    expect(state.project.metadata.id).toBe(state.activeProjectId)
+    expect(kv.getItem(`${LOCAL_PROJECT_KEY_PREFIX}__local__.${legacyId}`)).toBeNull()
+    expect(kv.getItem(`${LOCAL_SNAPSHOTS_KEY_PREFIX}__local__.${legacyId}`)).toBeNull()
+    expect(loadSnapshotsFromLocalStorage(state.activeProjectId)).toHaveLength(1)
+  })
+
   it("isolates project catalogs by scopeUserId", () => {
     const scopeA = "user-a"
     const scopeB = "user-b"
@@ -132,6 +206,14 @@ describe("project-storage (multi-project)", () => {
     const legacyProject = createEmptyProjectV1("Legacy project")
     legacyProject.metadata.id = "legacy-project-1"
     const legacyUpdatedAt = "2026-02-20T10:00:00.000Z"
+    const legacySnapshots = [
+      {
+        id: "legacy-snapshot-1",
+        label: "before crash",
+        savedAtIso: "2026-02-20T09:00:00.000Z",
+        projectSource: serializeProjectV1(legacyProject)
+      }
+    ]
 
     kv.setItem(
       LEGACY_LOCAL_PROJECTS_INDEX_KEY,
@@ -148,6 +230,7 @@ describe("project-storage (multi-project)", () => {
       })
     )
     kv.setItem(`${LEGACY_LOCAL_PROJECT_KEY_PREFIX}${legacyProject.metadata.id}`, serializeProjectV1(legacyProject))
+    kv.setItem(`${LEGACY_LOCAL_SNAPSHOTS_KEY_PREFIX}${legacyProject.metadata.id}`, JSON.stringify(legacySnapshots))
 
     expect(hasLegacyLocalProjects()).toBe(true)
     expect(listLegacyLocalProjects()).toHaveLength(1)
@@ -160,8 +243,51 @@ describe("project-storage (multi-project)", () => {
 
     const scopedProjects = listLocalProjects(targetScope)
     expect(scopedProjects).toHaveLength(1)
-    expect(scopedProjects[0]?.projectId).toBe(legacyProject.metadata.id)
+    expect(scopedProjects[0]?.projectId).toMatch(/^[0-9a-f-]{36}$/i)
+    expect(scopedProjects[0]?.projectId).not.toBe(legacyProject.metadata.id)
     expect(scopedProjects[0]?.name).toBe("Legacy project")
-    expect(loadProjectFromLocalStorage(legacyProject.metadata.id, targetScope)?.metadata.name).toBe("Legacy project")
+    expect(loadProjectFromLocalStorage(scopedProjects[0]?.projectId, targetScope)?.metadata.name).toBe("Legacy project")
+    expect(loadSnapshotsFromLocalStorage(scopedProjects[0]?.projectId, targetScope)).toHaveLength(1)
+
+    // Imported legacy keys are removed to avoid repeated import prompts on reload.
+    expect(kv.getItem(LEGACY_LOCAL_PROJECTS_INDEX_KEY)).toBeNull()
+    expect(kv.getItem(`${LEGACY_LOCAL_PROJECT_KEY_PREFIX}${legacyProject.metadata.id}`)).toBeNull()
+    expect(kv.getItem(`${LEGACY_LOCAL_SNAPSHOTS_KEY_PREFIX}${legacyProject.metadata.id}`)).toBeNull()
+    expect(hasLegacyLocalProjects()).toBe(false)
+  })
+
+  it("prunes stale legacy index entries that no longer have a valid project payload", () => {
+    const missingProjectId = "legacy-missing"
+    const corruptedProjectId = "legacy-corrupted"
+
+    kv.setItem(
+      LEGACY_LOCAL_PROJECTS_INDEX_KEY,
+      JSON.stringify({
+        version: 2,
+        activeProjectId: missingProjectId,
+        projects: [
+          {
+            projectId: missingProjectId,
+            name: "Missing",
+            updatedAtIso: "2026-02-20T10:00:00.000Z"
+          },
+          {
+            projectId: corruptedProjectId,
+            name: "Corrupted",
+            updatedAtIso: "2026-02-20T10:01:00.000Z"
+          }
+        ]
+      })
+    )
+    kv.setItem(`${LEGACY_LOCAL_PROJECT_KEY_PREFIX}${corruptedProjectId}`, "{not-json")
+
+    expect(hasLegacyLocalProjects()).toBe(true)
+    const imported = importLegacyLocalProjectsToScope("user-prune")
+    expect(imported.imported).toBe(0)
+
+    expect(kv.getItem(LEGACY_LOCAL_PROJECTS_INDEX_KEY)).toBeNull()
+    expect(kv.getItem(`${LEGACY_LOCAL_PROJECT_KEY_PREFIX}${missingProjectId}`)).toBeNull()
+    expect(kv.getItem(`${LEGACY_LOCAL_PROJECT_KEY_PREFIX}${corruptedProjectId}`)).toBeNull()
+    expect(hasLegacyLocalProjects()).toBe(false)
   })
 })
