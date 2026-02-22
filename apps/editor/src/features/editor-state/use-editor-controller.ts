@@ -668,11 +668,15 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
     setProject(next)
     setIsDirty(true)
     if (checkpointLabel) {
-      try {
-        setSnapshots(saveCheckpointSnapshot(next, checkpointLabel, activeProjectId, resolveScopeUserId()))
-      } catch {
-        // localStorage may be full or unavailable — skip snapshot silently
-      }
+      setTimeout(() => {
+        try {
+          setSnapshots(
+            saveCheckpointSnapshot(next, checkpointLabel, activeProjectId, resolveScopeUserId())
+          )
+        } catch {
+          // localStorage may be full or unavailable — skip snapshot silently
+        }
+      }, 0)
     }
   }
 
