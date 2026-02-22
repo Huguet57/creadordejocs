@@ -77,6 +77,8 @@ function EditorAppShell() {
   const isInitialMountRef = useRef(true)
   const controllerRef = useRef(controller)
   controllerRef.current = controller
+  const [manualSaveLabel, setManualSaveLabel] = useState<string | null>(null)
+  const manualSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Sync URL when activeSection changes
   useEffect(() => {
@@ -122,8 +124,8 @@ function EditorAppShell() {
         <div className="flex items-center justify-between px-1">
           <div className="mvp19-header-left flex items-center gap-1">
             <ImportDropdown controller={controller} />
-            <ShareDropdown controller={controller} />
             <AccountDropdown controller={controller} />
+            <ShareDropdown controller={controller} />
             <p data-testid="save-status" className="mvp19-header-save-status ml-2 text-xs text-slate-400">
               {formatStatus(controller.saveStatus)}
             </p>
@@ -154,12 +156,23 @@ function EditorAppShell() {
             <Button
               data-testid="save-local-button"
               variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-slate-400 hover:text-slate-700"
-              onClick={() => controller.saveNow()}
+              size="sm"
+              className="h-7 gap-1 px-2 text-xs text-slate-400 hover:text-slate-700"
+              onClick={() => {
+                if (manualSaveTimerRef.current) clearTimeout(manualSaveTimerRef.current)
+                setManualSaveLabel("Saving...")
+                controller.saveNow()
+                manualSaveTimerRef.current = setTimeout(() => {
+                  setManualSaveLabel("Saved")
+                  manualSaveTimerRef.current = setTimeout(() => {
+                    setManualSaveLabel(null)
+                  }, 1500)
+                }, 400)
+              }}
               title="Save"
             >
               <Save className="h-4 w-4" />
+              {manualSaveLabel ? <span>{manualSaveLabel}</span> : null}
             </Button>
           </div>
         </div>

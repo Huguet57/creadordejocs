@@ -19,12 +19,12 @@ type AccountDropdownProps = {
 function formatRelativeTime(lastSyncedAt: Date | null): string | null {
   if (!lastSyncedAt) return null
   const diffMs = Date.now() - lastSyncedAt.getTime()
-  const diffMin = Math.floor(diffMs / 60_000)
-  if (diffMin < 1) return "Ara"
-  if (diffMin === 1) return "Fa 1 min"
-  if (diffMin < 60) return `Fa ${diffMin} min`
+  const diffSec = Math.floor(diffMs / 1_000)
+  if (diffSec < 60) return diffSec <= 1 ? "Fa 1 segon" : `Fa ${diffSec} segons`
+  const diffMin = Math.floor(diffSec / 60)
+  if (diffMin < 60) return diffMin === 1 ? "Fa 1 minut" : `Fa ${diffMin} minuts`
   const diffH = Math.floor(diffMin / 60)
-  if (diffH < 24) return diffH === 1 ? "Fa 1 h" : `Fa ${diffH} h`
+  if (diffH < 24) return diffH === 1 ? "Fa 1 hora" : `Fa ${diffH} hores`
   const diffD = Math.floor(diffH / 24)
   return diffD === 1 ? "Fa 1 dia" : `Fa ${diffD} dies`
 }
@@ -39,7 +39,7 @@ export function AccountDropdown({ controller }: AccountDropdownProps) {
 
   useEffect(() => {
     if (!controller.lastSyncedAt) return
-    const interval = window.setInterval(() => setTick((t) => t + 1), 30_000)
+    const interval = window.setInterval(() => setTick((t) => t + 1), 10_000)
     return () => window.clearInterval(interval)
   }, [controller.lastSyncedAt])
 
@@ -57,7 +57,7 @@ export function AccountDropdown({ controller }: AccountDropdownProps) {
       setIsAuthModalOpen(false)
       setAuthPassword("")
     } catch (error) {
-      setAuthError(error instanceof Error ? error.message : "No s'ha pogut iniciar sessio.")
+      setAuthError(error instanceof Error ? error.message : "No s'ha pogut iniciar sessió.")
     } finally {
       setIsAuthSubmitting(false)
     }
@@ -83,7 +83,7 @@ export function AccountDropdown({ controller }: AccountDropdownProps) {
     try {
       await controller.signInWithGoogle()
     } catch (error) {
-      setAuthError(error instanceof Error ? error.message : "No s'ha pogut iniciar sessio amb Google.")
+      setAuthError(error instanceof Error ? error.message : "No s'ha pogut iniciar sessió amb Google.")
     } finally {
       setIsAuthSubmitting(false)
     }
@@ -94,7 +94,7 @@ export function AccountDropdown({ controller }: AccountDropdownProps) {
       setAuthError(null)
       await controller.signOut()
     } catch (error) {
-      setAuthError(error instanceof Error ? error.message : "No s'ha pogut tancar la sessio.")
+      setAuthError(error instanceof Error ? error.message : "No s'ha pogut tancar la sessió.")
     }
   }
 
@@ -102,10 +102,10 @@ export function AccountDropdown({ controller }: AccountDropdownProps) {
     controller.syncStatus === "syncing"
       ? "Pujant..."
       : controller.syncStatus === "error"
-        ? "Error de sincronitzacio"
+        ? "Error de sincronització"
         : formatRelativeTime(controller.lastSyncedAt)
-          ? `Pujar al nuvol · ${formatRelativeTime(controller.lastSyncedAt)}`
-          : "Pujar al nuvol"
+          ? `Pujar al núvol · ${formatRelativeTime(controller.lastSyncedAt)}`
+          : "Pujar al núvol"
 
   return (
     <>
@@ -132,7 +132,10 @@ export function AccountDropdown({ controller }: AccountDropdownProps) {
               <DropdownMenuItem
                 data-testid="header-sync-item"
                 disabled={controller.syncStatus === "syncing"}
-                onSelect={() => void controller.syncNow()}
+                onSelect={(e) => {
+                  e.preventDefault()
+                  void controller.syncNow()
+                }}
               >
                 {controller.syncStatus === "syncing" ? (
                   <Loader2 className="h-4 w-4 animate-spin text-slate-500" />
@@ -147,7 +150,7 @@ export function AccountDropdown({ controller }: AccountDropdownProps) {
               <DropdownMenuSeparator />
               <DropdownMenuItem data-testid="header-signout-item" onSelect={() => void handleSignOut()}>
                 <LogOut className="h-4 w-4 text-slate-500" />
-                Tancar sessio
+                Tancar sessió
               </DropdownMenuItem>
             </>
           ) : (
@@ -156,7 +159,7 @@ export function AccountDropdown({ controller }: AccountDropdownProps) {
               <DropdownMenuSeparator />
               <DropdownMenuItem data-testid="header-signin-item" onSelect={() => setIsAuthModalOpen(true)}>
                 <LogIn className="h-4 w-4 text-slate-500" />
-                Iniciar sessio
+                Iniciar sessió
               </DropdownMenuItem>
             </>
           )}
