@@ -297,9 +297,25 @@ export const caMessages = {
   spriteImportCropConfirm: "Confirmar i importar",
 
   // ── Sprite picker modal ────────────────────────────────────
+  spritePickerCloseAriaLabel: "Tancar modal de sprites",
+  spritePickerTitle: "Sprite per {objectName}",
+  spritePickerSubtitle:
+    "Selecciona un sprite ({width} x {height}) o un de ratio compatible per escalar-lo.",
+  spritePickerSidebarTitle: "Sprites i carpetes",
+  spritePickerNoSprites: "No hi ha sprites encara",
+  spritePickerSelectHint: "Selecciona un sprite per veure'n el preview.",
+  spritePickerNewButton: "+ Nou Sprite",
+  spritePickerEditButton: "Editar Sprite",
+  spritePickerSelectButton: "Seleccionar",
   spritePickerEmpty: "· buit",
   spritePickerMore: "+{count} més",
   spritePickerIncompatible: "· no compatible",
+
+  // ── Object list panel ────────────────────────────────────
+  objectListNewPlaceholder: "Objecte nou",
+
+  // ── Variable pickers ─────────────────────────────────────
+  variablePickerObjectSection: "Objecte",
 
   // ── Right value picker ─────────────────────────────────────
   rightValueRandomStep: "·pas",

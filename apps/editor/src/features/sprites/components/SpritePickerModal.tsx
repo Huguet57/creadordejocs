@@ -255,26 +255,26 @@ export function SpritePickerModal({
         <div className="mvp16-sprite-picker-header relative border-b border-slate-200 px-4 py-3">
           <button
             type="button"
-            aria-label="Tancar modal de sprites"
+            aria-label={t("spritePickerCloseAriaLabel")}
             className="mvp16-sprite-picker-close-button absolute right-3 top-3 inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent text-slate-500 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-700"
             onClick={onClose}
           >
             <X className="h-4 w-4" />
           </button>
-          <h2 className="text-sm font-semibold text-slate-900">Sprite per {objectName}</h2>
+          <h2 className="text-sm font-semibold text-slate-900">{t("spritePickerTitle", { objectName })}</h2>
           <p className="text-xs text-slate-500">
-            Selecciona un sprite ({objectWidth} x {objectHeight}) o un de ratio compatible per escalar-lo.
+            {t("spritePickerSubtitle", { width: objectWidth, height: objectHeight })}
           </p>
         </div>
 
         <div className="mvp16-sprite-picker-body flex h-[460px] overflow-hidden">
           <aside className="mvp16-sprite-picker-tree-sidebar flex w-[320px] flex-col border-r border-slate-200 bg-slate-50">
             <div className="border-b border-slate-200 bg-white px-3 py-2">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Sprites i carpetes</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">{t("spritePickerSidebarTitle")}</p>
             </div>
             <div className="mvp16-sprite-picker-tree-content flex-1 overflow-y-auto p-2">
               {availableSprites.length === 0 && spriteFolders.length === 0 ? (
-                <p className="px-2 py-4 text-center text-xs text-slate-400">No hi ha sprites encara</p>
+                <p className="px-2 py-4 text-center text-xs text-slate-400">{t("spritePickerNoSprites")}</p>
               ) : (
                 <div className="flex flex-col gap-1">
                   {rootFolders.map((folderEntry) => renderFolderNode(folderEntry, 0))}
@@ -316,7 +316,7 @@ export function SpritePickerModal({
                   </p>
                 </div>
               ) : (
-                <p className="text-xs text-slate-500">Selecciona un sprite per veure'n el preview.</p>
+                <p className="text-xs text-slate-500">{t("spritePickerSelectHint")}</p>
               )}
 
             </div>
@@ -326,7 +326,7 @@ export function SpritePickerModal({
         <div className="mvp16-sprite-picker-footer flex items-center justify-end gap-2 border-t border-slate-200 px-4 py-3">
           <div className="mvp16-sprite-picker-footer-actions flex items-center gap-2">
             <Button variant="outline" size="sm" className="mvp16-sprite-picker-new-button h-8" onClick={onCreateNewSprite}>
-              + Nou Sprite
+              {t("spritePickerNewButton")}
             </Button>
             <Button
               variant="outline"
@@ -335,7 +335,7 @@ export function SpritePickerModal({
               disabled={!canEditSprite}
               onClick={() => selectedSpriteEntry && onEditSprite(selectedSpriteEntry.id)}
             >
-              Editar Sprite
+              {t("spritePickerEditButton")}
             </Button>
             <Button
               size="sm"
@@ -343,7 +343,7 @@ export function SpritePickerModal({
               disabled={!canSelectSprite}
               onClick={() => selectedSpriteEntry && onSelectExisting(selectedSpriteEntry.id)}
             >
-              Seleccionar
+              {t("spritePickerSelectButton")}
             </Button>
           </div>
         </div>

@@ -1,3 +1,4 @@
+import { t } from "@/i18n/index.js"
 import { useEffect, useRef, useState } from "react"
 import { Globe, Box, ChevronDown } from "lucide-react"
 import type { ProjectV1 } from "@creadordejocs/project-format"
@@ -148,7 +149,7 @@ export function CollectionVariablePicker({
           {hasAnyObjectVariables && (
             <div className="collection-variable-picker-object-section">
               <div className="collection-variable-picker-section-header px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
-                <span>Objecte</span>
+                <span>{t("variablePickerObjectSection")}</span>
                 {showTargetToggle && (
                   <div className="flex items-center gap-1">
                     {targetOptions.map((t) => (
