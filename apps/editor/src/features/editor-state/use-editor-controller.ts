@@ -2052,8 +2052,8 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
     async signOut() {
       await runSignOut()
     },
-    loadTemplate(templateId: GameTemplateId) {
-      const result = createTemplateProject(templateId)
+    async loadTemplate(templateId: GameTemplateId) {
+      const result = await createTemplateProject(templateId)
       setPast((value) => [...value.slice(-39), project])
       setFuture([])
       setProject(incrementMetric(result.project, "tutorialCompletion"))

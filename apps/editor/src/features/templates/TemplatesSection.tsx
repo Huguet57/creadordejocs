@@ -1,4 +1,4 @@
-import { Coins, Crosshair, MousePointer2, Route, Waypoints } from "lucide-react"
+import { Coins, Crosshair, Map, MousePointer2, Route, Waypoints } from "lucide-react"
 import { Button } from "../../components/ui/button.js"
 import {
   GAME_TEMPLATES,
@@ -16,7 +16,8 @@ const templateIcons: Record<GameTemplateId, React.ElementType> = {
   "space-shooter": Crosshair,
   "lane-crosser": Route,
   "switch-vault": Waypoints,
-  "cursor-courier": MousePointer2
+  "cursor-courier": MousePointer2,
+  "pokemon-explorer": Map
 }
 
 type TemplateCard = GameTemplateDefinition & {
@@ -30,6 +31,7 @@ const templates: TemplateCard[] = GAME_TEMPLATES.map((templateEntry) => ({
 
 const starterTemplates = templates.filter((templateEntry) => templateEntry.difficulty === "starter")
 const intermediateTemplates = templates.filter((templateEntry) => templateEntry.difficulty === "intermediate")
+const advancedTemplates = templates.filter((templateEntry) => templateEntry.difficulty === "advanced")
 
 function renderTemplateCards(controller: EditorController, entries: TemplateCard[]) {
   return (
@@ -52,7 +54,7 @@ function renderTemplateCards(controller: EditorController, entries: TemplateCard
               variant="outline"
               size="sm"
               className="w-full text-xs"
-              onClick={() => controller.loadTemplate(template.id)}
+              onClick={() => void controller.loadTemplate(template.id)}
             >
               Load Template
             </Button>
@@ -81,6 +83,13 @@ export function TemplatesSection({ controller }: TemplatesSectionProps) {
           Templates de dificultat intermitja
         </h3>
         {renderTemplateCards(controller, intermediateTemplates)}
+      </div>
+
+      <div className="mvp15-template-section mvp15-template-section-advanced flex flex-col gap-3">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          Templates avançades
+        </h3>
+        {renderTemplateCards(controller, advancedTemplates)}
       </div>
     </div>
   )

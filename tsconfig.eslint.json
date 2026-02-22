@@ -4,6 +4,7 @@
     "noEmit": true,
     "jsx": "react-jsx",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
       "@/*": ["apps/editor/src/*"],
@@ -14,6 +15,7 @@
   "include": [
     "apps/**/*.ts",
     "apps/**/*.tsx",
+    "apps/**/*.json",
     "packages/**/*.ts",
     "packages/**/*.tsx",
     "tests/**/*.ts",

@@ -6,23 +6,24 @@ const INTERMEDIATE_TEMPLATE_IDS: GameTemplateId[] = [
   "switch-vault",
   "cursor-courier"
 ]
-const ADVANCED_TEMPLATE_IDS: GameTemplateId[] = []
+const ADVANCED_TEMPLATE_IDS: GameTemplateId[] = ["pokemon-explorer"]
 const ELSE_ENABLED_TEMPLATE_IDS: GameTemplateId[] = [
   "lane-crosser",
   "switch-vault",
-  "cursor-courier"
+  "cursor-courier",
+  "pokemon-explorer"
 ]
 const NESTED_IF_TEMPLATE_IDS: GameTemplateId[] = []
-const DISTRIBUTED_LOGIC_TEMPLATE_IDS: GameTemplateId[] = ["switch-vault"]
+const DISTRIBUTED_LOGIC_TEMPLATE_IDS: GameTemplateId[] = ["switch-vault", "pokemon-explorer"]
 
-function projectHasIfBlocks(templateId: GameTemplateId): boolean {
-  const created = createTemplateProject(templateId)
+async function projectHasIfBlocks(templateId: GameTemplateId): Promise<boolean> {
+  const created = await createTemplateProject(templateId)
   return created.project.objects.some((objectEntry) =>
     objectEntry.events.some((eventEntry) => eventEntry.items.some((itemEntry) => itemEntry.type === "if"))
   )
 }
 
-type EventItems = ReturnType<typeof createTemplateProject>["project"]["objects"][number]["events"][number]["items"]
+type EventItems = Awaited<ReturnType<typeof createTemplateProject>>["project"]["objects"][number]["events"][number]["items"]
 
 function getItemBranches(itemEntry: EventItems[number]): EventItems[] {
   if (itemEntry.type === "if") return [itemEntry.thenActions, itemEntry.elseActions]
@@ -68,29 +69,23 @@ describe("template catalog", () => {
     expect(intermediate.map((entry) => entry.id)).toEqual(INTERMEDIATE_TEMPLATE_IDS)
   })
 
-  it.each(INTERMEDIATE_TEMPLATE_IDS)("builds %s with conditionals and a playable room", (templateId) => {
-    const created = createTemplateProject(templateId)
+  it.each(INTERMEDIATE_TEMPLATE_IDS)("builds %s with conditionals and a playable room", async (templateId) => {
+    const created = await createTemplateProject(templateId)
 
     expect(created.project.rooms.length).toBeGreaterThan(0)
     expect(created.project.objects.some((entry) => entry.id === created.focusObjectId)).toBe(true)
-    expect(projectHasIfBlocks(templateId)).toBe(true)
+    expect(await projectHasIfBlocks(templateId)).toBe(true)
   })
 
-  it("keeps advanced template ids empty", () => {
-    expect(ADVANCED_TEMPLATE_IDS).toEqual([])
+  it("exposes exactly one advanced template", () => {
+    const advanced = GAME_TEMPLATES.filter((entry) => entry.difficulty === "advanced")
+
+    expect(advanced).toHaveLength(1)
+    expect(advanced.map((entry) => entry.id)).toEqual(ADVANCED_TEMPLATE_IDS)
   })
 
-  it.each(ADVANCED_TEMPLATE_IDS)("builds %s with conditionals and mouse event usage", (templateId) => {
-    const created = createTemplateProject(templateId)
-    const mouseEventTypes = new Set(["MouseMove", "Mouse"])
-    const usedMouseEventTypes = new Set<string>()
-    for (const objectEntry of created.project.objects) {
-      for (const eventEntry of objectEntry.events) {
-        if (mouseEventTypes.has(eventEntry.type)) {
-          usedMouseEventTypes.add(eventEntry.type)
-        }
-      }
-    }
+  it.each(ADVANCED_TEMPLATE_IDS)("builds %s with multiple rooms and conditionals", async (templateId) => {
+    const created = await createTemplateProject(templateId)
     const actionTypes = new Set<string>()
     for (const objectEntry of created.project.objects) {
       for (const eventEntry of objectEntry.events) {
@@ -98,15 +93,14 @@ describe("template catalog", () => {
       }
     }
 
-    expect(created.project.rooms.length).toBeGreaterThan(0)
+    expect(created.project.rooms.length).toBeGreaterThan(1)
     expect(created.project.objects.some((entry) => entry.id === created.focusObjectId)).toBe(true)
-    expect(projectHasIfBlocks(templateId)).toBe(true)
-    expect(usedMouseEventTypes.size).toBeGreaterThanOrEqual(1)
-    expect(actionTypes.has("teleport")).toBe(true)
+    expect(await projectHasIfBlocks(templateId)).toBe(true)
+    expect(actionTypes.has("goToRoom")).toBe(true)
   })
 
-  it.each([["switch-vault", "goToRoom"]] as const)("builds %s with distinctive action %s", (templateId, actionType) => {
-    const created = createTemplateProject(templateId)
+  it.each([["switch-vault", "goToRoom"]] as const)("builds %s with distinctive action %s", async (templateId, actionType) => {
+    const created = await createTemplateProject(templateId)
     const hasAction = created.project.objects.some((objectEntry) =>
       objectEntry.events.some((eventEntry) => itemsContainActionType(eventEntry.items, actionType))
     )
@@ -114,8 +108,8 @@ describe("template catalog", () => {
     expect(hasAction).toBe(true)
   })
 
-  it.each(DISTRIBUTED_LOGIC_TEMPLATE_IDS)("distributes runtime logic beyond the focus object for %s", (templateId) => {
-    const created = createTemplateProject(templateId)
+  it.each(DISTRIBUTED_LOGIC_TEMPLATE_IDS)("distributes runtime logic beyond the focus object for %s", async (templateId) => {
+    const created = await createTemplateProject(templateId)
     const nonFocusObjectsWithEvents = created.project.objects.filter(
       (objectEntry) => objectEntry.id !== created.focusObjectId && objectEntry.events.length > 0
     )
@@ -123,8 +117,8 @@ describe("template catalog", () => {
     expect(nonFocusObjectsWithEvents.length).toBeGreaterThanOrEqual(2)
   })
 
-  it.each(ELSE_ENABLED_TEMPLATE_IDS)("builds %s with at least one populated else branch", (templateId) => {
-    const created = createTemplateProject(templateId)
+  it.each(ELSE_ENABLED_TEMPLATE_IDS)("builds %s with at least one populated else branch", async (templateId) => {
+    const created = await createTemplateProject(templateId)
     const hasElseActions = created.project.objects.some((objectEntry) =>
       objectEntry.events.some((eventEntry) =>
         eventEntry.items.some((itemEntry) => itemEntry.type === "if" && itemEntry.elseActions.length > 0)
@@ -134,8 +128,8 @@ describe("template catalog", () => {
     expect(hasElseActions).toBe(true)
   })
 
-  it.each(NESTED_IF_TEMPLATE_IDS)("builds %s with at least one nested if block", (templateId) => {
-    const created = createTemplateProject(templateId)
+  it.each(NESTED_IF_TEMPLATE_IDS)("builds %s with at least one nested if block", async (templateId) => {
+    const created = await createTemplateProject(templateId)
     const hasNestedIf = created.project.objects.some((objectEntry) =>
       objectEntry.events.some((eventEntry) => itemsContainNestedIf(eventEntry.items))
     )
@@ -143,8 +137,8 @@ describe("template catalog", () => {
     expect(hasNestedIf).toBe(true)
   })
 
-  it.each(GAME_TEMPLATES.map((entry) => entry.id))("builds %s without obsolete playSound actions", (templateId) => {
-    const created = createTemplateProject(templateId)
+  it.each(GAME_TEMPLATES.map((entry) => entry.id))("builds %s without obsolete playSound actions", async (templateId) => {
+    const created = await createTemplateProject(templateId)
     const hasPlaySound = created.project.objects.some((objectEntry) =>
       objectEntry.events.some((eventEntry) => itemsContainActionType(eventEntry.items, "playSound"))
     )

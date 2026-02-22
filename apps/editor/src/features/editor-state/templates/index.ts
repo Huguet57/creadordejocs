@@ -1,6 +1,7 @@
 import { createCoinDashTemplateProject } from "./coin-dash-template.js"
 import { createCursorCourierTemplateProject } from "./cursor-courier-template.js"
 import { createLaneCrosserTemplateProject } from "./lane-crosser-template.js"
+import { createPokemonExplorerTemplateProject } from "./pokemon-explorer-template.js"
 import { createSpaceShooterTemplateProject } from "./space-shooter-template.js"
 import { createSwitchVaultTemplateProject } from "./switch-vault-template.js"
 import type { GameTemplateId, TemplateProjectResult } from "./types.js"
@@ -35,10 +36,16 @@ export const GAME_TEMPLATES = [
     name: "Cursor Courier",
     description: "Guide deliveries with mouse movement and hold-to-boost bursts.",
     difficulty: "intermediate"
+  },
+  {
+    id: "pokemon-explorer",
+    name: "Pokémon Explorer",
+    description: "Explora un món amb múltiples sales, herbes aleatòries i batalles. Projecte avançat complet.",
+    difficulty: "advanced"
   }
 ] as const
 
-export function createTemplateProject(templateId: GameTemplateId): TemplateProjectResult {
+export async function createTemplateProject(templateId: GameTemplateId): Promise<TemplateProjectResult> {
   if (templateId === "coin-dash") {
     return createCoinDashTemplateProject()
   }
@@ -53,6 +60,9 @@ export function createTemplateProject(templateId: GameTemplateId): TemplateProje
   }
   if (templateId === "cursor-courier") {
     return createCursorCourierTemplateProject()
+  }
+  if (templateId === "pokemon-explorer") {
+    return createPokemonExplorerTemplateProject()
   }
   return createSwitchVaultTemplateProject()
 }

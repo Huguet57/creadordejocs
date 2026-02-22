@@ -6,6 +6,7 @@ export type GameTemplateId =
   | "lane-crosser"
   | "switch-vault"
   | "cursor-courier"
+  | "pokemon-explorer"
 
 export type TemplateDifficulty = "starter" | "intermediate" | "advanced"
 
