@@ -7,6 +7,9 @@ const editorRoot = fileURLToPath(new URL(".", import.meta.url))
 
 export default defineConfig({
   plugins: [react()],
+  build: {
+    sourcemap: "hidden"
+  },
   resolve: {
     alias: {
       "@": resolve(editorRoot, "src"),
