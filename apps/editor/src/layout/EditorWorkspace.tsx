@@ -11,6 +11,10 @@ type EditorWorkspaceProps = {
 }
 
 export function EditorWorkspace({ controller }: EditorWorkspaceProps) {
+  if (controller.authLoading) {
+    return <div className="mvp15-editor-workspace min-h-0 min-w-0 h-full" />
+  }
+
   let content: React.ReactNode
   if (controller.activeSection === "sprites") {
     content = <SpriteEditorSection controller={controller} />
