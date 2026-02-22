@@ -9,7 +9,8 @@ const posthogKey = import.meta.env.VITE_PUBLIC_POSTHOG_KEY
 const posthogHost = import.meta.env.VITE_PUBLIC_POSTHOG_HOST
 if (posthogKey && posthogHost) {
   posthog.init(posthogKey, {
-    api_host: posthogHost,
+    api_host: posthogHost ?? "/ingest",
+    ui_host: "https://us.posthog.com",
     person_profiles: "identified_only",
     capture_pageview: true,
     capture_pageleave: true

@@ -3,6 +3,8 @@
   "outputDirectory": "apps/editor/dist",
   "framework": "vite",
   "rewrites": [
+    { "source": "/ingest/static/:path*", "destination": "https://us-assets.i.posthog.com/static/:path*" },
+    { "source": "/ingest/:path*", "destination": "https://us.i.posthog.com/:path*" },
     { "source": "/editor", "destination": "/" },
     { "source": "/editor/", "destination": "/" },
     { "source": "/editor/:path*", "destination": "/" },
