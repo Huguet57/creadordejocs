@@ -1,4 +1,7 @@
 {
+  "git": {
+    "deploymentEnabled": false
+  },
   "buildCommand": "npm run editor:build",
   "outputDirectory": "apps/editor/dist",
   "framework": "vite",
