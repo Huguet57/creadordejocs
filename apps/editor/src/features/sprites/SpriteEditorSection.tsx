@@ -161,6 +161,13 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
   }
 
   const handleDeleteSprite = (spriteId: string): boolean => {
+    const assignedObjectNames = spriteAssignedObjectNamesIndex[spriteId]
+    if (assignedObjectNames && assignedObjectNames.length > 0) {
+      window.alert(
+        `No es pot eliminar aquest sprite perquè està sent utilitzat per: ${assignedObjectNames.join(", ")}`
+      )
+      return false
+    }
     const currentIndex = openTabs.findIndex((tabEntry) => tabEntry.id === spriteId)
     const remainingTabs = openTabs.filter((tabEntry) => tabEntry.id !== spriteId)
     const deleted = controller.deleteSprite(spriteId)

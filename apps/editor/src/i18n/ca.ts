@@ -15,7 +15,8 @@ export const caMessages = {
   syncIdle: "Sync idle",
   syncing: "Syncing...",
   synced: "Synced",
-  syncError: "Sync error"
+  syncError: "Sync error",
+  spriteDeleteBlockedByObjects: "No es pot eliminar aquest sprite perquè està sent utilitzat per: {objects}"
 } as const
 
 export type EditorMessageKey = keyof typeof caMessages
