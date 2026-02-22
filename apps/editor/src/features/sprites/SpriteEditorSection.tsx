@@ -218,13 +218,25 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
     setActiveFrameId((previous) => resolveNextActiveFrameId(selectedSprite.frames, previous))
   }, [selectedSprite?.id, selectedSprite?.frames])
 
-  const selectedSpritePixels = selectedSprite
-    ? normalizePixelGrid(
-        resolveActiveFramePixels(selectedSprite.frames, activeFrameId, selectedSprite.pixelsRgba),
-        selectedSprite.width,
-        selectedSprite.height
-      )
-    : []
+  const activeFramePixels = useMemo(() => {
+    if (!selectedSprite) {
+      return []
+    }
+    return resolveActiveFramePixels(selectedSprite.frames, activeFrameId, selectedSprite.pixelsRgba)
+  }, [activeFrameId, selectedSprite?.frames, selectedSprite?.pixelsRgba])
+
+  const selectedSpritePixels = useMemo(() => {
+    if (!selectedSprite) {
+      return []
+    }
+
+    const expectedPixelCount = selectedSprite.width * selectedSprite.height
+    if (activeFramePixels.length === expectedPixelCount) {
+      return activeFramePixels
+    }
+
+    return normalizePixelGrid(activeFramePixels, selectedSprite.width, selectedSprite.height)
+  }, [activeFramePixels, selectedSprite?.height, selectedSprite?.width])
 
   const [resolvedSpritePreviews, setResolvedSpritePreviews] = useState<Record<string, string>>({})
 

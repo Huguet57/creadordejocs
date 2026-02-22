@@ -195,7 +195,13 @@ export function SpriteCanvasGrid({
   const colorChannelCacheRef = useRef<Map<string, ColorChannels>>(new Map())
   const checkerPatternCacheRef = useRef<Map<number, CanvasPattern | null>>(new Map())
 
-  const safePixels = useMemo(() => normalizePixelGrid(pixelsRgba, width, height), [pixelsRgba, width, height])
+  const safePixels = useMemo(() => {
+    const expectedPixelCount = width * height
+    if (pixelsRgba.length === expectedPixelCount) {
+      return pixelsRgba
+    }
+    return normalizePixelGrid(pixelsRgba, width, height)
+  }, [pixelsRgba, width, height])
   const dragBounds = useMemo(() => resolveDragBounds(selectDragRect), [selectDragRect])
   const canvasSizing = useMemo(
     () => resolveCanvasSizing(width, height, zoom, devicePixelRatio),

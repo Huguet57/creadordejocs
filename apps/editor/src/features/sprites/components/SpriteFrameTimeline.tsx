@@ -1,8 +1,25 @@
 import { Copy, Plus, Trash2 } from "lucide-react"
-import { useEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent, type MouseEvent } from "react"
+import { useEffect, useRef, useState, type DragEvent, type KeyboardEvent, type MouseEvent } from "react"
 import { resolveFramePreviewUrlsWithCache, type FramePreviewCache } from "../utils/frame-preview-cache.js"
 
 const DND_FRAME_MIME = "application/x-sprite-frame"
+const FRAME_PREVIEW_RESOLVE_DEBOUNCE_MS = 80
+
+type WindowWithIdleCallbacks = Window & {
+  requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number
+  cancelIdleCallback?: (id: number) => void
+}
+
+function arePreviewMapsEqual(left: Map<string, string>, right: Map<string, string>): boolean {
+  if (left === right) return true
+  if (left.size !== right.size) return false
+  for (const [key, value] of left.entries()) {
+    if (right.get(key) !== value) {
+      return false
+    }
+  }
+  return true
+}
 
 export type SpriteFrameTimelineProps = {
   frames: { id: string; pixelsRgba: string[] }[]
@@ -31,17 +48,50 @@ export function SpriteFrameTimeline({
   const [dropTargetIndex, setDropTargetIndex] = useState<number | null>(null)
   const activeFrameRef = useRef<HTMLDivElement>(null)
   const framePreviewCacheRef = useRef<FramePreviewCache>(new Map())
+  const [framePreviewUrls, setFramePreviewUrls] = useState<Map<string, string>>(new Map())
 
-  const framePreviewUrls = useMemo(
-    () =>
-      resolveFramePreviewUrlsWithCache({
+  useEffect(() => {
+    let cancelled = false
+    let idleCallbackId: number | null = null
+    let timeoutId: ReturnType<typeof setTimeout> | null = null
+    const windowWithIdleCallbacks =
+      typeof window === "undefined" ? null : (window as WindowWithIdleCallbacks)
+
+    const resolvePreviews = () => {
+      if (cancelled) {
+        return
+      }
+
+      const nextFramePreviewUrls = resolveFramePreviewUrlsWithCache({
         frames,
         spriteWidth,
         spriteHeight,
         cache: framePreviewCacheRef.current
-      }),
-    [frames, spriteWidth, spriteHeight]
-  )
+      })
+
+      setFramePreviewUrls((previous) => (arePreviewMapsEqual(previous, nextFramePreviewUrls) ? previous : nextFramePreviewUrls))
+    }
+
+    timeoutId = setTimeout(() => {
+      if (windowWithIdleCallbacks?.requestIdleCallback) {
+        idleCallbackId = windowWithIdleCallbacks.requestIdleCallback(() => {
+          resolvePreviews()
+        })
+        return
+      }
+      resolvePreviews()
+    }, FRAME_PREVIEW_RESOLVE_DEBOUNCE_MS)
+
+    return () => {
+      cancelled = true
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId)
+      }
+      if (idleCallbackId !== null) {
+        windowWithIdleCallbacks?.cancelIdleCallback?.(idleCallbackId)
+      }
+    }
+  }, [frames, spriteHeight, spriteWidth])
 
   useEffect(() => {
     activeFrameRef.current?.scrollIntoView({ inline: "nearest", behavior: "smooth" })

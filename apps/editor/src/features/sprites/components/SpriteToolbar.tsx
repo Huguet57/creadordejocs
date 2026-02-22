@@ -7,6 +7,7 @@ import { SPRITE_TOOL_REGISTRY } from "../utils/sprite-tools/tool-registry.js"
 
 const COLOR_BUCKET_SHIFT = 5
 const DOMINANT_COLORS_MAX = 20
+const DOMINANT_COLORS_MAX_SAMPLES = 8192
 const DOMINANT_COLORS_DEBOUNCE_MS = 120
 
 function bucketKey(hex: string): string {
@@ -17,9 +18,19 @@ function bucketKey(hex: string): string {
 }
 
 function extractDominantColors(pixels: string[], maxColors: number): string[] {
-  const buckets = new Map<string, { color: string; count: number }>()
+  if (pixels.length === 0 || maxColors <= 0) {
+    return []
+  }
 
-  for (const pixel of pixels) {
+  const buckets = new Map<string, { color: string; count: number }>()
+  const sampleStep = Math.max(1, Math.floor(pixels.length / DOMINANT_COLORS_MAX_SAMPLES))
+
+  for (let index = 0; index < pixels.length; index += sampleStep) {
+    const pixel = pixels[index]
+    if (!pixel) {
+      continue
+    }
+
     const normalized = normalizeHexRgba(pixel)
     if (normalized === TRANSPARENT_RGBA) continue
     const key = bucketKey(normalized)
@@ -95,13 +106,12 @@ export function SpriteToolbar({
   onRotateCW,
   onRotateCCW
 }: SpriteToolbarProps) {
-  const [spriteColors, setSpriteColors] = useState<string[]>(() =>
-    extractDominantColors(spritePixels, DOMINANT_COLORS_MAX)
-  )
+  const [spriteColors, setSpriteColors] = useState<string[]>([])
 
   useEffect(() => {
     let cancelled = false
     let idleCallbackId: number | null = null
+    let timeoutId: ReturnType<typeof setTimeout> | null = null
     const windowWithIdleCallbacks =
       typeof window === "undefined" ? null : (window as WindowWithIdleCallbacks)
 
@@ -113,7 +123,14 @@ export function SpriteToolbar({
       setSpriteColors((previous) => (areColorListsEqual(previous, nextColors) ? previous : nextColors))
     }
 
-    const timeoutId = setTimeout(() => {
+    if (spritePixels.length === 0) {
+      setSpriteColors((previous) => (previous.length === 0 ? previous : []))
+      return () => {
+        cancelled = true
+      }
+    }
+
+    timeoutId = setTimeout(() => {
       if (windowWithIdleCallbacks?.requestIdleCallback) {
         idleCallbackId = windowWithIdleCallbacks.requestIdleCallback(() => {
           applyNextColors()
@@ -125,7 +142,9 @@ export function SpriteToolbar({
 
     return () => {
       cancelled = true
-      clearTimeout(timeoutId)
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId)
+      }
       if (idleCallbackId !== null) {
         windowWithIdleCallbacks?.cancelIdleCallback?.(idleCallbackId)
       }
