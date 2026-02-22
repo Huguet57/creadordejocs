@@ -43,6 +43,7 @@ export function ShareDropdown({ controller }: ShareDropdownProps) {
     try {
       await copyPermalinkToClipboard(sharePermalink)
       setCopyStatus("copied")
+      setTimeout(() => setCopyStatus("idle"), 1500)
     } catch {
       setCopyStatus("error")
     }
@@ -88,7 +89,7 @@ export function ShareDropdown({ controller }: ShareDropdownProps) {
           disabled={!sharePermalink}
         >
           <Copy className="h-4 w-4 text-slate-500" />
-          Copiar enllaç
+          {copyStatus === "copied" ? "Copiat!" : "Copiar enllaç"}
         </DropdownMenuItem>
         <DropdownMenuItem
           disabled={!sharePermalink}
@@ -108,11 +109,6 @@ export function ShareDropdown({ controller }: ShareDropdownProps) {
               {sharePermalink}
             </div>
           </>
-        )}
-        {copyStatus === "copied" && (
-          <div data-testid="header-share-copy-status" className="mvp19-share-dropdown-copy-ok px-2 py-1 text-xs text-emerald-600">
-            Enllaç copiat.
-          </div>
         )}
         {copyStatus === "error" && (
           <div className="mvp19-share-dropdown-copy-error px-2 py-1 text-xs text-red-600">
