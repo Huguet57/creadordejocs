@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -127,6 +128,9 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
   const isPaintStrokeActiveRef = useRef(false)
   const lastPaintPointRef = useRef<RoomPoint | null>(null)
   const paintStrokeDraftRef = useRef<RoomBackgroundPaintStamp[] | null>(null)
+  const paintRafRef = useRef<number | null>(null)
+  const stampCanvasRef = useRef<HTMLCanvasElement | null>(null)
+  const spriteImageCacheRef = useRef(new Map<string, HTMLImageElement>())
 
   // Tab state (VSCode-like: preview + pinned)
   const [openTabs, setOpenTabs] = useState<RoomTabState[]>([])
@@ -169,26 +173,45 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
   const activeRoomPaintStamps = activeRoom?.backgroundPaintStamps ?? []
   const activeDisplayedPaintStamps = paintStrokeDraft ?? activeRoomPaintStamps
   const hasActiveRoom = activeRoom !== null
-  const resolvedPaintStampEntries = useMemo(
-    () =>
-      activeDisplayedPaintStamps
-        .map((stamp, index) => {
-          const spriteEntry = spriteById[stamp.spriteId]
-          if (!spriteEntry) {
-            return null
-          }
-          return {
-            key: `${index}-${stamp.spriteId}-${stamp.x}-${stamp.y}`,
-            x: stamp.x,
-            y: stamp.y,
-            width: Math.max(1, Math.round(spriteEntry.width)),
-            height: Math.max(1, Math.round(spriteEntry.height)),
-            source: resolvedSpriteSources[spriteEntry.id]
-          }
-        })
-        .filter((entry): entry is NonNullable<typeof entry> => entry !== null),
-    [activeDisplayedPaintStamps, spriteById, resolvedSpriteSources]
-  )
+  const drawStampCanvas = useCallback(() => {
+    const canvas = stampCanvasRef.current
+    if (!canvas || !hasActiveRoom) return
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return
+
+    if (canvas.width !== activeRoomWidth || canvas.height !== activeRoomHeight) {
+      canvas.width = activeRoomWidth
+      canvas.height = activeRoomHeight
+    }
+    ctx.imageSmoothingEnabled = false
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+    const cache = spriteImageCacheRef.current
+
+    for (const stamp of activeDisplayedPaintStamps) {
+      const spriteEntry = spriteById[stamp.spriteId]
+      if (!spriteEntry) continue
+      const source = resolvedSpriteSources[spriteEntry.id]
+      if (!source) continue
+      const w = Math.max(1, Math.round(spriteEntry.width))
+      const h = Math.max(1, Math.round(spriteEntry.height))
+
+      let img = cache.get(source)
+      if (!img) {
+        img = new Image()
+        img.src = source
+        cache.set(source, img)
+        img.onload = () => drawStampCanvas()
+      }
+      if (img.complete && img.naturalWidth > 0) {
+        ctx.drawImage(img, stamp.x, stamp.y, w, h)
+      }
+    }
+  }, [activeDisplayedPaintStamps, activeRoomWidth, activeRoomHeight, hasActiveRoom, spriteById, resolvedSpriteSources])
+
+  useEffect(() => {
+    drawStampCanvas()
+  }, [drawStampCanvas])
 
   const roomCanvasBackgroundStyle = useMemo(() => {
     const backgroundImages: string[] = []
@@ -700,18 +723,28 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
       return
     }
     const roomPoint = resolveRoomPointFromMouseEvent(event)
-    const baseStamps = paintStrokeDraftRef.current ?? activeRoomPaintStamps
-    const result = applyPaintAtPoint(roomPoint, baseStamps)
-    if (!result.valid) {
-      setPaintHoverGhost(resolvePaintHoverGhostAtPoint(roomPoint, baseStamps))
-      return
+    if (paintRafRef.current !== null) {
+      cancelAnimationFrame(paintRafRef.current)
     }
-    lastPaintPointRef.current = result.nextPoint
-    setPaintStrokeDraft(result.nextStamps)
-    setPaintHoverGhost(resolvePaintHoverGhostAtPoint(roomPoint, result.nextStamps))
+    paintRafRef.current = requestAnimationFrame(() => {
+      paintRafRef.current = null
+      const baseStamps = paintStrokeDraftRef.current ?? activeRoomPaintStamps
+      const result = applyPaintAtPoint(roomPoint, baseStamps)
+      if (!result.valid) {
+        setPaintHoverGhost(resolvePaintHoverGhostAtPoint(roomPoint, baseStamps))
+        return
+      }
+      lastPaintPointRef.current = result.nextPoint
+      setPaintStrokeDraft(result.nextStamps)
+      setPaintHoverGhost(resolvePaintHoverGhostAtPoint(roomPoint, result.nextStamps))
+    })
   }
 
   const commitPaintStroke = () => {
+    if (paintRafRef.current !== null) {
+      cancelAnimationFrame(paintRafRef.current)
+      paintRafRef.current = null
+    }
     if (!isPaintStrokeActiveRef.current) {
       return
     }
@@ -725,18 +758,21 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
     setPaintStrokeDraft(null)
   }
 
+  const commitPaintStrokeRef = useRef(commitPaintStroke)
+  commitPaintStrokeRef.current = commitPaintStroke
+
   useEffect(() => {
     if (!isPaintMode) {
       return
     }
     const handleMouseUp = () => {
-      commitPaintStroke()
+      commitPaintStrokeRef.current()
     }
     window.addEventListener("mouseup", handleMouseUp)
     return () => {
       window.removeEventListener("mouseup", handleMouseUp)
     }
-  }, [isPaintMode, commitPaintStroke])
+  }, [isPaintMode])
 
   const tabData = useMemo(
     () =>
@@ -1095,29 +1131,18 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                       aria-hidden
                     />
                   )}
-                  {resolvedPaintStampEntries.map((stampEntry) => (
-                    <div
-                      key={stampEntry.key}
-                      className="pointer-events-none absolute z-0"
-                      style={{
-                        left: stampEntry.x * zoom,
-                        top: stampEntry.y * zoom,
-                        width: stampEntry.width * zoom,
-                        height: stampEntry.height * zoom
-                      }}
-                    >
-                      {stampEntry.source ? (
-                        <img
-                          src={stampEntry.source}
-                          alt=""
-                          className="h-full w-full object-contain"
-                          style={{ imageRendering: "pixelated" }}
-                        />
-                      ) : (
-                        <div className="h-full w-full border border-dashed border-slate-300 bg-slate-100/70" />
-                      )}
-                    </div>
-                  ))}
+                  <canvas
+                    ref={stampCanvasRef}
+                    className="pointer-events-none absolute z-0"
+                    style={{
+                      left: 0,
+                      top: 0,
+                      width: activeRoomWidth * zoom,
+                      height: activeRoomHeight * zoom,
+                      imageRendering: "pixelated"
+                    }}
+                    aria-hidden
+                  />
                   {isPaintMode && paintHoverGhost && (
                     <div
                       className={`pointer-events-none absolute z-[15] rounded border-2 ${

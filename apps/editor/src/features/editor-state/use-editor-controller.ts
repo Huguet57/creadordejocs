@@ -1468,7 +1468,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       }
       const next = updateRoomBackgroundPaintStampsModel(project, { roomId, stamps })
       if (next === project) return false
-      pushProjectChange(next, "Update room painted background")
+      pushProjectChange(next)
       return true
     },
     updateSpriteSource(spriteId: string, source: string) {

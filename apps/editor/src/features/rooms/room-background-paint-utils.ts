@@ -157,38 +157,99 @@ export function applyBrushStrokeToStamps(input: {
     spriteWidth: brushWidth,
     spriteHeight: brushHeight
   })
-  let next = [...input.stamps]
+
+  // Pre-resolve dimensions for all stamps and build spatial hash
+  const cellW = brushWidth
+  const cellH = brushHeight
+  const grid = new Map<string, number[]>()
+  const stampDims: SpriteDimensions[] = new Array(input.stamps.length) as SpriteDimensions[]
+
+  for (let i = 0; i < input.stamps.length; i += 1) {
+    const stamp = input.stamps[i]!
+    const dims = resolveNormalizedDimensions(
+      stamp.spriteId,
+      brushWidth,
+      brushHeight,
+      input.resolveSpriteDimensions
+    )
+    stampDims[i] = dims
+    const minCX = Math.floor(stamp.x / cellW)
+    const maxCX = Math.floor((stamp.x + dims.width - 1) / cellW)
+    const minCY = Math.floor(stamp.y / cellH)
+    const maxCY = Math.floor((stamp.y + dims.height - 1) / cellH)
+    for (let cx = minCX; cx <= maxCX; cx += 1) {
+      for (let cy = minCY; cy <= maxCY; cy += 1) {
+        const key = `${cx},${cy}`
+        const bucket = grid.get(key)
+        if (bucket) {
+          bucket.push(i)
+        } else {
+          grid.set(key, [i])
+        }
+      }
+    }
+  }
+
+  const removedIndexes = new Set<number>()
+  const addedStamps: RoomBackgroundPaintStamp[] = []
 
   for (const point of path) {
-    const stamp: RoomBackgroundPaintStamp = {
-      spriteId: input.spriteId,
-      x: point.x,
-      y: point.y
-    }
-    const candidateRect = stampToRect(stamp, brushWidth, brushHeight)
-    const intersectingIndexes = getIntersectingStampIndexes({
-      stamps: next,
-      rect: candidateRect,
-      fallbackWidth: brushWidth,
-      fallbackHeight: brushHeight,
-      resolveSpriteDimensions: input.resolveSpriteDimensions
-    })
+    const candidateRect: Rect = { x: point.x, y: point.y, width: brushWidth, height: brushHeight }
 
-    if (intersectingIndexes.length > 0) {
-      const hasDifferentSpriteOverlap = intersectingIndexes.some(
-        (index) => next[index]?.spriteId !== input.spriteId
+    // Query spatial hash — check only cells the candidate rect overlaps
+    const minSX = Math.floor(candidateRect.x / cellW)
+    const maxSX = Math.floor((candidateRect.x + candidateRect.width - 1) / cellW)
+    const minSY = Math.floor(candidateRect.y / cellH)
+    const maxSY = Math.floor((candidateRect.y + candidateRect.height - 1) / cellH)
+
+    const hits: number[] = []
+    const checked = new Set<number>()
+    for (let cx = minSX; cx <= maxSX; cx += 1) {
+      for (let cy = minSY; cy <= maxSY; cy += 1) {
+        const bucket = grid.get(`${cx},${cy}`)
+        if (!bucket) continue
+        for (const idx of bucket) {
+          if (removedIndexes.has(idx) || checked.has(idx)) continue
+          checked.add(idx)
+          const s = input.stamps[idx]!
+          const d = stampDims[idx]!
+          if (rectanglesIntersect(candidateRect, { x: s.x, y: s.y, width: d.width, height: d.height })) {
+            hits.push(idx)
+          }
+        }
+      }
+    }
+
+    if (hits.length > 0) {
+      const hasDifferentSpriteOverlap = hits.some(
+        (idx) => input.stamps[idx]?.spriteId !== input.spriteId
       )
       if (!hasDifferentSpriteOverlap) {
         continue
       }
-      const indexesToRemove = new Set(intersectingIndexes)
-      next = next.filter((_, index) => !indexesToRemove.has(index))
+      for (const idx of hits) {
+        removedIndexes.add(idx)
+      }
     }
 
-    next.push(stamp)
+    addedStamps.push({ spriteId: input.spriteId, x: point.x, y: point.y })
   }
 
-  return next
+  // Build result array: original stamps minus removed, plus new stamps
+  if (removedIndexes.size === 0 && addedStamps.length === 0) {
+    return input.stamps
+  }
+
+  const result: RoomBackgroundPaintStamp[] = []
+  for (let i = 0; i < input.stamps.length; i += 1) {
+    if (!removedIndexes.has(i)) {
+      result.push(input.stamps[i]!)
+    }
+  }
+  for (const stamp of addedStamps) {
+    result.push(stamp)
+  }
+  return result
 }
 
 export function canBrushStampApplyAtRect(input: {
