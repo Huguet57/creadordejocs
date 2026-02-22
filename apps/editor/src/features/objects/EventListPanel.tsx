@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react"
+import { useContextMenuPosition } from "../../hooks/use-context-menu-position.js"
 import { Activity, Box, Copy, Keyboard, Mouse, MousePointer2, Play, Plus, Radio, Scan, Swords, Timer, Trash2, X } from "lucide-react"
 import { Button } from "../../components/ui/button.js"
 import {
@@ -53,6 +54,7 @@ export function EventListPanel({
 }: EventListPanelProps) {
   const [contextMenu, setContextMenu] = useState<EventContextMenuState>(null)
   const contextMenuRef = useRef<HTMLDivElement>(null)
+  useContextMenuPosition(contextMenuRef, contextMenu ? { x: contextMenu.x, y: contextMenu.y } : null)
 
   useEffect(() => {
     if (!contextMenu) return

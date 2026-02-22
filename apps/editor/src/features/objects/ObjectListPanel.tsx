@@ -21,6 +21,7 @@ import {
   type MouseEvent
 } from "react"
 import type { ProjectV1 } from "@creadordejocs/project-format"
+import { useContextMenuPosition } from "../../hooks/use-context-menu-position.js"
 import { EditorSidebarLayout } from "../shared/editor-sidebar/EditorSidebarLayout.js"
 import { buildEntriesByFolder, buildFolderChildrenByParent, isFolderDescendant } from "../shared/editor-sidebar/tree-utils.js"
 import { useFolderExpansion } from "../shared/editor-sidebar/use-folder-expansion.js"
@@ -78,6 +79,7 @@ export function ObjectListPanel({
   const [newObjectName, setNewObjectName] = useState("Objecte nou")
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null)
   const contextMenuRef = useRef<HTMLDivElement>(null)
+  useContextMenuPosition(contextMenuRef, contextMenu ? { x: contextMenu.x, y: contextMenu.y } : null)
 
   const foldersById = useMemo(() => new Map(objectFolders.map((f) => [f.id, f])), [objectFolders])
   const [expandedFolderIds, setExpandedFolderIds] = useFolderExpansion("objects", foldersById)

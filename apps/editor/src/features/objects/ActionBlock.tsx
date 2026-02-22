@@ -10,6 +10,7 @@ import {
   GripVertical
 } from "lucide-react"
 import React, { useEffect, useRef, useState } from "react"
+import { useContextMenuPosition } from "../../hooks/use-context-menu-position.js"
 import { Button } from "../../components/ui/button.js"
 import {
   ACTION_REGISTRY,
@@ -194,6 +195,8 @@ export function ActionBlock({
   const emitPayloadType: ScalarType =
     action.type === "emitCustomEvent" ? inferPayloadType(action.payload, variableContext) : "number"
   const [contextMenu, setContextMenu] = useState<ActionContextMenuState>(null)
+  const contextMenuRef = useRef<HTMLDivElement>(null)
+  useContextMenuPosition(contextMenuRef, contextMenu)
   const [isRoomSelectorOpen, setIsRoomSelectorOpen] = useState(false)
   const [isRoomTransitionSelectorOpen, setIsRoomTransitionSelectorOpen] = useState(false)
   const roomSelectorRef = useRef<HTMLDivElement>(null)
@@ -1450,6 +1453,7 @@ export function ActionBlock({
       </div>
       {contextMenu && (
         <div
+          ref={contextMenuRef}
           className="mvp17-action-context-menu fixed z-30 min-w-[180px] overflow-hidden rounded-md border border-slate-200 bg-white shadow-xl"
           style={{ left: `${contextMenu.x}px`, top: `${contextMenu.y}px` }}
           onMouseDown={(event) => event.stopPropagation()}

@@ -11,6 +11,7 @@ import {
   type MouseEvent
 } from "react"
 import { Button } from "../../../components/ui/button.js"
+import { useContextMenuPosition } from "../../../hooks/use-context-menu-position.js"
 import { EditorSidebarLayout } from "../../shared/editor-sidebar/EditorSidebarLayout.js"
 import { buildEntriesByFolder, buildFolderChildrenByParent, isFolderDescendant } from "../../shared/editor-sidebar/tree-utils.js"
 import { useFolderExpansion } from "../../shared/editor-sidebar/use-folder-expansion.js"
@@ -87,6 +88,7 @@ export function SpriteListPanel({
   const [newHeight, setNewHeight] = useState(String(DEFAULT_SPRITE_DIMENSION))
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null)
   const contextMenuRef = useRef<HTMLDivElement>(null)
+  useContextMenuPosition(contextMenuRef, contextMenu ? { x: contextMenu.x, y: contextMenu.y } : null)
 
   const foldersById = useMemo(() => new Map(spriteFolders.map((entry) => [entry.id, entry])), [spriteFolders])
   const [expandedFolderIds, setExpandedFolderIds] = useFolderExpansion("sprites", foldersById)

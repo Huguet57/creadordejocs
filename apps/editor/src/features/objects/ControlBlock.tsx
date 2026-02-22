@@ -1,5 +1,6 @@
 import { Plus, Trash, X, GitBranch, RotateCcw, List, Map } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
+import { useContextMenuPosition } from "../../hooks/use-context-menu-position.js"
 import { Button } from "../../components/ui/button.js"
 import {
   type IfCondition,
@@ -224,6 +225,8 @@ export function ControlBlock({
   })()
 
   const [contextMenu, setContextMenu] = useState<BlockContextMenuState>(null)
+  const contextMenuRef = useRef<HTMLDivElement>(null)
+  useContextMenuPosition(contextMenuRef, contextMenu)
   const [showElseManually, setShowElseManually] = useState(false)
   const [blockPickerBranch, setBlockPickerBranch] = useState<"then" | "else" | null>(null)
   const blockPickerRef = useRef<HTMLDivElement>(null)
@@ -863,6 +866,7 @@ export function ControlBlock({
 
       {contextMenu && (
         <div
+          ref={contextMenuRef}
           className="control-block-context-menu fixed z-30 min-w-[180px] overflow-hidden rounded-md border border-slate-200 bg-white shadow-xl"
           style={{ left: `${contextMenu.x}px`, top: `${contextMenu.y}px` }}
           onMouseDown={(e) => e.stopPropagation()}
