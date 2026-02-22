@@ -4,8 +4,9 @@ test.beforeEach(async ({ page }) => {
   await page.goto("/editor")
 })
 
-test("opens email/password auth modal from header sign in button", async ({ page }) => {
-  await page.getByTestId("auth-button").click()
+test("opens email/password auth modal from account dropdown", async ({ page }) => {
+  await page.getByTestId("header-account-trigger").click()
+  await page.getByTestId("header-signin-item").click()
   await expect(page.getByTestId("auth-signin-modal")).toBeVisible()
   await expect(page.getByTestId("auth-email-input")).toBeVisible()
   await expect(page.getByTestId("auth-password-input")).toBeVisible()
@@ -17,7 +18,7 @@ test("opens email/password auth modal from header sign in button", async ({ page
 test("navigates sidebar sections and keeps modular editors available", async ({ page }) => {
   await expect(page.getByTestId("header-import-trigger")).toBeVisible()
   await expect(page.getByTestId("header-share-trigger")).toBeVisible()
-  await expect(page.getByTestId("auth-button")).toBeVisible()
+  await expect(page.getByTestId("header-account-trigger")).toBeVisible()
   await expect(page.getByTestId("sidebar-share")).toHaveCount(0)
 
   await page.getByTestId("sidebar-sprites").click()
