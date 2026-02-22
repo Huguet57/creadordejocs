@@ -6,6 +6,8 @@ const DEFAULT_SCOPE_USER_ID = "__local__"
 export const LOCAL_PROJECTS_INDEX_KEY_PREFIX = "creadordejocs.editor.projects-index.v3."
 export const LOCAL_PROJECT_KEY_PREFIX = "creadordejocs.editor.project.v3."
 export const LOCAL_SNAPSHOTS_KEY_PREFIX = "creadordejocs.editor.snapshots.v3."
+export const LOCAL_SNAPSHOT_INDEX_KEY_PREFIX = "creadordejocs.editor.snapshot-index.v4."
+export const LOCAL_SNAPSHOT_DATA_KEY_PREFIX = "creadordejocs.editor.snapshot-data.v4."
 
 export const LOCAL_PROJECTS_INDEX_KEY = `${LOCAL_PROJECTS_INDEX_KEY_PREFIX}${DEFAULT_SCOPE_USER_ID}`
 
@@ -32,6 +34,12 @@ export type LocalProjectsIndexV2 = {
   version: 2
   activeProjectId: string | null
   projects: LocalProjectSummary[]
+}
+
+export type LocalSnapshotMeta = {
+  id: string
+  label: string
+  savedAtIso: string
 }
 
 export type LocalSnapshot = {
@@ -70,6 +78,24 @@ function projectKey(projectId: string, scopeUserId?: string | null): string {
 
 function snapshotKey(projectId: string, scopeUserId?: string | null): string {
   return `${LOCAL_SNAPSHOTS_KEY_PREFIX}${normalizeScopeUserId(scopeUserId)}.${projectId}`
+}
+
+function snapshotIndexKey(projectId: string, scopeUserId?: string | null): string {
+  return `${LOCAL_SNAPSHOT_INDEX_KEY_PREFIX}${normalizeScopeUserId(scopeUserId)}.${projectId}`
+}
+
+function snapshotDataKey(projectId: string, snapshotId: string, scopeUserId?: string | null): string {
+  return `${LOCAL_SNAPSHOT_DATA_KEY_PREFIX}${normalizeScopeUserId(scopeUserId)}.${projectId}.${snapshotId}`
+}
+
+const projectJsonCache = new WeakMap<ProjectV1, string>()
+
+export function cachedSerializeProjectV1(project: ProjectV1): string {
+  const cached = projectJsonCache.get(project)
+  if (cached !== undefined) return cached
+  const json = serializeProjectV1(project)
+  projectJsonCache.set(project, json)
+  return json
 }
 
 function legacyProjectKey(projectId: string): string {
@@ -312,14 +338,23 @@ export function saveProjectByIdLocally(
     updatedAtIso
   }
 
-  const snapshotsToCarry = normalizedProjectId !== projectId ? loadSnapshotsFromLocalStorage(projectId, scopeUserId) : []
-  getKvStorageProvider().setItem(projectKey(normalizedProjectId, scopeUserId), serializeProjectV1(targetProject))
-  if (normalizedProjectId !== projectId) {
+  const kv = getKvStorageProvider()
+  const needsIdMigration = normalizedProjectId !== projectId
+  const snapshotsToCarry = needsIdMigration ? loadSnapshotMetadata(projectId, scopeUserId) : []
+  kv.setItem(projectKey(normalizedProjectId, scopeUserId), cachedSerializeProjectV1(targetProject))
+  if (needsIdMigration) {
     if (snapshotsToCarry.length > 0) {
-      getKvStorageProvider().setItem(snapshotKey(normalizedProjectId, scopeUserId), JSON.stringify(snapshotsToCarry.slice(0, MAX_SNAPSHOTS)))
+      const trimmed = snapshotsToCarry.slice(0, MAX_SNAPSHOTS)
+      for (const entry of trimmed) {
+        const data = kv.getItem(snapshotDataKey(projectId, entry.id, scopeUserId))
+        if (data) {
+          kv.setItem(snapshotDataKey(normalizedProjectId, entry.id, scopeUserId), data)
+        }
+      }
+      kv.setItem(snapshotIndexKey(normalizedProjectId, scopeUserId), JSON.stringify(trimmed))
     }
-    getKvStorageProvider().removeItem(projectKey(projectId, scopeUserId))
-    getKvStorageProvider().removeItem(snapshotKey(projectId, scopeUserId))
+    kv.removeItem(projectKey(projectId, scopeUserId))
+    removeSnapshotData(projectId, scopeUserId)
   }
 
   const index = loadProjectsIndexFromLocalStorage(scopeUserId)
@@ -412,9 +447,20 @@ export function renameLocalProject(projectId: string, nextName: string, scopeUse
   return saveProjectByIdLocally(projectId, renamedProject, { setActive: isActive }, scopeUserId)
 }
 
+function removeSnapshotData(projectId: string, scopeUserId?: string | null): void {
+  const kv = getKvStorageProvider()
+  const meta = loadSnapshotMetadata(projectId, scopeUserId)
+  for (const entry of meta) {
+    kv.removeItem(snapshotDataKey(projectId, entry.id, scopeUserId))
+  }
+  kv.removeItem(snapshotIndexKey(projectId, scopeUserId))
+  // Also remove v3 key in case migration hasn't run yet
+  kv.removeItem(snapshotKey(projectId, scopeUserId))
+}
+
 export function deleteLocalProject(projectId: string, scopeUserId?: string | null): void {
   getKvStorageProvider().removeItem(projectKey(projectId, scopeUserId))
-  getKvStorageProvider().removeItem(snapshotKey(projectId, scopeUserId))
+  removeSnapshotData(projectId, scopeUserId)
 
   const index = loadProjectsIndexFromLocalStorage(scopeUserId)
   const projects = index.projects.filter((entry) => entry.projectId !== projectId)
@@ -515,13 +561,50 @@ export function ensureLocalProjectState(
   }
 }
 
-export function loadSnapshotsFromLocalStorage(projectId?: string, scopeUserId?: string | null): LocalSnapshot[] {
+function migrateV3SnapshotsIfNeeded(projectId: string, scopeUserId?: string | null): void {
+  const kv = getKvStorageProvider()
+  const oldKey = snapshotKey(projectId, scopeUserId)
+  const source = kv.getItem(oldKey)
+  if (!source) return
+
+  try {
+    const parsed = JSON.parse(source) as unknown
+    if (!Array.isArray(parsed)) {
+      kv.removeItem(oldKey)
+      return
+    }
+
+    const meta: LocalSnapshotMeta[] = []
+    for (const value of parsed) {
+      if (typeof value !== "object" || value === null) continue
+      const candidate = value as Partial<LocalSnapshot>
+      if (
+        typeof candidate.id === "string" &&
+        typeof candidate.label === "string" &&
+        typeof candidate.savedAtIso === "string" &&
+        typeof candidate.projectSource === "string"
+      ) {
+        kv.setItem(snapshotDataKey(projectId, candidate.id, scopeUserId), candidate.projectSource)
+        meta.push({ id: candidate.id, label: candidate.label, savedAtIso: candidate.savedAtIso })
+      }
+    }
+
+    kv.setItem(snapshotIndexKey(projectId, scopeUserId), JSON.stringify(meta))
+    kv.removeItem(oldKey)
+  } catch {
+    kv.removeItem(oldKey)
+  }
+}
+
+export function loadSnapshotMetadata(projectId?: string, scopeUserId?: string | null): LocalSnapshotMeta[] {
   const targetProjectId = projectId ?? getActiveProjectIdFromLocalStorage(scopeUserId)
   if (!targetProjectId) {
     return []
   }
 
-  const source = getKvStorageProvider().getItem(snapshotKey(targetProjectId, scopeUserId))
+  migrateV3SnapshotsIfNeeded(targetProjectId, scopeUserId)
+
+  const source = getKvStorageProvider().getItem(snapshotIndexKey(targetProjectId, scopeUserId))
   if (!source) {
     return []
   }
@@ -532,16 +615,15 @@ export function loadSnapshotsFromLocalStorage(projectId?: string, scopeUserId?: 
       return []
     }
 
-    return parsed.filter((value): value is LocalSnapshot => {
+    return parsed.filter((value): value is LocalSnapshotMeta => {
       if (typeof value !== "object" || value === null) {
         return false
       }
-      const candidate = value as Partial<LocalSnapshot>
+      const candidate = value as Partial<LocalSnapshotMeta>
       return (
         typeof candidate.id === "string" &&
         typeof candidate.label === "string" &&
-        typeof candidate.savedAtIso === "string" &&
-        typeof candidate.projectSource === "string"
+        typeof candidate.savedAtIso === "string"
       )
     })
   } catch {
@@ -549,37 +631,57 @@ export function loadSnapshotsFromLocalStorage(projectId?: string, scopeUserId?: 
   }
 }
 
+/** @deprecated Use loadSnapshotMetadata instead. Kept for backward compatibility in tests. */
+export function loadSnapshotsFromLocalStorage(projectId?: string, scopeUserId?: string | null): LocalSnapshotMeta[] {
+  return loadSnapshotMetadata(projectId, scopeUserId)
+}
+
 export function saveCheckpointSnapshot(
   project: ProjectV1,
   label: string,
   projectId?: string,
   scopeUserId?: string | null
-): LocalSnapshot[] {
+): LocalSnapshotMeta[] {
   const targetProjectId = projectId ?? getActiveProjectIdFromLocalStorage(scopeUserId)
   if (!targetProjectId) {
     return []
   }
 
-  const snapshots = loadSnapshotsFromLocalStorage(targetProjectId, scopeUserId)
-  const next: LocalSnapshot = {
-    id: generateUUID(),
-    label,
-    savedAtIso: nowIso(),
-    projectSource: serializeProjectV1(project)
+  const kv = getKvStorageProvider()
+  const snapshotId = generateUUID()
+  const projectSource = cachedSerializeProjectV1(project)
+  const newMeta: LocalSnapshotMeta = { id: snapshotId, label, savedAtIso: nowIso() }
+
+  kv.setItem(snapshotDataKey(targetProjectId, snapshotId, scopeUserId), projectSource)
+
+  const existing = loadSnapshotMetadata(targetProjectId, scopeUserId)
+  const merged = [newMeta, ...existing].slice(0, MAX_SNAPSHOTS)
+
+  // Clean up data keys for trimmed snapshots
+  for (const trimmed of existing.slice(MAX_SNAPSHOTS - 1)) {
+    kv.removeItem(snapshotDataKey(targetProjectId, trimmed.id, scopeUserId))
   }
-  const merged = [next, ...snapshots].slice(0, MAX_SNAPSHOTS)
-  getKvStorageProvider().setItem(snapshotKey(targetProjectId, scopeUserId), JSON.stringify(merged))
+
+  kv.setItem(snapshotIndexKey(targetProjectId, scopeUserId), JSON.stringify(merged))
   return merged
 }
 
 export function loadSnapshotProject(snapshotId: string, projectId?: string, scopeUserId?: string | null): ProjectV1 | null {
-  const snapshot = loadSnapshotsFromLocalStorage(projectId, scopeUserId).find((entry) => entry.id === snapshotId)
-  if (!snapshot) {
+  const targetProjectId = projectId ?? getActiveProjectIdFromLocalStorage(scopeUserId)
+  if (!targetProjectId) {
+    return null
+  }
+
+  // Ensure migration before reading data keys
+  migrateV3SnapshotsIfNeeded(targetProjectId, scopeUserId)
+
+  const source = getKvStorageProvider().getItem(snapshotDataKey(targetProjectId, snapshotId, scopeUserId))
+  if (!source) {
     return null
   }
 
   try {
-    return loadProjectV1(snapshot.projectSource)
+    return loadProjectV1(source)
   } catch {
     return null
   }
@@ -616,12 +718,16 @@ export function importLegacyLocalProjectsToScope(scopeUserId?: string | null): {
       scopeUserId
     )
 
-    const snapshots = loadLegacySnapshotsFromLocalStorage(summary.projectId)
-    if (snapshots.length > 0) {
-      getKvStorageProvider().setItem(
-        snapshotKey(savedSummary.projectId, scopeUserId),
-        JSON.stringify(snapshots.slice(0, MAX_SNAPSHOTS))
-      )
+    const legacySnapshots = loadLegacySnapshotsFromLocalStorage(summary.projectId)
+    if (legacySnapshots.length > 0) {
+      const kv = getKvStorageProvider()
+      const trimmed = legacySnapshots.slice(0, MAX_SNAPSHOTS)
+      const meta: LocalSnapshotMeta[] = []
+      for (const snap of trimmed) {
+        kv.setItem(snapshotDataKey(savedSummary.projectId, snap.id, scopeUserId), snap.projectSource)
+        meta.push({ id: snap.id, label: snap.label, savedAtIso: snap.savedAtIso })
+      }
+      kv.setItem(snapshotIndexKey(savedSummary.projectId, scopeUserId), JSON.stringify(meta))
     }
 
     imported += 1

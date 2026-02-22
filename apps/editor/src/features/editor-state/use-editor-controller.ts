@@ -97,8 +97,9 @@ import {
   importLegacyLocalProjectsToScope,
   listLocalProjects,
   loadProjectFromLocalStorage,
+  cachedSerializeProjectV1,
   loadSnapshotProject,
-  loadSnapshotsFromLocalStorage,
+  loadSnapshotMetadata,
   parseProjectFromLocalStorage,
   renameLocalProject,
   saveCheckpointSnapshot,
@@ -106,7 +107,7 @@ import {
   saveProjectLocally,
   setActiveProjectIdInLocalStorage,
   type LocalProjectSummary,
-  type LocalSnapshot,
+  type LocalSnapshotMeta,
   type SaveStatus
 } from "../project-storage.js"
 import {
@@ -428,8 +429,8 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
   const [isDirty, setIsDirty] = useState(false)
   const [past, setPast] = useState<ProjectV1[]>([])
   const [future, setFuture] = useState<ProjectV1[]>([])
-  const [snapshots, setSnapshots] = useState<LocalSnapshot[]>(() =>
-    loadSnapshotsFromLocalStorage(initialState.activeProjectId, LOCAL_SCOPE_USER_ID)
+  const [snapshots, setSnapshots] = useState<LocalSnapshotMeta[]>(() =>
+    loadSnapshotMetadata(initialState.activeProjectId, LOCAL_SCOPE_USER_ID)
   )
   const [startedAtMs] = useState<number>(() => Date.now())
   const pressedKeysRef = useRef<Set<string>>(new Set())
@@ -479,7 +480,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
     setFuture([])
     setIsDirty(false)
     setSaveStatus("saved")
-    setSnapshots(loadSnapshotsFromLocalStorage(projectId, resolveScopeUserId()))
+    setSnapshots(loadSnapshotMetadata(projectId, resolveScopeUserId()))
     if (nextSection) {
       setActiveSection(nextSection)
     }
@@ -519,11 +520,13 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
         targetScopeUserId
       )
 
-      const sourceSnapshots = loadSnapshotsFromLocalStorage(sourceSummary.projectId, sourceScopeUserId)
+      const sourceSnapshots = loadSnapshotMetadata(sourceSummary.projectId, sourceScopeUserId)
       for (const sourceSnapshot of [...sourceSnapshots].reverse()) {
         try {
-          const parsedSnapshotProject = parseProjectV1(sourceSnapshot.projectSource)
-          saveCheckpointSnapshot(parsedSnapshotProject, sourceSnapshot.label, sourceSummary.projectId, targetScopeUserId)
+          const snapshotProject = loadSnapshotProject(sourceSnapshot.id, sourceSummary.projectId, sourceScopeUserId)
+          if (snapshotProject) {
+            saveCheckpointSnapshot(snapshotProject, sourceSnapshot.label, sourceSummary.projectId, targetScopeUserId)
+          }
         } catch {
           // Ignore malformed snapshots.
         }
@@ -536,7 +539,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
   const enqueueProjectSync = (source: ProjectV1, updatedAtIso?: string): void => {
     const scopeUserId = resolveScopeUserId()
     const projectId = source.metadata.id || activeProjectId
-    const projectSource = serializeProjectV1(source)
+    const projectSource = cachedSerializeProjectV1(source)
     enqueueProjectUpsert(scopeUserId, {
       projectId,
       name: source.metadata.name,
@@ -668,7 +671,9 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
     setProject(next)
     setIsDirty(true)
     if (checkpointLabel) {
-      setTimeout(() => {
+      const scheduleIdle =
+        window.requestIdleCallback ?? ((cb: () => void) => setTimeout(cb, 0))
+      scheduleIdle(() => {
         try {
           setSnapshots(
             saveCheckpointSnapshot(next, checkpointLabel, activeProjectId, resolveScopeUserId())
@@ -676,7 +681,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
         } catch {
           // localStorage may be full or unavailable — skip snapshot silently
         }
-      }, 0)
+      })
     }
   }
 
@@ -815,7 +820,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
           // Same project: update data without resetting UI state (active selections, undo/redo)
           const normalized = ensureProjectHasRoom(nextProject)
           setProject(normalized.project)
-          setSnapshots(loadSnapshotsFromLocalStorage(nextActiveProjectId, resolveScopeUserId()))
+          setSnapshots(loadSnapshotMetadata(nextActiveProjectId, resolveScopeUserId()))
           setIsDirty(false)
           setSaveStatus("saved")
         } else {
