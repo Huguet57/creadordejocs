@@ -2,6 +2,7 @@ import {
   Plus,
   X
 } from "lucide-react"
+import { t } from "@/i18n/index.js"
 import {
   ACTION_CATEGORIES,
   ACTION_DISPLAY_NAMES,
@@ -38,21 +39,21 @@ export function ActionSelectorPanel({
 
   const renderedCategories: { id: string; label: string; types: ObjectActionType[] }[] = [
     ...baseCategories,
-    ...(visibleListActions.length > 0 ? [{ id: "lists", label: "Llistes", types: visibleListActions }] : []),
-    ...(visibleMapActions.length > 0 ? [{ id: "maps", label: "Mapes", types: visibleMapActions }] : [])
+    ...(visibleListActions.length > 0 ? [{ id: "lists", label: t("actionCategoryLists"), types: visibleListActions }] : []),
+    ...(visibleMapActions.length > 0 ? [{ id: "maps", label: t("actionCategoryMaps"), types: visibleMapActions }] : [])
   ]
 
   return (
     <div className={`${classNamePrefix}-panel flex flex-1 flex-col overflow-hidden bg-slate-50/50`}>
       <div className={`${classNamePrefix}-panel-header flex items-center justify-between border-b border-slate-200 px-4 py-2`}>
         <p className={`${classNamePrefix}-panel-title text-[10px] font-semibold uppercase tracking-wider text-slate-500`}>
-          Afegir acció
+          {t("actionSelectorTitle")}
         </p>
         <button
           type="button"
           className={`${classNamePrefix}-close inline-flex h-6 w-6 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700`}
           onClick={onClose}
-          title="Cancel"
+          title={t("actionSelectorCancel")}
           aria-label="Cancel add action"
         >
           <X className="h-3.5 w-3.5" />

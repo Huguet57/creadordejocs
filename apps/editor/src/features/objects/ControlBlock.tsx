@@ -1,4 +1,5 @@
 import { Plus, Trash, X, GitBranch, RotateCcw, List, Map } from "lucide-react"
+import { t } from "@/i18n/index.js"
 import { useEffect, useRef, useState } from "react"
 import { useContextMenuPosition } from "../../hooks/use-context-menu-position.js"
 import { Button } from "../../components/ui/button.js"
@@ -99,10 +100,10 @@ function getBlockColor(type: ObjectControlBlockItem["type"]): { bg: string; bord
 }
 
 function getBlockLabel(type: ObjectControlBlockItem["type"]): string {
-  if (type === "if") return "IF"
-  if (type === "repeat") return "REPEAT"
-  if (type === "forEachList") return "EACH LLISTA"
-  if (type === "forEachMap") return "EACH MAPA"
+  if (type === "if") return t("controlBlockIf")
+  if (type === "repeat") return t("controlBlockRepeat")
+  if (type === "forEachList") return t("controlBlockEachList")
+  if (type === "forEachMap") return t("controlBlockEachMap")
   return type
 }
 
@@ -524,7 +525,7 @@ export function ControlBlock({
                 : fallbackComparisonCondition
               onUpdateIfCondition(item.id, { logic: "AND", conditions: [currentPrimaryCondition, secondaryCondition] })
             }}
-            title="Afegir condició AND/OR"
+            title={t("controlBlockAddCondition")}
           >
             <Plus className="h-3.5 w-3.5" />
           </button>
@@ -560,7 +561,7 @@ export function ControlBlock({
                   nextConditions.splice(conditionIndex + 1, 0, newCondition)
                   onUpdateIfCondition(item.id, { ...compoundCondition, conditions: nextConditions })
                 }}
-                title="Afegir condició"
+                title={t("controlBlockAddConditionSimple")}
               >
                 <Plus className="h-3.5 w-3.5" />
               </button>
@@ -575,7 +576,7 @@ export function ControlBlock({
                     onUpdateIfCondition(item.id, { ...compoundCondition, conditions: nextConditions })
                   }
                 }}
-                title="Treure condició"
+                title={t("controlBlockRemoveCondition")}
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -766,7 +767,7 @@ export function ControlBlock({
                 type="button"
                 className="control-block-else-close h-5 w-5 flex items-center justify-center rounded text-slate-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
                 onClick={() => setShowElseManually(false)}
-                title="Amagar else"
+                title={t("controlBlockHideElse")}
               >
                 <X className="h-3 w-3" />
               </button>
@@ -788,7 +789,7 @@ export function ControlBlock({
                 onDropOnAction({ targetIfBlockId: item.id, targetBranch: branch })
               }}
             >
-              <span className="text-[11px] italic text-slate-300">Cap acció definida</span>
+              <span className="text-[11px] italic text-slate-300">{t("controlBlockNoActions")}</span>
             </div>
           ) : (
             renderBranchItems(branch, items)
@@ -801,7 +802,7 @@ export function ControlBlock({
             onClick={() => onOpenActionPickerForBranch(item.id, branch)}
           >
             <Plus className="h-3 w-3" />
-            Add action
+            {t("controlBlockAddAction")}
           </button>
           <div className="relative" ref={blockPickerBranch === branch ? blockPickerRef : undefined}>
             <button
@@ -810,15 +811,15 @@ export function ControlBlock({
               onClick={() => setBlockPickerBranch(blockPickerBranch === branch ? null : branch)}
             >
               <Plus className="h-3 w-3" />
-              Add block
+              {t("controlBlockAddBlock")}
             </button>
             {blockPickerBranch === branch && (
               <div className="control-block-inline-block-picker absolute top-full left-0 z-50 mt-1 min-w-[160px] rounded-lg border border-slate-200 bg-white shadow-lg">
                 {[
-                  { type: "if" as const, label: "If", icon: GitBranch },
-                  { type: "repeat" as const, label: "Repeat", icon: RotateCcw },
-                  { type: "forEachList" as const, label: "Each list", icon: List },
-                  { type: "forEachMap" as const, label: "Each map", icon: Map }
+                  { type: "if" as const, label: t("controlBlockPickerIf"), icon: GitBranch },
+                  { type: "repeat" as const, label: t("controlBlockPickerRepeat"), icon: RotateCcw },
+                  { type: "forEachList" as const, label: t("controlBlockPickerEachList"), icon: List },
+                  { type: "forEachMap" as const, label: t("controlBlockPickerEachMap"), icon: Map }
                 ].map(({ type: blockType, label, icon: Icon }) => (
                   <button
                     key={blockType}
@@ -858,7 +859,7 @@ export function ControlBlock({
           size="icon"
           className="control-block-remove h-6 w-6 text-slate-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity ml-auto shrink-0"
           onClick={() => onRemoveBlock(item.id)}
-          title="Remove block"
+          title={t("controlBlockRemoveTitle")}
         >
           <Trash className="h-3.5 w-3.5" />
         </Button>
@@ -876,7 +877,7 @@ export function ControlBlock({
             className="control-block-context-copy flex w-full items-center justify-start px-3 py-2 text-xs text-slate-700 hover:bg-slate-50"
             onClick={() => { onCopyBlock(item.id); setContextMenu(null) }}
           >
-            Copy block
+            {t("controlBlockCtxCopy")}
           </button>
           <button
             type="button"
@@ -884,14 +885,14 @@ export function ControlBlock({
             onClick={() => { onPasteAfterBlock(item.id); setContextMenu(null) }}
             disabled={!canPasteAction}
           >
-            Paste after
+            {t("controlBlockCtxPaste")}
           </button>
           <button
             type="button"
             className="control-block-context-delete flex w-full items-center justify-start border-t border-slate-100 px-3 py-2 text-xs text-red-500 hover:bg-red-50"
             onClick={() => { onRemoveBlock(item.id); setContextMenu(null) }}
           >
-            Delete block
+            {t("controlBlockCtxDelete")}
           </button>
         </div>
       )}
@@ -913,7 +914,7 @@ export function ControlBlock({
                   type="button"
                   className="control-block-else-close h-5 w-5 flex items-center justify-center rounded text-slate-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
                   onClick={() => setShowElseManually(false)}
-                  title="Amagar else"
+                  title={t("controlBlockHideElse")}
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -929,7 +930,7 @@ export function ControlBlock({
               onClick={() => setShowElseManually(true)}
             >
               <Plus className="h-3 w-3" />
-              Afegir else
+              {t("controlBlockAddElse")}
             </button>
           </div>
         )

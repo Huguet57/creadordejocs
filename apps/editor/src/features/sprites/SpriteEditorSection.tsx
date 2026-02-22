@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react"
+import { t } from "@/i18n/index.js"
 import type { EditorController } from "../editor-state/use-editor-controller.js"
 import { buildSpriteAssignedObjectNamesIndex } from "../editor-state/use-editor-controller.js"
 import { Button } from "../../components/ui/button.js"
@@ -164,7 +165,7 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
     const assignedObjectNames = spriteAssignedObjectNamesIndex[spriteId]
     if (assignedObjectNames && assignedObjectNames.length > 0) {
       window.alert(
-        `No es pot eliminar aquest sprite perquè està sent utilitzat per: ${assignedObjectNames.join(", ")}`
+        t("spriteDeleteBlockedByObjects", { objects: assignedObjectNames.join(", ") })
       )
       return false
     }
@@ -585,11 +586,11 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
                     onChange={(event) => setShowGrid(event.target.checked)}
                     className="h-3.5 w-3.5 rounded border-slate-300"
                   />
-                  Grid
+                  {t("spriteEditorGrid")}
                 </label>
 
                 <label className="mvp16-sprite-zoom flex items-center gap-2 text-xs text-slate-600">
-                  Zoom
+                  {t("spriteEditorZoom")}
                   <input
                     data-testid="sprite-zoom-slider"
                     type="range"
@@ -613,7 +614,7 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
                     onClick={handleFitZoom}
                     disabled={!canvasViewportElement}
                   >
-                    Fit
+                    {t("spriteEditorFit")}
                   </Button>
                   <SpriteImportButton
                     isImporting={spriteImport.isImporting}
@@ -681,7 +682,7 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
           </div>
         ) : (
           <div className="flex flex-1 items-center justify-center bg-slate-50 p-4 text-center text-sm text-slate-400">
-            Select a sprite to start editing
+            {t("spriteEditorSelectToStart")}
           </div>
         )}
       </div>

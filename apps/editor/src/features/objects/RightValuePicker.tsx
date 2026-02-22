@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
+import { t } from "@/i18n/index.js"
 import { Globe, Box, ChevronDown, Hash, Dices, Crosshair } from "lucide-react"
 import type { ValueExpression } from "@creadordejocs/project-format"
 import type { VariableOption, ObjectVariableOption } from "./VariablePicker.js"
@@ -232,7 +233,7 @@ export function RightValuePicker({
     }
     if (value.source === "random") {
       const rangeText = `${value.min}↔${value.max}`
-      return value.step === 1 ? rangeText : `${rangeText}·pas${value.step}`
+      return value.step === 1 ? rangeText : `${rangeText}${t("rightValueRandomStep")}${value.step}`
     }
     if (value.source === "mouseAttribute") {
       return `mouse.${value.attribute}`

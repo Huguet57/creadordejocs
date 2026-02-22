@@ -1,5 +1,6 @@
 import { Download, FileUp, FilePlus2, Pencil, Trash2, ChevronDown, FolderOpen } from "lucide-react"
 import { useRef, useState, type ChangeEvent } from "react"
+import { t } from "@/i18n/index.js"
 import { Button } from "../components/ui/button.js"
 import {
   DropdownMenu,
@@ -53,7 +54,7 @@ export function ImportDropdown({ controller }: ImportDropdownProps) {
 
   const renameActiveProject = (): void => {
     const currentName = controller.project.metadata.name
-    const nextName = window.prompt("Nom del projecte", currentName)
+    const nextName = window.prompt(t("importPromptProjectName"), currentName)
     if (nextName === null) {
       return
     }
@@ -61,7 +62,7 @@ export function ImportDropdown({ controller }: ImportDropdownProps) {
   }
 
   const deleteActiveProject = async (): Promise<void> => {
-    const confirmed = window.confirm("Vols esborrar el projecte actiu?")
+    const confirmed = window.confirm(t("importConfirmDelete"))
     if (!confirmed) {
       return
     }
@@ -78,12 +79,12 @@ export function ImportDropdown({ controller }: ImportDropdownProps) {
             size="sm"
             className="mvp19-import-dropdown-trigger h-7 gap-1 px-2 text-xs text-slate-500 hover:text-slate-800"
           >
-            Game
+            {t("importGameLabel")}
             <ChevronDown className="h-3.5 w-3.5" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="mvp19-import-dropdown-content w-72">
-          <DropdownMenuLabel>Projectes</DropdownMenuLabel>
+          <DropdownMenuLabel>{t("importProjectsLabel")}</DropdownMenuLabel>
           <div className="max-h-60 overflow-y-auto">
             <DropdownMenuRadioGroup value={controller.activeProjectId} onValueChange={(value) => void controller.switchProject(value)}>
               {controller.projects.map((projectSummary) => {
@@ -128,56 +129,56 @@ export function ImportDropdown({ controller }: ImportDropdownProps) {
 
           <DropdownMenuItem data-testid="header-create-blank-item" onSelect={() => controller.createBlankProject()}>
             <FilePlus2 className="h-4 w-4 text-slate-500" />
-            Crear joc en blanc...
+            {t("importCreateBlank")}
           </DropdownMenuItem>
 
           <DropdownMenuSub>
             <DropdownMenuSubTrigger data-testid="header-import-json-item">
               <FileUp className="h-4 w-4 text-slate-500" />
-              Importar joc (.json)
+              {t("importJsonLabel")}
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent className="w-60">
               <DropdownMenuItem data-testid="header-import-json-new-item" onSelect={() => openImportPicker("create-new")}>
-                Com a projecte nou
+                {t("importJsonAsNew")}
               </DropdownMenuItem>
               <DropdownMenuItem
                 data-testid="header-import-json-replace-item"
                 onSelect={() => openImportPicker("replace-active")}
               >
-                Sobreescriure projecte actiu
+                {t("importJsonReplace")}
               </DropdownMenuItem>
             </DropdownMenuSubContent>
           </DropdownMenuSub>
 
           <DropdownMenuItem data-testid="header-export-json-item" onSelect={exportCurrentProject}>
             <Download className="h-4 w-4 text-slate-500" />
-            Exportar joc actual
+            {t("importExport")}
           </DropdownMenuItem>
 
           {exportStatus === "error" && (
             <>
               <DropdownMenuSeparator />
               <div className="mvp19-import-dropdown-export-error px-2 py-1 text-xs text-red-600">
-                No s&apos;ha pogut exportar el joc. Torna-ho a provar.
+                {t("importErrorExport")}
               </div>
             </>
           )}
           {controller.importStatus === "importing" && (
             <>
               <DropdownMenuSeparator />
-              <div className="mvp19-import-dropdown-importing px-2 py-1 text-xs text-amber-700">Important joc...</div>
+              <div className="mvp19-import-dropdown-importing px-2 py-1 text-xs text-amber-700">{t("importStatusImporting")}</div>
             </>
           )}
           {controller.importStatus === "imported" && (
             <>
               <DropdownMenuSeparator />
-              <div className="mvp19-import-dropdown-imported px-2 py-1 text-xs text-emerald-700">Joc importat correctament.</div>
+              <div className="mvp19-import-dropdown-imported px-2 py-1 text-xs text-emerald-700">{t("importStatusImported")}</div>
             </>
           )}
           {controller.importStatus === "error" && (
             <>
               <DropdownMenuSeparator />
-              <div className="mvp19-import-dropdown-import-error px-2 py-1 text-xs text-red-600">No s&apos;ha pogut importar el fitxer.</div>
+              <div className="mvp19-import-dropdown-import-error px-2 py-1 text-xs text-red-600">{t("importErrorImport")}</div>
             </>
           )}
         </DropdownMenuContent>

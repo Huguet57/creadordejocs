@@ -1,5 +1,6 @@
 import { Copy, ExternalLink, Send, ChevronDown } from "lucide-react"
 import { useState } from "react"
+import { t } from "@/i18n/index.js"
 import { Button } from "../components/ui/button.js"
 import {
   DropdownMenu,
@@ -68,7 +69,7 @@ export function ShareDropdown({ controller }: ShareDropdownProps) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="mvp19-share-dropdown-content w-72">
-        <DropdownMenuLabel>Compartir joc</DropdownMenuLabel>
+        <DropdownMenuLabel>{t("shareDropdownLabel")}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {!isShared && (
           <DropdownMenuItem
@@ -79,7 +80,7 @@ export function ShareDropdown({ controller }: ShareDropdownProps) {
             }}
           >
             <Send className="h-4 w-4 text-slate-500" />
-            {shareStatus === "publishing" ? "Publicant..." : "Publicar joc"}
+            {shareStatus === "publishing" ? t("shareDropdownPublishing") : t("shareDropdownPublish")}
           </DropdownMenuItem>
         )}
         <DropdownMenuItem
@@ -91,7 +92,7 @@ export function ShareDropdown({ controller }: ShareDropdownProps) {
           disabled={!sharePermalink}
         >
           <Copy className="h-4 w-4 text-slate-500" />
-          {copyStatus === "copied" ? "Copiat!" : "Copiar enllaç"}
+          {copyStatus === "copied" ? t("shareDropdownCopied") : t("shareDropdownCopyLink")}
         </DropdownMenuItem>
         <DropdownMenuItem
           disabled={!sharePermalink}
@@ -102,7 +103,7 @@ export function ShareDropdown({ controller }: ShareDropdownProps) {
           }}
         >
           <ExternalLink className="h-4 w-4 text-slate-500" />
-          Anar a l&apos;enllaç
+          {t("shareDropdownOpenLink")}
         </DropdownMenuItem>
         {sharePermalink && (
           <>
@@ -114,7 +115,7 @@ export function ShareDropdown({ controller }: ShareDropdownProps) {
         )}
         {copyStatus === "error" && (
           <div className="mvp19-share-dropdown-copy-error px-2 py-1 text-xs text-red-600">
-            No s&apos;ha pogut copiar l&apos;enllaç.
+            {t("shareDropdownCopyError")}
           </div>
         )}
       </DropdownMenuContent>

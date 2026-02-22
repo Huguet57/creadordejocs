@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
+import { t } from "@/i18n/index.js"
 import { Button } from "../../../components/ui/button.js"
 import type { CropRect } from "../utils/image-to-pixels.js"
 
@@ -412,15 +413,15 @@ export function SpriteImportCropModal({
     <div className="mvp16-import-crop-overlay fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
       <div className="mvp16-import-crop-modal flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xl">
         <div className="mvp16-import-crop-header border-b border-slate-200 px-4 py-3">
-          <h2 className="text-sm font-semibold text-slate-900">Crop i ajust d&apos;importació</h2>
+          <h2 className="text-sm font-semibold text-slate-900">{t("spriteImportCropTitle")}</h2>
           <p className="text-xs text-slate-500">
-            Resultat: {targetWidth} x {targetHeight} px &mdash; Arrossega les cantonades per redimensionar, el centre per moure
+            {t("spriteImportCropInstructions", { width: targetWidth, height: targetHeight })}
           </p>
         </div>
 
         <div className="mvp16-import-crop-body flex flex-1 items-center justify-center gap-6 overflow-auto p-4">
           <div className="mvp16-import-crop-source flex flex-col items-center gap-2">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Imatge original</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">{t("spriteImportCropOriginal")}</span>
             <div
               ref={sourceBoxRef}
               className="mvp16-import-crop-source-box border border-slate-200"
@@ -463,7 +464,7 @@ export function SpriteImportCropModal({
           </div>
 
           <div className="mvp16-import-crop-preview flex flex-col items-center justify-center gap-2">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Resultat esperat</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">{t("spriteImportCropExpected")}</span>
             <div
               className="mvp16-import-crop-preview-box flex items-center justify-center overflow-hidden border border-slate-200"
               style={{ width: previewW, height: previewH }}
@@ -485,8 +486,8 @@ export function SpriteImportCropModal({
         <div className="mvp16-import-crop-footer flex items-center justify-between border-t border-slate-200 px-4 py-3">
           <Button variant="outline" size="sm" className="h-8" disabled={isInitialCrop} onClick={resetCrop}>Reset crop</Button>
           <div className="mvp16-import-crop-footer-actions flex gap-2">
-            <Button variant="outline" size="sm" className="h-8" onClick={onCancel}>Cancel·lar</Button>
-            <Button size="sm" className="h-8" onClick={() => onConfirm(crop)}>Confirmar i importar</Button>
+            <Button variant="outline" size="sm" className="h-8" onClick={onCancel}>{t("spriteImportCropCancel")}</Button>
+            <Button size="sm" className="h-8" onClick={() => onConfirm(crop)}>{t("spriteImportCropConfirm")}</Button>
           </div>
         </div>
       </div>

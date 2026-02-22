@@ -1,5 +1,6 @@
 import { Copy, Plus, Trash2 } from "lucide-react"
 import { useEffect, useRef, useState, type DragEvent, type KeyboardEvent, type MouseEvent } from "react"
+import { t } from "@/i18n/index.js"
 import { resolveFramePreviewUrlsWithCache, type FramePreviewCache } from "../utils/frame-preview-cache.js"
 
 const DND_FRAME_MIME = "application/x-sprite-frame"
@@ -164,7 +165,7 @@ export function SpriteFrameTimeline({
               onDragOver={(event) => handleFrameDragOver(event, index)}
               onDrop={handleFrameDrop}
               onDragEnd={handleFrameDragEnd}
-              title={`Fotograma ${index + 1}`}
+              title={t("spriteFrameLabel", { index: index + 1 })}
             >
               {previewUrl ? (
                 <img
@@ -185,7 +186,7 @@ export function SpriteFrameTimeline({
                     event.stopPropagation()
                     onDuplicateFrame(frame.id)
                   }}
-                  title="Duplica fotograma"
+                  title={t("spriteFrameDuplicate")}
                 >
                   <Copy className="h-2.5 w-2.5" />
                 </button>
@@ -199,7 +200,7 @@ export function SpriteFrameTimeline({
                     event.stopPropagation()
                     onDeleteFrame(frame.id)
                   }}
-                  title="Elimina fotograma"
+                  title={t("spriteFrameDelete")}
                 >
                   <Trash2 className="h-2.5 w-2.5" />
                 </button>
@@ -215,7 +216,7 @@ export function SpriteFrameTimeline({
         type="button"
         className="mvp16-sprite-frame-add flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-md border-2 border-dashed border-slate-300 text-slate-400 transition-colors hover:border-indigo-400 hover:text-indigo-500"
         onClick={onAddFrame}
-        title="Afegeix fotograma"
+        title={t("spriteFrameAdd")}
       >
         <Plus className="h-4 w-4" />
       </button>

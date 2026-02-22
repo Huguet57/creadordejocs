@@ -1,6 +1,7 @@
 import { useMemo } from "react"
 import { Bug } from "lucide-react"
 import type { ProjectV1 } from "@creadordejocs/project-format"
+import { t } from "@/i18n/index.js"
 import type { RuntimeState } from "../editor-state/runtime.js"
 
 type InstanceDebugPanelProps = {
@@ -74,7 +75,7 @@ export function InstanceDebugPanel({
   return (
     <div className="mvp-run-debug space-y-2">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Debug</p>
+        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{t("debugLabel")}</p>
         <button
           type="button"
           className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors ${
@@ -83,7 +84,7 @@ export function InstanceDebugPanel({
               : "bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-500"
           }`}
           onClick={() => onDebugEnabledChange(!debugEnabled)}
-          title={debugEnabled ? "Desactiva debug" : "Activa debug"}
+          title={debugEnabled ? t("debugDisableTitle") : t("debugEnableTitle")}
         >
           <Bug className="h-3 w-3" />
           {debugEnabled ? "ON" : "OFF"}
@@ -96,7 +97,7 @@ export function InstanceDebugPanel({
             value={selectedInstanceId ?? ""}
             onChange={(e) => onSelectedInstanceIdChange(e.target.value || null)}
           >
-            <option value="">-- Cap --</option>
+            <option value="">{t("debugSelectNone")}</option>
             {instanceSelectorOptions.map((group) => (
               <optgroup key={group.objectId} label={group.objectName}>
                 {group.instances.map((entry) => (
@@ -110,7 +111,7 @@ export function InstanceDebugPanel({
           {selectedInstance && selectedInstanceObject && (
             <div className="mvp-run-debug-instance space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-500">Objecte</span>
+                <span className="text-xs text-slate-500">{t("debugObjectLabel")}</span>
                 <span className="text-xs font-medium text-slate-800">{selectedInstanceObject.name}</span>
               </div>
               <div className="flex items-center justify-between">
@@ -123,7 +124,7 @@ export function InstanceDebugPanel({
               </div>
               {selectedInstanceVariableEntries.length > 0 && (
                 <>
-                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider pt-1">Variables</p>
+                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider pt-1">{t("debugVariablesLabel")}</p>
                   {selectedInstanceVariableEntries.map((entry) => (
                     <div key={entry.id} className="mvp-run-debug-var-row flex items-center justify-between">
                       <span className="text-xs text-slate-500">{entry.name}</span>

@@ -1,4 +1,5 @@
 import type { ChangeEvent } from "react"
+import { t } from "@/i18n/index.js"
 import type { SpriteEditorTool, SpriteToolOptionsMap, SpriteToolOptionsState } from "../../types/sprite-editor.js"
 import { normalizeHexRgba, TRANSPARENT_RGBA } from "../../utils/pixel-rgba.js"
 
@@ -32,7 +33,7 @@ function ColorSection({ normalizedActive, spriteColors, onColorChange }: ColorSe
   return (
     <>
       <div className="mvp16-sprite-tool-options-color flex flex-col gap-1.5">
-        <p className="text-[10px] font-medium text-slate-600">Color</p>
+        <p className="text-[10px] font-medium text-slate-600">{t("spriteToolColor")}</p>
         <div className="flex items-center gap-2">
           <div
             className="mvp16-sprite-tool-options-color-preview h-7 w-7 shrink-0 rounded border border-slate-300"
@@ -48,7 +49,7 @@ function ColorSection({ normalizedActive, spriteColors, onColorChange }: ColorSe
       </div>
 
       <div className="mvp16-sprite-tool-options-palette flex flex-col gap-1.5">
-        <p className="text-[10px] font-medium text-slate-600">Paleta</p>
+        <p className="text-[10px] font-medium text-slate-600">{t("spriteToolPalette")}</p>
         <div className="mvp16-sprite-tool-options-palette-grid grid grid-cols-5 gap-0.5">
           <button
             type="button"
@@ -61,7 +62,7 @@ function ColorSection({ normalizedActive, spriteColors, onColorChange }: ColorSe
               backgroundPosition: "0 0, 3px 3px"
             }}
             onClick={() => onColorChange(TRANSPARENT_RGBA)}
-            title="Transparent"
+            title={t("spriteToolTransparent")}
           />
           {DEFAULT_PALETTE.map((color) => (
             <button
@@ -80,7 +81,7 @@ function ColorSection({ normalizedActive, spriteColors, onColorChange }: ColorSe
 
       {spriteColors.length > 0 && (
         <div className="mvp16-sprite-tool-options-image-colors flex flex-col gap-1.5">
-          <p className="text-[10px] font-medium text-slate-600">De la imatge</p>
+          <p className="text-[10px] font-medium text-slate-600">{t("spriteToolFromImage")}</p>
           <div className="mvp16-sprite-tool-options-image-colors-grid grid grid-cols-5 gap-0.5">
             {spriteColors.map((color) => (
               <button
@@ -102,7 +103,7 @@ function ColorSection({ normalizedActive, spriteColors, onColorChange }: ColorSe
 }
 
 function EmptyOptions() {
-  return <p className="text-[10px] text-slate-500">Aquesta eina no té opcions.</p>
+  return <p className="text-[10px] text-slate-500">{t("spriteToolNoOptions")}</p>
 }
 
 export function ToolOptionsPanel({
@@ -137,7 +138,7 @@ export function ToolOptionsPanel({
     return (
       <div className="mvp16-sprite-tool-options-wand flex flex-col gap-2">
         <label className="mvp16-sprite-tool-options-tolerance flex flex-col gap-1 text-[10px] text-slate-600">
-          <span className="font-medium">Tolerància: {toolOptions.magic_wand.tolerance}</span>
+          <span className="font-medium">{t("spriteToolToleranceLabel", { value: toolOptions.magic_wand.tolerance })}</span>
           <input
             type="range"
             min={0}
@@ -153,7 +154,7 @@ export function ToolOptionsPanel({
   if (activeTool === "color_picker") {
     return (
       <div className="mvp16-sprite-tool-options-picker flex flex-col gap-2">
-        <p className="text-[10px] font-medium text-slate-600">Hover preview</p>
+        <p className="text-[10px] font-medium text-slate-600">{t("spriteToolHoverPreview")}</p>
         <div className="mvp16-sprite-tool-options-picker-preview flex items-center gap-2 rounded border border-slate-200 bg-white p-2">
           <div
             className="mvp16-sprite-tool-options-picker-preview-swatch h-7 w-7 shrink-0 rounded border border-slate-300"
@@ -172,7 +173,7 @@ export function ToolOptionsPanel({
   if (activeTool === "eraser") {
     return (
       <div className="mvp16-sprite-tool-options-eraser flex flex-col gap-1.5">
-        <span className="text-[10px] font-medium text-slate-600">Mida</span>
+        <span className="text-[10px] font-medium text-slate-600">{t("spriteToolEraserSize")}</span>
         <div className="grid grid-cols-2 gap-1">
           {[1, 2, 3, 4, 5].map((radius) => {
             const size = radius * 2 - 1

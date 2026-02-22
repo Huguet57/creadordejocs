@@ -1,49 +1,50 @@
+import { t } from "@/i18n/index.js"
 import { createCoinDashTemplateProject } from "./coin-dash-template.js"
 import { createCursorCourierTemplateProject } from "./cursor-courier-template.js"
 import { createLaneCrosserTemplateProject } from "./lane-crosser-template.js"
 import { createPokemonExplorerTemplateProject } from "./pokemon-explorer-template.js"
 import { createSpaceShooterTemplateProject } from "./space-shooter-template.js"
 import { createSwitchVaultTemplateProject } from "./switch-vault-template.js"
-import type { GameTemplateId, TemplateProjectResult } from "./types.js"
+import type { GameTemplateDefinition, GameTemplateId, TemplateProjectResult } from "./types.js"
 
-export const GAME_TEMPLATES = [
+export const GAME_TEMPLATES: readonly GameTemplateDefinition[] = [
   {
     id: "coin-dash",
     name: "Coin Dash",
-    description: "Collect the coin and avoid enemies. Great intro to score and collisions.",
+    description: t("templateCoinDashDesc"),
     difficulty: "starter"
   },
   {
     id: "space-shooter",
     name: "Space Shooter",
-    description: "Move your ship and shoot asteroids with Space. Arcade action basics.",
+    description: t("templateSpaceShooterDesc"),
     difficulty: "starter"
   },
   {
     id: "lane-crosser",
     name: "Lane Crosser",
-    description: "Cross traffic lanes and reach the goal zone safely.",
+    description: t("templateLaneCrosserDesc"),
     difficulty: "starter"
   },
   {
     id: "switch-vault",
     name: "Switch Vault",
-    description: "Toggle the control switch and travel to the vault only when it is unlocked.",
+    description: t("templateSwitchVaultDesc"),
     difficulty: "intermediate"
   },
   {
     id: "cursor-courier",
     name: "Cursor Courier",
-    description: "Guide deliveries with mouse movement and hold-to-boost bursts.",
+    description: t("templateCursorCourierDesc"),
     difficulty: "intermediate"
   },
   {
     id: "pokemon-explorer",
     name: "Pokémon Explorer",
-    description: "Explora un món amb múltiples sales, herbes aleatòries i batalles. Projecte avançat complet.",
+    description: t("templatePokemonExplorerDesc"),
     difficulty: "advanced"
   }
-] as const
+]
 
 export async function createTemplateProject(templateId: GameTemplateId): Promise<TemplateProjectResult> {
   if (templateId === "coin-dash") {

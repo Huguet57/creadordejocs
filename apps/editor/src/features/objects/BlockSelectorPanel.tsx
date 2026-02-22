@@ -5,6 +5,7 @@ import {
   Map,
   X
 } from "lucide-react"
+import { t } from "@/i18n/index.js"
 
 export type ControlBlockType = "if" | "repeat" | "forEachList" | "forEachMap"
 
@@ -14,10 +15,10 @@ type BlockSelectorPanelProps = {
 }
 
 const BLOCK_OPTIONS: { type: ControlBlockType; label: string; icon: typeof GitBranch }[] = [
-  { type: "if", label: "If / Condició", icon: GitBranch },
-  { type: "repeat", label: "Repetir", icon: RotateCcw },
-  { type: "forEachList", label: "Per cada (llista)", icon: List },
-  { type: "forEachMap", label: "Per cada (mapa)", icon: Map }
+  { type: "if", label: t("blockOptionIf"), icon: GitBranch },
+  { type: "repeat", label: t("blockOptionRepeat"), icon: RotateCcw },
+  { type: "forEachList", label: t("blockOptionForEachList"), icon: List },
+  { type: "forEachMap", label: t("blockOptionForEachMap"), icon: Map }
 ]
 
 export function BlockSelectorPanel({ onSelectBlock, onClose }: BlockSelectorPanelProps) {
@@ -25,13 +26,13 @@ export function BlockSelectorPanel({ onSelectBlock, onClose }: BlockSelectorPane
     <div className="block-selector-panel flex flex-1 flex-col overflow-hidden bg-slate-50/50">
       <div className="block-selector-panel-header flex items-center justify-between border-b border-slate-200 px-4 py-2">
         <p className="block-selector-panel-title text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-          Afegir bloc
+          {t("blockSelectorTitle")}
         </p>
         <button
           type="button"
           className="block-selector-panel-close inline-flex h-6 w-6 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
           onClick={onClose}
-          title="Cancel"
+          title={t("blockSelectorCancel")}
           aria-label="Cancel add block"
         >
           <X className="h-3.5 w-3.5" />

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import type { ProjectV1 } from "@creadordejocs/project-format"
+import { t } from "@/i18n/index.js"
 import { RunSection } from "../run/RunSection.js"
 import { loadPublishedProject } from "../share/share-api-client.js"
 import { usePlayRuntimeController } from "./use-play-runtime-controller.js"
@@ -31,7 +32,7 @@ export function PlayPage({ shareId }: PlayPageProps) {
         }
       } catch (error: unknown) {
         if (!cancelled) {
-          const message = error instanceof Error ? error.message : "Could not load shared game."
+          const message = error instanceof Error ? error.message : t("playErrorDefault")
           setState({ status: "error", message })
         }
       }
@@ -43,7 +44,7 @@ export function PlayPage({ shareId }: PlayPageProps) {
   if (state.status === "loading") {
     return (
       <main className="mvp-play-page flex min-h-screen items-center justify-center bg-slate-50">
-        <p className="mvp-play-loading text-sm text-slate-500">Carregant joc compartit...</p>
+        <p className="mvp-play-loading text-sm text-slate-500">{t("playLoading")}</p>
       </main>
     )
   }
@@ -53,7 +54,7 @@ export function PlayPage({ shareId }: PlayPageProps) {
       <main className="mvp-play-page flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50">
         <p className="mvp-play-error text-sm text-red-600">{state.message}</p>
         <a href="/" className="mvp-play-back-link text-sm text-indigo-600 underline hover:text-indigo-800">
-          Tornar a l&apos;inici
+          {t("playBackToHome")}
         </a>
       </main>
     )
@@ -68,7 +69,7 @@ export function PlayPage({ shareId }: PlayPageProps) {
       <PlayRuntime initialProject={state.project} />
 
       <p className="mvp-play-cta text-sm text-slate-500">
-        Crea el teu propi joc amb{" "}
+        {t("playCtaPrefix")}{" "}
         <a href="https://creadordejocs.cat/editor" className="mvp-play-cta-link font-medium text-indigo-600 underline hover:text-indigo-800">
           creadordejocs.cat
         </a>

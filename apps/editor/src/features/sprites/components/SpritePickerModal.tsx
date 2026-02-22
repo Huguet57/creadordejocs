@@ -1,4 +1,5 @@
 import { Box, ChevronRight, Image as ImageIcon, X } from "lucide-react"
+import { t } from "@/i18n/index.js"
 import { useEffect, useMemo, useState } from "react"
 import { Button } from "../../../components/ui/button.js"
 import { normalizePixelGrid } from "../utils/sprite-grid.js"
@@ -197,14 +198,14 @@ export function SpritePickerModal({
           <p className="truncate text-[12px] font-medium">{spriteEntry.name}</p>
           <p className={`truncate text-[9px] ${rowIsDisabled ? "text-slate-400" : "text-slate-400"}`}>
             {spriteEntry.width} x {spriteEntry.height}
-            {spriteEntry.isEmpty && <span className="ml-1 text-amber-500">· buit</span>}
+            {spriteEntry.isEmpty && <span className="ml-1 text-amber-500">{t("spritePickerEmpty")}</span>}
             {spriteEntry.objectNames.length > 0 && (
               <span className="ml-1 text-slate-400">
                 · {spriteEntry.objectNames[0]}
-                {spriteEntry.objectNames.length > 1 && ` +${spriteEntry.objectNames.length - 1} més`}
+                {spriteEntry.objectNames.length > 1 && ` ${t("spritePickerMore", { count: spriteEntry.objectNames.length - 1 })}`}
               </span>
             )}
-            {rowIsDisabled && <span className="ml-1 text-amber-500">· no compatible</span>}
+            {rowIsDisabled && <span className="ml-1 text-amber-500">{t("spritePickerIncompatible")}</span>}
           </p>
         </div>
       </button>

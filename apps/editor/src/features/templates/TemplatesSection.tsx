@@ -1,4 +1,5 @@
 import { Coins, Crosshair, Map, MousePointer2, Route, Waypoints } from "lucide-react"
+import { t } from "@/i18n/index.js"
 import { Button } from "../../components/ui/button.js"
 import {
   GAME_TEMPLATES,
@@ -56,7 +57,7 @@ function renderTemplateCards(controller: EditorController, entries: TemplateCard
               className="w-full text-xs"
               onClick={() => void controller.loadTemplate(template.id)}
             >
-              Load Template
+              {t("templatesLoadButton")}
             </Button>
           </div>
         )
@@ -69,25 +70,25 @@ export function TemplatesSection({ controller }: TemplatesSectionProps) {
   return (
     <div className="mvp15-templates-panel flex h-full flex-col gap-4 overflow-y-auto rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
       <div>
-        <h2 className="text-sm font-semibold text-slate-800">Templates</h2>
-        <p className="mt-1 text-xs text-slate-400">Load a pre-built game to learn or remix.</p>
+        <h2 className="text-sm font-semibold text-slate-800">{t("templatesTitle")}</h2>
+        <p className="mt-1 text-xs text-slate-400">{t("templatesSubtitle")}</p>
       </div>
 
       <div className="mvp15-template-section flex flex-col gap-3">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Templates inicials</h3>
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t("templatesStarter")}</h3>
         {renderTemplateCards(controller, starterTemplates)}
       </div>
 
       <div className="mvp15-template-section mvp15-template-section-intermediate flex flex-col gap-3">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-          Templates de dificultat intermitja
+          {t("templatesIntermediate")}
         </h3>
         {renderTemplateCards(controller, intermediateTemplates)}
       </div>
 
       <div className="mvp15-template-section mvp15-template-section-advanced flex flex-col gap-3">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-          Templates avançades
+          {t("templatesAdvanced")}
         </h3>
         {renderTemplateCards(controller, advancedTemplates)}
       </div>

@@ -4,6 +4,7 @@ import { resolve } from "node:path"
 export default defineConfig({
   resolve: {
     alias: {
+      "@/": resolve(__dirname, "apps/editor/src") + "/",
       "@creadordejocs/engine-core": resolve(__dirname, "packages/engine-core/src/index.ts"),
       "@creadordejocs/project-format": resolve(__dirname, "packages/project-format/src/index.ts")
     }

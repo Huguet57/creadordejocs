@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react"
+import { t } from "@/i18n/index.js"
 import {
   addObjectEvent,
   addObjectEventAction as addObjectEventActionModel,
@@ -203,7 +204,7 @@ function ensureProjectHasRoom(project: ProjectV1): { project: ProjectV1; roomId:
     return { project, roomId: firstRoom.id }
   }
 
-  return createRoom(project, "Sala principal")
+  return createRoom(project, t("controllerDefaultRoomName"))
 }
 
 export function resolveInitialSection(project: ProjectV1): EditorSection {
@@ -343,7 +344,7 @@ function createInitialEditorState(scopeUserId = LOCAL_SCOPE_USER_ID): {
   projects: LocalProjectSummary[]
 } {
   const ensured = ensureLocalProjectState(
-    () => incrementMetric(createEmptyProjectV1("Primer joc autònom"), "appStart"),
+    () => incrementMetric(createEmptyProjectV1(t("controllerDefaultProjectName")), "appStart"),
     scopeUserId
   )
   const normalized = ensureProjectHasRoom(ensured.project)
@@ -887,7 +888,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       if (user && !legacyImportPromptedRef.current && hasLegacyLocalProjects()) {
         legacyImportPromptedRef.current = true
         const shouldImportLegacy = window.confirm(
-          "S'han detectat projectes locals antics. Vols importar-los al compte actual?"
+          t("controllerConfirmLegacyImport")
         )
 
         if (shouldImportLegacy) {
@@ -2024,7 +2025,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
 
       let nextActiveProjectId = getActiveProjectIdFromLocalStorage(scopeUserId)
       if (!nextActiveProjectId) {
-        const blank = ensureProjectHasRoom(createEmptyProjectV1("Nou joc"))
+        const blank = ensureProjectHasRoom(createEmptyProjectV1(t("controllerBlankProjectName")))
         const created = createLocalProject(blank.project, scopeUserId)
         nextActiveProjectId = created.projectId
       }
@@ -2081,7 +2082,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
     },
     async importProjectFromJsonFile(file: File, mode: "create-new" | "replace-active" = "replace-active") {
       if (mode === "replace-active") {
-        const confirmed = window.confirm("Aixo sobreescriura el joc actual. Vols continuar?")
+        const confirmed = window.confirm(t("controllerConfirmOverwrite"))
         if (!confirmed) {
           setImportStatus("idle")
           return false
@@ -2138,7 +2139,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       setImportStatus("idle")
     },
     createBlankProject() {
-      const blankProject = ensureProjectHasRoom(createEmptyProjectV1("Nou joc")).project
+      const blankProject = ensureProjectHasRoom(createEmptyProjectV1(t("controllerBlankProjectName"))).project
       const scopeUserId = resolveScopeUserId()
       const summary = createLocalProject(blankProject, scopeUserId)
       setActiveProjectIdInLocalStorage(summary.projectId, scopeUserId)

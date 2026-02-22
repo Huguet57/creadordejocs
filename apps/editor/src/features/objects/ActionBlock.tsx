@@ -9,6 +9,7 @@ import {
   X,
   GripVertical
 } from "lucide-react"
+import { t } from "@/i18n/index.js"
 import React, { useEffect, useRef, useState } from "react"
 import { useContextMenuPosition } from "../../hooks/use-context-menu-position.js"
 import { Button } from "../../components/ui/button.js"
@@ -84,10 +85,10 @@ function asLiteralValue(value: string | number | boolean): ValueExpression {
 }
 
 const GO_TO_ROOM_TRANSITION_LABELS: Record<GoToRoomTransition, string> = {
-  none: "None",
-  fade: "Fade",
-  slideLeft: "Slide Left",
-  slideRight: "Slide Right"
+  none: t("actionBlockTransitionNone"),
+  fade: t("actionBlockTransitionFade"),
+  slideLeft: t("actionBlockTransitionSlideLeft"),
+  slideRight: t("actionBlockTransitionSlideRight")
 }
 
 const GO_TO_ROOM_TRANSITION_ICONS = {
@@ -339,7 +340,7 @@ export function ActionBlock({
         type="button"
         draggable
         className="mvp18-action-drag-handle flex h-6 w-6 shrink-0 items-center justify-center rounded text-slate-300 hover:bg-slate-200 hover:text-slate-600 active:cursor-grabbing cursor-grab"
-        title="Reorder action"
+        title={t("actionBlockReorderTitle")}
         onDragStart={(event) => {
           event.dataTransfer.setData("text/plain", action.id)
           event.dataTransfer.effectAllowed = "move"
@@ -465,8 +466,8 @@ export function ActionBlock({
                 })
               }
             >
-              <option value="object">Objecte</option>
-              <option value="mouse">Ratoli</option>
+              <option value="object">{t("actionBlockMoveTowardObject")}</option>
+              <option value="mouse">{t("actionBlockMoveTowardMouse")}</option>
             </select>
             {action.targetType === "object" && (
               <select
@@ -475,7 +476,7 @@ export function ActionBlock({
                 onChange={(event) => onUpdate({ ...action, targetObjectId: event.target.value || null })}
               >
                 {selectableObjects.length === 0 ? (
-                  <option value="">No objectes</option>
+                  <option value="">{t("actionBlockNoObjects")}</option>
                 ) : (
                   selectableObjects.map((obj) => (
                     <option key={obj.id} value={obj.id}>
@@ -516,8 +517,8 @@ export function ActionBlock({
               value={action.positionMode ?? "relative"}
               onChange={(e) => onUpdate({ ...action, positionMode: e.target.value as "absolute" | "relative" })}
             >
-              <option value="absolute">Absolut</option>
-              <option value="relative">Relatiu</option>
+              <option value="absolute">{t("actionBlockSpawnAbsolute")}</option>
+              <option value="relative">{t("actionBlockSpawnRelative")}</option>
             </select>
             <div className="flex items-center gap-1">
               <label className="text-[10px] font-medium opacity-60">X</label>
@@ -779,13 +780,13 @@ export function ActionBlock({
                 aria-haspopup="listbox"
               >
                 <Map className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                <span className="truncate">{selectedRoom?.name ?? "Sala no disponible"}</span>
+                <span className="truncate">{selectedRoom?.name ?? t("actionBlockRoomUnavailable")}</span>
                 <ChevronDown className="ml-auto h-3 w-3 shrink-0 text-slate-400" />
               </button>
               {isRoomSelectorOpen && (
                 <div className="action-block-room-select-menu absolute left-0 top-[calc(100%+4px)] z-30 min-w-[190px] overflow-hidden rounded border border-slate-200 bg-white py-1 shadow-lg">
                   {rooms.length === 0 ? (
-                    <p className="px-3 py-2 text-xs text-slate-400">Cap sala disponible</p>
+                    <p className="px-3 py-2 text-xs text-slate-400">{t("actionBlockNoRooms")}</p>
                   ) : (
                     rooms.map((room) => {
                       const selected = room.id === action.roomId
@@ -859,7 +860,7 @@ export function ActionBlock({
           </div>
         )}
 
-        {action.type === "restartRoom" && <span className="text-[10px] font-medium text-slate-500">Sala actual</span>}
+        {action.type === "restartRoom" && <span className="text-[10px] font-medium text-slate-500">{t("actionBlockRestartRoom")}</span>}
 
         {action.type === "wait" && (
           <div className="action-block-wait-field flex items-center gap-1">
@@ -1320,7 +1321,7 @@ export function ActionBlock({
         {action.type === "emitCustomEvent" && (
           <>
             <div className="flex items-center gap-1">
-              <label className="text-[10px] font-medium opacity-60">Nom</label>
+              <label className="text-[10px] font-medium opacity-60">{t("actionBlockEmitNameLabel")}</label>
               <input
                 type="text"
                 className="h-7 min-w-[100px] rounded border border-slate-300 bg-white/50 px-2 text-xs focus:outline-none"
@@ -1330,7 +1331,7 @@ export function ActionBlock({
               />
             </div>
             <div className="flex items-center gap-1">
-              <label className="text-[10px] font-medium opacity-60">Tipus</label>
+              <label className="text-[10px] font-medium opacity-60">{t("actionBlockEmitTypeLabel")}</label>
               <select
                 className="h-7 rounded border border-slate-300 bg-white/50 px-2 text-xs"
                 value={emitPayloadType}
@@ -1446,7 +1447,7 @@ export function ActionBlock({
           size="icon"
           className="h-6 w-6 text-red-300 hover:text-red-600 hover:bg-red-50"
           onClick={onRemove}
-          title="Remove action"
+          title={t("actionBlockRemoveTitle")}
         >
           <X className="h-3.5 w-3.5" />
         </Button>
@@ -1466,7 +1467,7 @@ export function ActionBlock({
               setContextMenu(null)
             }}
           >
-            Copy action
+            {t("actionBlockCtxCopy")}
           </button>
           <button
             type="button"
@@ -1477,7 +1478,7 @@ export function ActionBlock({
             }}
             disabled={!canPaste}
           >
-            Paste after
+            {t("actionBlockCtxPaste")}
           </button>
           <button
             type="button"
@@ -1487,7 +1488,7 @@ export function ActionBlock({
               setContextMenu(null)
             }}
           >
-            Delete action
+            {t("actionBlockCtxDelete")}
           </button>
         </div>
       )}

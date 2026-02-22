@@ -1,4 +1,5 @@
 import { ChevronDown, ChevronLeft, ChevronRight, Copy, FolderPlus, Image, Pencil, Plus, Trash2, X } from "lucide-react"
+import { t } from "@/i18n/index.js"
 import {
   useCallback,
   useEffect,
@@ -83,7 +84,7 @@ export function SpriteListPanel({
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [isAdding, setIsAdding] = useState(false)
   const [addingInFolderId, setAddingInFolderId] = useState<string | null>(null)
-  const [newName, setNewName] = useState("Sprite nou")
+  const [newName, setNewName] = useState(t("spriteListNewSprite"))
   const [newWidth, setNewWidth] = useState(String(DEFAULT_SPRITE_DIMENSION))
   const [newHeight, setNewHeight] = useState(String(DEFAULT_SPRITE_DIMENSION))
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null)
@@ -207,7 +208,7 @@ export function SpriteListPanel({
     const newId = onDuplicateSprite(spriteId)
     if (newId && sourceSprite) {
       setRenamingSpriteId(newId)
-      setRenameValue(`${sourceSprite.name} (copy)`)
+      setRenameValue(`${sourceSprite.name} ${t("spriteListCopyNameSuffix")}`)
     }
   }
 
@@ -458,10 +459,10 @@ export function SpriteListPanel({
                     <span className="truncate text-[12px] leading-tight text-slate-600">{spriteEntry.name}</span>
                     <span className="truncate text-[9px] leading-tight text-slate-400">
                       {spriteEntry.width} x {spriteEntry.height}
-                      {spriteEntry.isEmpty && <span className="ml-1 text-amber-400">· buit</span>}
+                      {spriteEntry.isEmpty && <span className="ml-1 text-amber-400">· {t("spriteListEmpty")}</span>}
                       {spriteEntry.objectNames.length > 0 && (
                         <span className="ml-1 text-slate-400">
-                          · {spriteEntry.objectNames[0]}{spriteEntry.objectNames.length > 1 && ` +${spriteEntry.objectNames.length - 1} més`}
+                          · {spriteEntry.objectNames[0]}{spriteEntry.objectNames.length > 1 && ` ${t("spriteListMoreObjects", { count: spriteEntry.objectNames.length - 1 })}`}
                         </span>
                       )}
                     </span>
@@ -478,7 +479,7 @@ export function SpriteListPanel({
           !(isAdding && addingInFolderId === parentId) &&
           creatingFolderParentId !== parentId && (
             <p className="py-1 text-[11px] text-slate-400" style={{ paddingLeft: `${depth * 16 + 20}px` }}>
-              Carpeta buida
+              {t("spriteListEmptyFolder")}
             </p>
           )}
 
@@ -501,7 +502,7 @@ export function SpriteListPanel({
               }}
               onBlur={commitCreateFolder}
               className="mvp16-sprite-folder-create-input h-7 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
-              placeholder="New folder"
+              placeholder={t("spriteListNewFolderPlaceholder")}
             />
           </div>
         )}
@@ -521,7 +522,7 @@ export function SpriteListPanel({
                 }
               }}
               className="h-7 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
-              placeholder="Sprite nou"
+              placeholder={t("spriteListNewSprite")}
             />
             <div className="flex items-end gap-1.5">
               <input
@@ -558,7 +559,7 @@ export function SpriteListPanel({
                 className="h-7 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
                 placeholder="32"
               />
-              <Button size="sm" className="h-7 w-7 shrink-0 px-0" onClick={handleAddSprite} title="Add sprite">
+              <Button size="sm" className="h-7 w-7 shrink-0 px-0" onClick={handleAddSprite} title={t("spriteListAddSpriteTitle")}>
                 <Plus className="h-3.5 w-3.5" />
               </Button>
               <Button
@@ -572,7 +573,7 @@ export function SpriteListPanel({
                   setNewWidth("")
                   setNewHeight("")
                 }}
-                title="Cancel"
+                title={t("spriteListCancelTitle")}
               >
                 <X className="h-3.5 w-3.5" />
               </Button>
@@ -603,7 +604,7 @@ export function SpriteListPanel({
               }}
             >
               <Image className="h-3.5 w-3.5 text-slate-400" />
-              Open
+              {t("spriteListCtxOpen")}
             </button>
             <button
               type="button"
@@ -614,7 +615,7 @@ export function SpriteListPanel({
               }}
             >
               <Plus className="h-3.5 w-3.5 text-slate-400" />
-              Open in a new tab
+              {t("spriteListCtxOpenNewTab")}
             </button>
             <button
               type="button"
@@ -625,7 +626,7 @@ export function SpriteListPanel({
               }}
             >
               <Pencil className="h-3.5 w-3.5 text-slate-400" />
-              Rename
+              {t("spriteListCtxRename")}
             </button>
             <button
               type="button"
@@ -636,7 +637,7 @@ export function SpriteListPanel({
               }}
             >
               <Copy className="h-3.5 w-3.5 text-slate-400" />
-              Duplicate
+              {t("spriteListCtxDuplicate")}
             </button>
             <div className="my-1 border-t border-slate-100" />
             <button
@@ -648,7 +649,7 @@ export function SpriteListPanel({
               }}
             >
               <Trash2 className="h-3.5 w-3.5" />
-              Delete
+              {t("spriteListCtxDelete")}
             </button>
           </>
         ) : folderId ? (
@@ -666,7 +667,7 @@ export function SpriteListPanel({
               }}
             >
               <Pencil className="h-3.5 w-3.5 text-slate-400" />
-              Rename
+              {t("spriteListCtxRenameFolder")}
             </button>
             <button
               type="button"
@@ -677,7 +678,7 @@ export function SpriteListPanel({
               }}
             >
               <FolderPlus className="h-3.5 w-3.5 text-slate-400" />
-              New subfolder
+              {t("spriteListCtxNewSubfolder")}
             </button>
             <button
               type="button"
@@ -689,7 +690,7 @@ export function SpriteListPanel({
               }}
             >
               <Plus className="h-3.5 w-3.5 text-slate-400" />
-              New sprite here
+              {t("spriteListCtxNewSpriteHere")}
             </button>
             <div className="my-1 border-t border-slate-100" />
             <button
@@ -701,7 +702,7 @@ export function SpriteListPanel({
               }}
             >
               <Trash2 className="h-3.5 w-3.5" />
-              Delete folder
+              {t("spriteListCtxDeleteFolder")}
             </button>
           </>
         ) : (
@@ -715,7 +716,7 @@ export function SpriteListPanel({
               }}
             >
               <Plus className="h-3.5 w-3.5 text-slate-400" />
-              New sprite
+              {t("spriteListCtxNewSprite")}
             </button>
             <button
               type="button"
@@ -726,7 +727,7 @@ export function SpriteListPanel({
               }}
             >
               <FolderPlus className="h-3.5 w-3.5 text-slate-400" />
-              New folder
+              {t("spriteListCtxNewFolder")}
             </button>
           </>
         )}
@@ -748,7 +749,7 @@ export function SpriteListPanel({
                 type="button"
                 className="mvp16-sprite-expand-btn inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
                 onClick={() => setIsCollapsed(false)}
-                title="Expand sprite list"
+                title={t("spriteListExpandTitle")}
               >
                 <ChevronRight className="h-4 w-4" />
               </button>
@@ -759,7 +760,7 @@ export function SpriteListPanel({
                   setIsCollapsed(false)
                   startAddingSprite(null)
                 }}
-                title="Add sprite"
+                title={t("spriteListAddSpriteTitle")}
               >
                 <Plus className="h-4 w-4" />
               </button>
@@ -771,7 +772,7 @@ export function SpriteListPanel({
                   type="button"
                   className="mvp16-sprite-add-btn inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
                   onClick={() => startAddingSprite(null)}
-                  title="Add sprite"
+                  title={t("spriteListAddSpriteTitle")}
                 >
                   <Plus className="h-4 w-4" />
                 </button>
@@ -779,7 +780,7 @@ export function SpriteListPanel({
                   type="button"
                   className="mvp16-sprite-add-folder-btn inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
                   onClick={() => createFolder(null)}
-                  title="New folder"
+                  title={t("spriteListNewFolderTitle")}
                 >
                   <FolderPlus className="h-4 w-4" />
                 </button>
@@ -788,7 +789,7 @@ export function SpriteListPanel({
                 type="button"
                 className="mvp16-sprite-collapse-btn inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
                 onClick={() => setIsCollapsed(true)}
-                title="Collapse sprite list"
+                title={t("spriteListCollapseTitle")}
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
@@ -806,7 +807,7 @@ export function SpriteListPanel({
         >
           <div className="flex flex-col gap-0.5">
             {sprites.length === 0 && spriteFolders.length === 0 && (
-              <p className="px-2 py-4 text-center text-xs text-slate-400">Right-click or press + to add</p>
+              <p className="px-2 py-4 text-center text-xs text-slate-400">{t("spriteListEmptyHint")}</p>
             )}
             {renderTree(null, 0)}
           </div>

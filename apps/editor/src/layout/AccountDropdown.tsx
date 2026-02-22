@@ -1,5 +1,6 @@
 import { ChevronDown, CloudUpload, Loader2, LogIn, LogOut } from "lucide-react"
 import { useEffect, useState } from "react"
+import { t } from "@/i18n/index.js"
 import { Button } from "../components/ui/button.js"
 import {
   DropdownMenu,
@@ -20,15 +21,15 @@ function formatRelativeTime(lastSyncedAt: Date | null): string | null {
   if (!lastSyncedAt) return null
   const diffMs = Date.now() - lastSyncedAt.getTime()
   const diffSec = Math.floor(diffMs / 1_000)
-  if (diffSec < 10) return "Fa 10 segons"
-  if (diffSec < 30) return "Fa 30 segons"
-  if (diffSec < 60) return "Fa 1 minut"
+  if (diffSec < 10) return t("accountTimeAgo10s")
+  if (diffSec < 30) return t("accountTimeAgo30s")
+  if (diffSec < 60) return t("accountTimeAgo1Min")
   const diffMin = Math.floor(diffSec / 60)
-  if (diffMin < 60) return diffMin === 1 ? "Fa 1 minut" : `Fa ${diffMin} minuts`
+  if (diffMin < 60) return diffMin === 1 ? t("accountTimeAgo1Min") : t("accountTimeAgoMins", { count: diffMin })
   const diffH = Math.floor(diffMin / 60)
-  if (diffH < 24) return diffH === 1 ? "Fa 1 hora" : `Fa ${diffH} hores`
+  if (diffH < 24) return diffH === 1 ? t("accountTimeAgo1Hour") : t("accountTimeAgoHours", { count: diffH })
   const diffD = Math.floor(diffH / 24)
-  return diffD === 1 ? "Fa 1 dia" : `Fa ${diffD} dies`
+  return diffD === 1 ? t("accountTimeAgo1Day") : t("accountTimeAgoDays", { count: diffD })
 }
 
 export function AccountDropdown({ controller }: AccountDropdownProps) {
@@ -59,7 +60,7 @@ export function AccountDropdown({ controller }: AccountDropdownProps) {
       setIsAuthModalOpen(false)
       setAuthPassword("")
     } catch (error) {
-      setAuthError(error instanceof Error ? error.message : "No s'ha pogut iniciar sessió.")
+      setAuthError(error instanceof Error ? error.message : t("accountErrorSignIn"))
     } finally {
       setIsAuthSubmitting(false)
     }
@@ -73,7 +74,7 @@ export function AccountDropdown({ controller }: AccountDropdownProps) {
       setIsAuthModalOpen(false)
       setAuthPassword("")
     } catch (error) {
-      setAuthError(error instanceof Error ? error.message : "No s'ha pogut crear el compte.")
+      setAuthError(error instanceof Error ? error.message : t("accountErrorSignUp"))
     } finally {
       setIsAuthSubmitting(false)
     }
@@ -85,7 +86,7 @@ export function AccountDropdown({ controller }: AccountDropdownProps) {
     try {
       await controller.signInWithGoogle()
     } catch (error) {
-      setAuthError(error instanceof Error ? error.message : "No s'ha pogut iniciar sessió amb Google.")
+      setAuthError(error instanceof Error ? error.message : t("accountErrorGoogleSignIn"))
     } finally {
       setIsAuthSubmitting(false)
     }
@@ -96,18 +97,18 @@ export function AccountDropdown({ controller }: AccountDropdownProps) {
       setAuthError(null)
       await controller.signOut()
     } catch (error) {
-      setAuthError(error instanceof Error ? error.message : "No s'ha pogut tancar la sessió.")
+      setAuthError(error instanceof Error ? error.message : t("accountErrorSignOut"))
     }
   }
 
   const syncLabel =
     controller.syncStatus === "syncing"
-      ? "Pujant..."
+      ? t("accountSyncing")
       : controller.syncStatus === "error"
-        ? "Error de sincronització"
+        ? t("accountSyncError")
         : formatRelativeTime(controller.lastSyncedAt)
-          ? `Pujar al núvol · ${formatRelativeTime(controller.lastSyncedAt)}`
-          : "Pujar al núvol"
+          ? t("accountCloudUploadTime", { time: formatRelativeTime(controller.lastSyncedAt)! })
+          : t("accountCloudUpload")
 
   return (
     <>
@@ -122,14 +123,14 @@ export function AccountDropdown({ controller }: AccountDropdownProps) {
             <span
               className={`inline-block h-2 w-2 shrink-0 rounded-full ${controller.isAuthenticated ? "bg-emerald-500" : "bg-slate-300"}`}
             />
-            Account
+            {t("accountTriggerLabel")}
             <ChevronDown className="h-3.5 w-3.5" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-72">
           {controller.isAuthenticated ? (
             <>
-              <DropdownMenuLabel className="truncate">{controller.authEmail ?? "Compte"}</DropdownMenuLabel>
+              <DropdownMenuLabel className="truncate">{controller.authEmail ?? t("accountLabel")}</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 data-testid="header-sync-item"
@@ -147,21 +148,21 @@ export function AccountDropdown({ controller }: AccountDropdownProps) {
                 {syncLabel}
               </DropdownMenuItem>
               {controller.syncStatus === "error" ? (
-                <div className="px-2 py-1 text-xs text-red-600">No s&apos;ha pogut sincronitzar.</div>
+                <div className="px-2 py-1 text-xs text-red-600">{t("accountSyncErrorDetail")}</div>
               ) : null}
               <DropdownMenuSeparator />
               <DropdownMenuItem data-testid="header-signout-item" onSelect={() => void handleSignOut()}>
                 <LogOut className="h-4 w-4 text-slate-500" />
-                Tancar sessió
+                {t("accountSignOut")}
               </DropdownMenuItem>
             </>
           ) : (
             <>
-              <DropdownMenuLabel>Compte</DropdownMenuLabel>
+              <DropdownMenuLabel>{t("accountLabel")}</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem data-testid="header-signin-item" onSelect={() => setIsAuthModalOpen(true)}>
                 <LogIn className="h-4 w-4 text-slate-500" />
-                Iniciar sessió
+                {t("accountSignIn")}
               </DropdownMenuItem>
             </>
           )}

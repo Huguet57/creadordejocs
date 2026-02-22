@@ -1,4 +1,5 @@
 import { type FormEvent, useState } from "react"
+import { t } from "@/i18n/index.js"
 import { Button } from "../../../components/ui/button.js"
 import { Input } from "../../../components/ui/input.js"
 
@@ -82,10 +83,10 @@ export function AuthPasswordModal({
         {/* Header */}
         <div className="px-6 pt-6 pb-2 text-center">
           <h2 id="auth-modal-title" className="text-lg font-semibold text-slate-900">
-            {isSignUp ? "Crea un compte" : "Inicia sessió"}
+            {isSignUp ? t("authTitleSignUp") : t("authTitleSignIn")}
           </h2>
           <p className="mt-1 text-sm text-slate-500">
-            {isSignUp ? "Registra't per desar els teus jocs." : "Entra per desar i compartir els teus jocs."}
+            {isSignUp ? t("authSubtitleSignUp") : t("authSubtitleSignIn")}
           </p>
         </div>
 
@@ -101,7 +102,7 @@ export function AuthPasswordModal({
               onClick={() => void onSignInWithGoogle()}
             >
               <GoogleIcon />
-              Continua amb Google
+              {t("authGoogleButton")}
             </Button>
           </div>
 
@@ -111,7 +112,7 @@ export function AuthPasswordModal({
               <div className="w-full border-t border-slate-200" />
             </div>
             <div className="relative flex justify-center text-xs">
-              <span className="bg-white px-3 text-slate-400">o bé amb correu</span>
+              <span className="bg-white px-3 text-slate-400">{t("authEmailDivider")}</span>
             </div>
           </div>
 
@@ -119,7 +120,7 @@ export function AuthPasswordModal({
           <form className="space-y-3" onSubmit={handleSubmit}>
             <div>
               <label htmlFor="auth-email-input" className="mb-1.5 block text-sm font-medium text-slate-700">
-                Correu electrònic
+                {t("authEmailLabel")}
               </label>
               <Input
                 id="auth-email-input"
@@ -129,14 +130,14 @@ export function AuthPasswordModal({
                 autoComplete="email"
                 value={email}
                 onChange={(event) => onEmailChange(event.target.value)}
-                placeholder="nom@exemple.com"
+                placeholder={t("authEmailPlaceholder")}
                 disabled={isSubmitting}
                 className="h-10"
               />
             </div>
             <div>
               <label htmlFor="auth-password-input" className="mb-1.5 block text-sm font-medium text-slate-700">
-                Contrasenya
+                {t("authPasswordLabel")}
               </label>
               <Input
                 id="auth-password-input"
@@ -145,7 +146,7 @@ export function AuthPasswordModal({
                 autoComplete={isSignUp ? "new-password" : "current-password"}
                 value={password}
                 onChange={(event) => onPasswordChange(event.target.value)}
-                placeholder={isSignUp ? "Mínim 6 caràcters" : "La teva contrasenya"}
+                placeholder={isSignUp ? t("authPasswordPlaceholderSignUp") : t("authPasswordPlaceholderSignIn")}
                 disabled={isSubmitting}
                 className="h-10"
               />
@@ -161,13 +162,13 @@ export function AuthPasswordModal({
               className="h-10 w-full text-sm font-medium"
               disabled={isSubmitting}
             >
-              {isSubmitting ? (isSignUp ? "Creant compte..." : "Entrant...") : isSignUp ? "Crear compte" : "Entrar"}
+              {isSubmitting ? (isSignUp ? t("authSubmitCreating") : t("authSubmitSigningIn")) : isSignUp ? t("authSubmitCreate") : t("authSubmitSignIn")}
             </Button>
           </form>
 
           {/* Toggle sign in / sign up */}
           <p className="mt-4 text-center text-sm text-slate-500">
-            {isSignUp ? "Ja tens un compte?" : "No tens compte?"}{" "}
+            {isSignUp ? t("authToggleHasAccount") : t("authToggleNoAccount")}{" "}
             <button
               type="button"
               data-testid="auth-signup-button"
@@ -175,7 +176,7 @@ export function AuthPasswordModal({
               disabled={isSubmitting}
               onClick={() => setMode(isSignUp ? "signin" : "signup")}
             >
-              {isSignUp ? "Inicia sessió" : "Crea'n un"}
+              {isSignUp ? t("authToggleToSignIn") : t("authToggleToSignUp")}
             </button>
           </p>
         </div>
@@ -189,7 +190,7 @@ export function AuthPasswordModal({
             disabled={isSubmitting}
             onClick={() => onClose()}
           >
-            Cancela
+            {t("authCancel")}
           </button>
         </div>
       </div>

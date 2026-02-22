@@ -1,3 +1,4 @@
+import { t } from "@/i18n/index.js"
 import { Button } from "../components/ui/button.js"
 
 type EditorTopbarProps = {
@@ -28,32 +29,32 @@ export function EditorTopbar({
   return (
     <header className="mvp15-topbar-panel flex items-center justify-between rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
       <div>
-        <h1 className="text-sm font-semibold text-slate-900">MVP 1.5 Editor UI</h1>
+        <h1 className="text-sm font-semibold text-slate-900">{t("topbarTitle")}</h1>
         <p data-testid="save-status" className="text-xs text-slate-600">
-          Save status: {saveStatusText}
+          {t("topbarSaveStatusPrefix")} {saveStatusText}
         </p>
       </div>
       <div className="mvp15-topbar-actions flex flex-wrap gap-2">
         <Button data-testid="run-button" onClick={onRun}>
-          Run
+          {t("topbarRun")}
         </Button>
         <Button data-testid="reset-button" variant="secondary" onClick={onReset}>
-          Reset
+          {t("topbarReset")}
         </Button>
         <Button data-testid="undo-button" variant="outline" disabled={!undoAvailable} onClick={onUndo}>
-          Undo
+          {t("topbarUndo")}
         </Button>
         <Button data-testid="redo-button" variant="outline" disabled={!redoAvailable} onClick={onRedo}>
-          Redo
+          {t("topbarRedo")}
         </Button>
         <Button data-testid="save-local-button" variant="secondary" onClick={onSave}>
-          Save local
+          {t("topbarSaveLocal")}
         </Button>
         <Button data-testid="load-local-button" variant="outline" onClick={onLoad}>
-          Load local
+          {t("topbarLoadLocal")}
         </Button>
         <Button data-testid="load-coin-dash-template-button" variant="outline" onClick={onLoadTemplate}>
-          Load Coin Dash template
+          {t("topbarLoadTemplate")}
         </Button>
       </div>
     </header>

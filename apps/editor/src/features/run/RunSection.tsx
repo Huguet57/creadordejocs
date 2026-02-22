@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Play, RotateCcw } from "lucide-react"
 import type { GoToRoomTransition, ProjectV1 } from "@creadordejocs/project-format"
+import { t } from "@/i18n/index.js"
 import { Button } from "../../components/ui/button.js"
 import {
   DEFAULT_SPRITE_SPEED_MS,
@@ -314,7 +315,7 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
       {!isPlayMode && (
         <aside className="flex w-[200px] flex-col border-r border-slate-200 bg-slate-50">
           <div className="flex items-center justify-between border-b border-slate-200 p-3">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Run</span>
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{t("runLabel")}</span>
           </div>
 
           <div className="flex-1 overflow-y-auto p-3 space-y-4">
@@ -328,35 +329,35 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
                 {controller.isRunning ? (
                   <>
                     <RotateCcw className="mr-2 h-3.5 w-3.5" />
-                    Reset
+                    {t("runResetButton")}
                   </>
                 ) : (
                   <>
                     <Play className="mr-2 h-3.5 w-3.5" />
-                    Run
+                    {t("runRunButton")}
                   </>
                 )}
               </Button>
             </div>
 
             <div className="space-y-2">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</p>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{t("runStatusLabel")}</p>
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-slate-500">Room</span>
+                  <span className="text-xs text-slate-500">{t("runRoomLabel")}</span>
                   <span className="text-xs font-medium text-slate-800">{controller.activeRoom?.name ?? "none"}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-slate-500">Score</span>
+                  <span className="text-xs text-slate-500">{t("runScoreLabel")}</span>
                   <span data-testid="run-score" className="text-xs font-medium text-slate-800">{runtimeState.score}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-slate-500">State</span>
+                  <span className="text-xs text-slate-500">{t("runStateLabel")}</span>
                   <span
                     data-testid="run-game-state"
                     className={`text-xs font-medium ${runtimeState.gameOver ? "text-red-600" : "text-green-600"}`}
                   >
-                    {runtimeState.gameOver ? "Ha acabat el joc" : "Running"}
+                    {runtimeState.gameOver ? t("runGameOver") : t("runRunning")}
                   </span>
                 </div>
                 {runtimeState.gameOver && runtimeState.message && (
@@ -368,9 +369,9 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
             </div>
 
             <div className="mvp16-run-global-vars space-y-2">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Global variables</p>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{t("runGlobalVarsLabel")}</p>
               {userGlobalVariableEntries.length === 0 ? (
-                <p className="mvp16-run-global-vars-empty text-[11px] text-slate-400">No globals defined</p>
+                <p className="mvp16-run-global-vars-empty text-[11px] text-slate-400">{t("runNoGlobals")}</p>
               ) : (
                 <div className="mvp16-run-global-vars-list space-y-1.5">
                   {userGlobalVariableEntries.map((variableEntry) => (
@@ -385,7 +386,7 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
               )}
             </div>
             <div className="mvp16-run-mouse-vars space-y-2">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Mouse</p>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{t("runMouseLabel")}</p>
               <div className="mvp16-run-mouse-vars-list space-y-1.5">
                 {mouseVariableEntries.map((variableEntry) => (
                   <div key={variableEntry.id} className="mvp16-run-mouse-var-row flex items-center justify-between">
@@ -416,11 +417,11 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
         {!isPlayMode && (
           <div className="flex h-12 items-center justify-between border-b border-slate-200 px-4">
             <h3 className="text-sm text-slate-800">
-              Preview: <span className="font-semibold text-slate-900">{controller.activeRoom?.name ?? "none"}</span>
+              {t("runPreviewLabel")} <span className="font-semibold text-slate-900">{controller.activeRoom?.name ?? "none"}</span>
             </h3>
             {controller.activeRoom && (
               <span className="text-xs text-slate-400">
-                {controller.isRunning ? "Playing" : "Stopped"}
+                {controller.isRunning ? t("runPlaying") : t("runStopped")}
               </span>
             )}
           </div>
@@ -429,7 +430,7 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
         <div className={`flex-1 overflow-auto ${isPlayMode ? "flex items-center justify-center bg-slate-50" : "bg-slate-50/50"}`}>
           {!controller.activeRoom ? (
             <div className="flex h-full items-center justify-center text-slate-400">
-              <p>Create a room first to run the game</p>
+              <p>{t("runNoRoom")}</p>
             </div>
           ) : (
             <div className="mvp17-run-canvas-wrapper relative" style={{ width: WINDOW_WIDTH }}>
@@ -441,8 +442,8 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
                 {!controller.isRunning && (
                   <div className="mvp19-run-start-overlay pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-slate-900/30">
                     <div className="mvp19-run-start-overlay-card rounded-md border border-slate-200 bg-white/95 px-4 py-2 text-center shadow-sm">
-                      <p className="text-xs font-semibold text-slate-800">Prem qualsevol tecla per començar</p>
-                      <p className="text-[11px] text-slate-500">També pots clicar amb el mouse</p>
+                      <p className="text-xs font-semibold text-slate-800">{t("runStartPrompt")}</p>
+                      <p className="text-[11px] text-slate-500">{t("runStartHint")}</p>
                     </div>
                   </div>
                 )}
