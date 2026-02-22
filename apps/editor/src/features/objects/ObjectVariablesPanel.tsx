@@ -404,7 +404,7 @@ export function ObjectVariablesPanel({
   }
 
   return (
-    <aside className="mvpv1-object-vars-panel flex w-[220px] flex-col border-r border-slate-200 bg-slate-50">
+    <aside className="mvpv1-object-vars-panel flex w-[220px] shrink-0 flex-col border-r border-slate-200 bg-slate-50">
       <ObjectCard
         objectName={objectName}
         spriteSrc={spriteSrc}
