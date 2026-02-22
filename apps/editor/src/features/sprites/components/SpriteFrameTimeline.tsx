@@ -1,5 +1,5 @@
 import { Copy, Plus, Trash2 } from "lucide-react"
-import { useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent } from "react"
+import { useEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent, type MouseEvent } from "react"
 import { spritePixelsToDataUrl } from "../utils/sprite-preview-source.js"
 import { hasVisibleSpritePixels } from "../utils/has-visible-pixels.js"
 
@@ -30,7 +30,7 @@ export function SpriteFrameTimeline({
 }: SpriteFrameTimelineProps) {
   const draggedFrameIdRef = useRef<string | null>(null)
   const [dropTargetIndex, setDropTargetIndex] = useState<number | null>(null)
-  const activeFrameRef = useRef<HTMLButtonElement>(null)
+  const activeFrameRef = useRef<HTMLDivElement>(null)
 
   const framePreviewUrls = useMemo(
     () =>
@@ -47,7 +47,7 @@ export function SpriteFrameTimeline({
     activeFrameRef.current?.scrollIntoView({ inline: "nearest", behavior: "smooth" })
   }, [activeFrameId])
 
-  const handleFrameDragStart = (event: DragEvent<HTMLButtonElement>, frameId: string) => {
+  const handleFrameDragStart = (event: DragEvent<HTMLDivElement>, frameId: string) => {
     draggedFrameIdRef.current = frameId
     event.dataTransfer.effectAllowed = "move"
     event.dataTransfer.setData(DND_FRAME_MIME, frameId)
@@ -95,14 +95,21 @@ export function SpriteFrameTimeline({
             {showDropBefore && (
               <div className="mvp16-sprite-frame-drop-indicator absolute -left-1.5 bottom-0 top-0 w-0.5 rounded bg-indigo-400" />
             )}
-            <button
+            <div
               ref={isActive ? activeFrameRef : undefined}
-              type="button"
+              role="button"
+              tabIndex={0}
               className={`mvp16-sprite-frame-thumb group relative flex flex-col items-center gap-1 rounded-md border-2 p-1 transition-colors ${
                 isActive ? "border-indigo-500 bg-white shadow-sm" : "border-transparent bg-white hover:border-slate-300"
               }`}
               draggable
               onClick={() => onSelectFrame(frame.id)}
+              onKeyDown={(event: KeyboardEvent) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault()
+                  onSelectFrame(frame.id)
+                }
+              }}
               onDragStart={(event) => handleFrameDragStart(event, frame.id)}
               onDragOver={(event) => handleFrameDragOver(event, index)}
               onDrop={handleFrameDrop}
@@ -147,7 +154,7 @@ export function SpriteFrameTimeline({
                   <Trash2 className="h-2.5 w-2.5" />
                 </button>
               </div>
-            </button>
+            </div>
             {showDropAfter && (
               <div className="mvp16-sprite-frame-drop-indicator absolute -right-1.5 bottom-0 top-0 w-0.5 rounded bg-indigo-400" />
             )}
