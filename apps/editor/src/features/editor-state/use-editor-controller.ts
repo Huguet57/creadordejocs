@@ -414,6 +414,8 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
   const [activeObjectId, setActiveObjectId] = useState<string | null>(null)
   const [activeSpriteId, setActiveSpriteId] = useState<string | null>(null)
   const [isRunning, setIsRunning] = useState(false)
+  const isRunningRef = useRef(isRunning)
+  isRunningRef.current = isRunning
   const [runSnapshot, setRunSnapshot] = useState<ProjectV1 | null>(null)
   const [runtimeState, setRuntimeState] = useState<RuntimeState>(initialRuntimeState)
   const [roomTransition, setRoomTransition] = useState<GoToRoomTransition>("none")
@@ -800,6 +802,11 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       const nextActiveProjectId = getActiveProjectIdFromLocalStorage(scopeUserId)
       const nextProject = loadProjectFromLocalStorage(nextActiveProjectId ?? undefined, scopeUserId)
       if (nextActiveProjectId && nextProject) {
+        if (isRunningRef.current) {
+          // Don't overwrite project state while playing — runtime owns project mutations
+          setSyncStatus("synced")
+          return
+        }
         if (nextActiveProjectId === activeProjectId) {
           // Same project: update data without resetting UI state (active selections, undo/redo)
           const normalized = ensureProjectHasRoom(nextProject)
