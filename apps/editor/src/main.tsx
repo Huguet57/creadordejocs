@@ -6,10 +6,9 @@ import { initKvStorageProvider } from "./features/storage/get-kv-storage-provide
 import "./index.css"
 
 const posthogKey = import.meta.env.VITE_PUBLIC_POSTHOG_KEY
-const posthogHost = import.meta.env.VITE_PUBLIC_POSTHOG_HOST
-if (posthogKey && posthogHost) {
+if (posthogKey) {
   posthog.init(posthogKey, {
-    api_host: posthogHost ?? "/ingest",
+    api_host: import.meta.env.VITE_PUBLIC_POSTHOG_HOST ?? "/ingest",
     ui_host: "https://us.posthog.com",
     person_profiles: "identified_only",
     capture_pageview: true,
