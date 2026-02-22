@@ -10,7 +10,9 @@ const posthogHost = import.meta.env.VITE_PUBLIC_POSTHOG_HOST
 if (posthogKey && posthogHost) {
   posthog.init(posthogKey, {
     api_host: posthogHost,
-    person_profiles: "identified_only"
+    person_profiles: "identified_only",
+    capture_pageview: true,
+    capture_pageleave: true
   })
 }
 
