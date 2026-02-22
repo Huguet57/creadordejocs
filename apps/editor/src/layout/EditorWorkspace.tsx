@@ -26,5 +26,5 @@ export function EditorWorkspace({ controller }: EditorWorkspaceProps) {
     content = <RunSection controller={controller} />
   }
 
-  return <div className="mvp15-editor-workspace min-h-0 h-full">{content}</div>
+  return <div className="mvp15-editor-workspace min-h-0 min-w-0 h-full">{content}</div>
 }
