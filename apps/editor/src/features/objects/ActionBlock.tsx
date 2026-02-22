@@ -359,7 +359,7 @@ export function ActionBlock({
         </span>
       </div>
 
-      <div className="action-block-fields flex items-center gap-3">
+      <div className="action-block-fields flex shrink-0 items-center gap-3">
         {action.type === "destroyOther" && collisionTargetName && (
           <span className="action-block-destroy-target-pill inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">
             {collisionTargetName}
