@@ -800,7 +800,16 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       const nextActiveProjectId = getActiveProjectIdFromLocalStorage(scopeUserId)
       const nextProject = loadProjectFromLocalStorage(nextActiveProjectId ?? undefined, scopeUserId)
       if (nextActiveProjectId && nextProject) {
-        applyProjectState(nextActiveProjectId, nextProject)
+        if (nextActiveProjectId === activeProjectId) {
+          // Same project: update data without resetting UI state (active selections, undo/redo)
+          const normalized = ensureProjectHasRoom(nextProject)
+          setProject(normalized.project)
+          setSnapshots(loadSnapshotsFromLocalStorage(nextActiveProjectId, resolveScopeUserId()))
+          setIsDirty(false)
+          setSaveStatus("saved")
+        } else {
+          applyProjectState(nextActiveProjectId, nextProject)
+        }
       }
       setSyncStatus("synced")
     } catch (error) {
