@@ -34,10 +34,11 @@ npm run editor:build        # Vite production build of the editor
 
 ## Architecture
 
-npm workspaces monorepo with four workspaces referenced in the root `tsconfig.json`:
+npm workspaces monorepo with five workspaces referenced in the root `tsconfig.json`:
 
 - **`packages/project-format`** — Zod-validated project schema v1, save/load helpers, action registry, editor model types. Uses `zod`. Every workspace that touches project data depends on this.
 - **`packages/engine-core`** — Deterministic game loop (`update` + `draw` contracts). No app dependencies.
+- **`packages/seo-analytics`** — Google Search Console API client for SEO stats (keywords, pages, countries, trends). Reusable as a library or CLI. Uses `googleapis`. See [SEO Analytics](#seo-analytics) below.
 - **`apps/editor`** — React + Vite + Tailwind SPA. Feature-sliced under `src/features/` (editor-state, sprites, objects, rooms, sounds, play, share, templates, assets, landing). Path alias `@/` maps to `apps/editor/src/`. Depends on `project-format`.
 - **`apps/player`** — Play-only runtime shell for published projects. Depends on `engine-core` and `project-format`.
 - **`apps/share-worker`** — Cloudflare Worker with KV storage for shared game snapshots.
@@ -76,6 +77,30 @@ No external state library (no Zustand/Redux). The editor uses **plain React `use
 - E2E tests: `tests/e2e/*.spec.ts` (Playwright, launches editor dev server on **port 4173**, not 5173).
 - Vitest config resolves workspace aliases so package imports work in tests.
 - **Git hooks**: pre-commit runs `lint → typecheck → unit tests`; pre-push runs `unit tests → E2E tests`.
+
+### SEO Analytics
+
+`packages/seo-analytics` — modular package for querying Google Search Console data.
+
+**CLI usage:**
+```bash
+# Requires gcloud ADC with webmasters scope (one-time setup):
+gcloud auth application-default login --scopes="https://www.googleapis.com/auth/cloud-platform,https://www.googleapis.com/auth/webmasters.readonly"
+gcloud auth application-default set-quota-project creadordejocs
+
+# Run the report:
+npx tsx packages/seo-analytics/bin/cli.ts              # defaults: 90 days, 20 results, sc-domain:creadordejocs.cat
+npx tsx packages/seo-analytics/bin/cli.ts --days 180   # custom range
+npx tsx packages/seo-analytics/bin/cli.ts --limit 50   # more results
+npx tsx packages/seo-analytics/bin/cli.ts --site "sc-domain:other.com"  # different domain
+```
+
+**Library usage:**
+```ts
+import { createGscClient, getTopKeywords, getTopPages, getByCountry, getMonthlyTrend } from "@creadordejocs/seo-analytics"
+```
+
+**Credentials:** Uses Application Default Credentials (gcloud login). Optionally accepts `--credentials path/to/service-account.json`. Credential files (`**/gsc-credentials.json`) are gitignored.
 
 ## Key Conventions
 
