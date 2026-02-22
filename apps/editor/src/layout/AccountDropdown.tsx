@@ -20,9 +20,9 @@ function formatRelativeTime(lastSyncedAt: Date | null): string | null {
   if (!lastSyncedAt) return null
   const diffMs = Date.now() - lastSyncedAt.getTime()
   const diffSec = Math.floor(diffMs / 1_000)
-  if (diffSec < 10) return "Fa menys de 10 segons"
-  if (diffSec < 30) return "Fa menys de 30 segons"
-  if (diffSec < 60) return "Fa menys d'1 minut"
+  if (diffSec < 10) return "Fa 10 segons"
+  if (diffSec < 30) return "Fa 30 segons"
+  if (diffSec < 60) return "Fa 1 minut"
   const diffMin = Math.floor(diffSec / 60)
   if (diffMin < 60) return diffMin === 1 ? "Fa 1 minut" : `Fa ${diffMin} minuts`
   const diffH = Math.floor(diffMin / 60)
