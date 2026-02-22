@@ -10,11 +10,15 @@ if (posthogKey) {
   posthog.init(posthogKey, {
     api_host: import.meta.env.VITE_PUBLIC_POSTHOG_HOST ?? "/ingest",
     ui_host: "https://us.posthog.com",
-    person_profiles: "identified_only",
+    person_profiles: "always",
     capture_pageview: true,
     capture_pageleave: true,
+    respect_dnt: false,
+    disable_compression: true,
+    debug: true,
     disable_session_recording: false,
     loaded: (ph) => {
+      ;(window as Window & { __ph?: unknown }).__ph = ph
       ph.startSessionRecording()
     }
   })
