@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest"
-import { ABSOLUTE_MAX_MAX_ZOOM, ABSOLUTE_MIN_MAX_ZOOM, clampZoom, computeFitZoom, computeMaxZoom, computeZoomStep, MIN_SPRITE_ZOOM } from "./zoom.js"
+import {
+  ABSOLUTE_MAX_MAX_ZOOM,
+  ABSOLUTE_MIN_MAX_ZOOM,
+  ABSOLUTE_MIN_MIN_ZOOM,
+  clampZoom,
+  computeFitZoom,
+  computeMaxZoom,
+  computeMinZoom,
+  computeZoomStep,
+  MIN_SPRITE_ZOOM
+} from "./zoom.js"
 
 describe("clampZoom", () => {
   it("clamps to min when value is too low", () => {
@@ -22,17 +32,31 @@ describe("clampZoom", () => {
 })
 
 describe("computeZoomStep", () => {
-  it("returns 0.25 for small max zoom (range <= 5)", () => {
-    expect(computeZoomStep(6)).toBe(0.25)
+  it("returns fine step for small zoom range", () => {
+    // range=5, ideal=5/60=0.083 → picks 0.1
+    expect(computeZoomStep(1, 6)).toBe(0.1)
   })
 
-  it("returns 0.5 for medium max zoom (range <= 11)", () => {
-    expect(computeZoomStep(12)).toBe(0.5)
+  it("returns medium step for medium zoom range", () => {
+    // range=11, ideal=11/60=0.183 → picks 0.2
+    expect(computeZoomStep(1, 12)).toBe(0.2)
   })
 
-  it("returns 1 for large max zoom", () => {
-    expect(computeZoomStep(24)).toBe(1)
-    expect(computeZoomStep(40)).toBe(1)
+  it("returns coarser step for large zoom range", () => {
+    // range=23, ideal=23/60=0.383 → picks 0.5
+    expect(computeZoomStep(1, 24)).toBe(0.5)
+    // range=39, ideal=39/60=0.65 → picks 1
+    expect(computeZoomStep(1, 40)).toBe(1)
+  })
+
+  it("accounts for sub-1 minZoom in range calculation", () => {
+    // range=5.75, ideal=5.75/60=0.096 → picks 0.1
+    expect(computeZoomStep(0.25, 6)).toBe(0.1)
+  })
+
+  it("returns smallest step for very small ranges", () => {
+    // range=0.5, ideal=0.5/60=0.008 → picks 0.01
+    expect(computeZoomStep(0.5, 1)).toBe(0.01)
   })
 })
 
@@ -92,6 +116,21 @@ describe("computeFitZoom", () => {
       })
     ).toBe(1.75)
   })
+
+  it("returns sub-1 zoom when minZoom allows it and sprite is large", () => {
+    // ratios: 400/768=0.52, 300/512=0.586 → min is 0.52 → floor(0.52/0.1)*0.1 = 0.5
+    expect(
+      computeFitZoom({
+        viewportWidth: 400,
+        viewportHeight: 300,
+        spriteWidth: 768,
+        spriteHeight: 512,
+        minZoom: 0.25,
+        maxZoom: 6,
+        step: 0.1
+      })
+    ).toBe(0.5)
+  })
 })
 
 describe("computeMaxZoom", () => {
@@ -126,5 +165,35 @@ describe("computeMaxZoom", () => {
     expect(computeMaxZoom(0, 32)).toBe(ABSOLUTE_MIN_MAX_ZOOM)
     expect(computeMaxZoom(32, 0)).toBe(ABSOLUTE_MIN_MAX_ZOOM)
     expect(computeMaxZoom(-1, -1)).toBe(ABSOLUTE_MIN_MAX_ZOOM)
+  })
+})
+
+describe("computeMinZoom", () => {
+  it("returns 1 for small sprites (max dimension <= 384)", () => {
+    expect(computeMinZoom(32, 32)).toBe(1)
+    expect(computeMinZoom(128, 128)).toBe(1)
+    expect(computeMinZoom(256, 200)).toBe(1)
+    expect(computeMinZoom(384, 384)).toBe(1)
+  })
+
+  it("returns sub-1 for large sprites (max dimension > 384)", () => {
+    expect(computeMinZoom(768, 512)).toBe(0.25)
+    expect(computeMinZoom(512, 512)).toBe(0.4)
+    expect(computeMinZoom(400, 300)).toBe(0.5)
+  })
+
+  it("clamps to ABSOLUTE_MIN_MIN_ZOOM for very large sprites", () => {
+    expect(computeMinZoom(5000, 5000)).toBe(ABSOLUTE_MIN_MIN_ZOOM)
+  })
+
+  it("returns 1 for zero or negative dimensions", () => {
+    expect(computeMinZoom(0, 32)).toBe(1)
+    expect(computeMinZoom(32, 0)).toBe(1)
+    expect(computeMinZoom(-1, -1)).toBe(1)
+  })
+
+  it("uses the largest dimension for non-square sprites", () => {
+    expect(computeMinZoom(768, 32)).toBe(0.25)
+    expect(computeMinZoom(32, 768)).toBe(0.25)
   })
 })
