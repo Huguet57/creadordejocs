@@ -23,9 +23,11 @@ function renderGrid(width: number, height: number): string {
 }
 
 describe("SpriteCanvasGrid", () => {
-  it("renders a single canvas even for large sprites", () => {
+  it("renders base and overlay canvases even for large sprites", () => {
     const markup = renderGrid(256, 200)
-    expect(markup).toContain("<canvas")
+    expect((markup.match(/<canvas/g) ?? []).length).toBe(2)
+    expect(markup).toContain('data-testid="sprite-canvas-base"')
+    expect(markup).toContain('data-testid="sprite-canvas-overlay"')
   })
 
   it("does not render per-pixel button cells", () => {

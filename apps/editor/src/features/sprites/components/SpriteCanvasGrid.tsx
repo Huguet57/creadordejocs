@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
 import { getPixelIndicesInRadius, normalizePixelGrid } from "../utils/sprite-grid.js"
 import type { SpriteEditorTool } from "../types/sprite-editor.js"
 import type { SpritePointerActionPhase } from "../hooks/use-sprite-pixel-actions.js"
@@ -13,6 +13,14 @@ const HOVER_STROKE = "rgba(99, 102, 241, 0.9)"
 const ERASER_PREVIEW_FILL = "rgba(239, 68, 68, 0.35)"
 
 type ColorChannels = readonly [number, number, number, number]
+type HoveredCell = { x: number; y: number }
+type CanvasSizing = {
+  cssWidth: number
+  cssHeight: number
+  pixelWidth: number
+  pixelHeight: number
+  devicePixelRatio: number
+}
 
 export type SelectDragRect = {
   startX: number
@@ -32,7 +40,7 @@ type SpriteCanvasGridProps = {
   selectedIndices: Set<number>
   selectDragRect: SelectDragRect | null
   onPaint: (x: number, y: number, tool: SpriteEditorTool, phase: SpritePointerActionPhase) => void
-  onHoverColorChange?: (color: string | null) => void
+  onHoverColorChange?: ((color: string | null) => void) | undefined
   onPointerUpOutside?: () => void
   onViewportElementChange?: (element: HTMLDivElement | null) => void
 }
@@ -76,6 +84,40 @@ function createCheckerPattern(ctx: CanvasRenderingContext2D, checkerSize: number
   tileCtx.fillRect(checkerSize, checkerSize, checkerSize, checkerSize)
 
   return ctx.createPattern(tile, "repeat")
+}
+
+function getDevicePixelRatio(): number {
+  if (typeof window === "undefined") return 1
+  return Math.max(1, window.devicePixelRatio || 1)
+}
+
+function resolveCanvasSizing(width: number, height: number, zoom: number, devicePixelRatio: number): CanvasSizing {
+  const cssWidth = Math.max(1, width * zoom)
+  const cssHeight = Math.max(1, height * zoom)
+  const normalizedDevicePixelRatio = Math.max(1, devicePixelRatio)
+
+  return {
+    cssWidth,
+    cssHeight,
+    pixelWidth: Math.max(1, Math.round(cssWidth * normalizedDevicePixelRatio)),
+    pixelHeight: Math.max(1, Math.round(cssHeight * normalizedDevicePixelRatio)),
+    devicePixelRatio: normalizedDevicePixelRatio
+  }
+}
+
+function syncCanvasSize(canvas: HTMLCanvasElement, sizing: CanvasSizing): boolean {
+  if (canvas.width === sizing.pixelWidth && canvas.height === sizing.pixelHeight) {
+    return false
+  }
+  canvas.width = sizing.pixelWidth
+  canvas.height = sizing.pixelHeight
+  return true
+}
+
+function isSameCell(previous: HoveredCell | null, next: HoveredCell | null): boolean {
+  if (previous === next) return true
+  if (!previous || !next) return false
+  return previous.x === next.x && previous.y === next.y
 }
 
 function drawCellOverlay(
@@ -138,23 +180,27 @@ export function SpriteCanvasGrid({
   onPointerUpOutside,
   onViewportElementChange
 }: SpriteCanvasGridProps) {
-  const [hoveredCell, setHoveredCell] = useState<{ x: number; y: number } | null>(null)
+  const [devicePixelRatio, setDevicePixelRatio] = useState<number>(() => getDevicePixelRatio())
   const viewportRef = useRef<HTMLDivElement | null>(null)
-  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const baseCanvasRef = useRef<HTMLCanvasElement | null>(null)
+  const overlayCanvasRef = useRef<HTMLCanvasElement | null>(null)
   const sourceCanvasRef = useRef<HTMLCanvasElement | null>(null)
+  const imageDataRef = useRef<ImageData | null>(null)
+  const hoveredCellRef = useRef<HoveredCell | null>(null)
   const pointerDownRef = useRef(false)
   const lastDragCellKeyRef = useRef<string | null>(null)
+  const overlayRafRef = useRef<number | null>(null)
+  const overlayDrawRef = useRef<() => void>(() => undefined)
+  const lastHoverColorRef = useRef<string | null>(null)
   const colorChannelCacheRef = useRef<Map<string, ColorChannels>>(new Map())
   const checkerPatternCacheRef = useRef<Map<number, CanvasPattern | null>>(new Map())
 
   const safePixels = useMemo(() => normalizePixelGrid(pixelsRgba, width, height), [pixelsRgba, width, height])
-
-  const eraserPreviewSet = useMemo(() => {
-    if (activeTool !== "eraser" || !hoveredCell) return new Set<number>()
-    return new Set(getPixelIndicesInRadius(hoveredCell.x, hoveredCell.y, eraserRadius, width, height))
-  }, [activeTool, hoveredCell, eraserRadius, width, height])
-
   const dragBounds = useMemo(() => resolveDragBounds(selectDragRect), [selectDragRect])
+  const canvasSizing = useMemo(
+    () => resolveCanvasSizing(width, height, zoom, devicePixelRatio),
+    [width, height, zoom, devicePixelRatio]
+  )
 
   useEffect(() => {
     onViewportElementChange?.(viewportRef.current)
@@ -162,28 +208,34 @@ export function SpriteCanvasGrid({
   }, [onViewportElementChange])
 
   useEffect(() => {
-    const canvas = canvasRef.current
+    if (typeof window === "undefined") return
+
+    const updateDevicePixelRatio = () => {
+      const nextRatio = getDevicePixelRatio()
+      setDevicePixelRatio((currentRatio) => (currentRatio === nextRatio ? currentRatio : nextRatio))
+    }
+
+    updateDevicePixelRatio()
+    window.addEventListener("resize", updateDevicePixelRatio)
+    return () => window.removeEventListener("resize", updateDevicePixelRatio)
+  }, [])
+
+  const drawBaseCanvas = useCallback(() => {
+    const canvas = baseCanvasRef.current
     if (!canvas || width <= 0 || height <= 0 || zoom <= 0 || typeof window === "undefined") {
       return
     }
 
-    const cssWidth = width * zoom
-    const cssHeight = height * zoom
-    const devicePixelRatio = Math.max(1, window.devicePixelRatio || 1)
-    const nextCanvasWidth = Math.max(1, Math.round(cssWidth * devicePixelRatio))
-    const nextCanvasHeight = Math.max(1, Math.round(cssHeight * devicePixelRatio))
-
-    if (canvas.width !== nextCanvasWidth || canvas.height !== nextCanvasHeight) {
-      canvas.width = nextCanvasWidth
-      canvas.height = nextCanvasHeight
+    const didResize = syncCanvasSize(canvas, canvasSizing)
+    if (didResize) {
       checkerPatternCacheRef.current.clear()
     }
 
     const ctx = canvas.getContext("2d")
     if (!ctx) return
 
-    ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0)
-    ctx.clearRect(0, 0, cssWidth, cssHeight)
+    ctx.setTransform(canvasSizing.devicePixelRatio, 0, 0, canvasSizing.devicePixelRatio, 0, 0)
+    ctx.clearRect(0, 0, canvasSizing.cssWidth, canvasSizing.cssHeight)
 
     const checkerSize = Math.max(zoom, MIN_CHECKER_SIZE)
     let checkerPattern = checkerPatternCacheRef.current.get(checkerSize)
@@ -194,20 +246,29 @@ export function SpriteCanvasGrid({
 
     if (checkerPattern) {
       ctx.fillStyle = checkerPattern
-      ctx.fillRect(0, 0, cssWidth, cssHeight)
+      ctx.fillRect(0, 0, canvasSizing.cssWidth, canvasSizing.cssHeight)
     } else {
       ctx.fillStyle = "#ffffff"
-      ctx.fillRect(0, 0, cssWidth, cssHeight)
+      ctx.fillRect(0, 0, canvasSizing.cssWidth, canvasSizing.cssHeight)
     }
 
     sourceCanvasRef.current ??= document.createElement("canvas")
     const sourceCanvas = sourceCanvasRef.current
-    sourceCanvas.width = width
-    sourceCanvas.height = height
+    if (sourceCanvas.width !== width || sourceCanvas.height !== height) {
+      sourceCanvas.width = width
+      sourceCanvas.height = height
+      imageDataRef.current = null
+    }
+
     const sourceCtx = sourceCanvas.getContext("2d")
     if (!sourceCtx) return
 
-    const imageData = sourceCtx.createImageData(width, height)
+    if (imageDataRef.current?.width !== width || imageDataRef.current?.height !== height) {
+      imageDataRef.current = sourceCtx.createImageData(width, height)
+    }
+
+    const imageData = imageDataRef.current
+    if (!imageData) return
     for (let index = 0; index < safePixels.length; index += 1) {
       const color = safePixels[index] ?? "#00000000"
       const [r, g, b, a] = getColorChannels(color, colorChannelCacheRef.current)
@@ -217,20 +278,38 @@ export function SpriteCanvasGrid({
       imageData.data[offset + 2] = b
       imageData.data[offset + 3] = a
     }
-
     sourceCtx.putImageData(imageData, 0, 0)
 
     ctx.imageSmoothingEnabled = false
-    ctx.drawImage(sourceCanvas, 0, 0, cssWidth, cssHeight)
+    ctx.drawImage(sourceCanvas, 0, 0, canvasSizing.cssWidth, canvasSizing.cssHeight)
 
     if (showGrid && zoom >= MIN_GRID_ZOOM) {
       drawGrid(ctx, width, height, zoom)
     }
+  }, [canvasSizing, height, safePixels, showGrid, width, zoom])
 
-    for (const selectedIndex of eraserPreviewSet) {
-      const x = selectedIndex % width
-      const y = Math.floor(selectedIndex / width)
-      drawCellOverlay(ctx, x, y, zoom, ERASER_PREVIEW_FILL, null)
+  const drawOverlayCanvas = useCallback(() => {
+    const canvas = overlayCanvasRef.current
+    if (!canvas || width <= 0 || height <= 0 || zoom <= 0 || typeof window === "undefined") {
+      return
+    }
+
+    syncCanvasSize(canvas, canvasSizing)
+
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return
+
+    ctx.setTransform(canvasSizing.devicePixelRatio, 0, 0, canvasSizing.devicePixelRatio, 0, 0)
+    ctx.clearRect(0, 0, canvasSizing.cssWidth, canvasSizing.cssHeight)
+
+    const hoveredCell = hoveredCellRef.current
+    if (activeTool === "eraser" && hoveredCell) {
+      const eraserPreviewIndices = getPixelIndicesInRadius(hoveredCell.x, hoveredCell.y, eraserRadius, width, height)
+      for (const selectedIndex of eraserPreviewIndices) {
+        const x = selectedIndex % width
+        const y = Math.floor(selectedIndex / width)
+        drawCellOverlay(ctx, x, y, zoom, ERASER_PREVIEW_FILL, null)
+      }
     }
 
     for (const selectedIndex of selectedIndices) {
@@ -251,9 +330,69 @@ export function SpriteCanvasGrid({
     if ((activeTool === "pencil" || activeTool === "color_picker") && hoveredCell) {
       drawCellOverlay(ctx, hoveredCell.x, hoveredCell.y, zoom, null, HOVER_STROKE, 2)
     }
-  }, [activeTool, dragBounds, eraserPreviewSet, height, hoveredCell, safePixels, selectedIndices, showGrid, width, zoom])
+  }, [activeTool, canvasSizing, dragBounds, eraserRadius, height, selectedIndices, width, zoom])
 
-  const resolvePixelFromPointer = (event: ReactPointerEvent<HTMLCanvasElement>): { x: number; y: number } | null => {
+  useEffect(() => {
+    overlayDrawRef.current = drawOverlayCanvas
+  }, [drawOverlayCanvas])
+
+  const scheduleOverlayRender = useCallback(() => {
+    if (overlayRafRef.current !== null) return
+    if (typeof window === "undefined") {
+      overlayDrawRef.current()
+      return
+    }
+
+    overlayRafRef.current = window.requestAnimationFrame(() => {
+      overlayRafRef.current = null
+      overlayDrawRef.current()
+    })
+  }, [])
+
+  const setHoveredCell = useCallback((nextCell: HoveredCell | null): boolean => {
+    if (isSameCell(hoveredCellRef.current, nextCell)) {
+      return false
+    }
+    hoveredCellRef.current = nextCell
+    return true
+  }, [])
+
+  const emitHoverColor = useCallback(
+    (pixel: HoveredCell | null) => {
+      if (activeTool !== "color_picker" || !onHoverColorChange) {
+        lastHoverColorRef.current = null
+        return
+      }
+
+      const index = pixel ? pixel.y * width + pixel.x : -1
+      const nextColor = index >= 0 ? (safePixels[index] ?? null) : null
+      if (nextColor === lastHoverColorRef.current) {
+        return
+      }
+
+      lastHoverColorRef.current = nextColor
+      onHoverColorChange(nextColor)
+    },
+    [activeTool, onHoverColorChange, safePixels, width]
+  )
+
+  useEffect(() => {
+    drawBaseCanvas()
+  }, [drawBaseCanvas])
+
+  useEffect(() => {
+    scheduleOverlayRender()
+  }, [drawOverlayCanvas, scheduleOverlayRender])
+
+  useEffect(() => {
+    return () => {
+      if (overlayRafRef.current !== null && typeof window !== "undefined") {
+        window.cancelAnimationFrame(overlayRafRef.current)
+      }
+    }
+  }, [])
+
+  const resolvePixelFromPointer = useCallback((event: ReactPointerEvent<HTMLCanvasElement>): HoveredCell | null => {
     const rect = event.currentTarget.getBoundingClientRect()
     return getSpritePixelFromCanvasPointer({
       clientX: event.clientX,
@@ -264,16 +403,7 @@ export function SpriteCanvasGrid({
       spriteWidth: width,
       spriteHeight: height
     })
-  }
-
-  const updateHoverColor = (pixel: { x: number; y: number } | null) => {
-    if (!pixel) {
-      onHoverColorChange?.(null)
-      return
-    }
-    const index = pixel.y * width + pixel.x
-    onHoverColorChange?.(safePixels[index] ?? null)
-  }
+  }, [height, width, zoom])
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     if (event.button !== 0) return
@@ -286,14 +416,17 @@ export function SpriteCanvasGrid({
     pointerDownRef.current = true
     lastDragCellKeyRef.current = `${pixel.x},${pixel.y}`
     setHoveredCell(pixel)
-    updateHoverColor(pixel)
+    emitHoverColor(pixel)
+    scheduleOverlayRender()
     onPaint(pixel.x, pixel.y, activeTool, "pointerDown")
   }
 
   const handlePointerMove = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     const pixel = resolvePixelFromPointer(event)
-    setHoveredCell(pixel)
-    updateHoverColor(pixel)
+    if (setHoveredCell(pixel)) {
+      emitHoverColor(pixel)
+      scheduleOverlayRender()
+    }
 
     if (!pointerDownRef.current || !pixel) return
 
@@ -306,7 +439,7 @@ export function SpriteCanvasGrid({
 
   const finishPointerInteraction = (
     event: ReactPointerEvent<HTMLCanvasElement>,
-    pixel: { x: number; y: number } | null
+    pixel: HoveredCell | null
   ) => {
     if (!pointerDownRef.current) return
 
@@ -325,10 +458,19 @@ export function SpriteCanvasGrid({
   }
 
   const handlePointerUp = (event: ReactPointerEvent<HTMLCanvasElement>) => {
-    finishPointerInteraction(event, resolvePixelFromPointer(event))
+    const pixel = resolvePixelFromPointer(event)
+    if (setHoveredCell(pixel)) {
+      emitHoverColor(pixel)
+      scheduleOverlayRender()
+    }
+    finishPointerInteraction(event, pixel)
   }
 
   const handlePointerCancel = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+    if (setHoveredCell(null)) {
+      emitHoverColor(null)
+      scheduleOverlayRender()
+    }
     finishPointerInteraction(event, null)
   }
 
@@ -338,27 +480,44 @@ export function SpriteCanvasGrid({
       data-testid="sprite-canvas-viewport"
       className="mvp16-sprite-grid-wrapper min-h-0 min-w-0 flex-1 overflow-auto bg-slate-50 p-4"
     >
-      <canvas
-        ref={canvasRef}
-        data-testid="sprite-canvas"
-        className="mvp16-sprite-canvas block border border-slate-300 shadow-sm"
-        style={{
-          width: `${width * zoom}px`,
-          height: `${height * zoom}px`,
-          cursor: SPRITE_TOOL_BY_ID[activeTool]?.cursor ?? "default",
-          imageRendering: "pixelated",
-          touchAction: "none"
-        }}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerCancel}
-        onPointerLeave={() => {
-          if (pointerDownRef.current) return
-          setHoveredCell(null)
-          onHoverColorChange?.(null)
-        }}
-      />
+      <div
+        className="relative block border border-slate-300 shadow-sm"
+        style={{ width: `${canvasSizing.cssWidth}px`, height: `${canvasSizing.cssHeight}px` }}
+      >
+        <canvas
+          ref={baseCanvasRef}
+          data-testid="sprite-canvas-base"
+          className="pointer-events-none absolute inset-0 block"
+          style={{
+            width: `${canvasSizing.cssWidth}px`,
+            height: `${canvasSizing.cssHeight}px`,
+            imageRendering: "pixelated"
+          }}
+        />
+        <canvas
+          ref={overlayCanvasRef}
+          data-testid="sprite-canvas-overlay"
+          className="mvp16-sprite-canvas absolute inset-0 block"
+          style={{
+            width: `${canvasSizing.cssWidth}px`,
+            height: `${canvasSizing.cssHeight}px`,
+            cursor: SPRITE_TOOL_BY_ID[activeTool]?.cursor ?? "default",
+            imageRendering: "pixelated",
+            touchAction: "none"
+          }}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerCancel}
+          onPointerLeave={() => {
+            if (pointerDownRef.current) return
+            if (setHoveredCell(null)) {
+              emitHoverColor(null)
+              scheduleOverlayRender()
+            }
+          }}
+        />
+      </div>
     </div>
   )
 }

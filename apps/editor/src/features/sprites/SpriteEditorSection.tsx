@@ -462,6 +462,10 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
     }
   }, [activeTool, spriteMove, selectDragRect, selectedSprite?.width, selectedSprite?.height])
 
+  const handleHoverColorChange = useCallback((nextColor: string | null) => {
+    setPickerPreviewColor(nextColor)
+  }, [])
+
   const handleFitZoom = useCallback(() => {
     if (!selectedSprite || !canvasViewportElement || typeof window === "undefined") return
 
@@ -645,11 +649,7 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
                 selectedIndices={selection}
                 selectDragRect={selectDragRect}
                 onPaint={handleCanvasPaint}
-                onHoverColorChange={(nextColor) => {
-                  if (activeTool === "color_picker") {
-                    setPickerPreviewColor(nextColor)
-                  }
-                }}
+                onHoverColorChange={activeTool === "color_picker" ? handleHoverColorChange : undefined}
                 onPointerUpOutside={handlePointerUpOutside}
                 onViewportElementChange={setCanvasViewportElement}
               />
