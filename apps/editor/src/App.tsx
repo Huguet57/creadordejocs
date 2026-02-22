@@ -258,29 +258,27 @@ function EditorAppShell() {
               <Redo2 className="h-4 w-4" />
             </Button>
             {controller.isAuthenticated ? (
-              <div className="flex items-center gap-1">
-                <Button
-                  data-testid="sync-button"
-                  variant="ghost"
-                  size="icon"
-                  className={`h-7 w-7 ${controller.syncStatus === "error" ? "text-red-400 hover:text-red-600" : "text-slate-400 hover:text-slate-700"}`}
-                  onClick={() => void controller.syncNow()}
-                  disabled={controller.syncStatus === "syncing"}
-                >
-                  {controller.syncStatus === "syncing" ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <CloudUpload className="h-4 w-4" />
-                  )}
-                </Button>
-                <span className="w-16 text-xs text-slate-400">
+              <Button
+                data-testid="sync-button"
+                variant="ghost"
+                size="sm"
+                className={`h-7 min-w-[5.5rem] gap-1.5 px-2 text-xs ${controller.syncStatus === "error" ? "text-red-400 hover:text-red-600" : "text-slate-400 hover:text-slate-700"}`}
+                onClick={() => void controller.syncNow()}
+                disabled={controller.syncStatus === "syncing"}
+              >
+                {controller.syncStatus === "syncing" ? (
+                  <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
+                ) : (
+                  <CloudUpload className="h-3.5 w-3.5 shrink-0" />
+                )}
+                <span>
                   {controller.syncStatus === "syncing"
-                    ? ""
+                    ? "Pujant..."
                     : controller.syncStatus === "error"
                       ? "Error"
-                      : formatRelativeTime(controller.lastSyncedAt) ?? ""}
+                      : formatRelativeTime(controller.lastSyncedAt) ?? "Pujar"}
                 </span>
-              </div>
+              </Button>
             ) : null}
           </div>
         </div>
