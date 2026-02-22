@@ -5,20 +5,17 @@ import { App } from "./App.js"
 import { initKvStorageProvider } from "./features/storage/get-kv-storage-provider.js"
 import "./index.css"
 
-const posthogKey = import.meta.env.VITE_PUBLIC_POSTHOG_KEY
+const posthogKey = import.meta.env.VITE_PUBLIC_POSTHOG_KEY?.trim()
+const posthogApiHost = import.meta.env.VITE_PUBLIC_POSTHOG_HOST?.trim()
 if (posthogKey) {
   posthog.init(posthogKey, {
-    api_host: import.meta.env.VITE_PUBLIC_POSTHOG_HOST ?? "/ingest",
+    api_host: posthogApiHost ?? "/ingest",
     ui_host: "https://us.posthog.com",
     person_profiles: "always",
     capture_pageview: true,
     capture_pageleave: true,
-    respect_dnt: false,
-    disable_compression: true,
-    debug: true,
     disable_session_recording: false,
     loaded: (ph) => {
-      ;(window as Window & { __ph?: unknown }).__ph = ph
       ph.startSessionRecording()
     }
   })
