@@ -1,4 +1,4 @@
-import { Copy, Send, ChevronDown } from "lucide-react"
+import { Copy, ExternalLink, Send, ChevronDown } from "lucide-react"
 import { useState } from "react"
 import { Button } from "../components/ui/button.js"
 import {
@@ -69,17 +69,37 @@ export function ShareDropdown({ controller }: ShareDropdownProps) {
       <DropdownMenuContent align="start" className="mvp19-share-dropdown-content w-72">
         <DropdownMenuLabel>Compartir joc</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem data-testid="header-share-publish-item" onSelect={() => void publish()}>
+        <DropdownMenuItem
+          data-testid="header-share-publish-item"
+          onSelect={(e) => {
+            e.preventDefault()
+            void publish()
+          }}
+        >
           <Send className="h-4 w-4 text-slate-500" />
           {shareStatus === "publishing" ? "Publicant..." : "Publicar joc"}
         </DropdownMenuItem>
         <DropdownMenuItem
           data-testid="header-share-copy-item"
-          onSelect={() => void copyLink()}
+          onSelect={(e) => {
+            e.preventDefault()
+            void copyLink()
+          }}
           disabled={!sharePermalink}
         >
           <Copy className="h-4 w-4 text-slate-500" />
-          Copiar enllac
+          Copiar enllaç
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          disabled={!sharePermalink}
+          onSelect={() => {
+            if (sharePermalink) {
+              window.open(sharePermalink, "_blank", "noopener")
+            }
+          }}
+        >
+          <ExternalLink className="h-4 w-4 text-slate-500" />
+          Anar a l&apos;enllaç
         </DropdownMenuItem>
         {sharePermalink && (
           <>
@@ -91,12 +111,12 @@ export function ShareDropdown({ controller }: ShareDropdownProps) {
         )}
         {copyStatus === "copied" && (
           <div data-testid="header-share-copy-status" className="mvp19-share-dropdown-copy-ok px-2 py-1 text-xs text-emerald-600">
-            Enllac copiat.
+            Enllaç copiat.
           </div>
         )}
         {copyStatus === "error" && (
           <div className="mvp19-share-dropdown-copy-error px-2 py-1 text-xs text-red-600">
-            No s&apos;ha pogut copiar l&apos;enllac.
+            No s&apos;ha pogut copiar l&apos;enllaç.
           </div>
         )}
       </DropdownMenuContent>
