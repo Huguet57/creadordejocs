@@ -70,16 +70,18 @@ export function ShareDropdown({ controller }: ShareDropdownProps) {
       <DropdownMenuContent align="start" className="mvp19-share-dropdown-content w-72">
         <DropdownMenuLabel>Compartir joc</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem
-          data-testid="header-share-publish-item"
-          onSelect={(e) => {
-            e.preventDefault()
-            void publish()
-          }}
-        >
-          <Send className="h-4 w-4 text-slate-500" />
-          {shareStatus === "publishing" ? "Publicant..." : "Publicar joc"}
-        </DropdownMenuItem>
+        {!isShared && (
+          <DropdownMenuItem
+            data-testid="header-share-publish-item"
+            onSelect={(e) => {
+              e.preventDefault()
+              void publish()
+            }}
+          >
+            <Send className="h-4 w-4 text-slate-500" />
+            {shareStatus === "publishing" ? "Publicant..." : "Publicar joc"}
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem
           data-testid="header-share-copy-item"
           onSelect={(e) => {
