@@ -9,6 +9,10 @@
       "destination": "/"
     },
     {
+      "source": "/editor/:path*",
+      "destination": "/"
+    },
+    {
       "source": "/play/:id",
       "destination": "/"
     }
