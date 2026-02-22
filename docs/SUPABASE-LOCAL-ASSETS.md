@@ -1,73 +1,79 @@
-# Supabase Local Setup for Editor Assets
+# Supabase Local Setup (Parity Mode)
 
-This guide enables real sprite and sound uploads from the editor using Supabase Storage.
+Aquesta guia deixa l'editor en mode local amb el mateix contracte d'env que remot.
 
-## 1) Configure Google OAuth env (for social login)
+## 1) Arrenca Supabase local
 
-Create local auth env file:
-
-```sh
-cp supabase/google-auth.env.example supabase/.env.local
-```
-
-Fill it with your Google OAuth credentials.
-
-## 2) Start Supabase local stack
-
-From repository root:
+Des de l'arrel del repo:
 
 ```sh
-npm run supabase:init
 npm run supabase:start
 ```
 
-`npm run supabase:start` automatically loads `supabase/.env.local` if present.
-
-Get local project details:
+## 2) Aplica migracions locals (inclou bucket/policies)
 
 ```sh
-npm run supabase:status
+supabase migration up --local --include-all
 ```
 
-Copy these values:
-- API URL (usually `http://127.0.0.1:54421`)
-- `anon key`
+La migracio `00003_create_game_assets_bucket_and_policies.sql` crea el bucket `game-assets` i les policies necessaries.
 
-## 3) Configure editor environment
+## 3) Refresca credencials locals i activa target local
 
-Create `apps/editor/.env.local` from `apps/editor/.env.example` and fill values:
-
-```env
-VITE_ASSET_STORAGE_PROVIDER=supabase
-VITE_SUPABASE_URL=http://127.0.0.1:54421
-VITE_SUPABASE_ANON_KEY=<anon-key-from-supabase-status>
-VITE_SUPABASE_BUCKET=game-assets
-VITE_ENABLE_SUPABASE_AUTH=true
-VITE_SUPABASE_AUTH_REDIRECT_TO=http://localhost:5173/editor
+```sh
+npm run supabase:env:refresh:local
+npm run env:local
+npm run env:status
 ```
 
-## 4) Create public bucket for MVP
+Aixo actualitza:
 
-Open Supabase Studio (`http://127.0.0.1:54423`) and create a Storage bucket:
-- Name: `game-assets` (or your `VITE_SUPABASE_BUCKET` value)
-- Public bucket: enabled
+- `apps/editor/.env.local.local`
+- `apps/editor/.env.local`
 
-## 5) Run editor
+amb les claus requerides:
+
+- `VITE_ASSET_STORAGE_PROVIDER=supabase`
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+- `VITE_SUPABASE_BUCKET=game-assets`
+- `VITE_ENABLE_SUPABASE_AUTH=true`
+- `VITE_SUPABASE_AUTH_REDIRECT_TO=http://localhost:5173/editor`
+
+## 4) Arrenca l'editor
 
 ```sh
 npm run editor:dev
 ```
 
-In the editor:
-- Upload a sprite image (`png`, `jpg`, `jpeg`, `gif`, `webp`)
-- Upload a sound (`wav`, `mp3`, `ogg`)
-- `assetSource` should become a Supabase URL.
+## 5) Verificacio rapida
 
-## Notes
+1. Crea o edita un projecte i desa'l.
+2. Refresca la pagina i comprova que torna a sortir.
+3. Puja un sprite i un so.
+4. Comprova que no hi ha `504` a consola.
 
-- Current MVP uses a public bucket to unblock workflow.
-- Next phase can switch to private bucket + signed URLs by replacing the URL builder in the upload service.
-- Stop local services when done:
+## 6) OAuth Google (opcional, per paritat alta)
+
+Si vols validar tambe Google sign-in en local:
+
+```sh
+cp supabase/google-auth.env.example supabase/.env.local
+```
+
+Omple `SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID` i `SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET`, i reinicia:
+
+```sh
+npm run supabase:stop
+npm run supabase:start
+```
+
+Callback local de Google Console:
+
+- `http://127.0.0.1:54421/auth/v1/callback`
+- `http://localhost:54421/auth/v1/callback`
+
+## 7) Atura serveis quan acabis
 
 ```sh
 npm run supabase:stop

@@ -8,5 +8,7 @@ test-results/
 .env
 .env.*
 !.env.example
+!apps/editor/.env.local.local.example
+!apps/editor/.env.local.remote.example
 .vercel
 resources/
