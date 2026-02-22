@@ -13,6 +13,45 @@ export type MergeProjectCatalogResult = {
   conflictCopies: SyncCatalogEntry[]
 }
 
+function sortJsonValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((entry) => sortJsonValue(entry))
+  }
+
+  if (value && typeof value === "object") {
+    const sortedEntries = Object.entries(value as Record<string, unknown>).sort(([left], [right]) => left.localeCompare(right))
+    const normalizedObject: Record<string, unknown> = {}
+    for (const [key, entryValue] of sortedEntries) {
+      normalizedObject[key] = sortJsonValue(entryValue)
+    }
+    return normalizedObject
+  }
+
+  return value
+}
+
+function canonicalizeJsonSource(source: string): string | null {
+  try {
+    const parsed = JSON.parse(source) as unknown
+    return JSON.stringify(sortJsonValue(parsed))
+  } catch {
+    return null
+  }
+}
+
+function projectSourcesMatch(localSource: string, remoteSource: string): boolean {
+  if (localSource === remoteSource) {
+    return true
+  }
+
+  const localCanonical = canonicalizeJsonSource(localSource)
+  const remoteCanonical = canonicalizeJsonSource(remoteSource)
+  if (localCanonical === null || remoteCanonical === null) {
+    return false
+  }
+  return localCanonical === remoteCanonical
+}
+
 function compareIsoDate(left: string, right: string): number {
   const leftMs = Date.parse(left)
   const rightMs = Date.parse(right)
@@ -46,7 +85,7 @@ export function mergeProjectCatalog(local: SyncCatalogEntry[], remote: SyncCatal
       } else if (dateDiff < 0) {
         merged.push(remoteEntry)
       } else {
-        if (localEntry.projectSource !== remoteEntry.projectSource) {
+        if (!projectSourcesMatch(localEntry.projectSource, remoteEntry.projectSource)) {
           merged.push(remoteEntry)
           conflictCopies.push(createConflictCopy(localEntry))
         } else {

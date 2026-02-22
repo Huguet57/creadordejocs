@@ -1,3 +1,4 @@
+import { createEmptyProjectV1, serializeProjectV1 } from "@creadordejocs/project-format"
 import { describe, expect, it } from "vitest"
 import { mergeProjectCatalog, type SyncCatalogEntry } from "./project-sync.js"
 
@@ -83,5 +84,20 @@ describe("project-sync mergeProjectCatalog", () => {
     expect(result.conflictCopies[0]?.name).toContain("Local version")
     expect(result.conflictCopies[0]?.name).toContain("conflict")
     expect(result.conflictCopies[0]?.projectSource).toContain("\"local\"")
+  })
+
+  it("when timestamps are equal and source differs only by json formatting, does not emit conflict copy", () => {
+    const timestamp = "2026-02-20T10:00:00.000Z"
+    const sourceProject = createEmptyProjectV1("Formatting only")
+    const canonicalSource = serializeProjectV1(sourceProject)
+    const prettyPrintedSource = JSON.stringify(JSON.parse(canonicalSource), null, 2)
+
+    const result = mergeProjectCatalog(
+      [local({ name: "Local", projectSource: canonicalSource, updatedAtIso: timestamp })],
+      [local({ name: "Remote", projectSource: prettyPrintedSource, updatedAtIso: timestamp })]
+    )
+
+    expect(result.toUpload).toEqual([])
+    expect(result.conflictCopies).toEqual([])
   })
 })
