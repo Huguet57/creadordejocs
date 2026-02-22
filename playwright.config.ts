@@ -5,7 +5,7 @@ export default defineConfig({
   fullyParallel: true,
   retries: 0,
   webServer: {
-    command: "npm run dev -w @creadordejocs/editor -- --host localhost --port 4173",
+    command: "npm run dev -w @creadordejocs/editor -- --host localhost --port 4173 --mode test",
     url: "http://localhost:4173",
     reuseExistingServer: true,
     timeout: 120 * 1000
