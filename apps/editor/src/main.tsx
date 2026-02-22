@@ -1,8 +1,18 @@
+import { posthog } from "posthog-js"
 import React from "react"
 import { createRoot } from "react-dom/client"
 import { App } from "./App.js"
 import { initKvStorageProvider } from "./features/storage/get-kv-storage-provider.js"
 import "./index.css"
+
+const posthogKey = import.meta.env.VITE_PUBLIC_POSTHOG_KEY
+const posthogHost = import.meta.env.VITE_PUBLIC_POSTHOG_HOST
+if (posthogKey && posthogHost) {
+  posthog.init(posthogKey, {
+    api_host: posthogHost,
+    person_profiles: "identified_only"
+  })
+}
 
 const rootNode = document.getElementById("root")
 if (!rootNode) {
