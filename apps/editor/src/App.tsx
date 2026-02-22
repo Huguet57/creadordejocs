@@ -127,7 +127,7 @@ function EditorAppShell() {
             <AccountDropdown controller={controller} />
             <ShareDropdown controller={controller} />
             <p data-testid="save-status" className="mvp19-header-save-status ml-2 text-xs text-slate-400">
-              {formatStatus(controller.saveStatus)}
+              {manualSaveLabel ?? formatStatus(controller.saveStatus)}
             </p>
           </div>
           <div className="flex items-center gap-1">
@@ -156,8 +156,8 @@ function EditorAppShell() {
             <Button
               data-testid="save-local-button"
               variant="ghost"
-              size="sm"
-              className="h-7 gap-1 px-2 text-xs text-slate-400 hover:text-slate-700"
+              size="icon"
+              className="h-7 w-7 text-slate-400 hover:text-slate-700"
               onClick={() => {
                 if (manualSaveTimerRef.current) clearTimeout(manualSaveTimerRef.current)
                 setManualSaveLabel("Saving...")
@@ -172,7 +172,6 @@ function EditorAppShell() {
               title="Save"
             >
               <Save className="h-4 w-4" />
-              {manualSaveLabel ? <span>{manualSaveLabel}</span> : null}
             </Button>
           </div>
         </div>
