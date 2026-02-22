@@ -76,7 +76,7 @@ import {
   updateBlockAction as updateBlockActionModel,
   removeBlockAction as removeBlockActionModel,
   generateUUID,
-  loadProjectV1,
+  parseProjectV1,
   serializeProjectV1,
   type ObjectActionDraft,
   type ObjectEventItem,
@@ -99,6 +99,7 @@ import {
   loadProjectFromLocalStorage,
   loadSnapshotProject,
   loadSnapshotsFromLocalStorage,
+  parseProjectFromLocalStorage,
   renameLocalProject,
   saveCheckpointSnapshot,
   saveProjectByIdLocally,
@@ -453,7 +454,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
     const sourceProjects = listLocalProjects(sourceScopeUserId)
     const sourceActiveProjectId = getActiveProjectIdFromLocalStorage(sourceScopeUserId)
     for (const sourceSummary of sourceProjects) {
-      const sourceProject = loadProjectFromLocalStorage(sourceSummary.projectId, sourceScopeUserId)
+      const sourceProject = parseProjectFromLocalStorage(sourceSummary.projectId, sourceScopeUserId)
       if (!sourceProject) {
         continue
       }
@@ -471,7 +472,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       const sourceSnapshots = loadSnapshotsFromLocalStorage(sourceSummary.projectId, sourceScopeUserId)
       for (const sourceSnapshot of [...sourceSnapshots].reverse()) {
         try {
-          const parsedSnapshotProject = loadProjectV1(sourceSnapshot.projectSource)
+          const parsedSnapshotProject = parseProjectV1(sourceSnapshot.projectSource)
           saveCheckpointSnapshot(parsedSnapshotProject, sourceSnapshot.label, sourceSummary.projectId, targetScopeUserId)
         } catch {
           // Ignore malformed snapshots.
@@ -517,7 +518,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
             removeProjectOutboxItem(scopeUserId, entry.id)
             continue
           }
-          const parsed = loadProjectV1(entry.projectSource)
+          const parsed = parseProjectV1(entry.projectSource)
           await upsertUserProject(supabase, userId, {
             project: parsed,
             updatedAtIso: entry.updatedAtIso
@@ -688,7 +689,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       const scopeUserId = resolveScopeUserId()
       const localEntries = listLocalProjects(scopeUserId)
         .map((summary) => {
-          const localProject = loadProjectFromLocalStorage(summary.projectId, scopeUserId)
+          const localProject = parseProjectFromLocalStorage(summary.projectId, scopeUserId)
           if (!localProject) {
             return null
           }
@@ -708,7 +709,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
 
       for (const entry of merged.merged) {
         try {
-          const parsed = loadProjectV1(entry.projectSource)
+          const parsed = parseProjectV1(entry.projectSource)
           saveProjectByIdLocally(entry.projectId, parsed, {
             updatedAtIso: entry.updatedAtIso,
             setActive: entry.projectId === scopedActiveProjectId
@@ -720,7 +721,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
 
       for (const entry of merged.conflictCopies) {
         try {
-          const parsed = loadProjectV1(entry.projectSource)
+          const parsed = parseProjectV1(entry.projectSource)
           saveProjectByIdLocally(entry.projectId, parsed, {
             updatedAtIso: entry.updatedAtIso,
             setActive: false

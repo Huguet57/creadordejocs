@@ -1,4 +1,4 @@
-import { createEmptyProjectV1, serializeProjectV1 } from "@creadordejocs/project-format"
+import { createEmptyProjectV1, parseProjectV1, serializeProjectV1 } from "@creadordejocs/project-format"
 import { describe, expect, it } from "vitest"
 import { mergeProjectCatalog, type SyncCatalogEntry } from "./project-sync.js"
 
@@ -95,6 +95,71 @@ describe("project-sync mergeProjectCatalog", () => {
     const result = mergeProjectCatalog(
       [local({ name: "Local", projectSource: canonicalSource, updatedAtIso: timestamp })],
       [local({ name: "Remote", projectSource: prettyPrintedSource, updatedAtIso: timestamp })]
+    )
+
+    expect(result.toUpload).toEqual([])
+    expect(result.conflictCopies).toEqual([])
+  })
+
+  it("when timestamps are equal and source differs only by projectLoad metric, does not emit conflict copy", () => {
+    const timestamp = "2026-02-20T10:00:00.000Z"
+    const sourceProject = createEmptyProjectV1("Project load only")
+    const localSource = serializeProjectV1({
+      ...sourceProject,
+      metrics: {
+        ...sourceProject.metrics,
+        projectLoad: 40
+      }
+    })
+    const remoteSource = serializeProjectV1({
+      ...sourceProject,
+      metrics: {
+        ...sourceProject.metrics,
+        projectLoad: 41
+      }
+    })
+
+    const result = mergeProjectCatalog(
+      [local({ name: "Local", projectSource: localSource, updatedAtIso: timestamp })],
+      [local({ name: "Remote", projectSource: remoteSource, updatedAtIso: timestamp })]
+    )
+
+    expect(result.toUpload).toEqual([])
+    expect(result.conflictCopies).toEqual([])
+  })
+
+  it("when timestamps are equal and one source is legacy actions[] format, does not emit conflict copy", () => {
+    const timestamp = "2026-02-20T10:00:00.000Z"
+    const baseProject = createEmptyProjectV1("Legacy sync")
+    const legacySource = JSON.stringify({
+      ...baseProject,
+      objects: [
+        {
+          id: "object-player",
+          name: "Player",
+          spriteId: null,
+          x: 0,
+          y: 0,
+          speed: 0,
+          direction: 0,
+          events: [
+            {
+              id: "event-step",
+              type: "Step",
+              key: null,
+              targetObjectId: null,
+              intervalMs: null,
+              actions: [{ id: "action-move", type: "move", dx: 2, dy: 1 }]
+            }
+          ]
+        }
+      ]
+    })
+    const normalizedSource = serializeProjectV1(parseProjectV1(legacySource))
+
+    const result = mergeProjectCatalog(
+      [local({ name: "Local", projectSource: legacySource, updatedAtIso: timestamp })],
+      [local({ name: "Remote", projectSource: normalizedSource, updatedAtIso: timestamp })]
     )
 
     expect(result.toUpload).toEqual([])

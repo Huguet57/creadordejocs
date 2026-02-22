@@ -1,4 +1,4 @@
-import { generateUUID, loadProjectV1, serializeProjectV1 } from "@creadordejocs/project-format"
+import { generateUUID, parseProjectV1, serializeProjectV1 } from "@creadordejocs/project-format"
 
 export type SyncCatalogEntry = {
   projectId: string
@@ -39,13 +39,29 @@ function canonicalizeJsonSource(source: string): string | null {
   }
 }
 
+function canonicalizeProjectSource(source: string): string | null {
+  try {
+    const parsed = parseProjectV1(source)
+    const withoutVolatileMetrics = {
+      ...parsed,
+      metrics: {
+        ...parsed.metrics,
+        projectLoad: 0
+      }
+    }
+    return JSON.stringify(sortJsonValue(withoutVolatileMetrics))
+  } catch {
+    return canonicalizeJsonSource(source)
+  }
+}
+
 function projectSourcesMatch(localSource: string, remoteSource: string): boolean {
   if (localSource === remoteSource) {
     return true
   }
 
-  const localCanonical = canonicalizeJsonSource(localSource)
-  const remoteCanonical = canonicalizeJsonSource(remoteSource)
+  const localCanonical = canonicalizeProjectSource(localSource)
+  const remoteCanonical = canonicalizeProjectSource(remoteSource)
   if (localCanonical === null || remoteCanonical === null) {
     return false
   }
@@ -126,7 +142,7 @@ function createConflictCopy(localEntry: SyncCatalogEntry): SyncCatalogEntry {
   const conflictName = `${localEntry.name} (conflict ${formatConflictTimestamp(createdAtIso)})`
 
   try {
-    const parsed = loadProjectV1(localEntry.projectSource)
+    const parsed = parseProjectV1(localEntry.projectSource)
     const withConflictMetadata = {
       ...parsed,
       metadata: {

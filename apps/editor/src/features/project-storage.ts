@@ -1,4 +1,4 @@
-import { generateUUID, loadProjectV1, serializeProjectV1, type ProjectV1 } from "@creadordejocs/project-format"
+import { generateUUID, loadProjectV1, parseProjectV1, serializeProjectV1, type ProjectV1 } from "@creadordejocs/project-format"
 import { getKvStorageProvider } from "./storage/get-kv-storage-provider.js"
 
 const DEFAULT_SCOPE_USER_ID = "__local__"
@@ -355,12 +355,7 @@ export function saveProjectLocally(project: ProjectV1, projectId?: string, scope
 }
 
 export function loadProjectFromLocalStorage(projectId?: string, scopeUserId?: string | null): ProjectV1 | null {
-  const targetProjectId = projectId ?? getActiveProjectIdFromLocalStorage(scopeUserId)
-  if (!targetProjectId) {
-    return null
-  }
-
-  const source = getKvStorageProvider().getItem(projectKey(targetProjectId, scopeUserId))
+  const source = loadProjectSourceFromLocalStorage(projectId, scopeUserId)
   if (!source) {
     return null
   }
@@ -370,6 +365,28 @@ export function loadProjectFromLocalStorage(projectId?: string, scopeUserId?: st
   } catch {
     return null
   }
+}
+
+export function parseProjectFromLocalStorage(projectId?: string, scopeUserId?: string | null): ProjectV1 | null {
+  const source = loadProjectSourceFromLocalStorage(projectId, scopeUserId)
+  if (!source) {
+    return null
+  }
+
+  try {
+    return parseProjectV1(source)
+  } catch {
+    return null
+  }
+}
+
+export function loadProjectSourceFromLocalStorage(projectId?: string, scopeUserId?: string | null): string | null {
+  const targetProjectId = projectId ?? getActiveProjectIdFromLocalStorage(scopeUserId)
+  if (!targetProjectId) {
+    return null
+  }
+
+  return getKvStorageProvider().getItem(projectKey(targetProjectId, scopeUserId))
 }
 
 export function renameLocalProject(projectId: string, nextName: string, scopeUserId?: string | null): LocalProjectSummary | null {
