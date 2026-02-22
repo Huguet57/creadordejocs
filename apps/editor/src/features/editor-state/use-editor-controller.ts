@@ -421,6 +421,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
   const [roomTransition, setRoomTransition] = useState<GoToRoomTransition>("none")
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("saved")
   const [syncStatus, setSyncStatus] = useState<"idle" | "syncing" | "synced" | "error">("idle")
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null)
   const [authUser, setAuthUser] = useState<SupabaseAuthUser | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [importStatus, setImportStatus] = useState<"idle" | "importing" | "imported" | "error">("idle")
@@ -675,7 +676,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
     }
   }
 
-  const persistProject = (source: ProjectV1, withSnapshotLabel?: string, skipImmediateSync = false): void => {
+  const persistProject = (source: ProjectV1, withSnapshotLabel?: string): void => {
     try {
       setSaveStatus("saving")
       const summary = saveProjectByIdLocally(activeProjectId, source, { setActive: true }, resolveScopeUserId())
@@ -686,9 +687,6 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
         setSnapshots(saveCheckpointSnapshot(source, withSnapshotLabel, activeProjectId, resolveScopeUserId()))
       }
       enqueueProjectSync(source, summary.updatedAtIso)
-      if (authUser && !skipImmediateSync) {
-        void syncNowRef.current()
-      }
     } catch (err) {
       console.error("[persistProject] Save failed:", err)
       if (isQuotaExceededError(err) && authUser !== null) {
@@ -708,6 +706,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
             setSaveStatus("saved")
             setIsDirty(false)
             setSyncStatus("synced")
+            setLastSyncedAt(new Date())
           })
           .catch((error) => {
             console.error("[persistProject] Direct Supabase fallback failed:", error)
@@ -736,7 +735,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
 
     try {
       if (isDirty) {
-        persistProject(project, undefined, true)
+        persistProject(project)
       }
 
       setSyncStatus("syncing")
@@ -805,6 +804,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
         if (isRunningRef.current) {
           // Don't overwrite project state while playing — runtime owns project mutations
           setSyncStatus("synced")
+          setLastSyncedAt(new Date())
           return
         }
         if (nextActiveProjectId === activeProjectId) {
@@ -819,6 +819,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
         }
       }
       setSyncStatus("synced")
+      setLastSyncedAt(new Date())
     } catch (error) {
       console.error("[syncNow] Sync failed:", error)
       setSyncStatus("error")
@@ -942,13 +943,6 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
 
     window.addEventListener("online", onOnline)
     return () => window.removeEventListener("online", onOnline)
-  }, [])
-
-  useEffect(() => {
-    const interval = window.setInterval(() => {
-      void syncNowRef.current()
-    }, 15_000)
-    return () => window.clearInterval(interval)
   }, [])
 
   useEffect(() => {
@@ -1174,6 +1168,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
     snapshots,
     saveStatus,
     syncStatus,
+    lastSyncedAt,
     isAuthenticated,
     authLoading,
     importStatus,

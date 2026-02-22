@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { Redo2, Save, Undo2 } from "lucide-react"
+import { CloudUpload, Redo2, Undo2 } from "lucide-react"
 import { Button } from "./components/ui/button.js"
 import { AuthPasswordModal } from "./features/auth/components/AuthPasswordModal.js"
 import { shouldResetWhenSwitchingSection, useEditorController } from "./features/editor-state/use-editor-controller.js"
@@ -33,6 +33,22 @@ function formatStatus(status: "idle" | "saved" | "saving" | "error"): string {
   if (status === "saved") return "Saved"
   if (status === "error") return "Error"
   return "Saved"
+}
+
+function formatSyncLabel(status: "idle" | "syncing" | "synced" | "error", lastSyncedAt: Date | null): string {
+  if (status === "syncing") return "Sincronitzant..."
+  if (status === "error") return "Error de sync"
+  if (lastSyncedAt) {
+    const diffMs = Date.now() - lastSyncedAt.getTime()
+    const diffMin = Math.floor(diffMs / 60_000)
+    if (diffMin < 1) return "Sync: ara"
+    if (diffMin === 1) return "Sync: fa 1 min"
+    if (diffMin < 60) return `Sync: fa ${diffMin} min`
+    const diffH = Math.floor(diffMin / 60)
+    if (diffH === 1) return "Sync: fa 1 h"
+    return `Sync: fa ${diffH} h`
+  }
+  return "No sincronitzat"
 }
 
 function setMetaContent(selector: string, content: string): void {
@@ -81,6 +97,7 @@ function EditorAppShell() {
   const [authPassword, setAuthPassword] = useState("")
   const [authError, setAuthError] = useState<string | null>(null)
   const [isAuthSubmitting, setIsAuthSubmitting] = useState(false)
+  const [, setTick] = useState(0)
   controllerRef.current = controller
 
   const closeAuthModal = (): void => {
@@ -188,6 +205,12 @@ function EditorAppShell() {
     return () => window.removeEventListener("popstate", handlePopState)
   }, [])
 
+  useEffect(() => {
+    if (!controller.lastSyncedAt) return
+    const interval = window.setInterval(() => setTick((t) => t + 1), 30_000)
+    return () => window.clearInterval(interval)
+  }, [controller.lastSyncedAt])
+
   return (
     <main
       className="mvp15-editor-shell flex h-screen flex-col overflow-hidden bg-slate-50 px-4 py-4 text-slate-900"
@@ -237,16 +260,21 @@ function EditorAppShell() {
             >
               <Redo2 className="h-4 w-4" />
             </Button>
-            <Button
-              data-testid="save-local-button"
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-slate-400 hover:text-slate-700"
-              onClick={() => controller.saveNow()}
-              title="Save"
-            >
-              <Save className="h-4 w-4" />
-            </Button>
+            {controller.isAuthenticated ? (
+              <Button
+                data-testid="sync-button"
+                variant="ghost"
+                size="sm"
+                className={`h-7 gap-1.5 px-2 text-xs ${controller.syncStatus === "error" ? "text-red-400 hover:text-red-600" : "text-slate-400 hover:text-slate-700"}`}
+                onClick={() => void controller.syncNow()}
+                disabled={controller.syncStatus === "syncing"}
+              >
+                <CloudUpload
+                  className={`h-3.5 w-3.5 ${controller.syncStatus === "syncing" ? "animate-pulse" : ""}`}
+                />
+                {formatSyncLabel(controller.syncStatus, controller.lastSyncedAt)}
+              </Button>
+            ) : null}
           </div>
         </div>
 
