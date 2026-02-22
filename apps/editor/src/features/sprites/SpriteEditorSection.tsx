@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react"
 import type { EditorController } from "../editor-state/use-editor-controller.js"
-import { spriteAssignedObjectNames } from "../editor-state/use-editor-controller.js"
+import { buildSpriteAssignedObjectNamesIndex } from "../editor-state/use-editor-controller.js"
 import { Button } from "../../components/ui/button.js"
 import { SpriteCanvasGrid, type SelectDragRect } from "./components/SpriteCanvasGrid.js"
 import { SpriteImportButton } from "./components/SpriteImportButton.js"
@@ -25,11 +25,20 @@ type SpriteEditorSectionProps = {
   controller: EditorController
 }
 
+type SpriteResourceEntry = EditorController["project"]["resources"]["sprites"][number]
+
+type SpritePreviewCacheEntry = {
+  spriteRef: SpriteResourceEntry
+  previewDataUrl: string
+}
+
+const PREVIEW_RESOLVE_DEBOUNCE_MS = 120
+
 export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
   const sprites = controller.project.resources.sprites
   const spriteIds = sprites.map((spriteEntry) => spriteEntry.id)
   const [openTabs, setOpenTabs] = useState<{ id: string; pinned: boolean }[]>([])
-  const spriteStateSignatureByIdRef = useRef<Record<string, string>>({})
+  const spriteStateByIdRef = useRef<Map<string, SpriteResourceEntry>>(new Map())
   const spriteEditorState = useSpriteEditorState()
   const {
     activeTool,
@@ -50,6 +59,9 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
   const [pickerPreviewColor, setPickerPreviewColor] = useState<string | null>(null)
   const [activeFrameId, setActiveFrameId] = useState<string | null>(null)
   const [canvasViewportElement, setCanvasViewportElement] = useState<HTMLDivElement | null>(null)
+  const selectedSprite = sprites.find((spriteEntry) => spriteEntry.id === activeSpriteId) ?? null
+  const spritePreviewCacheByIdRef = useRef<Map<string, SpritePreviewCacheEntry>>(new Map())
+  const previewResolveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (activeSpriteId && !spriteIds.includes(activeSpriteId)) {
@@ -74,6 +86,11 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
       const cleaned = previous.filter((tabEntry) => currentSpriteIds.has(tabEntry.id))
       return cleaned.length === previous.length ? previous : cleaned
     })
+    for (const spriteId of spriteStateByIdRef.current.keys()) {
+      if (!currentSpriteIds.has(spriteId)) {
+        spriteStateByIdRef.current.delete(spriteId)
+      }
+    }
   }, [sprites])
 
   useEffect(() => {
@@ -87,30 +104,25 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
   }, [activeSpriteId])
 
   useEffect(() => {
-    const currentSignatures: Record<string, string> = {}
-    for (const spriteEntry of sprites) {
-      currentSignatures[spriteEntry.id] = JSON.stringify({
-        name: spriteEntry.name,
-        width: spriteEntry.width,
-        height: spriteEntry.height,
-        pixelsRgba: spriteEntry.pixelsRgba,
-        frames: spriteEntry.frames
-      })
+    if (!activeSpriteId) {
+      return
     }
 
-    if (activeSpriteId) {
-      const previousSignature = spriteStateSignatureByIdRef.current[activeSpriteId]
-      const currentSignature = currentSignatures[activeSpriteId]
-      if (previousSignature && currentSignature && previousSignature !== currentSignature) {
-        setOpenTabs((previous) =>
-          previous.map((tabEntry) =>
-            tabEntry.id === activeSpriteId && !tabEntry.pinned ? { ...tabEntry, pinned: true } : tabEntry
-          )
+    const activeSprite = sprites.find((spriteEntry) => spriteEntry.id === activeSpriteId)
+    if (!activeSprite) {
+      return
+    }
+
+    const previousSpriteState = spriteStateByIdRef.current.get(activeSpriteId)
+    if (previousSpriteState && previousSpriteState !== activeSprite) {
+      setOpenTabs((previous) =>
+        previous.map((tabEntry) =>
+          tabEntry.id === activeSpriteId && !tabEntry.pinned ? { ...tabEntry, pinned: true } : tabEntry
         )
-      }
+      )
     }
 
-    spriteStateSignatureByIdRef.current = currentSignatures
+    spriteStateByIdRef.current.set(activeSpriteId, activeSprite)
   }, [activeSpriteId, sprites])
 
   const handleSelectSprite = (spriteId: string) => {
@@ -160,8 +172,6 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
     }
     return true
   }
-
-  const selectedSprite = sprites.find((spriteEntry) => spriteEntry.id === activeSpriteId) ?? null
 
   const maxZoom = useMemo(
     () => (selectedSprite ? computeMaxZoom(selectedSprite.width, selectedSprite.height) : 24),
@@ -219,29 +229,84 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
   const [resolvedSpritePreviews, setResolvedSpritePreviews] = useState<Record<string, string>>({})
 
   useEffect(() => {
-    let cancelled = false
-
-    const resolvePreviews = async () => {
-      const pairs = await Promise.all(
-        sprites.map(async (spriteEntry) => {
-          if (!hasVisibleSpritePixels(spriteEntry.pixelsRgba)) {
-            return null
-          }
-          const resolved = await resolveSpritePreviewSource(spriteEntry)
-          return [spriteEntry.id, resolved] as const
-        })
-      )
-      if (!cancelled) {
-        setResolvedSpritePreviews(Object.fromEntries(pairs.filter((entry): entry is readonly [string, string] => entry !== null)))
+    const currentSpriteIds = new Set(sprites.map((entry) => entry.id))
+    for (const cachedSpriteId of spritePreviewCacheByIdRef.current.keys()) {
+      if (!currentSpriteIds.has(cachedSpriteId)) {
+        spritePreviewCacheByIdRef.current.delete(cachedSpriteId)
       }
     }
+    setResolvedSpritePreviews((previous) => {
+      let changed = false
+      const next = { ...previous }
+      for (const previewSpriteId of Object.keys(previous)) {
+        if (!currentSpriteIds.has(previewSpriteId)) {
+          delete next[previewSpriteId]
+          changed = true
+        }
+      }
+      return changed ? next : previous
+    })
 
-    void resolvePreviews()
+    const changedSprites = sprites.filter(
+      (spriteEntry) => spritePreviewCacheByIdRef.current.get(spriteEntry.id)?.spriteRef !== spriteEntry
+    )
+    if (!changedSprites.length) {
+      return
+    }
+
+    let cancelled = false
+    if (previewResolveTimeoutRef.current) {
+      clearTimeout(previewResolveTimeoutRef.current)
+    }
+
+    previewResolveTimeoutRef.current = setTimeout(() => {
+      const resolvePreviews = async () => {
+        const resolvedEntries: Record<string, string> = {}
+        for (const spriteEntry of changedSprites) {
+          let resolvedPreview = ""
+          if (hasVisibleSpritePixels(spriteEntry.pixelsRgba)) {
+            resolvedPreview = await resolveSpritePreviewSource(spriteEntry)
+            if (cancelled) {
+              return
+            }
+          }
+          spritePreviewCacheByIdRef.current.set(spriteEntry.id, {
+            spriteRef: spriteEntry,
+            previewDataUrl: resolvedPreview
+          })
+          resolvedEntries[spriteEntry.id] = resolvedPreview
+        }
+        if (cancelled) {
+          return
+        }
+        setResolvedSpritePreviews((previous) => {
+          let changed = false
+          const next = { ...previous }
+          for (const [spriteId, previewDataUrl] of Object.entries(resolvedEntries)) {
+            if (next[spriteId] !== previewDataUrl) {
+              next[spriteId] = previewDataUrl
+              changed = true
+            }
+          }
+          return changed ? next : previous
+        })
+      }
+      void resolvePreviews()
+    }, PREVIEW_RESOLVE_DEBOUNCE_MS)
 
     return () => {
       cancelled = true
+      if (previewResolveTimeoutRef.current) {
+        clearTimeout(previewResolveTimeoutRef.current)
+        previewResolveTimeoutRef.current = null
+      }
     }
   }, [sprites])
+
+  const spriteAssignedObjectNamesIndex = useMemo(
+    () => buildSpriteAssignedObjectNamesIndex(controller.project),
+    [controller.project]
+  )
 
   const spriteListEntries = useMemo(
     () =>
@@ -255,17 +320,22 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
           height: spriteEntry.height,
           isEmpty: !hasPixels,
           previewDataUrl: resolvedSpritePreviews[spriteEntry.id] ?? "",
-          objectNames: spriteAssignedObjectNames(controller.project, spriteEntry.id)
+          objectNames: spriteAssignedObjectNamesIndex[spriteEntry.id] ?? []
         }
       }),
-    [controller.project, sprites, resolvedSpritePreviews]
+    [resolvedSpritePreviews, spriteAssignedObjectNamesIndex, sprites]
+  )
+
+  const spriteListEntryById = useMemo(
+    () => new Map(spriteListEntries.map((spriteEntry) => [spriteEntry.id, spriteEntry] as const)),
+    [spriteListEntries]
   )
 
   const tabData = useMemo(
     () =>
       openTabs
         .map((tabEntry) => {
-          const spriteEntry = spriteListEntries.find((entry) => entry.id === tabEntry.id)
+          const spriteEntry = spriteListEntryById.get(tabEntry.id)
           if (!spriteEntry) return null
           return {
             id: spriteEntry.id,
@@ -275,7 +345,7 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
           }
         })
         .filter((entry): entry is NonNullable<typeof entry> => entry !== null),
-    [openTabs, spriteListEntries]
+    [openTabs, spriteListEntryById]
   )
 
   const spriteImport = useSpriteImport({

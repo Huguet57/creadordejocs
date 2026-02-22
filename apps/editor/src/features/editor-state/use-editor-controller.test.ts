@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
+  buildSpriteAssignedObjectNamesIndex,
   getRuntimeKeyFromKeyboardEvent,
   isSpriteCompatibleWithObjectSize,
   isQuotaExceededError,
@@ -165,6 +166,66 @@ describe("countSpriteAssignments", () => {
     const objectThree = quickCreateObject(objectTwo.project, { name: "Obj3", spriteId: null })
 
     expect(countSpriteAssignments(objectThree.project, spriteResult.spriteId)).toBe(2)
+  })
+})
+
+describe("buildSpriteAssignedObjectNamesIndex", () => {
+  it("indexes direct and event-based sprite assignments once per object", () => {
+    const base = createEmptyProjectV1("sprite index")
+    const spriteAResult = quickCreateSprite(base, "Sprite A")
+    const spriteBResult = quickCreateSprite(spriteAResult.project, "Sprite B")
+    const objectAResult = quickCreateObject(spriteBResult.project, { name: "Obj A", spriteId: spriteAResult.spriteId })
+    const objectBResult = quickCreateObject(objectAResult.project, { name: "Obj B", spriteId: null })
+    const objectB = objectBResult.project.objects.find((entry) => entry.id === objectBResult.objectId)
+    expect(objectB).toBeDefined()
+    const objectEvent: (typeof objectBResult.project.objects)[number]["events"][number] = {
+      id: "event-step",
+      type: "Step",
+      key: null,
+      keyboardMode: null,
+      targetObjectId: null,
+      intervalMs: null,
+      eventName: null,
+      sourceObjectId: null,
+      items: [
+        {
+          id: "item-change-sprite",
+          type: "action",
+          action: {
+            id: "action-change-sprite",
+            type: "changeSprite",
+            spriteId: spriteBResult.spriteId,
+            target: "self"
+          }
+        },
+        {
+          id: "item-change-sprite-duplicate",
+          type: "action",
+          action: {
+            id: "action-change-sprite-duplicate",
+            type: "changeSprite",
+            spriteId: spriteBResult.spriteId,
+            target: "self"
+          }
+        }
+      ]
+    }
+
+    const project = {
+      ...objectBResult.project,
+      objects: objectBResult.project.objects.map((entry) =>
+        entry.id === objectBResult.objectId
+          ? {
+              ...entry,
+              events: [objectEvent]
+            }
+          : entry
+      )
+    }
+
+    const index = buildSpriteAssignedObjectNamesIndex(project)
+    expect(index[spriteAResult.spriteId]).toEqual(["Obj A"])
+    expect(index[spriteBResult.spriteId]).toEqual(["Obj B"])
   })
 })
 

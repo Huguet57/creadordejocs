@@ -1,7 +1,6 @@
 import { Copy, Plus, Trash2 } from "lucide-react"
 import { useEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent, type MouseEvent } from "react"
-import { spritePixelsToDataUrl } from "../utils/sprite-preview-source.js"
-import { hasVisibleSpritePixels } from "../utils/has-visible-pixels.js"
+import { resolveFramePreviewUrlsWithCache, type FramePreviewCache } from "../utils/frame-preview-cache.js"
 
 const DND_FRAME_MIME = "application/x-sprite-frame"
 
@@ -31,15 +30,16 @@ export function SpriteFrameTimeline({
   const draggedFrameIdRef = useRef<string | null>(null)
   const [dropTargetIndex, setDropTargetIndex] = useState<number | null>(null)
   const activeFrameRef = useRef<HTMLDivElement>(null)
+  const framePreviewCacheRef = useRef<FramePreviewCache>(new Map())
 
   const framePreviewUrls = useMemo(
     () =>
-      new Map(
-        frames.map((f) => [
-          f.id,
-          hasVisibleSpritePixels(f.pixelsRgba) ? spritePixelsToDataUrl(f.pixelsRgba, spriteWidth, spriteHeight) : ""
-        ])
-      ),
+      resolveFramePreviewUrlsWithCache({
+        frames,
+        spriteWidth,
+        spriteHeight,
+        cache: framePreviewCacheRef.current
+      }),
     [frames, spriteWidth, spriteHeight]
   )
 

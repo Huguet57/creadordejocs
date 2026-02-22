@@ -1,11 +1,13 @@
 import { BoxSelect, Eraser, FlipHorizontal2, FlipVertical2, Move, PaintBucket, Pencil, Pipette, RotateCcw, RotateCw, WandSparkles } from "lucide-react"
-import { useMemo } from "react"
+import { useEffect, useState } from "react"
 import { ToolOptionsPanel } from "./tool-options/ToolOptionsPanel.js"
 import type { SpriteEditorTool, SpriteToolOptionsMap, SpriteToolOptionsState } from "../types/sprite-editor.js"
 import { normalizeHexRgba, TRANSPARENT_RGBA } from "../utils/pixel-rgba.js"
 import { SPRITE_TOOL_REGISTRY } from "../utils/sprite-tools/tool-registry.js"
 
 const COLOR_BUCKET_SHIFT = 5
+const DOMINANT_COLORS_MAX = 20
+const DOMINANT_COLORS_DEBOUNCE_MS = 120
 
 function bucketKey(hex: string): string {
   const r = parseInt(hex.slice(1, 3), 16) >> COLOR_BUCKET_SHIFT
@@ -33,6 +35,22 @@ function extractDominantColors(pixels: string[], maxColors: number): string[] {
     .sort((a, b) => b.count - a.count)
     .slice(0, maxColors)
     .map((entry) => entry.color)
+}
+
+function areColorListsEqual(left: string[], right: string[]): boolean {
+  if (left === right) return true
+  if (left.length !== right.length) return false
+  for (let index = 0; index < left.length; index += 1) {
+    if (left[index] !== right[index]) {
+      return false
+    }
+  }
+  return true
+}
+
+type WindowWithIdleCallbacks = Window & {
+  requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number
+  cancelIdleCallback?: (id: number) => void
 }
 
 type SpriteToolbarProps = {
@@ -77,7 +95,42 @@ export function SpriteToolbar({
   onRotateCW,
   onRotateCCW
 }: SpriteToolbarProps) {
-  const spriteColors = useMemo(() => extractDominantColors(spritePixels, 20), [spritePixels])
+  const [spriteColors, setSpriteColors] = useState<string[]>(() =>
+    extractDominantColors(spritePixels, DOMINANT_COLORS_MAX)
+  )
+
+  useEffect(() => {
+    let cancelled = false
+    let idleCallbackId: number | null = null
+    const windowWithIdleCallbacks =
+      typeof window === "undefined" ? null : (window as WindowWithIdleCallbacks)
+
+    const applyNextColors = () => {
+      if (cancelled) {
+        return
+      }
+      const nextColors = extractDominantColors(spritePixels, DOMINANT_COLORS_MAX)
+      setSpriteColors((previous) => (areColorListsEqual(previous, nextColors) ? previous : nextColors))
+    }
+
+    const timeoutId = setTimeout(() => {
+      if (windowWithIdleCallbacks?.requestIdleCallback) {
+        idleCallbackId = windowWithIdleCallbacks.requestIdleCallback(() => {
+          applyNextColors()
+        })
+        return
+      }
+      applyNextColors()
+    }, DOMINANT_COLORS_DEBOUNCE_MS)
+
+    return () => {
+      cancelled = true
+      clearTimeout(timeoutId)
+      if (idleCallbackId !== null) {
+        windowWithIdleCallbacks?.cancelIdleCallback?.(idleCallbackId)
+      }
+    }
+  }, [spritePixels])
 
   return (
     <aside className="mvp16-sprite-tool-sidebar flex w-[144px] shrink-0 flex-col border-r border-slate-200 bg-slate-50">

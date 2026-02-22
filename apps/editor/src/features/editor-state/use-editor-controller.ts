@@ -273,6 +273,51 @@ function eventItemsReferenceSprite(items: readonly ObjectEventItem[], spriteId: 
   return false
 }
 
+function collectReferencedSpriteIds(items: readonly ObjectEventItem[], spriteIds: Set<string>): void {
+  for (const item of items) {
+    if (item.type === "action") {
+      if (item.action.type === "changeSprite") {
+        spriteIds.add(item.action.spriteId)
+      }
+      continue
+    }
+    if (item.type === "if") {
+      collectReferencedSpriteIds(item.thenActions, spriteIds)
+      collectReferencedSpriteIds(item.elseActions, spriteIds)
+      continue
+    }
+    collectReferencedSpriteIds(item.actions, spriteIds)
+  }
+}
+
+export function buildSpriteAssignedObjectNamesIndex(project: ProjectV1): Record<string, string[]> {
+  const namesBySpriteId = new Map<string, Set<string>>()
+
+  for (const objectEntry of project.objects) {
+    const referencedSpriteIds = new Set<string>()
+    if (objectEntry.spriteId) {
+      referencedSpriteIds.add(objectEntry.spriteId)
+    }
+    for (const eventEntry of objectEntry.events) {
+      collectReferencedSpriteIds(eventEntry.items, referencedSpriteIds)
+    }
+    for (const spriteId of referencedSpriteIds) {
+      let names = namesBySpriteId.get(spriteId)
+      if (!names) {
+        names = new Set<string>()
+        namesBySpriteId.set(spriteId, names)
+      }
+      names.add(objectEntry.name)
+    }
+  }
+
+  const index: Record<string, string[]> = {}
+  for (const [spriteId, names] of namesBySpriteId.entries()) {
+    index[spriteId] = [...names]
+  }
+  return index
+}
+
 export function spriteAssignedObjectNames(project: ProjectV1, spriteId: string): string[] {
   const names: string[] = []
   for (const obj of project.objects) {
@@ -356,20 +401,21 @@ export function isQuotaExceededError(error: unknown): boolean {
 }
 
 export function useEditorController(initialSectionOverride?: EditorSection) {
-  const initial = createInitialEditorState(LOCAL_SCOPE_USER_ID)
-  const [project, setProject] = useState<ProjectV1>(initial.project)
-  const [projects, setProjects] = useState<LocalProjectSummary[]>(initial.projects)
-  const [activeProjectId, setActiveProjectId] = useState<string>(initial.activeProjectId)
+  const [initialState] = useState(() => createInitialEditorState(LOCAL_SCOPE_USER_ID))
+  const [initialRuntimeState] = useState(() => createInitialRuntimeState(initialState.project))
+  const [project, setProject] = useState<ProjectV1>(initialState.project)
+  const [projects, setProjects] = useState<LocalProjectSummary[]>(initialState.projects)
+  const [activeProjectId, setActiveProjectId] = useState<string>(initialState.activeProjectId)
   const [storageScopeUserId, setStorageScopeUserId] = useState<string>(LOCAL_SCOPE_USER_ID)
   const [activeSection, setActiveSection] = useState<EditorSection>(
-    () => initialSectionOverride ?? resolveInitialSection(initial.project)
+    () => initialSectionOverride ?? resolveInitialSection(initialState.project)
   )
-  const [activeRoomId, setActiveRoomId] = useState<string>(initial.roomId)
+  const [activeRoomId, setActiveRoomId] = useState<string>(initialState.roomId)
   const [activeObjectId, setActiveObjectId] = useState<string | null>(null)
   const [activeSpriteId, setActiveSpriteId] = useState<string | null>(null)
   const [isRunning, setIsRunning] = useState(false)
   const [runSnapshot, setRunSnapshot] = useState<ProjectV1 | null>(null)
-  const [runtimeState, setRuntimeState] = useState<RuntimeState>(() => createInitialRuntimeState(initial.project))
+  const [runtimeState, setRuntimeState] = useState<RuntimeState>(initialRuntimeState)
   const [roomTransition, setRoomTransition] = useState<GoToRoomTransition>("none")
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("saved")
   const [syncStatus, setSyncStatus] = useState<"idle" | "syncing" | "synced" | "error">("idle")
@@ -380,7 +426,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
   const [past, setPast] = useState<ProjectV1[]>([])
   const [future, setFuture] = useState<ProjectV1[]>([])
   const [snapshots, setSnapshots] = useState<LocalSnapshot[]>(() =>
-    loadSnapshotsFromLocalStorage(initial.activeProjectId, LOCAL_SCOPE_USER_ID)
+    loadSnapshotsFromLocalStorage(initialState.activeProjectId, LOCAL_SCOPE_USER_ID)
   )
   const [startedAtMs] = useState<number>(() => Date.now())
   const pressedKeysRef = useRef<Set<string>>(new Set())
@@ -393,7 +439,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
     pressedButtons: new Set<RuntimeMouseButton>(),
     justPressedButtons: new Set<RuntimeMouseButton>()
   })
-  const runtimeRef = useRef<RuntimeState>(createInitialRuntimeState(initial.project))
+  const runtimeRef = useRef<RuntimeState>(initialRuntimeState)
   const projectRef = useRef<ProjectV1>(project)
   projectRef.current = project
   const runSnapshotRef = useRef<ProjectV1 | null>(null)
