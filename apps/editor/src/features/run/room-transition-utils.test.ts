@@ -10,6 +10,6 @@ describe("room transition utils", () => {
   })
 
   it("uses fixed transition duration", () => {
-    expect(ROOM_TRANSITION_DURATION_MS).toBe(420)
+    expect(ROOM_TRANSITION_DURATION_MS).toBe(700)
   })
 })
