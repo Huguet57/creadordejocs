@@ -487,6 +487,7 @@ export function SpriteCanvasGrid({
       className="mvp16-sprite-grid-wrapper min-h-0 min-w-0 flex-1 overflow-auto bg-slate-50 p-4"
     >
       <div
+        data-testid="sprite-canvas-overlay"
         className="relative block border border-slate-300 shadow-sm"
         style={{ width: `${canvasSizing.cssWidth}px`, height: `${canvasSizing.cssHeight}px` }}
       >
@@ -502,7 +503,7 @@ export function SpriteCanvasGrid({
         />
         <canvas
           ref={overlayCanvasRef}
-          data-testid="sprite-canvas-overlay"
+          data-testid="sprite-canvas"
           className="mvp16-sprite-canvas absolute inset-0 block"
           style={{
             width: `${canvasSizing.cssWidth}px`,
