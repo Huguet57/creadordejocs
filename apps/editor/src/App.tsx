@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react"
-import { CloudUpload, Loader2, Redo2, Undo2 } from "lucide-react"
+import { Redo2, Save, Undo2 } from "lucide-react"
 import { Button } from "./components/ui/button.js"
-import { AuthPasswordModal } from "./features/auth/components/AuthPasswordModal.js"
 import { shouldResetWhenSwitchingSection, useEditorController } from "./features/editor-state/use-editor-controller.js"
 import { LandingPage } from "./features/landing/LandingPage.js"
 import type { EditorSection } from "./features/editor-state/types.js"
@@ -9,6 +8,7 @@ import { EditorSidebarCompact } from "./layout/EditorSidebarCompact.js"
 import { EditorWorkspace } from "./layout/EditorWorkspace.js"
 import { ImportDropdown } from "./layout/ImportDropdown.js"
 import { PlayPage } from "./features/play/PlayPage.js"
+import { AccountDropdown } from "./layout/AccountDropdown.js"
 import { ShareDropdown } from "./layout/ShareDropdown.js"
 import {
   resolveAppRoute,
@@ -33,19 +33,6 @@ function formatStatus(status: "idle" | "saved" | "saving" | "error"): string {
   if (status === "saved") return "Saved"
   if (status === "error") return "Error"
   return "Saved"
-}
-
-function formatRelativeTime(lastSyncedAt: Date | null): string | null {
-  if (!lastSyncedAt) return null
-  const diffMs = Date.now() - lastSyncedAt.getTime()
-  const diffMin = Math.floor(diffMs / 60_000)
-  if (diffMin < 1) return "Ara"
-  if (diffMin === 1) return "Fa 1 min"
-  if (diffMin < 60) return `Fa ${diffMin} min`
-  const diffH = Math.floor(diffMin / 60)
-  if (diffH < 24) return diffH === 1 ? "Fa 1 h" : `Fa ${diffH} h`
-  const diffD = Math.floor(diffH / 24)
-  return diffD === 1 ? "Fa 1 dia" : `Fa ${diffD} dies`
 }
 
 function setMetaContent(selector: string, content: string): void {
@@ -89,83 +76,7 @@ function EditorAppShell() {
   const isPopStateRef = useRef(false)
   const isInitialMountRef = useRef(true)
   const controllerRef = useRef(controller)
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
-  const [authEmail, setAuthEmail] = useState("")
-  const [authPassword, setAuthPassword] = useState("")
-  const [authError, setAuthError] = useState<string | null>(null)
-  const [isAuthSubmitting, setIsAuthSubmitting] = useState(false)
-  const [, setTick] = useState(0)
   controllerRef.current = controller
-
-  const closeAuthModal = (): void => {
-    if (isAuthSubmitting) {
-      return
-    }
-    setIsAuthModalOpen(false)
-    setAuthError(null)
-  }
-
-  const handleAuthClick = async (): Promise<void> => {
-    if (controller.isAuthenticated) {
-      try {
-        setAuthError(null)
-        await controller.signOut()
-      } catch (error) {
-        console.error("[auth] sign out failed:", error)
-        setAuthError(error instanceof Error ? error.message : "No s'ha pogut tancar la sessio.")
-      }
-      return
-    }
-
-    setAuthError(null)
-    setIsAuthModalOpen(true)
-  }
-
-  const handleSignIn = async (): Promise<void> => {
-    setIsAuthSubmitting(true)
-    setAuthError(null)
-    try {
-      await controller.signInWithEmailPassword(authEmail, authPassword)
-      setIsAuthModalOpen(false)
-      setAuthPassword("")
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "No s'ha pogut iniciar sessio."
-      setAuthError(message)
-      console.error("[auth] sign in failed:", error)
-    } finally {
-      setIsAuthSubmitting(false)
-    }
-  }
-
-  const handleSignUp = async (): Promise<void> => {
-    setIsAuthSubmitting(true)
-    setAuthError(null)
-    try {
-      await controller.signUpWithEmailPassword(authEmail, authPassword)
-      setIsAuthModalOpen(false)
-      setAuthPassword("")
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "No s'ha pogut crear el compte."
-      setAuthError(message)
-      console.error("[auth] sign up failed:", error)
-    } finally {
-      setIsAuthSubmitting(false)
-    }
-  }
-
-  const handleGoogleSignIn = async (): Promise<void> => {
-    setIsAuthSubmitting(true)
-    setAuthError(null)
-    try {
-      await controller.signInWithGoogle()
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "No s'ha pogut iniciar sessio amb Google."
-      setAuthError(message)
-      console.error("[auth] google sign in failed:", error)
-    } finally {
-      setIsAuthSubmitting(false)
-    }
-  }
 
   // Sync URL when activeSection changes
   useEffect(() => {
@@ -202,12 +113,6 @@ function EditorAppShell() {
     return () => window.removeEventListener("popstate", handlePopState)
   }, [])
 
-  useEffect(() => {
-    if (!controller.lastSyncedAt) return
-    const interval = window.setInterval(() => setTick((t) => t + 1), 30_000)
-    return () => window.clearInterval(interval)
-  }, [controller.lastSyncedAt])
-
   return (
     <main
       className="mvp15-editor-shell flex h-screen flex-col overflow-hidden bg-slate-50 px-4 py-4 text-slate-900"
@@ -218,23 +123,12 @@ function EditorAppShell() {
           <div className="mvp19-header-left flex items-center gap-1">
             <ImportDropdown controller={controller} />
             <ShareDropdown controller={controller} />
+            <AccountDropdown controller={controller} />
             <p data-testid="save-status" className="mvp19-header-save-status ml-2 text-xs text-slate-400">
               {formatStatus(controller.saveStatus)}
             </p>
           </div>
           <div className="flex items-center gap-1">
-            {authError ? <p className="mr-2 text-xs text-red-600">{authError}</p> : null}
-            {controller.authLoading ? null : (
-              <Button
-                data-testid="auth-button"
-                variant="ghost"
-                size="sm"
-                className="h-7 px-2 text-xs text-slate-500 hover:text-slate-800"
-                onClick={() => void handleAuthClick()}
-              >
-                {controller.isAuthenticated ? "Sign out" : "Sign in"}
-              </Button>
-            )}
             <Button
               data-testid="undo-button"
               variant="ghost"
@@ -257,29 +151,16 @@ function EditorAppShell() {
             >
               <Redo2 className="h-4 w-4" />
             </Button>
-            {controller.isAuthenticated ? (
-              <Button
-                data-testid="sync-button"
-                variant="ghost"
-                size="sm"
-                className={`h-7 min-w-[5.5rem] gap-1.5 px-2 text-xs ${controller.syncStatus === "error" ? "text-red-400 hover:text-red-600" : "text-slate-400 hover:text-slate-700"}`}
-                onClick={() => void controller.syncNow()}
-                disabled={controller.syncStatus === "syncing"}
-              >
-                {controller.syncStatus === "syncing" ? (
-                  <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
-                ) : (
-                  <CloudUpload className="h-3.5 w-3.5 shrink-0" />
-                )}
-                <span>
-                  {controller.syncStatus === "syncing"
-                    ? "Pujant..."
-                    : controller.syncStatus === "error"
-                      ? "Error"
-                      : formatRelativeTime(controller.lastSyncedAt) ?? "Pujar"}
-                </span>
-              </Button>
-            ) : null}
+            <Button
+              data-testid="save-local-button"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-slate-400 hover:text-slate-700"
+              onClick={() => controller.saveNow()}
+              title="Save"
+            >
+              <Save className="h-4 w-4" />
+            </Button>
           </div>
         </div>
 
@@ -299,19 +180,6 @@ function EditorAppShell() {
           <EditorWorkspace controller={controller} />
         </div>
       </div>
-      <AuthPasswordModal
-        open={isAuthModalOpen}
-        email={authEmail}
-        password={authPassword}
-        errorMessage={authError}
-        isSubmitting={isAuthSubmitting}
-        onEmailChange={setAuthEmail}
-        onPasswordChange={setAuthPassword}
-        onClose={closeAuthModal}
-        onSignIn={handleSignIn}
-        onSignUp={handleSignUp}
-        onSignInWithGoogle={handleGoogleSignIn}
-      />
     </main>
   )
 }

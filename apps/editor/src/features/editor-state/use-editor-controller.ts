@@ -950,6 +950,15 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
   }, [])
 
   useEffect(() => {
+    const interval = window.setInterval(() => {
+      if (!isRunningRef.current) {
+        void syncNowRef.current()
+      }
+    }, 60_000)
+    return () => window.clearInterval(interval)
+  }, [])
+
+  useEffect(() => {
     if (!isDirty) {
       return
     }
@@ -1174,6 +1183,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
     syncStatus,
     lastSyncedAt,
     isAuthenticated,
+    authEmail: authUser?.email ?? null,
     authLoading,
     importStatus,
     runtimeState,
