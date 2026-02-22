@@ -166,6 +166,14 @@ function isMissingAuthSessionError(errorMessage: string | undefined): boolean {
   return errorMessage.toLowerCase().includes("auth session missing")
 }
 
+function isStaleAuthUserError(errorMessage: string | undefined): boolean {
+  if (!errorMessage) {
+    return false
+  }
+  const normalized = errorMessage.toLowerCase()
+  return normalized.includes("user from sub claim") || normalized.includes("user not found")
+}
+
 function isLoopbackHostname(hostname: string | null): boolean {
   if (!hostname) {
     return false
@@ -260,12 +268,28 @@ export async function getSupabaseAuthUser(client: SupabaseClient | null): Promis
 
   const sessionUser = resolveUserFromSession(sessionData.session)
   if (sessionUser) {
-    return sessionUser
+    const { data, error } = await client.auth.getUser()
+    if (error) {
+      if (isMissingAuthSessionError(error.message) || isStaleAuthUserError(error.message)) {
+        return null
+      }
+      throw new Error(`Could not get Supabase user: ${error.message}`)
+    }
+
+    if (!data.user) {
+      return null
+    }
+
+    return {
+      id: data.user.id,
+      email: data.user.email ?? null,
+      isAnonymous: resolveAnonymousFlagFromUser(data.user)
+    }
   }
 
   const { data, error } = await client.auth.getUser()
   if (error) {
-    if (isMissingAuthSessionError(error.message)) {
+    if (isMissingAuthSessionError(error.message) || isStaleAuthUserError(error.message)) {
       return null
     }
     throw new Error(`Could not get Supabase user: ${error.message}`)
@@ -280,6 +304,22 @@ export async function getSupabaseAuthUser(client: SupabaseClient | null): Promis
     email: data.user.email ?? null,
     isAnonymous: resolveAnonymousFlagFromUser(data.user)
   }
+}
+
+export async function getSupabaseSessionUserId(client: SupabaseClient | null): Promise<string | null> {
+  if (!client) {
+    return null
+  }
+
+  const { data, error } = await client.auth.getUser()
+  if (error) {
+    if (isMissingAuthSessionError(error.message) || isStaleAuthUserError(error.message)) {
+      return null
+    }
+    throw new Error(`Could not resolve Supabase session user: ${error.message}`)
+  }
+
+  return data.user?.id ?? null
 }
 
 export async function ensureSupabaseUser(client: SupabaseClient | null): Promise<SupabaseAuthUser | null> {

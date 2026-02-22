@@ -111,6 +111,7 @@ import {
 } from "../project-storage.js"
 import {
   ensureSupabaseUser,
+  getSupabaseSessionUserId,
   signInWithEmailPassword as signInWithSupabaseEmailPassword,
   signInWithGoogle as signInWithSupabaseGoogle,
   signOutFromSupabase,
@@ -495,14 +496,13 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
     })
   }
 
-  const flushProjectOutbox = async (): Promise<void> => {
-    const userId = authUser?.id
+  const flushProjectOutbox = async (userId: string): Promise<void> => {
     const supabase = getSupabaseClient()
-    if (!supabase || !userId) {
+    if (!supabase) {
       return
     }
 
-    const scopeUserId = resolveScopeUserId()
+    const scopeUserId = userId
     const pending = listProjectOutboxItems(scopeUserId)
     const nowMs = Date.now()
     let hasError = false
@@ -651,7 +651,11 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
         }
 
         console.warn("[persistProject] Local storage quota exceeded. Falling back to direct Supabase save.")
-        void upsertUserProject(supabase, authUser.id, { project: source })
+        void getSupabaseSessionUserId(supabase)
+          .then((sessionUserId) => {
+            const effectiveUserId = sessionUserId ?? authUser.id
+            return upsertUserProject(supabase, effectiveUserId, { project: source })
+          })
           .then(() => {
             setSaveStatus("saved")
             setIsDirty(false)
@@ -669,12 +673,18 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
   }
 
   const runSyncNow = async (): Promise<void> => {
-    const userId = authUser?.id
     const supabase = getSupabaseClient()
-    if (!supabase || !userId) {
+    if (!supabase) {
       setSyncStatus("idle")
       return
     }
+
+    const userId = await getSupabaseSessionUserId(supabase)
+    if (!userId) {
+      setSyncStatus("idle")
+      return
+    }
+    const scopeUserId = userId
 
     try {
       if (isDirty) {
@@ -683,10 +693,9 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
 
       setSyncStatus("syncing")
 
-      await flushProjectOutbox()
+      await flushProjectOutbox(userId)
       await flushAssetOutboxAndPromoteActiveProject()
 
-      const scopeUserId = resolveScopeUserId()
       const localEntries = listLocalProjects(scopeUserId)
         .map((summary) => {
           const localProject = parseProjectFromLocalStorage(summary.projectId, scopeUserId)
@@ -739,7 +748,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
           updatedAtIso: entry.updatedAtIso
         })
       }
-      await flushProjectOutbox()
+      await flushProjectOutbox(userId)
 
       refreshProjectSummaries()
       const nextActiveProjectId = getActiveProjectIdFromLocalStorage(scopeUserId)

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
 import {
   ensureSupabaseUser,
+  getSupabaseSessionUserId,
   getSupabaseAuthUser,
   resolveGoogleOAuthRedirectFromContext,
   signInWithEmailPassword,
@@ -59,7 +60,15 @@ describe("supabase-auth", () => {
   })
 
   it("returns current auth user from session when session exists", async () => {
-    const getUser = vi.fn()
+    const getUser = vi.fn().mockResolvedValue({
+      data: {
+        user: {
+          id: "user-1",
+          email: "user@example.com"
+        }
+      },
+      error: null
+    })
     const getSession = vi.fn().mockResolvedValue({
       data: {
         session: {
@@ -86,7 +95,7 @@ describe("supabase-auth", () => {
     const result = await getSupabaseAuthUser(client)
 
     expect(result).toEqual({ id: "user-1", email: "user@example.com", isAnonymous: false })
-    expect(getUser).not.toHaveBeenCalled()
+    expect(getUser).toHaveBeenCalledTimes(1)
     expect(exchangeCodeForSession).not.toHaveBeenCalled()
     expect(setSession).not.toHaveBeenCalled()
   })
@@ -147,6 +156,69 @@ describe("supabase-auth", () => {
     await expect(getSupabaseAuthUser(client)).resolves.toBeNull()
   })
 
+  it("returns null when session exists but token maps to deleted user", async () => {
+    const getSession = vi.fn().mockResolvedValue({
+      data: {
+        session: {
+          user: {
+            id: "stale-user",
+            email: "stale@example.com"
+          }
+        }
+      },
+      error: null
+    })
+    const getUser = vi.fn().mockResolvedValue({
+      data: { user: null },
+      error: { message: "User from sub claim in JWT does not exist" }
+    })
+    const exchangeCodeForSession = vi.fn()
+    const setSession = vi.fn()
+
+    const client = {
+      auth: {
+        exchangeCodeForSession,
+        setSession,
+        getSession,
+        getUser
+      }
+    } as unknown as Parameters<typeof getSupabaseAuthUser>[0]
+
+    await expect(getSupabaseAuthUser(client)).resolves.toBeNull()
+  })
+
+  it("returns current session user id from getUser", async () => {
+    const getUser = vi.fn().mockResolvedValue({
+      data: {
+        user: {
+          id: "user-session-1"
+        }
+      },
+      error: null
+    })
+    const client = {
+      auth: {
+        getUser
+      }
+    } as unknown as Parameters<typeof getSupabaseSessionUserId>[0]
+
+    await expect(getSupabaseSessionUserId(client)).resolves.toBe("user-session-1")
+  })
+
+  it("returns null session user id when auth session is missing", async () => {
+    const getUser = vi.fn().mockResolvedValue({
+      data: { user: null },
+      error: { message: "Auth session missing!" }
+    })
+    const client = {
+      auth: {
+        getUser
+      }
+    } as unknown as Parameters<typeof getSupabaseSessionUserId>[0]
+
+    await expect(getSupabaseSessionUserId(client)).resolves.toBeNull()
+  })
+
   it("exchanges OAuth callback code before loading session", async () => {
     const replaceState = vi.fn()
     const getSession = vi.fn().mockResolvedValue({
@@ -160,7 +232,15 @@ describe("supabase-auth", () => {
       },
       error: null
     })
-    const getUser = vi.fn()
+    const getUser = vi.fn().mockResolvedValue({
+      data: {
+        user: {
+          id: "oauth-user",
+          email: "oauth@example.com"
+        }
+      },
+      error: null
+    })
     const exchangeCodeForSession = vi.fn().mockResolvedValue({ error: null })
     const setSession = vi.fn()
 
@@ -212,7 +292,15 @@ describe("supabase-auth", () => {
       },
       error: null
     })
-    const getUser = vi.fn()
+    const getUser = vi.fn().mockResolvedValue({
+      data: {
+        user: {
+          id: "implicit-user",
+          email: "implicit@example.com"
+        }
+      },
+      error: null
+    })
     const exchangeCodeForSession = vi.fn()
     const setSession = vi.fn().mockResolvedValue({ error: null })
 
@@ -252,13 +340,22 @@ describe("supabase-auth", () => {
       refresh_token: "refresh-456"
     })
     expect(replaceState).toHaveBeenCalledWith({}, "", "/editor")
-    expect(getUser).not.toHaveBeenCalled()
+    expect(getUser).toHaveBeenCalledTimes(1)
   })
 
   it("surfaces OAuth callback errors instead of failing silently", async () => {
     const replaceState = vi.fn()
     const getSession = vi.fn()
-    const getUser = vi.fn()
+    const getUser = vi.fn().mockResolvedValue({
+      data: {
+        user: {
+          id: "anon-user-1",
+          email: null,
+          is_anonymous: true
+        }
+      },
+      error: null
+    })
     const exchangeCodeForSession = vi.fn()
     const setSession = vi.fn()
     const client = {
@@ -338,7 +435,16 @@ describe("supabase-auth", () => {
   })
 
   it("returns auth user with isAnonymous=true when Supabase session is anonymous", async () => {
-    const getUser = vi.fn()
+    const getUser = vi.fn().mockResolvedValue({
+      data: {
+        user: {
+          id: "anon-user-1",
+          email: null,
+          is_anonymous: true
+        }
+      },
+      error: null
+    })
     const getSession = vi.fn().mockResolvedValue({
       data: {
         session: {
@@ -366,12 +472,20 @@ describe("supabase-auth", () => {
     const result = await getSupabaseAuthUser(client)
 
     expect(result).toEqual({ id: "anon-user-1", email: null, isAnonymous: true })
-    expect(getUser).not.toHaveBeenCalled()
+    expect(getUser).toHaveBeenCalledTimes(1)
   })
 
   it("ensureSupabaseUser returns existing authenticated user without anonymous sign-in", async () => {
     const signInAnonymously = vi.fn()
-    const getUser = vi.fn()
+    const getUser = vi.fn().mockResolvedValue({
+      data: {
+        user: {
+          id: "user-existing",
+          email: "existing@example.com"
+        }
+      },
+      error: null
+    })
     const getSession = vi.fn().mockResolvedValue({
       data: {
         session: {
