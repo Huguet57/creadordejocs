@@ -310,7 +310,7 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
   }, [activeRoomBackgroundSprite, activeRoomBackgroundSource, windowPosition.x, windowPosition.y])
 
   return (
-    <div className={`mvp15-run-container flex w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm ${isPlayMode ? "min-h-[560px]" : "h-full"}`}>
+    <div className={`mvp15-run-container flex w-full overflow-hidden ${isPlayMode ? "" : "h-full rounded-lg border border-slate-200 bg-white shadow-sm"}`}>
       {!isPlayMode && (
         <aside className="flex w-[200px] flex-col border-r border-slate-200 bg-slate-50">
           <div className="flex items-center justify-between border-b border-slate-200 p-3">
@@ -426,29 +426,7 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
           </div>
         )}
 
-        <div className={`flex-1 overflow-auto ${isPlayMode ? "bg-slate-50" : "bg-slate-50/50"}`}>
-          {isPlayMode && (
-            <div className="mb-3 flex items-center justify-end">
-              <Button
-                className="h-9 text-xs"
-                tabIndex={-1}
-                onKeyDown={(e) => e.preventDefault()}
-                onClick={() => controller.isRunning ? controller.reset() : controller.run()}
-              >
-                {controller.isRunning ? (
-                  <>
-                    <RotateCcw className="mr-2 h-3.5 w-3.5" />
-                    Reset
-                  </>
-                ) : (
-                  <>
-                    <Play className="mr-2 h-3.5 w-3.5" />
-                    Run
-                  </>
-                )}
-              </Button>
-            </div>
-          )}
+        <div className={`flex-1 overflow-auto ${isPlayMode ? "flex items-center justify-center bg-slate-50" : "bg-slate-50/50"}`}>
           {!controller.activeRoom ? (
             <div className="flex h-full items-center justify-center text-slate-400">
               <p>Create a room first to run the game</p>

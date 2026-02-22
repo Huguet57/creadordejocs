@@ -60,7 +60,7 @@ export function PlayPage({ shareId }: PlayPageProps) {
   }
 
   return (
-    <main className="mvp-play-page flex min-h-screen flex-col items-center gap-6 bg-slate-50 px-4 py-8">
+    <main className="mvp-play-page flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50">
       <header className="mvp-play-header space-y-1 text-center">
         <h1 className="mvp-play-title text-2xl font-bold text-slate-900">{state.project.metadata.name}</h1>
       </header>
