@@ -11,6 +11,7 @@ type ObjectVariablesPanelProps = {
   spriteSrc: string | null
   width: number
   height: number
+  layer: number
   visible: boolean
   solid: boolean
   variables: {
@@ -29,7 +30,7 @@ type ObjectVariablesPanelProps = {
   ) => void
   onUpdateVariable: (objectId: string, variableId: string, name: string, initialValue: VariableValue) => void
   onRemoveVariable: (objectId: string, variableId: string) => void
-  onUpdateObjectNumber: (key: "width" | "height", value: number) => void
+  onUpdateObjectNumber: (key: "width" | "height" | "layer", value: number) => void
   onUpdateObjectFlag: (key: "visible" | "solid", value: boolean) => void
   onSpriteClick: () => void
 }
@@ -355,6 +356,7 @@ export function ObjectVariablesPanel({
   spriteSrc,
   width,
   height,
+  layer,
   visible,
   solid,
   variables,
@@ -423,8 +425,9 @@ export function ObjectVariablesPanel({
         <div className="grid grid-cols-2 gap-1.5">
           {([
             { key: "width", label: t("objectVarsWidthLabel"), value: width, min: 1 },
-            { key: "height", label: t("objectVarsHeightLabel"), value: height, min: 1 }
-          ] as { key: "width" | "height"; label: string; value: number; min: number }[]).map((attributeEntry) => (
+            { key: "height", label: t("objectVarsHeightLabel"), value: height, min: 1 },
+            { key: "layer", label: t("objectVarsLayerLabel"), value: layer, min: 0 }
+          ] as { key: "width" | "height" | "layer"; label: string; value: number; min: number }[]).map((attributeEntry) => (
             <label
               key={attributeEntry.key}
               className="mvpv2-object-attr-field flex items-center gap-1 rounded border border-slate-200 bg-slate-50 px-1.5 py-1"
@@ -439,7 +442,7 @@ export function ObjectVariablesPanel({
                 onWheel={(event) => event.currentTarget.blur()}
                 onChange={(event) => {
                   const raw = event.target.value.replace(/[^0-9]/g, "")
-                  const parsed = raw === "" ? 1 : Math.max(1, Number(raw))
+                  const parsed = raw === "" ? attributeEntry.min : Math.max(attributeEntry.min, Number(raw))
                   onUpdateObjectNumber(attributeEntry.key, parsed)
                 }}
               />

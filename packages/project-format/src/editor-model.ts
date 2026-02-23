@@ -13,6 +13,7 @@ export type CreateObjectInput = {
   height?: number
   visible?: boolean
   solid?: boolean
+  layer?: number
 }
 
 const DEFAULT_SPRITE_SIZE = 32
@@ -25,6 +26,7 @@ export type AddRoomInstanceInput = {
   objectId: string
   x: number
   y: number
+  layer?: number
 }
 
 export type MoveRoomInstanceInput = {
@@ -50,6 +52,7 @@ export type UpdateObjectPropertiesInput = {
   height: number
   visible: boolean
   solid: boolean
+  layer: number
 }
 
 export type ObjectEventType =
@@ -919,6 +922,7 @@ export function quickCreateObject(
           height: input.height ?? 32,
           visible: input.visible ?? true,
           solid: input.solid ?? false,
+          layer: input.layer ?? 0,
           events: []
         }
       ]
@@ -1012,7 +1016,8 @@ export function updateObjectProperties(
             width: input.width,
             height: input.height,
             visible: input.visible,
-            solid: input.solid
+            solid: input.solid,
+            layer: input.layer
           }
         : objectEntry
     )
@@ -1033,7 +1038,7 @@ export function addRoomInstance(
               ...room,
               instances: [
                 ...room.instances,
-                { id: instanceId, objectId: input.objectId, x: input.x, y: input.y, layer: 0 }
+                { id: instanceId, objectId: input.objectId, x: input.x, y: input.y, layer: input.layer ?? 0 }
               ]
             }
           : room

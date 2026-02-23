@@ -1795,13 +1795,15 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       )
     },
     updateSelectedObjectProperty(
-      key: "x" | "y" | "speed" | "direction" | "width" | "height" | "visible" | "solid",
+      key: "x" | "y" | "speed" | "direction" | "width" | "height" | "layer" | "visible" | "solid",
       value: number | boolean
     ) {
       if (!selectedObject) return
       const normalizedValue =
         typeof value === "number"
-          ? key === "width" || key === "height"
+          ? key === "layer"
+            ? Math.max(0, Math.round(Number.isFinite(value) ? value : 0))
+            : key === "width" || key === "height"
             ? Math.max(1, Math.round(Number.isFinite(value) ? value : 1))
             : Number.isFinite(value)
               ? value
@@ -1818,7 +1820,8 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
           width: nextObject.width ?? 32,
           height: nextObject.height ?? 32,
           visible: nextObject.visible ?? true,
-          solid: nextObject.solid ?? false
+          solid: nextObject.solid ?? false,
+          layer: nextObject.layer ?? 0
         })
       )
     },
@@ -1829,11 +1832,13 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       if (wouldOverlapSolidInRoom(project, activeRoom.instances, targetObjectId, x, y)) {
         return
       }
+      const targetObject = project.objects.find((o) => o.id === targetObjectId)
       const next = addRoomInstance(project, {
         roomId: activeRoom.id,
         objectId: targetObjectId,
         x,
-        y
+        y,
+        layer: targetObject?.layer ?? 0
       }).project
       pushProjectChange(next, "Add instance")
     },

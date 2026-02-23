@@ -104,7 +104,8 @@ describe("editor model helpers", () => {
       width: 96,
       height: 48,
       visible: false,
-      solid: true
+      solid: true,
+      layer: 0
     })
 
     expect(updated.rooms[0]?.instances[0]?.x).toBe(40)

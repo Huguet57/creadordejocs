@@ -503,6 +503,7 @@ const ObjectSchema = z.object({
   height: z.number().int().min(1).optional(),
   visible: z.boolean().optional(),
   solid: z.boolean().optional(),
+  layer: z.number().int().min(0).optional(),
   events: z.array(ObjectEventSchema).default([])
 })
 

@@ -387,6 +387,7 @@ export const esMessages: Record<keyof typeof caMessages, string> = {
   objectVarsRemoveItemTitle: "Eliminar elemento",
   objectVarsWidthLabel: "anchura",
   objectVarsHeightLabel: "altura",
+  objectVarsLayerLabel: "capa",
 
   // ── Object Card ───────────────────────────────────────────────
   objectCardSpriteTitle: "Selecciona o edita el sprite",

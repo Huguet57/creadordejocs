@@ -350,6 +350,7 @@ export function ObjectEditorSection({ controller }: ObjectEditorSectionProps) {
               spriteSrc={selectedObject.spriteId ? (resolvedSpriteSources[selectedObject.spriteId] ?? null) : null}
               width={selectedObject.width ?? 32}
               height={selectedObject.height ?? 32}
+              layer={selectedObject.layer ?? 0}
               visible={selectedObject.visible ?? true}
               solid={selectedObject.solid ?? false}
               variables={selectedObjectVariableDefinitions}

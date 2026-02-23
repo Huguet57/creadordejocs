@@ -385,6 +385,7 @@ export const caMessages = {
   objectVarsRemoveItemTitle: "Elimina element",
   objectVarsWidthLabel: "amplada",
   objectVarsHeightLabel: "alçada",
+  objectVarsLayerLabel: "capa",
 
   // ── Object Card ───────────────────────────────────────────────
   objectCardSpriteTitle: "Selecciona o edita el sprite",

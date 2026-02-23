@@ -387,6 +387,7 @@ export const enMessages: Record<keyof typeof caMessages, string> = {
   objectVarsRemoveItemTitle: "Remove item",
   objectVarsWidthLabel: "width",
   objectVarsHeightLabel: "height",
+  objectVarsLayerLabel: "layer",
 
   // ── Object Card ───────────────────────────────────────────────
   objectCardSpriteTitle: "Select or edit sprite",
