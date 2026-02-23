@@ -8,6 +8,7 @@ import {
   type MouseEvent as ReactMouseEvent
 } from "react"
 import { ChevronDown, ChevronUp, EyeOff, X } from "lucide-react"
+import { t } from "@/i18n/index.js"
 import type { EditorController } from "../editor-state/use-editor-controller.js"
 import { resolveInstanceLayer, sortInstancesByLayer } from "../editor-state/instance-layer-utils.js"
 import { WINDOW_HEIGHT, WINDOW_WIDTH, resolveRoomDimensions } from "../editor-state/runtime-types.js"
@@ -872,10 +873,10 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                     onChange={(e) => setShowGrid(e.target.checked)}
                     className="h-3.5 w-3.5 rounded border-slate-300 text-blue-500 focus:ring-blue-400"
                   />
-                  <span className="text-xs text-slate-600">Grid</span>
+                  <span className="text-xs text-slate-600">{t("roomEditorGrid")}</span>
                 </label>
                 <div className="ml-auto flex items-center gap-2 text-xs text-slate-600">
-                  <span className="font-medium text-slate-500">Zoom</span>
+                  <span className="font-medium text-slate-500">{t("roomEditorZoom")}</span>
                   <input
                     type="range"
                     min={25}
@@ -1231,7 +1232,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                               event.stopPropagation()
                               controller.shiftInstanceLayer(instanceEntry.id, -1)
                             }}
-                            title="Baixar capa"
+                            title={t("roomEditorLayerDown")}
                           >
                             <ChevronDown className="mx-auto h-2.5 w-2.5" />
                           </button>
@@ -1245,7 +1246,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                               event.stopPropagation()
                               controller.shiftInstanceLayer(instanceEntry.id, 1)
                             }}
-                            title="Pujar capa"
+                            title={t("roomEditorLayerUp")}
                           >
                             <ChevronUp className="mx-auto h-2.5 w-2.5" />
                           </button>
@@ -1277,7 +1278,7 @@ export function RoomEditorSection({ controller }: RoomEditorSectionProps) {
                             e.stopPropagation()
                             controller.removeInstance(instanceEntry.id)
                           }}
-                          title="Remove instance"
+                          title={t("roomEditorRemoveInstance")}
                         >
                           <X className="h-2.5 w-2.5" />
                         </button>

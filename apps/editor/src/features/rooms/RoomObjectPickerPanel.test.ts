@@ -69,8 +69,8 @@ describe("RoomObjectPickerPanel", () => {
 
     expect(markup).toContain("Nature")
     expect(markup).toContain("Ground")
-    expect(markup).toContain(">Tools<")
-    expect(markup).not.toContain(">Attributes<")
+    expect(markup).toContain(">Eines<")
+    expect(markup).not.toContain(">Atributs<")
     expect(markup).not.toContain("Tree")
   })
 
@@ -80,7 +80,7 @@ describe("RoomObjectPickerPanel", () => {
     )
 
     expect(markup).toContain("Tree")
-    expect(markup).toContain(">Attributes<")
-    expect(markup).not.toContain(">Tools<")
+    expect(markup).toContain(">Atributs<")
+    expect(markup).not.toContain(">Eines<")
   })
 })

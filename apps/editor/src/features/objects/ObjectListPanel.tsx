@@ -433,7 +433,7 @@ export function ObjectListPanel({
 
         {parentId !== null && childFolders.length === 0 && childObjects.length === 0 && (
           <p className="py-1 text-[11px] text-slate-400" style={{ paddingLeft: `${depth * 16 + 20}px` }}>
-            Carpeta buida
+            {t("objectListEmptyFolder")}
           </p>
         )}
 
@@ -456,7 +456,7 @@ export function ObjectListPanel({
               }}
               onBlur={commitCreateFolder}
               className="objlist-folder-create-input h-7 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
-              placeholder="New folder"
+              placeholder={t("objectListNewFolderPlaceholder")}
             />
           </div>
         )}
@@ -510,7 +510,7 @@ export function ObjectListPanel({
               }}
             >
               <Box className="h-3.5 w-3.5 text-slate-400" />
-              Open
+              {t("objectListCtxOpen")}
             </button>
             <button
               type="button"
@@ -521,7 +521,7 @@ export function ObjectListPanel({
               }}
             >
               <Plus className="h-3.5 w-3.5 text-slate-400" />
-              Open in a new tab
+              {t("objectListCtxOpenNewTab")}
             </button>
             <button
               type="button"
@@ -532,7 +532,7 @@ export function ObjectListPanel({
               }}
             >
               <Copy className="h-3.5 w-3.5 text-slate-400" />
-              Duplicate
+              {t("objectListCtxDuplicate")}
             </button>
             <button
               type="button"
@@ -543,7 +543,7 @@ export function ObjectListPanel({
               }}
             >
               <Pencil className="h-3.5 w-3.5 text-slate-400" />
-              Rename
+              {t("objectListCtxRename")}
             </button>
             <div className="my-1 border-t border-slate-100" />
             <button
@@ -555,7 +555,7 @@ export function ObjectListPanel({
               }}
             >
               <Trash2 className="h-3.5 w-3.5" />
-              Delete
+              {t("objectListCtxDelete")}
             </button>
           </>
         ) : folderId ? (
@@ -573,7 +573,7 @@ export function ObjectListPanel({
               }}
             >
               <Pencil className="h-3.5 w-3.5 text-slate-400" />
-              Rename
+              {t("objectListCtxRename")}
             </button>
             <button
               type="button"
@@ -584,7 +584,7 @@ export function ObjectListPanel({
               }}
             >
               <FolderPlus className="h-3.5 w-3.5 text-slate-400" />
-              New subfolder
+              {t("objectListCtxNewSubfolder")}
             </button>
             <button
               type="button"
@@ -596,7 +596,7 @@ export function ObjectListPanel({
               }}
             >
               <Plus className="h-3.5 w-3.5 text-slate-400" />
-              New object here
+              {t("objectListCtxNewObjHere")}
             </button>
             <div className="my-1 border-t border-slate-100" />
             <button
@@ -608,7 +608,7 @@ export function ObjectListPanel({
               }}
             >
               <Trash2 className="h-3.5 w-3.5" />
-              Delete folder
+              {t("objectListCtxDeleteFolder")}
             </button>
           </>
         ) : (
@@ -622,7 +622,7 @@ export function ObjectListPanel({
               }}
             >
               <Plus className="h-3.5 w-3.5 text-slate-400" />
-              New object
+              {t("objectListCtxNewObj")}
             </button>
             <button
               type="button"
@@ -633,7 +633,7 @@ export function ObjectListPanel({
               }}
             >
               <FolderPlus className="h-3.5 w-3.5 text-slate-400" />
-              New folder
+              {t("objectListCtxNewFolder")}
             </button>
           </>
         )}
@@ -654,7 +654,7 @@ export function ObjectListPanel({
                 type="button"
                 className="objlist-expand-btn inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
                 onClick={() => setIsCollapsed(false)}
-                title="Expand object list"
+                title={t("objectListExpandTitle")}
               >
                 <ChevronRight className="h-4 w-4" />
               </button>
@@ -665,7 +665,7 @@ export function ObjectListPanel({
                   setIsCollapsed(false)
                   startAddingObject(null)
                 }}
-                title="Add object"
+                title={t("objectListAddObjTitle")}
               >
                 <Plus className="h-4 w-4" />
               </button>
@@ -677,7 +677,7 @@ export function ObjectListPanel({
                   type="button"
                   className="objlist-add-btn inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
                   onClick={() => startAddingObject(null)}
-                  title="Add object"
+                  title={t("objectListAddObjTitle")}
                 >
                   <Plus className="h-4 w-4" />
                 </button>
@@ -685,7 +685,7 @@ export function ObjectListPanel({
                   type="button"
                   className="objlist-add-folder-btn inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
                   onClick={() => createFolder(null)}
-                  title="New folder"
+                  title={t("objectListNewFolderTitle")}
                 >
                   <FolderPlus className="h-4 w-4" />
                 </button>
@@ -694,7 +694,7 @@ export function ObjectListPanel({
                 type="button"
                 className="objlist-collapse-btn inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
                 onClick={() => setIsCollapsed(true)}
-                title="Collapse object list"
+                title={t("objectListCollapseTitle")}
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
@@ -712,7 +712,7 @@ export function ObjectListPanel({
         >
           <div className="flex flex-col gap-0.5">
             {objects.length === 0 && objectFolders.length === 0 && !isAdding && (
-              <p className="px-2 py-4 text-center text-xs text-slate-400">Right-click or press + to add</p>
+              <p className="px-2 py-4 text-center text-xs text-slate-400">{t("objectListEmptyHint")}</p>
             )}
             {renderTree(null, 0)}
           </div>

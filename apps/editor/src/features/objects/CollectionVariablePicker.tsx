@@ -122,7 +122,7 @@ export function CollectionVariablePicker({
           {filteredGlobal.length > 0 && (
             <div className="collection-variable-picker-global-section">
               <div className="collection-variable-picker-section-header px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-50 border-b border-slate-100">
-                Global
+                {t("variablePickerGlobalSection")}
               </div>
               {filteredGlobal.map((variable) => (
                 <button
@@ -201,7 +201,7 @@ export function CollectionVariablePicker({
 
           {filteredGlobal.length === 0 && filteredObject.length === 0 && (
             <div className="collection-variable-picker-empty px-3 py-3 text-xs text-slate-400 text-center">
-              Cap variable {collectionType} disponible
+              {t("variablePickerNoCollectionVar", { type: collectionType })}
             </div>
           )}
         </div>

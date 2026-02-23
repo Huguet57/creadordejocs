@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react"
+import { t } from "@/i18n/index.js"
 import { useContextMenuPosition } from "../../hooks/use-context-menu-position.js"
 import { Activity, Box, Copy, Keyboard, Mouse, MousePointer2, Play, Plus, Radio, Scan, Swords, Timer, Trash2, X } from "lucide-react"
 import { Button } from "../../components/ui/button.js"
@@ -77,7 +78,7 @@ export function EventListPanel({
   return (
     <aside className="mvp3-event-list-panel flex w-[220px] shrink-0 flex-col border-r border-slate-200 bg-slate-50">
       <div className="flex items-center justify-between border-b border-slate-200 p-3">
-        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Events</span>
+        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{t("eventListTitle")}</span>
       </div>
 
       <div
@@ -89,7 +90,7 @@ export function EventListPanel({
       >
         <div className="flex flex-col gap-1">
           {events.length === 0 && (
-            <p className="px-2 py-4 text-center text-xs text-slate-400">No events defined</p>
+            <p className="px-2 py-4 text-center text-xs text-slate-400">{t("eventListNoEvents")}</p>
           )}
           {events.map((event) => {
             const Icon = EVENT_ICONS[event.type] ?? Activity
@@ -165,16 +166,16 @@ export function EventListPanel({
               <div className="flex flex-1 items-center gap-2 text-left">
                 <Plus className="h-3.5 w-3.5 text-blue-500" />
                 <div className="flex flex-col overflow-hidden">
-                  <span className="truncate text-sm font-medium text-slate-900">New event</span>
-                  <span className="truncate text-[10px] text-slate-400">Configuring...</span>
+                  <span className="truncate text-sm font-medium text-slate-900">{t("eventListNewEventLabel")}</span>
+                  <span className="truncate text-[10px] text-slate-400">{t("eventListConfiguringLabel")}</span>
                 </div>
               </div>
               <button
                 type="button"
                 className="mvp26-event-ghost-cancel opacity-100 transition-opacity hover:text-red-500"
                 onClick={onCancelAddEvent}
-                title="Cancel"
-                aria-label="Cancel new event"
+                title={t("eventListCancelTitle")}
+                aria-label={t("eventListCancelNewEventAria")}
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -191,7 +192,7 @@ export function EventListPanel({
           onClick={onStartAddEvent}
         >
           <Plus className="mr-2 h-3.5 w-3.5" />
-          Add Event
+          {t("eventListAddEvent")}
         </Button>
       </div>
 

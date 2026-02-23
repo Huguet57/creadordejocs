@@ -36,8 +36,8 @@ describe("Room editor empty-state integration", () => {
     expect(markup).toContain("Select a room to start editing")
     expect(markup).not.toContain("mvp18-room-grid-canvas")
     expect(markup).not.toContain("Zoom")
-    expect(markup).not.toContain("Width")
-    expect(markup).not.toContain("Height")
+    expect(markup).not.toContain("Amplada")
+    expect(markup).not.toContain("Alçada")
   })
 
   it("shows room editor when there is an active room tab", () => {
@@ -48,7 +48,7 @@ describe("Room editor empty-state integration", () => {
     expect(markup).not.toContain("Select a room to start editing")
     expect(markup).toContain("mvp18-room-grid-canvas")
     expect(markup).toContain("Zoom")
-    expect(markup).toContain("Width")
-    expect(markup).toContain("Height")
+    expect(markup).toContain("Amplada")
+    expect(markup).toContain("Alçada")
   })
 })

@@ -323,6 +323,7 @@ export const caMessages = {
   objectListNewPlaceholder: "Objecte nou",
 
   // ── Variable pickers ─────────────────────────────────────
+  variablePickerGlobalSection: "Global",
   variablePickerObjectSection: "Objecte",
 
   // ── Object variables panel ────────────────────────────────
@@ -347,6 +348,175 @@ export const caMessages = {
   rightValueAttributesSection: "Atributs",
   rightValueInternalSection: "Variables internes",
   rightValueRandomStep: "·pas",
+
+  // ── Global Variables Section ─────────────────────────────────
+  globalVarsTitle: "Variables globals",
+  globalVarsSubtitle: "Variables compartides entre totes les instàncies d'objectes.",
+  globalVarsDeleteTitle: "Elimina variable",
+  globalVarsNoVarsYet: "Encara no hi ha variables",
+  globalVarsAddSectionLabel: "Afegir variable global",
+  globalVarsCancelTitle: "Cancel·lar",
+  globalVarsCancelAriaLabel: "Cancel·lar afegir variable",
+  globalVarsAddBtnTitle: "Afegir variable",
+  globalVarsNameLabel: "Nom",
+  globalVarsTypeLabel: "Tipus",
+  globalVarsItemTypeLabel: "Tipus d'element",
+  globalVarsInitialValueLabel: "Valor inicial",
+  globalVarsAddConfirm: "Afegir",
+  globalVarsNamePlaceholder: "p.ex. punts, vides, nivell",
+  globalVarsRemoveItemTitle: "Elimina element",
+
+  // ── Object Variables Panel ────────────────────────────────────
+  objectVarsAttributesLabel: "Atributs",
+  objectVarsVariablesLabel: "Variables",
+  objectVarsCancelTitle: "Cancel·lar",
+  objectVarsCancelAriaLabel: "Cancel·lar afegir variable",
+  objectVarsAddTitle: "Afegir variable",
+  objectVarsAddAriaLabel: "Afegir variable",
+  objectVarsNameLabel: "Nom",
+  objectVarsNamePlaceholder: "p.ex. salut, velocitat, punts",
+  objectVarsTypeLabel: "Tipus",
+  objectVarsInitialValueLabel: "Valor inicial",
+  objectVarsValuePlaceholder: "Valor",
+  objectVarsAddConfirm: "Afegir",
+  objectVarsDeleteTitle: "Elimina variable",
+  objectVarsNoVarsYet: "Encara no hi ha variables",
+  objectVarsRemoveItemTitle: "Elimina element",
+  objectVarsWidthLabel: "amplada",
+  objectVarsHeightLabel: "alçada",
+
+  // ── Object Card ───────────────────────────────────────────────
+  objectCardSpriteTitle: "Selecciona o edita el sprite",
+  objectCardVisibleLabel: "visible",
+  objectCardSolidLabel: "sòlid",
+
+  // ── Sprite Toolbar (tool labels) ──────────────────────────────
+  spriteToolbarToolsLabel: "Eines",
+  spriteToolbarFlipHLabel: "Gira H",
+  spriteToolbarFlipVLabel: "Gira V",
+  spriteToolbarRotateCWLabel: "Rot +90°",
+  spriteToolbarRotateCCWLabel: "Rot -90°",
+
+  // ── Room Object Picker Panel ──────────────────────────────────
+  roomPickerModeLabel: "Mode",
+  roomPickerModeObjects: "Objectes",
+  roomPickerModePaint: "Pintar",
+  roomPickerNoObjects: "Sense objectes",
+  roomPickerAttributesLabel: "Atributs",
+  roomPickerWidthLabel: "Amplada",
+  roomPickerHeightLabel: "Alçada",
+  roomPickerNoSprites: "Sense sprites",
+  roomPickerToolsLabel: "Eines",
+  roomPickerBackgroundLabel: "Fons",
+  roomPickerNoBackground: "Sense fons",
+  roomPickerEraserLabel: "Goma",
+  roomPickerStampsCount: "{count} segells",
+  roomPickerAddObjTitle: "Afegir {name} a la sala",
+  roomPickerPaintWithTitle: "Pintar amb {name}",
+
+  // ── Room Editor Section ───────────────────────────────────────
+  roomEditorGrid: "Quadrícula",
+  roomEditorZoom: "Zoom",
+  roomEditorRemoveInstance: "Elimina instància",
+  roomEditorLayerDown: "Baixar capa",
+  roomEditorLayerUp: "Pujar capa",
+
+  // ── Room List Panel ───────────────────────────────────────────
+  roomListNewFolderPlaceholder: "Nova carpeta",
+  roomListNewRoomPlaceholder: "Sala nova",
+  roomListExpandTitle: "Expandir llista de sales",
+  roomListAddRoomTitle: "Afegir sala",
+  roomListNewFolderTitle: "Nova carpeta",
+  roomListCollapseTitle: "Contraure llista de sales",
+  roomListEmptyHint: "Clic dret o prem + per afegir",
+  roomListCtxOpen: "Obrir",
+  roomListCtxOpenNewTab: "Obrir en una nova pestanya",
+  roomListCtxRename: "Reanomenar",
+  roomListCtxDelete: "Eliminar",
+  roomListCtxNewSubfolder: "Nova subcarpeta",
+  roomListCtxNewRoomHere: "Nova sala aquí",
+  roomListCtxDeleteFolder: "Eliminar carpeta",
+  roomListCtxNewRoom: "Nova sala",
+  roomListCtxNewFolder: "Nova carpeta",
+
+  // ── Object List Panel ─────────────────────────────────────────
+  objectListExpandTitle: "Expandir llista d'objectes",
+  objectListAddObjTitle: "Afegir objecte",
+  objectListNewFolderTitle: "Nova carpeta",
+  objectListCollapseTitle: "Contraure llista d'objectes",
+  objectListEmptyHint: "Clic dret o prem + per afegir",
+  objectListNewFolderPlaceholder: "Nova carpeta",
+  objectListEmptyFolder: "Carpeta buida",
+  objectListCtxOpen: "Obrir",
+  objectListCtxOpenNewTab: "Obrir en una nova pestanya",
+  objectListCtxDuplicate: "Duplicar",
+  objectListCtxRename: "Reanomenar",
+  objectListCtxDelete: "Eliminar",
+  objectListCtxNewSubfolder: "Nova subcarpeta",
+  objectListCtxNewObjHere: "Nou objecte aquí",
+  objectListCtxDeleteFolder: "Eliminar carpeta",
+  objectListCtxNewObj: "Nou objecte",
+  objectListCtxNewFolder: "Nova carpeta",
+
+  // ── Event List Panel ──────────────────────────────────────────
+  eventListTitle: "Esdeveniments",
+  eventListNoEvents: "Sense esdeveniments definits",
+  eventListAddEvent: "Afegir event",
+  eventListNewEventLabel: "Nou event",
+  eventListConfiguringLabel: "Configurant...",
+  eventListCancelTitle: "Cancel·lar",
+  eventListCancelNewEventAria: "Cancel·lar nou event",
+
+  // ── Event Selector Panel ──────────────────────────────────────
+  eventSelectorTitle: "Afegir event",
+  eventSelectorNameLabel: "Nom",
+  eventSelectorAddKeyboardTitle: "Afegir teclat",
+  eventSelectorKeyLabel: "Tecla",
+  eventSelectorAnyKey: "Qualsevol tecla",
+  eventSelectorModeLabel: "Mode",
+  eventSelectorHeld: "Mantingut",
+  eventSelectorPressed: "Premut",
+  eventSelectorReleased: "Alliberat",
+  eventSelectorAddTimerTitle: "Afegir temporitzador",
+  eventSelectorIntervalLabel: "Interval (ms)",
+  eventSelectorAddMouseTitle: "Afegir ratolí",
+  eventSelectorAddCustomEventTitle: "Afegir event personalitzat",
+  eventSelectorAddConfirm: "Afegir",
+  eventSelectorCancelTitle: "Cancel·lar",
+  eventSelectorCancelAriaLabel: "Cancel·lar afegir event",
+  eventSelectorConfirmTitle: "Afegir event",
+  eventSelectorConfirmAriaLabel: "Confirmar afegir event",
+
+  // ── Sounds ────────────────────────────────────────────────────
+  soundsTitle: "Sons",
+  soundsNoSounds: "Encara no hi ha sons",
+  soundsNoSource: "sense font",
+  soundsNamePlaceholder: "Nom...",
+  soundsAddTitle: "Afegir so",
+  soundsAddBtn: "Afegir so",
+  soundsAssetSourcesTitle: "Fonts d'actius",
+  soundsAddSourceHint: "Afegeix un so per configurar-ne la font",
+  soundsStatusReady: "llest",
+  soundsStatusNotConnected: "no connectat",
+  soundsAssetPlaceholder: "/assets/so.wav",
+  soundsUploading: "Pujant...",
+  soundsImport: "Importar",
+  soundsInvalidFormat: "Format invàlid. Usa WAV, MP3 o OGG.",
+
+  // ── Action Editor Panel ───────────────────────────────────────
+  actionEditorNoActionsYet: "Encara no hi ha accions.",
+  actionEditorAddActionHint: "Afegeix una acció a continuació per definir el que passa.",
+
+  // ── Sprite Picker Modal ───────────────────────────────────────
+  spritePickerPreviewLabel: "Previsualització",
+
+  // ── Sprite Import Crop Modal ──────────────────────────────────
+  spriteImportCropZoom: "Zoom",
+
+  // ── Variable Pickers ──────────────────────────────────────────
+  variablePickerNoSprite: "Cap sprite disponible",
+  variablePickerNoCollectionVar: "Cap variable {type} disponible",
+  variablePickerNoVar: "Cap variable disponible",
 
   // ── Landing page ─────────────────────────────────────────────
   landingNavHow: "Com funciona",

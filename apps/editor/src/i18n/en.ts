@@ -325,6 +325,7 @@ export const enMessages: Record<keyof typeof caMessages, string> = {
   objectListNewPlaceholder: "New object",
 
   // ── Variable pickers ─────────────────────────────────────
+  variablePickerGlobalSection: "Global",
   variablePickerObjectSection: "Object",
 
   // ── Object variables panel ────────────────────────────────
@@ -349,6 +350,175 @@ export const enMessages: Record<keyof typeof caMessages, string> = {
   rightValueAttributesSection: "Attributes",
   rightValueInternalSection: "Internal variables",
   rightValueRandomStep: "·step",
+
+  // ── Global Variables Section ─────────────────────────────────
+  globalVarsTitle: "Global Variables",
+  globalVarsSubtitle: "Variables shared across all object instances.",
+  globalVarsDeleteTitle: "Delete variable",
+  globalVarsNoVarsYet: "No variables yet",
+  globalVarsAddSectionLabel: "Add global variable",
+  globalVarsCancelTitle: "Cancel",
+  globalVarsCancelAriaLabel: "Cancel add variable",
+  globalVarsAddBtnTitle: "Add variable",
+  globalVarsNameLabel: "Name",
+  globalVarsTypeLabel: "Type",
+  globalVarsItemTypeLabel: "Item type",
+  globalVarsInitialValueLabel: "Initial value",
+  globalVarsAddConfirm: "Add",
+  globalVarsNamePlaceholder: "e.g. score, lives, level",
+  globalVarsRemoveItemTitle: "Remove item",
+
+  // ── Object Variables Panel ────────────────────────────────────
+  objectVarsAttributesLabel: "Attributes",
+  objectVarsVariablesLabel: "Variables",
+  objectVarsCancelTitle: "Cancel",
+  objectVarsCancelAriaLabel: "Cancel add variable",
+  objectVarsAddTitle: "Add variable",
+  objectVarsAddAriaLabel: "Add variable",
+  objectVarsNameLabel: "Name",
+  objectVarsNamePlaceholder: "e.g. health, speed, score",
+  objectVarsTypeLabel: "Type",
+  objectVarsInitialValueLabel: "Initial value",
+  objectVarsValuePlaceholder: "Value",
+  objectVarsAddConfirm: "Add",
+  objectVarsDeleteTitle: "Delete variable",
+  objectVarsNoVarsYet: "No variables yet",
+  objectVarsRemoveItemTitle: "Remove item",
+  objectVarsWidthLabel: "width",
+  objectVarsHeightLabel: "height",
+
+  // ── Object Card ───────────────────────────────────────────────
+  objectCardSpriteTitle: "Select or edit sprite",
+  objectCardVisibleLabel: "visible",
+  objectCardSolidLabel: "solid",
+
+  // ── Sprite Toolbar (tool labels) ──────────────────────────────
+  spriteToolbarToolsLabel: "Tools",
+  spriteToolbarFlipHLabel: "Flip H",
+  spriteToolbarFlipVLabel: "Flip V",
+  spriteToolbarRotateCWLabel: "Rot +90°",
+  spriteToolbarRotateCCWLabel: "Rot -90°",
+
+  // ── Room Object Picker Panel ──────────────────────────────────
+  roomPickerModeLabel: "Mode",
+  roomPickerModeObjects: "Objects",
+  roomPickerModePaint: "Paint",
+  roomPickerNoObjects: "No objects",
+  roomPickerAttributesLabel: "Attributes",
+  roomPickerWidthLabel: "Width",
+  roomPickerHeightLabel: "Height",
+  roomPickerNoSprites: "No sprites",
+  roomPickerToolsLabel: "Tools",
+  roomPickerBackgroundLabel: "Background",
+  roomPickerNoBackground: "No background",
+  roomPickerEraserLabel: "Eraser",
+  roomPickerStampsCount: "{count} stamps",
+  roomPickerAddObjTitle: "Add {name} to room",
+  roomPickerPaintWithTitle: "Paint with {name}",
+
+  // ── Room Editor Section ───────────────────────────────────────
+  roomEditorGrid: "Grid",
+  roomEditorZoom: "Zoom",
+  roomEditorRemoveInstance: "Remove instance",
+  roomEditorLayerDown: "Move layer down",
+  roomEditorLayerUp: "Move layer up",
+
+  // ── Room List Panel ───────────────────────────────────────────
+  roomListNewFolderPlaceholder: "New folder",
+  roomListNewRoomPlaceholder: "New room",
+  roomListExpandTitle: "Expand room list",
+  roomListAddRoomTitle: "Add room",
+  roomListNewFolderTitle: "New folder",
+  roomListCollapseTitle: "Collapse room list",
+  roomListEmptyHint: "Right-click or press + to add",
+  roomListCtxOpen: "Open",
+  roomListCtxOpenNewTab: "Open in a new tab",
+  roomListCtxRename: "Rename",
+  roomListCtxDelete: "Delete",
+  roomListCtxNewSubfolder: "New subfolder",
+  roomListCtxNewRoomHere: "New room here",
+  roomListCtxDeleteFolder: "Delete folder",
+  roomListCtxNewRoom: "New room",
+  roomListCtxNewFolder: "New folder",
+
+  // ── Object List Panel ─────────────────────────────────────────
+  objectListExpandTitle: "Expand object list",
+  objectListAddObjTitle: "Add object",
+  objectListNewFolderTitle: "New folder",
+  objectListCollapseTitle: "Collapse object list",
+  objectListEmptyHint: "Right-click or press + to add",
+  objectListNewFolderPlaceholder: "New folder",
+  objectListEmptyFolder: "Empty folder",
+  objectListCtxOpen: "Open",
+  objectListCtxOpenNewTab: "Open in a new tab",
+  objectListCtxDuplicate: "Duplicate",
+  objectListCtxRename: "Rename",
+  objectListCtxDelete: "Delete",
+  objectListCtxNewSubfolder: "New subfolder",
+  objectListCtxNewObjHere: "New object here",
+  objectListCtxDeleteFolder: "Delete folder",
+  objectListCtxNewObj: "New object",
+  objectListCtxNewFolder: "New folder",
+
+  // ── Event List Panel ──────────────────────────────────────────
+  eventListTitle: "Events",
+  eventListNoEvents: "No events defined",
+  eventListAddEvent: "Add Event",
+  eventListNewEventLabel: "New event",
+  eventListConfiguringLabel: "Configuring...",
+  eventListCancelTitle: "Cancel",
+  eventListCancelNewEventAria: "Cancel new event",
+
+  // ── Event Selector Panel ──────────────────────────────────────
+  eventSelectorTitle: "Add event",
+  eventSelectorNameLabel: "Name",
+  eventSelectorAddKeyboardTitle: "Add keyboard",
+  eventSelectorKeyLabel: "Key",
+  eventSelectorAnyKey: "Any key",
+  eventSelectorModeLabel: "Mode",
+  eventSelectorHeld: "Held",
+  eventSelectorPressed: "Pressed",
+  eventSelectorReleased: "Released",
+  eventSelectorAddTimerTitle: "Add timer",
+  eventSelectorIntervalLabel: "Interval (ms)",
+  eventSelectorAddMouseTitle: "Add mouse",
+  eventSelectorAddCustomEventTitle: "Add custom event",
+  eventSelectorAddConfirm: "Add",
+  eventSelectorCancelTitle: "Cancel",
+  eventSelectorCancelAriaLabel: "Cancel add event",
+  eventSelectorConfirmTitle: "Add event",
+  eventSelectorConfirmAriaLabel: "Confirm add event",
+
+  // ── Sounds ────────────────────────────────────────────────────
+  soundsTitle: "Sounds",
+  soundsNoSounds: "No sounds yet",
+  soundsNoSource: "no source",
+  soundsNamePlaceholder: "Name...",
+  soundsAddTitle: "Add sound",
+  soundsAddBtn: "Add Sound",
+  soundsAssetSourcesTitle: "Asset Sources",
+  soundsAddSourceHint: "Add a sound to configure its source",
+  soundsStatusReady: "ready",
+  soundsStatusNotConnected: "not connected",
+  soundsAssetPlaceholder: "/assets/sound.wav",
+  soundsUploading: "Uploading...",
+  soundsImport: "Import",
+  soundsInvalidFormat: "Invalid format. Use WAV, MP3 or OGG.",
+
+  // ── Action Editor Panel ───────────────────────────────────────
+  actionEditorNoActionsYet: "No actions yet.",
+  actionEditorAddActionHint: "Add an action below to define what happens.",
+
+  // ── Sprite Picker Modal ───────────────────────────────────────
+  spritePickerPreviewLabel: "Preview",
+
+  // ── Sprite Import Crop Modal ──────────────────────────────────
+  spriteImportCropZoom: "Zoom",
+
+  // ── Variable Pickers ──────────────────────────────────────────
+  variablePickerNoSprite: "No sprite available",
+  variablePickerNoCollectionVar: "No {type} variable available",
+  variablePickerNoVar: "No variable available",
 
   // ── Landing page ─────────────────────────────────────────────
   landingNavHow: "How it works",

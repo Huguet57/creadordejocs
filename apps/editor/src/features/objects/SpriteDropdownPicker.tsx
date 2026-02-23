@@ -1,5 +1,6 @@
 import { Box, ChevronDown, ChevronRight, Image as ImageIcon } from "lucide-react"
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { t } from "@/i18n/index.js"
 import {
   buildFolderChildrenByParent,
   buildEntriesByFolder
@@ -277,7 +278,7 @@ export function SpriteDropdownPicker({
             </button>
           )}
           {sprites.length === 0 && !noneOption ? (
-            <p className="px-3 py-2 text-center text-xs text-slate-400">Cap sprite disponible</p>
+            <p className="px-3 py-2 text-center text-xs text-slate-400">{t("variablePickerNoSprite")}</p>
           ) : (
             <>
               {rootFolders.map((folder) => renderFolderNode(folder, 0))}

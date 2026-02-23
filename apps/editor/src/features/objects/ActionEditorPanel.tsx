@@ -9,6 +9,7 @@ import {
   RotateCcw,
 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
+import { t } from "@/i18n/index.js"
 import { Button } from "../../components/ui/button.js"
 import { Label } from "../../components/ui/label.js"
 import {
@@ -558,8 +559,8 @@ export function ActionEditorPanel({
                     setDropTarget(null)
                   }}
                 >
-                  <p className="text-sm text-slate-400">No actions yet.</p>
-                  <p className="text-xs text-slate-400 mt-1">Add an action below to define what happens.</p>
+                  <p className="text-sm text-slate-400">{t("actionEditorNoActionsYet")}</p>
+                  <p className="text-xs text-slate-400 mt-1">{t("actionEditorAddActionHint")}</p>
                 </div>
               )}
 

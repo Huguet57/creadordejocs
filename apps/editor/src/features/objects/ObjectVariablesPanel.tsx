@@ -230,7 +230,7 @@ function ListValueEditor({
             type="button"
             className="mvpv2-list-item-remove shrink-0 rounded p-0.5 text-slate-300 transition-colors hover:bg-red-50 hover:text-red-500"
             onClick={() => onChange(value.filter((_, i) => i !== index))}
-            title="Remove item"
+            title={t("objectVarsRemoveItemTitle")}
           >
             <Minus className="h-3 w-3" />
           </button>
@@ -417,14 +417,14 @@ export function ObjectVariablesPanel({
       />
 
       <div className="mvpv2-object-attrs-header flex items-center justify-between border-b border-slate-200 p-3">
-        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Attributes</span>
+        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{t("objectVarsAttributesLabel")}</span>
       </div>
       <div className="mvpv2-object-attrs-grid border-b border-slate-200 bg-white p-2">
         <div className="grid grid-cols-2 gap-1.5">
           {([
-            { key: "width", label: "width", value: width, min: 1 },
-            { key: "height", label: "height", value: height, min: 1 }
-          ] as const).map((attributeEntry) => (
+            { key: "width", label: t("objectVarsWidthLabel"), value: width, min: 1 },
+            { key: "height", label: t("objectVarsHeightLabel"), value: height, min: 1 }
+          ] as { key: "width" | "height"; label: string; value: number; min: number }[]).map((attributeEntry) => (
             <label
               key={attributeEntry.key}
               className="mvpv2-object-attr-field flex items-center gap-1 rounded border border-slate-200 bg-slate-50 px-1.5 py-1"
@@ -449,14 +449,14 @@ export function ObjectVariablesPanel({
       </div>
 
       <div className="mvpv2-vars-header flex items-center justify-between border-b border-slate-200 px-3 py-2">
-        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Variables</span>
+        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{t("objectVarsVariablesLabel")}</span>
         {isAdding ? (
           <button
             type="button"
             className="mvpv2-vars-header-close inline-flex h-5 w-5 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
             onClick={() => setIsAdding(false)}
-            title="Cancel"
-            aria-label="Cancel add variable"
+            title={t("objectVarsCancelTitle")}
+            aria-label={t("objectVarsCancelAriaLabel")}
           >
             <X className="h-3.5 w-3.5" />
           </button>
@@ -465,8 +465,8 @@ export function ObjectVariablesPanel({
             type="button"
             className="mvpv2-vars-header-add inline-flex h-5 w-5 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
             onClick={() => setIsAdding(true)}
-            title="Add variable"
-            aria-label="Add variable"
+            title={t("objectVarsAddTitle")}
+            aria-label={t("objectVarsAddAriaLabel")}
           >
             <Plus className="h-3.5 w-3.5" />
           </button>
@@ -478,7 +478,7 @@ export function ObjectVariablesPanel({
           <div className="mvpv2-vars-add-panel-body flex-1 space-y-3 overflow-y-auto p-3">
             <div>
               <label className="mvpv2-vars-add-field-label mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                Name
+                {t("objectVarsNameLabel")}
               </label>
               <input
                 ref={inputCallbackRef}
@@ -490,13 +490,13 @@ export function ObjectVariablesPanel({
                   if (event.key === "Escape") setIsAdding(false)
                 }}
                 className="mvpv2-vars-add-field-name flex h-8 w-full rounded-md border border-slate-300 bg-white px-3 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
-                placeholder="e.g. health, speed, score"
+                placeholder={t("objectVarsNamePlaceholder")}
               />
             </div>
 
             <div>
               <label className="mvpv2-vars-add-field-label mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                Type
+                {t("objectVarsTypeLabel")}
               </label>
               <div className="flex gap-1.5">
                 <select
@@ -538,7 +538,7 @@ export function ObjectVariablesPanel({
 
             <div>
               <label className="mvpv2-vars-add-field-label mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                Initial value
+                {t("objectVarsInitialValueLabel")}
               </label>
               {newVariableType === "boolean" ? (
                 <select
@@ -573,7 +573,7 @@ export function ObjectVariablesPanel({
                       setNewVariableRawValue("0")
                     }
                   }}
-                  placeholder={newVariableType === "number" ? "0" : "Value"}
+                  placeholder={newVariableType === "number" ? "0" : t("objectVarsValuePlaceholder")}
                 />
               )}
             </div>
@@ -587,7 +587,7 @@ export function ObjectVariablesPanel({
               disabled={!canAdd}
             >
               <Plus className="mr-1.5 h-3.5 w-3.5" />
-              Add
+              {t("objectVarsAddConfirm")}
             </Button>
           </div>
         </div>
@@ -596,7 +596,7 @@ export function ObjectVariablesPanel({
           <div className="flex flex-col gap-1.5">
             {variables.length === 0 && (
               <p className="mvpv2-vars-empty px-1 py-2 text-center text-[11px] text-slate-400">
-                No variables yet
+                {t("objectVarsNoVarsYet")}
               </p>
             )}
             {variables.map((definition) => (
@@ -626,7 +626,7 @@ export function ObjectVariablesPanel({
                       type="button"
                       className="mvpv2-vars-delete-btn -mr-1 ml-0.5 shrink-0 rounded p-0.5 text-slate-300 opacity-0 transition-all hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
                       onClick={() => onRemoveVariable(objectId, definition.id)}
-                      title="Delete variable"
+                      title={t("objectVarsDeleteTitle")}
                     >
                       <X className="h-3 w-3" />
                     </button>

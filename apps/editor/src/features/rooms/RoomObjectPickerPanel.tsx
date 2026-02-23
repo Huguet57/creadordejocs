@@ -7,6 +7,7 @@ import {
   Plus
 } from "lucide-react"
 import { useMemo, useState, type DragEvent as ReactDragEvent } from "react"
+import { t } from "@/i18n/index.js"
 import type { ProjectV1 } from "@creadordejocs/project-format"
 import { WINDOW_HEIGHT, WINDOW_WIDTH } from "../editor-state/runtime-types.js"
 import { buildEntriesByFolder, buildFolderChildrenByParent } from "../shared/editor-sidebar/tree-utils.js"
@@ -150,7 +151,7 @@ export function RoomObjectPickerPanel({
             draggable={canPlaceObjects}
             onDragStart={(event) => onDragStart(event, obj.id)}
             onDragEnd={onDragEnd}
-            title={`Add ${obj.name} to room`}
+            title={t("roomPickerAddObjTitle", { name: obj.name })}
             disabled={!canPlaceObjects}
           >
             {obj.spriteId && resolvedSpriteSources[obj.spriteId] ? (
@@ -222,7 +223,7 @@ export function RoomObjectPickerPanel({
                 onPaintBrushSpriteChange(spriteEntry.id)
                 onPaintToolChange("brush")
               }}
-              title={`Paint with ${spriteEntry.name}`}
+              title={t("roomPickerPaintWithTitle", { name: spriteEntry.name })}
               disabled={!hasActiveRoom}
             >
               {resolvedSpriteSources[spriteEntry.id] ? (
@@ -247,7 +248,7 @@ export function RoomObjectPickerPanel({
   return (
     <aside className="mvp3-room-object-picker-container flex w-[220px] shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-slate-50">
       <div className="room-objpicker-header border-b border-slate-200 p-2">
-        <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Mode</div>
+        <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">{t("roomPickerModeLabel")}</div>
         <div className="grid grid-cols-2 gap-1">
           <button
             type="button"
@@ -258,7 +259,7 @@ export function RoomObjectPickerPanel({
             onClick={() => onEditModeChange("objects")}
           >
             <Box className="h-3 w-3" />
-            Objects
+            {t("roomPickerModeObjects")}
           </button>
           <button
             type="button"
@@ -271,7 +272,7 @@ export function RoomObjectPickerPanel({
             onClick={() => onEditModeChange("paintBackground")}
           >
             <Paintbrush className="h-3 w-3" />
-            Paint
+            {t("roomPickerModePaint")}
           </button>
         </div>
       </div>
@@ -281,18 +282,18 @@ export function RoomObjectPickerPanel({
           <>
             <div className="flex-1 overflow-y-auto p-2">
               <div className="flex flex-col gap-0.5">
-                {objects.length === 0 && <p className="px-2 py-4 text-center text-xs text-slate-400">No objects</p>}
+                {objects.length === 0 && <p className="px-2 py-4 text-center text-xs text-slate-400">{t("roomPickerNoObjects")}</p>}
                 {renderObjectTree(null, 0)}
               </div>
             </div>
 
             <div className="mvp23-room-attributes border-t border-slate-200">
               <div className="flex items-center justify-between border-b border-slate-200 p-3">
-                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Attributes</span>
+                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{t("roomPickerAttributesLabel")}</span>
               </div>
               <div className="space-y-2 p-3">
                 <label className="flex items-center gap-2 text-xs text-slate-600">
-                  <span className="w-16 font-medium text-slate-500">Width</span>
+                  <span className="w-16 font-medium text-slate-500">{t("roomPickerWidthLabel")}</span>
                   <input
                     type="number"
                     min={WINDOW_WIDTH}
@@ -311,7 +312,7 @@ export function RoomObjectPickerPanel({
                   <span className="text-xs text-slate-400">px</span>
                 </label>
                 <label className="flex items-center gap-2 text-xs text-slate-600">
-                  <span className="w-16 font-medium text-slate-500">Height</span>
+                  <span className="w-16 font-medium text-slate-500">{t("roomPickerHeightLabel")}</span>
                   <input
                     type="number"
                     min={WINDOW_HEIGHT}
@@ -337,7 +338,7 @@ export function RoomObjectPickerPanel({
             <div className="flex-1 overflow-y-auto p-2">
               <div className="flex flex-col gap-0.5">
                 {backgroundSprites.length === 0 && spriteFolders.length === 0 && (
-                  <p className="px-2 py-4 text-center text-xs text-slate-400">No sprites</p>
+                  <p className="px-2 py-4 text-center text-xs text-slate-400">{t("roomPickerNoSprites")}</p>
                 )}
                 {renderPaintSpriteTree(null, 0)}
               </div>
@@ -345,12 +346,12 @@ export function RoomObjectPickerPanel({
 
             <div className="room-paint-tools border-t border-slate-200">
               <div className="flex items-center justify-between border-b border-slate-200 p-3">
-                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Tools</span>
-                <span className="text-[10px] text-slate-400">{paintedStampCount} stamps</span>
+                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{t("roomPickerToolsLabel")}</span>
+                <span className="text-[10px] text-slate-400">{t("roomPickerStampsCount", { count: paintedStampCount })}</span>
               </div>
               <div className="space-y-2 p-3">
                 <div>
-                  <span className="mb-1 block text-xs font-medium text-slate-500">Background</span>
+                  <span className="mb-1 block text-xs font-medium text-slate-500">{t("roomPickerBackgroundLabel")}</span>
                   <SpriteDropdownPicker
                     selectedSpriteId={backgroundSpriteId}
                     sprites={backgroundSprites.map((s) => ({
@@ -365,7 +366,7 @@ export function RoomObjectPickerPanel({
                       parentId: f.parentId ?? null,
                     }))}
                     onSelect={(spriteId) => onChangeBackgroundSprite(spriteId)}
-                    noneOption={{ label: "No background", onSelect: () => onChangeBackgroundSprite(null) }}
+                    noneOption={{ label: t("roomPickerNoBackground"), onSelect: () => onChangeBackgroundSprite(null) }}
                     disabled={!hasActiveRoom}
                     fullWidth
                   />
@@ -382,7 +383,7 @@ export function RoomObjectPickerPanel({
                   onClick={() => onPaintToolChange(paintTool === "eraser" ? "brush" : "eraser")}
                 >
                   <Eraser className="h-3.5 w-3.5" />
-                  Eraser
+                  {t("roomPickerEraserLabel")}
                 </button>
 
               </div>

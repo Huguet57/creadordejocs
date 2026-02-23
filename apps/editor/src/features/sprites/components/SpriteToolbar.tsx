@@ -155,7 +155,7 @@ export function SpriteToolbar({
   return (
     <aside className="mvp16-sprite-tool-sidebar flex w-[144px] shrink-0 flex-col border-r border-slate-200 bg-slate-50">
       <div className="mvp16-sprite-tool-list-section flex flex-col gap-1 border-b border-slate-200 p-2">
-        <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-400">Tools</p>
+        <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-400">{t("spriteToolbarToolsLabel")}</p>
         <div className="mvp16-sprite-tool-list-grid grid grid-cols-2 gap-1">
           {SPRITE_TOOL_REGISTRY.filter((toolEntry) => !toolEntry.hidden).map((toolEntry) => {
             const Icon = TOOL_ICONS[toolEntry.id]
@@ -200,7 +200,7 @@ export function SpriteToolbar({
             title={t("spriteToolbarFlipH")}
           >
             <FlipHorizontal2 className="h-4 w-4" />
-            Flip H
+            {t("spriteToolbarFlipHLabel")}
           </button>
           <button
             type="button"
@@ -209,7 +209,7 @@ export function SpriteToolbar({
             title={t("spriteToolbarFlipV")}
           >
             <FlipVertical2 className="h-4 w-4" />
-            Flip V
+            {t("spriteToolbarFlipVLabel")}
           </button>
           <button
             type="button"
@@ -218,7 +218,7 @@ export function SpriteToolbar({
             title={t("spriteToolbarRotateCW")}
           >
             <RotateCw className="h-4 w-4" />
-            Rot +90°
+            {t("spriteToolbarRotateCWLabel")}
           </button>
           <button
             type="button"
@@ -227,7 +227,7 @@ export function SpriteToolbar({
             title={t("spriteToolbarRotateCCW")}
           >
             <RotateCcw className="h-4 w-4" />
-            Rot -90°
+            {t("spriteToolbarRotateCCWLabel")}
           </button>
         </div>
       </div>

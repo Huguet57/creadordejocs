@@ -1,4 +1,5 @@
 import { Box } from "lucide-react"
+import { t } from "@/i18n/index.js"
 
 type ObjectCardProps = {
   objectName: string
@@ -18,7 +19,7 @@ export function ObjectCard({ objectName, spriteSrc, visible, solid, onToggleVisi
           type="button"
           className="objcard-sprite-thumb flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-md border border-slate-200 bg-slate-100 transition-colors hover:border-indigo-300 hover:bg-indigo-50"
           onClick={onSpriteClick}
-          title="Select or edit sprite"
+          title={t("objectCardSpriteTitle")}
         >
           {spriteSrc ? (
             <img
@@ -43,7 +44,7 @@ export function ObjectCard({ objectName, spriteSrc, visible, solid, onToggleVisi
                 checked={visible}
                 onChange={(event) => onToggleVisible(event.target.checked)}
               />
-              <span className="objcard-v2-toggle-label">visible</span>
+              <span className="objcard-v2-toggle-label">{t("objectCardVisibleLabel")}</span>
             </label>
             <label className="objcard-v2-toggle-row inline-flex items-center gap-2 text-[11px] text-slate-600">
               <input
@@ -52,7 +53,7 @@ export function ObjectCard({ objectName, spriteSrc, visible, solid, onToggleVisi
                 checked={solid}
                 onChange={(event) => onToggleSolid(event.target.checked)}
               />
-              <span className="objcard-v2-toggle-label">solid</span>
+              <span className="objcard-v2-toggle-label">{t("objectCardSolidLabel")}</span>
             </label>
           </div>
         </div>

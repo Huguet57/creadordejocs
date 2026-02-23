@@ -115,7 +115,7 @@ describe("Sprite editor empty-state integration", () => {
     const markup = renderToStaticMarkup(createElement(SpriteEditorSection, { controller }))
 
     expect(markup).toContain("Select a sprite to start editing")
-    expect(markup).not.toContain(">Tools<")
+    expect(markup).not.toContain(">Eines<")
     expect(markup).not.toContain(">Grid<")
   })
 
@@ -126,7 +126,7 @@ describe("Sprite editor empty-state integration", () => {
 
     const markup = renderToStaticMarkup(createElement(SpriteEditorSection, { controller }))
 
-    expect(markup).toContain(">Tools<")
+    expect(markup).toContain(">Eines<")
     expect(markup).toContain(">Grid<")
     expect(markup).not.toContain("Select a sprite to start editing")
   })

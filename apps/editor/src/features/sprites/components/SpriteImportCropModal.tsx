@@ -438,7 +438,7 @@ export function SpriteImportCropModal({
               />
             </div>
             <div className="flex items-center gap-2 text-[10px] text-slate-500">
-              <span className="font-medium">Zoom</span>
+              <span className="font-medium">{t("spriteImportCropZoom")}</span>
               <input
                 type="range"
                 min={1}

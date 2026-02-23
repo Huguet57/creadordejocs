@@ -8,6 +8,7 @@ import {
   Plus,
   Trash2
 } from "lucide-react"
+import { t } from "@/i18n/index.js"
 import {
   useCallback,
   useEffect,
@@ -431,7 +432,7 @@ export function RoomListPanel({
               }}
               onBlur={commitCreateFolder}
               className="roomlist-folder-create-input h-5 w-full rounded border border-slate-300 bg-white px-1 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-400"
-              placeholder="New folder"
+              placeholder={t("roomListNewFolderPlaceholder")}
             />
           </div>
         )}
@@ -456,7 +457,7 @@ export function RoomListPanel({
               }}
               onBlur={commitAddRoom}
               className="flex h-7 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
-              placeholder="Sala nova"
+              placeholder={t("roomListNewRoomPlaceholder")}
             />
           </div>
         )}
@@ -485,7 +486,7 @@ export function RoomListPanel({
               }}
             >
               <Grid3X3 className="h-3.5 w-3.5 text-slate-400" />
-              Open
+              {t("roomListCtxOpen")}
             </button>
             <button
               type="button"
@@ -496,7 +497,7 @@ export function RoomListPanel({
               }}
             >
               <Plus className="h-3.5 w-3.5 text-slate-400" />
-              Open in a new tab
+              {t("roomListCtxOpenNewTab")}
             </button>
             <button
               type="button"
@@ -511,7 +512,7 @@ export function RoomListPanel({
               }}
             >
               <Pencil className="h-3.5 w-3.5 text-slate-400" />
-              Rename
+              {t("roomListCtxRename")}
             </button>
             <div className="my-1 border-t border-slate-100" />
             <button
@@ -523,7 +524,7 @@ export function RoomListPanel({
               }}
             >
               <Trash2 className="h-3.5 w-3.5" />
-              Delete
+              {t("roomListCtxDelete")}
             </button>
           </>
         ) : folderId ? (
@@ -541,7 +542,7 @@ export function RoomListPanel({
               }}
             >
               <Pencil className="h-3.5 w-3.5 text-slate-400" />
-              Rename
+              {t("roomListCtxRename")}
             </button>
             <button
               type="button"
@@ -552,7 +553,7 @@ export function RoomListPanel({
               }}
             >
               <FolderPlus className="h-3.5 w-3.5 text-slate-400" />
-              New subfolder
+              {t("roomListCtxNewSubfolder")}
             </button>
             <button
               type="button"
@@ -564,7 +565,7 @@ export function RoomListPanel({
               }}
             >
               <Plus className="h-3.5 w-3.5 text-slate-400" />
-              New room here
+              {t("roomListCtxNewRoomHere")}
             </button>
             <div className="my-1 border-t border-slate-100" />
             <button
@@ -576,7 +577,7 @@ export function RoomListPanel({
               }}
             >
               <Trash2 className="h-3.5 w-3.5" />
-              Delete folder
+              {t("roomListCtxDeleteFolder")}
             </button>
           </>
         ) : (
@@ -590,7 +591,7 @@ export function RoomListPanel({
               }}
             >
               <Plus className="h-3.5 w-3.5 text-slate-400" />
-              New room
+              {t("roomListCtxNewRoom")}
             </button>
             <button
               type="button"
@@ -601,7 +602,7 @@ export function RoomListPanel({
               }}
             >
               <FolderPlus className="h-3.5 w-3.5 text-slate-400" />
-              New folder
+              {t("roomListCtxNewFolder")}
             </button>
           </>
         )}
@@ -622,7 +623,7 @@ export function RoomListPanel({
                 type="button"
                 className="roomlist-expand-btn inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
                 onClick={() => setIsCollapsed(false)}
-                title="Expand room list"
+                title={t("roomListExpandTitle")}
               >
                 <ChevronRight className="h-4 w-4" />
               </button>
@@ -633,7 +634,7 @@ export function RoomListPanel({
                   setIsCollapsed(false)
                   startAddingRoom(null)
                 }}
-                title="Add room"
+                title={t("roomListAddRoomTitle")}
               >
                 <Plus className="h-4 w-4" />
               </button>
@@ -645,7 +646,7 @@ export function RoomListPanel({
                   type="button"
                   className="roomlist-add-btn inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
                   onClick={() => startAddingRoom(null)}
-                  title="Add room"
+                  title={t("roomListAddRoomTitle")}
                 >
                   <Plus className="h-4 w-4" />
                 </button>
@@ -653,7 +654,7 @@ export function RoomListPanel({
                   type="button"
                   className="roomlist-add-folder-btn inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
                   onClick={() => createFolder(null)}
-                  title="New folder"
+                  title={t("roomListNewFolderTitle")}
                 >
                   <FolderPlus className="h-4 w-4" />
                 </button>
@@ -662,7 +663,7 @@ export function RoomListPanel({
                 type="button"
                 className="roomlist-collapse-btn inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
                 onClick={() => setIsCollapsed(true)}
-                title="Collapse room list"
+                title={t("roomListCollapseTitle")}
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
@@ -680,7 +681,7 @@ export function RoomListPanel({
         >
           <div className="flex flex-col gap-0.5">
             {rooms.length === 0 && roomFolders.length === 0 && !isAdding && (
-              <p className="px-2 py-4 text-center text-xs text-slate-400">Right-click or press + to add</p>
+              <p className="px-2 py-4 text-center text-xs text-slate-400">{t("roomListEmptyHint")}</p>
             )}
             {renderTree(null, 0)}
           </div>

@@ -200,7 +200,7 @@ function GlobalListValueEditor({
             type="button"
             className="mvpv2-global-list-item-remove shrink-0 rounded p-0.5 text-slate-300 transition-colors hover:bg-red-50 hover:text-red-500"
             onClick={() => onChange(value.filter((_, i) => i !== index))}
-            title="Remove item"
+            title={t("globalVarsRemoveItemTitle")}
           >
             <Minus className="h-3 w-3" />
           </button>
@@ -363,16 +363,16 @@ export function GlobalVariablesSection({ controller }: GlobalVariablesSectionPro
     <section className="mvpv2-global-vars-section flex h-full w-full flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
       <header className="mvpv2-global-vars-header flex items-center justify-between border-b border-slate-200 px-4 py-3">
         <div>
-          <h2 className="text-sm font-semibold text-slate-900">Global Variables</h2>
-          <p className="text-xs text-slate-500">Variables shared across all object instances.</p>
+          <h2 className="text-sm font-semibold text-slate-900">{t("globalVarsTitle")}</h2>
+          <p className="text-xs text-slate-500">{t("globalVarsSubtitle")}</p>
         </div>
         {!isAdding && (
           <button
             type="button"
             className="mvpv2-global-vars-header-add inline-flex h-6 w-6 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
             onClick={() => setIsAdding(true)}
-            title="Add variable"
-            aria-label="Add variable"
+            title={t("globalVarsAddBtnTitle")}
+            aria-label={t("globalVarsAddBtnTitle")}
           >
             <Plus className="h-4 w-4" />
           </button>
@@ -383,7 +383,7 @@ export function GlobalVariablesSection({ controller }: GlobalVariablesSectionPro
           <div className="flex flex-col gap-2">
             {globalVariables.length === 0 && !isAdding && (
               <p className="mvpv2-global-vars-empty px-1 py-4 text-center text-xs text-slate-400">
-                No variables yet
+                {t("globalVarsNoVarsYet")}
               </p>
             )}
             {globalVariables.map((definition) => (
@@ -415,7 +415,7 @@ export function GlobalVariablesSection({ controller }: GlobalVariablesSectionPro
                     type="button"
                     className="mvpv2-global-vars-delete-btn -mr-1 ml-0.5 shrink-0 rounded p-0.5 text-slate-300 opacity-0 transition-all hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
                     onClick={() => controller.removeGlobalVariable(definition.id)}
-                    title="Delete variable"
+                    title={t("globalVarsDeleteTitle")}
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
@@ -492,13 +492,13 @@ export function GlobalVariablesSection({ controller }: GlobalVariablesSectionPro
       {isAdding && (
         <div className="mvpv2-global-vars-add-footer shrink-0 space-y-2 border-t border-slate-200 bg-slate-50 p-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-600">Afegir variable global</span>
+            <span className="text-xs font-semibold text-slate-600">{t("globalVarsAddSectionLabel")}</span>
             <button
               type="button"
               className="mvpv2-global-vars-add-close inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
               onClick={() => setIsAdding(false)}
-              title="Cancel"
-              aria-label="Cancel add variable"
+              title={t("globalVarsCancelTitle")}
+              aria-label={t("globalVarsCancelAriaLabel")}
             >
               <X className="h-3.5 w-3.5" />
             </button>
@@ -507,7 +507,7 @@ export function GlobalVariablesSection({ controller }: GlobalVariablesSectionPro
           <div className="mvpv2-global-vars-add-inline flex items-end gap-2">
             <div className="mvpv2-global-vars-add-name-field min-w-[140px] flex-1">
               <label className="mvpv2-global-vars-add-field-label mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                Name
+                {t("globalVarsNameLabel")}
               </label>
               <input
                 ref={inputCallbackRef}
@@ -519,13 +519,13 @@ export function GlobalVariablesSection({ controller }: GlobalVariablesSectionPro
                   if (event.key === "Escape") setIsAdding(false)
                 }}
                 className="mvpv2-global-vars-add-field-name flex h-8 w-full rounded-md border border-slate-300 bg-white px-2.5 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
-                placeholder="e.g. score, lives, level"
+                placeholder={t("globalVarsNamePlaceholder")}
               />
             </div>
 
             <div className="mvpv2-global-vars-add-type-field w-[100px] shrink-0">
               <label className="mvpv2-global-vars-add-field-label mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                Type
+                {t("globalVarsTypeLabel")}
               </label>
               <select
                 className="mvpv2-global-vars-add-type-select h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400"
@@ -555,7 +555,7 @@ export function GlobalVariablesSection({ controller }: GlobalVariablesSectionPro
             {(newVariableType === "list" || newVariableType === "map") && (
               <div className="mvpv2-global-vars-add-itemtype-field w-[100px] shrink-0">
                 <label className="mvpv2-global-vars-add-field-label mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                  Item type
+                  {t("globalVarsItemTypeLabel")}
                 </label>
                 <select
                   className="mvpv2-global-vars-add-itemtype-select h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400"
@@ -572,7 +572,7 @@ export function GlobalVariablesSection({ controller }: GlobalVariablesSectionPro
             {newVariableType !== "list" && newVariableType !== "map" && (
               <div className="mvpv2-global-vars-add-value-field min-w-[120px] flex-1">
                 <label className="mvpv2-global-vars-add-field-label mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                  Initial value
+                  {t("globalVarsInitialValueLabel")}
                 </label>
                 {newVariableType === "boolean" ? (
                   <select
@@ -608,7 +608,7 @@ export function GlobalVariablesSection({ controller }: GlobalVariablesSectionPro
               disabled={!canAdd}
             >
               <Plus className="mr-1.5 h-3.5 w-3.5" />
-              Add
+              {t("globalVarsAddConfirm")}
             </Button>
           </div>
 
