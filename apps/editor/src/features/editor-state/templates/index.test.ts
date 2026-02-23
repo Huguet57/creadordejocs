@@ -1,4 +1,7 @@
-import { describe, expect, it } from "vitest"
+import { readFileSync } from "node:fs"
+import { dirname, resolve } from "node:path"
+import { fileURLToPath } from "node:url"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { createTemplateProject, GAME_TEMPLATES } from "./index.js"
 import type { GameTemplateId } from "./types.js"
 
@@ -15,6 +18,11 @@ const ELSE_ENABLED_TEMPLATE_IDS: GameTemplateId[] = [
 ]
 const NESTED_IF_TEMPLATE_IDS: GameTemplateId[] = []
 const DISTRIBUTED_LOGIC_TEMPLATE_IDS: GameTemplateId[] = ["switch-vault", "pokemon-explorer"]
+
+const templatesDir = dirname(fileURLToPath(import.meta.url))
+const pokemonTemplatePath = resolve(templatesDir, "../../../../public/templates/pokemon-explorer-template.project.json")
+const pokemonTemplateRaw = JSON.parse(readFileSync(pokemonTemplatePath, "utf-8")) as unknown
+const originalFetch = globalThis.fetch
 
 async function projectHasIfBlocks(templateId: GameTemplateId): Promise<boolean> {
   const created = await createTemplateProject(templateId)
@@ -62,6 +70,22 @@ function itemsContainNestedIf(items: EventItems): boolean {
 }
 
 describe("template catalog", () => {
+  beforeEach(() => {
+    globalThis.fetch = vi.fn((input: RequestInfo | URL) => {
+      const requestUrl =
+        typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url
+      if (requestUrl.endsWith("/templates/pokemon-explorer-template.project.json")) {
+        return Promise.resolve(new Response(JSON.stringify(pokemonTemplateRaw), { status: 200 }))
+      }
+      return Promise.resolve(new Response("template not found", { status: 404 }))
+    }) as typeof fetch
+  })
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch
+    vi.restoreAllMocks()
+  })
+
   it("exposes exactly two intermediate templates", () => {
     const intermediate = GAME_TEMPLATES.filter((entry) => entry.difficulty === "intermediate")
 

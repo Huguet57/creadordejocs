@@ -1,9 +1,15 @@
-import { ProjectSchemaV1 } from "@creadordejocs/project-format"
+import { loadExternalTemplateProject } from "./external-template-loader.js"
 import type { TemplateProjectResult } from "./types.js"
 
-export async function createPokemonExplorerTemplateProject(): Promise<TemplateProjectResult> {
-  const { default: raw } = await import("./pokemon-explorer-template.project.json")
-  const project = ProjectSchemaV1.parse(raw)
+const DEFAULT_POKEMON_EXPLORER_TEMPLATE_PATH = "templates/pokemon-explorer-template.project.json"
+
+export async function createPokemonExplorerTemplateProject(
+  relativePath: string = DEFAULT_POKEMON_EXPLORER_TEMPLATE_PATH
+): Promise<TemplateProjectResult> {
+  const project = await loadExternalTemplateProject({
+    templateId: "pokemon-explorer",
+    relativePath
+  })
 
   return {
     project,

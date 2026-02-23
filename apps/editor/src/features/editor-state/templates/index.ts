@@ -5,6 +5,7 @@ import { createLaneCrosserTemplateProject } from "./lane-crosser-template.js"
 import { createPokemonExplorerTemplateProject } from "./pokemon-explorer-template.js"
 import { createSpaceShooterTemplateProject } from "./space-shooter-template.js"
 import { createSwitchVaultTemplateProject } from "./switch-vault-template.js"
+import { TEMPLATE_PROJECT_SOURCES } from "./template-project-sources.js"
 import type { GameTemplateDefinition, GameTemplateId, TemplateProjectResult } from "./types.js"
 
 export const GAME_TEMPLATES: readonly GameTemplateDefinition[] = [
@@ -47,6 +48,8 @@ export const GAME_TEMPLATES: readonly GameTemplateDefinition[] = [
 ]
 
 export async function createTemplateProject(templateId: GameTemplateId): Promise<TemplateProjectResult> {
+  const source = TEMPLATE_PROJECT_SOURCES[templateId]
+
   if (templateId === "coin-dash") {
     return createCoinDashTemplateProject()
   }
@@ -63,7 +66,9 @@ export async function createTemplateProject(templateId: GameTemplateId): Promise
     return createCursorCourierTemplateProject()
   }
   if (templateId === "pokemon-explorer") {
-    return createPokemonExplorerTemplateProject()
+    const templatePath =
+      source.type === "external" ? source.relativePath : "templates/pokemon-explorer-template.project.json"
+    return createPokemonExplorerTemplateProject(templatePath)
   }
   return createSwitchVaultTemplateProject()
 }
