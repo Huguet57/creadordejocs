@@ -63,7 +63,7 @@ test("creates sprite, object and object listener", async ({ page }) => {
   await page.locator(".objlist-item", { hasText: "PlayerShip" }).first().click()
 
   // Add event
-  await page.getByRole("button", { name: "Add Event" }).click()
+  await page.getByRole("button", { name: "Afegir event" }).click()
   await page.locator(".mvp24-event-picker-item").filter({ hasText: "Create" }).click()
   await expect(page.getByText("When")).toBeVisible()
 

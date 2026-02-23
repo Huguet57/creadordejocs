@@ -70,7 +70,7 @@ export function isSupportedLocale(value: string): value is SupportedLocale {
 
 const HOST_ALIASES_BY_LOCALE: Partial<Record<SupportedLocale, readonly string[]>> = {
   // Add custom aliases here when needed (e.g. legacy domains).
-  ca: [],
+  ca: ["localhost", "127.0.0.1"],
   es: [],
   en: []
 }

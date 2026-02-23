@@ -16,7 +16,7 @@ test("recovers autosaved state after reload", async ({ page }) => {
 
   // Add an event to trigger a change and wait for autosave
   await page.locator(".objlist-item", { hasText: "AutoRecover" }).first().click()
-  await page.getByRole("button", { name: "Add Event" }).click()
+  await page.getByRole("button", { name: "Afegir event" }).click()
   await page.locator(".mvp24-event-picker-item").filter({ hasText: "Create" }).click()
 
   await expect(page.getByTestId("save-status")).toContainText("Desat", { timeout: 10000 })
