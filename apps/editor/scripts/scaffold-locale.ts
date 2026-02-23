@@ -8,6 +8,8 @@ type CliArgs = {
   htmlLang: string
   ogLocale: string
   brandName: string
+  origin: string
+  hostAliases: string[]
   dryRun: boolean
 }
 
@@ -26,10 +28,32 @@ function parseArgs(argv: string[]): CliArgs {
   const localeName = (getArg("--name") ?? code.toUpperCase()).trim()
   const htmlLang = (getArg("--html-lang") ?? code).trim()
   const ogLocale = (getArg("--og-locale") ?? `${code}_${code.toUpperCase()}`).trim()
-  const brandName = (getArg("--brand-name") ?? "CreadorDeJocs").trim()
+  const brandName = (getArg("--brand-name") ?? "SimpleGameCreator").trim()
+  const originRaw = (getArg("--origin") ?? "").trim()
+  if (!originRaw) {
+    throw new Error("Missing --origin. Example: --origin https://fr.simplegamecreator.com")
+  }
+  let origin: string
+  try {
+    const parsed = new URL(originRaw)
+    if (parsed.protocol !== "https:") {
+      throw new Error("Origin must be HTTPS.")
+    }
+    origin = `${parsed.protocol}//${parsed.hostname}`
+  } catch {
+    throw new Error("Invalid --origin. Example: --origin https://fr.simplegamecreator.com")
+  }
+
+  const aliasesRaw = (getArg("--host-aliases") ?? "").trim()
+  const hostAliases = aliasesRaw
+    ? aliasesRaw
+        .split(",")
+        .map((value) => value.trim().toLowerCase())
+        .filter(Boolean)
+    : []
   const dryRun = argv.includes("--dry-run")
 
-  return { code, localeName, htmlLang, ogLocale, brandName, dryRun }
+  return { code, localeName, htmlLang, ogLocale, brandName, origin, hostAliases, dryRun }
 }
 
 function insertBeforeObjectClosing(
@@ -97,15 +121,25 @@ function addLocaleToSupportedLocales(content: string, code: string): string {
   return content.replace(arrayRegex, replacement)
 }
 
-function updateLocalesFile(content: string, args: CliArgs): string {
-  const importLine = `import { ${args.code}Messages } from "./${args.code}.js"`
-  if (!content.includes(importLine)) {
-    const importAnchor = `import { esMessages } from "./es.js"\n`
-    if (!content.includes(importAnchor)) {
-      throw new Error("Could not find expected imports block in locales.ts.")
-    }
-    content = content.replace(importAnchor, `${importAnchor}${importLine}\n`)
+function insertLocaleImport(content: string, code: string): string {
+  const importLine = `import { ${code}Messages } from "./${code}.js"`
+  if (content.includes(importLine)) {
+    return content
   }
+
+  const importRegex = /import \{ [a-zA-Z0-9_-]+Messages(?:, type [a-zA-Z0-9_-]+)? \} from "\.\/[a-zA-Z0-9_-]+\.js"\n/g
+  const matches = Array.from(content.matchAll(importRegex))
+  const lastMatch = matches.at(-1)
+  if (lastMatch?.index === undefined) {
+    throw new Error("Could not find locale message imports block in locales.ts.")
+  }
+
+  const insertIndex = lastMatch.index + lastMatch[0].length
+  return `${content.slice(0, insertIndex)}${importLine}\n${content.slice(insertIndex)}`
+}
+
+function updateLocalesFile(content: string, args: CliArgs): string {
+  content = insertLocaleImport(content, args.code)
 
   content = addLocaleToSupportedLocales(content, args.code)
 
@@ -113,6 +147,12 @@ function updateLocalesFile(content: string, args: CliArgs): string {
     content,
     "export const MESSAGES_BY_LOCALE: Record<SupportedLocale, LocaleMessages> = {",
     `  ${args.code}: ${args.code}Messages`
+  )
+
+  content = insertBeforeObjectClosing(
+    content,
+    "export const LOCALE_ORIGINS: Record<SupportedLocale, string> = {",
+    `  ${args.code}: "${args.origin}"`
   )
 
   content = insertBeforeObjectClosing(
@@ -126,6 +166,13 @@ function updateLocalesFile(content: string, args: CliArgs): string {
     isDefault: false,
     isIndexable: true
   }`
+  )
+
+  const aliasList = args.hostAliases.map((alias) => `"${alias}"`).join(", ")
+  content = insertBeforeObjectClosing(
+    content,
+    "const HOST_ALIASES_BY_LOCALE: Partial<Record<SupportedLocale, readonly string[]>> = {",
+    `  ${args.code}: [${aliasList}]`
   )
 
   return content
@@ -173,10 +220,10 @@ function updateSeoLocalesFile(content: string, args: CliArgs): string {
 }
 
 function createMessagesFile(code: string): string {
-  return `import { caMessages } from "./ca.js"
+  return `import { enMessages } from "./en.js"
 
-export const ${code}Messages: Record<keyof typeof caMessages, string> = {
-  ...caMessages
+export const ${code}Messages: Record<keyof typeof enMessages, string> = {
+  ...enMessages
 } as const
 `
 }
@@ -206,6 +253,8 @@ function main(): void {
     console.log(`  would create: ${messagesPath}`)
     console.log(`  would update: ${localesPath}`)
     console.log(`  would update: ${seoLocalesPath}`)
+    console.log(`  locale origin: ${args.origin}`)
+    console.log(`  host aliases: ${args.hostAliases.length ? args.hostAliases.join(", ") : "(none)"}`)
     return
   }
 
@@ -217,7 +266,8 @@ function main(): void {
   console.log(`Next steps:`)
   console.log(`  1) Translate ${messagesPath}`)
   console.log(`  2) Replace TODO SEO placeholders in ${seoLocalesPath}`)
-  console.log(`  3) Run npm run typecheck && npm run editor:build`)
+  console.log(`  3) Add host rewrites/redirects in vercel.json for ${args.code}`)
+  console.log(`  4) Run npm run typecheck && npm run editor:build`)
 }
 
 main()

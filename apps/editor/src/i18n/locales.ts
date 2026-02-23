@@ -4,11 +4,16 @@ import { esMessages } from "./es.js"
 
 export const SUPPORTED_LOCALES = ["ca", "es", "en"] as const
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number]
+export const OFFICIAL_GLOBAL_LOCALE: SupportedLocale = "en"
+export const OFFICIAL_GLOBAL_ORIGIN = "https://simplegamecreator.com"
+// Internal/default locale for editor messages and legacy assumptions.
 export const DEFAULT_LOCALE: SupportedLocale = "ca"
+// Global fallback for unknown hosts/previews.
+export const GLOBAL_FALLBACK_LOCALE: SupportedLocale = OFFICIAL_GLOBAL_LOCALE
 export const LOCALE_ORIGINS: Record<SupportedLocale, string> = {
   ca: "https://creadordejocs.cat",
   es: "https://creadordejuegos.com",
-  en: "https://simplegamecreator.com"
+  en: OFFICIAL_GLOBAL_ORIGIN
 }
 
 export type LocaleManifestEntry = {
@@ -63,16 +68,33 @@ export function isSupportedLocale(value: string): value is SupportedLocale {
   return (SUPPORTED_LOCALES as readonly string[]).includes(value)
 }
 
-const HOSTNAME_TO_LOCALE: Record<string, SupportedLocale> = {
-  "creadordejocs.cat": "ca",
-  "www.creadordejocs.cat": "ca",
-  "creadordejuegos.com": "es",
-  "www.creadordejuegos.com": "es",
-  "simplegamecreator.com": "en",
-  "www.simplegamecreator.com": "en"
+const HOST_ALIASES_BY_LOCALE: Partial<Record<SupportedLocale, readonly string[]>> = {
+  // Add custom aliases here when needed (e.g. legacy domains).
+  ca: [],
+  es: [],
+  en: []
 }
+
+function originToHostname(origin: string): string {
+  return new URL(origin).hostname.toLowerCase()
+}
+
+function buildHostnameToLocaleMap(): Record<string, SupportedLocale> {
+  return SUPPORTED_LOCALES.reduce<Record<string, SupportedLocale>>((acc, locale) => {
+    const primaryHost = originToHostname(LOCALE_ORIGINS[locale])
+    acc[primaryHost] = locale
+    acc[`www.${primaryHost}`] = locale
+
+    for (const alias of HOST_ALIASES_BY_LOCALE[locale] ?? []) {
+      acc[alias.toLowerCase()] = locale
+    }
+    return acc
+  }, {})
+}
+
+const HOSTNAME_TO_LOCALE = buildHostnameToLocaleMap()
 
 export function resolveLocaleFromHostname(hostname: string): SupportedLocale {
   const normalized = hostname.trim().toLowerCase()
-  return HOSTNAME_TO_LOCALE[normalized] ?? DEFAULT_LOCALE
+  return HOSTNAME_TO_LOCALE[normalized] ?? GLOBAL_FALLBACK_LOCALE
 }

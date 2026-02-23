@@ -31,7 +31,7 @@ export function syncHreflangTags(
       link.setAttribute("hreflang", locale)
       document.head.appendChild(link)
     }
-    link.setAttribute("href", `${LOCALE_ORIGINS[locale]}${buildLocalePath(routePath, locale)}`)
+    link.setAttribute("href", `${LOCALE_ORIGINS[locale]}${buildLocalePath(routePath)}`)
   }
 
   let xDefault = document.querySelector('link[hreflang="x-default"]')
@@ -43,6 +43,6 @@ export function syncHreflangTags(
   }
   xDefault.setAttribute(
     "href",
-    `${LOCALE_ORIGINS[xDefaultLocale]}${buildLocalePath(routePath, xDefaultLocale)}`
+    `${LOCALE_ORIGINS[xDefaultLocale]}${buildLocalePath(routePath)}`
   )
 }

@@ -1,8 +1,8 @@
 import type { EditorSection } from "./features/editor-state/types.js"
 import {
-  resolveLocaleFromHostname as resolveLocaleFromHostnameFromConfig,
-  type SupportedLocale
+  resolveLocaleFromHostname as resolveLocaleFromHostnameFromConfig
 } from "./i18n/locales.js"
+import type { SupportedLocale } from "./i18n/locales.js"
 
 export type AppRoute = "landing" | "editor" | "play"
 
@@ -29,9 +29,7 @@ export function resolveLocaleFromHostname(hostname: string): SupportedLocale {
   return resolveLocaleFromHostnameFromConfig(hostname)
 }
 
-export function buildLocalePath(path: string, locale?: SupportedLocale): string {
-  const _unusedLocale = locale
-  void _unusedLocale
+export function buildLocalePath(path: string): string {
   const normalized = path.startsWith("/") ? path : `/${path}`
   return normalizePathname(normalized)
 }

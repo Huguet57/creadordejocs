@@ -1,12 +1,13 @@
 import {
   DEFAULT_LOCALE,
   LOCALE_MANIFEST,
+  OFFICIAL_GLOBAL_LOCALE,
   SUPPORTED_LOCALES,
   type SupportedLocale
 } from "../i18n/locales.js"
 import type { BuildSeoMeta, RuntimeSeoMeta, SeoConfigByLocale } from "./seo-types.js"
 
-export const X_DEFAULT_LOCALE: SupportedLocale = "en"
+export const X_DEFAULT_LOCALE: SupportedLocale = OFFICIAL_GLOBAL_LOCALE
 
 export const RUNTIME_SEO_BY_LOCALE: Record<SupportedLocale, RuntimeSeoMeta> = {
   ca: {

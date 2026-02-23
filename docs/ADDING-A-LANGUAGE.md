@@ -3,14 +3,16 @@
 ## Scaffold command
 
 ```bash
-npm run locale:add -- --code fr --name French
+npm run locale:add -- --code fr --name French --origin https://fr.simplegamecreator.com
 ```
 
 Optional flags:
 
 - `--html-lang fr`
 - `--og-locale fr_FR`
-- `--brand-name "GameCreator"`
+- `--brand-name "SimpleGameCreator"`
+- `--origin https://fr.simplegamecreator.com` (required)
+- `--host-aliases "fr.creadordejocs.cat,fr.example.com"`
 - `--dry-run`
 
 ## Steps
@@ -39,7 +41,9 @@ Update these two central files:
 - `apps/editor/src/i18n/locales.ts`
   - Add locale code to `SUPPORTED_LOCALES`
   - Add locale entry to `MESSAGES_BY_LOCALE`
+  - Add locale entry to `LOCALE_ORIGINS`
   - Add locale entry to `LOCALE_MANIFEST` (`htmlLang`, `ogLocale`, `brandName`, etc.)
+  - Optional aliases in `HOST_ALIASES_BY_LOCALE`
 
 - `apps/editor/src/seo/seo-locales.ts`
   - Add locale entry to `RUNTIME_SEO_BY_LOCALE` (landing/editor/play titles)
@@ -57,7 +61,6 @@ npm run editor:build   # Generates locale HTML + sitemap
 
 Confirm outputs:
 
-- `apps/editor/dist/index.html`
 - `apps/editor/dist/<new-locale>/index.html`
 - `apps/editor/dist/sitemap.xml`
 

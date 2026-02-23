@@ -202,9 +202,9 @@
       "destination": "/en/index.html"
     },
 
-    { "source": "/", "destination": "/ca/index.html" },
-    { "source": "/editor", "destination": "/ca/index.html" },
-    { "source": "/editor/:path*", "destination": "/ca/index.html" },
-    { "source": "/play/:id", "destination": "/ca/index.html" }
+    { "source": "/", "destination": "/en/index.html" },
+    { "source": "/editor", "destination": "/en/index.html" },
+    { "source": "/editor/:path*", "destination": "/en/index.html" },
+    { "source": "/play/:id", "destination": "/en/index.html" }
   ]
 }

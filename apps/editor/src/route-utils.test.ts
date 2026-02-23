@@ -11,7 +11,6 @@ import {
   shouldRouteAuthCallbackToEditor,
   buildEditorAuthCallbackPath
 } from "./route-utils.js"
-import { setActiveLocale } from "./i18n/index.js"
 
 describe("normalizePathname", () => {
   it("keeps root path unchanged", () => {
@@ -70,25 +69,23 @@ describe("resolveLocaleFromHostname", () => {
     expect(resolveLocaleFromHostname("www.simplegamecreator.com")).toBe("en")
   })
 
-  it("falls back to default locale for unknown hosts", () => {
-    expect(resolveLocaleFromHostname("localhost")).toBe("ca")
-    expect(resolveLocaleFromHostname("preview.vercel.app")).toBe("ca")
+  it("falls back to global locale for unknown hosts", () => {
+    expect(resolveLocaleFromHostname("localhost")).toBe("en")
+    expect(resolveLocaleFromHostname("preview.vercel.app")).toBe("en")
   })
 })
 
 describe("buildLocalePath", () => {
-  it("returns path unchanged for default locale", () => {
-    expect(buildLocalePath("/editor", "ca")).toBe("/editor")
+  it("returns path unchanged", () => {
+    expect(buildLocalePath("/editor")).toBe("/editor")
   })
 
-  it("returns path unchanged for non-default locales", () => {
-    expect(buildLocalePath("/editor", "es")).toBe("/editor")
+  it("normalizes missing leading slash", () => {
+    expect(buildLocalePath("play/abc")).toBe("/play/abc")
   })
 
-  it("uses active locale when locale argument is omitted", () => {
-    setActiveLocale("en")
+  it("keeps root path unchanged", () => {
     expect(buildLocalePath("/play/abc")).toBe("/play/abc")
-    setActiveLocale("ca")
   })
 })
 
@@ -217,8 +214,6 @@ describe("buildEditorAuthCallbackPath", () => {
   })
 
   it("builds localized editor callback path when active locale is not default", () => {
-    setActiveLocale("es")
     expect(buildEditorAuthCallbackPath("?code=abc", "")).toBe("/editor?code=abc")
-    setActiveLocale("ca")
   })
 })
