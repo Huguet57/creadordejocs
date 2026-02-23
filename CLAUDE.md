@@ -29,7 +29,17 @@ npx vitest run packages/project-format/src/schema-v1.test.ts
 
 # Build
 npm run build               # tsc -b (all workspaces)
-npm run editor:build        # Vite production build of the editor
+npm run editor:build        # Vite production build of the editor (runs generate-locale-html.ts post-build)
+
+# Localization
+npm run locale:add -- --code fr --name French   # Scaffold a new locale (files + SEO config)
+npm run locale:add -- --dry-run                 # Preview what would be generated
+
+# Environment switching (Supabase target)
+npm run run:remote          # Start remote Supabase + refresh env + editor dev server
+npm run env:local           # Switch .env.local to local Supabase
+npm run env:remote          # Switch .env.local to remote Supabase
+npm run env:status          # Show current Supabase target
 ```
 
 ## Architecture
@@ -39,9 +49,9 @@ npm workspaces monorepo with five workspaces referenced in the root `tsconfig.js
 - **`packages/project-format`** — Zod-validated project schema v1, save/load helpers, action registry, editor model types. Uses `zod`. Every workspace that touches project data depends on this.
 - **`packages/engine-core`** — Deterministic game loop (`update` + `draw` contracts). No app dependencies.
 - **`packages/seo-analytics`** — Google Search Console API client for SEO stats (keywords, pages, countries, trends). Reusable as a library or CLI. Uses `googleapis`. See [SEO Analytics](#seo-analytics) below.
-- **`apps/editor`** — React + Vite + Tailwind SPA. Feature-sliced under `src/features/` (editor-state, sprites, objects, rooms, sounds, play, share, templates, assets, landing). Path alias `@/` maps to `apps/editor/src/`. Depends on `project-format`.
+- **`apps/editor`** — React + Vite + Tailwind SPA. Feature-sliced under `src/features/` (editor-state, sprites, objects, rooms, sounds, play, share, templates, assets, landing). Path alias `@/` maps to `apps/editor/src/`. Depends on `project-format`. Also contains `src/seo/` (per-locale meta tags, hreflang, sitemap generation) and `src/route-utils.ts` (locale-aware routing helpers).
 - **`apps/player`** — Play-only runtime shell for published projects. Depends on `engine-core` and `project-format`.
-- **`apps/share-worker`** — Cloudflare Worker with KV storage for shared game snapshots.
+- **`apps/share-worker`** — Cloudflare Worker (Wrangler) with KV binding `SHARES_KV` for shared game snapshots. Deployed independently from the editor.
 
 ### Editor state management
 
@@ -107,7 +117,7 @@ import { createGscClient, getTopKeywords, getTopPages, getByCountry, getMonthlyT
 - **TypeScript strict** everywhere — `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`, `useUnknownInCatchVariables` are all enabled.
 - **`type` over `interface`** — ESLint enforces `@typescript-eslint/consistent-type-definitions: ["error", "type"]`.
 - **Formatting**: Prettier with `semi: false`, `singleQuote: false`, `trailingComma: "none"`, `printWidth: 100`.
-- **i18n**: Catalan (`ca`) is the initial locale. User-facing strings go in `apps/editor/src/i18n/ca.ts` as a typed const object (`caMessages`); no i18n framework. Locale keys are shared by meaning, not UI location.
+- **i18n**: Three locales — Catalan (`ca`, default), Spanish (`es`), English (`en`). Each has a typed messages file in `apps/editor/src/i18n/<locale>.ts`; no i18n framework. Locale keys are shared by meaning, not UI location. Routes are locale-prefixed (e.g., `/es/editor`, `/en/editor`); `ca` uses the root path. SEO config (canonical, hreflang, OG tags, FAQ schema) lives in `apps/editor/src/seo/`. Use `npm run locale:add` to scaffold a new language; see `docs/ADDING-A-LANGUAGE.md`.
 - **Asset storage**: configurable via `VITE_ASSET_STORAGE_PROVIDER` env var (`supabase` default with IndexedDB fallback queue, `indexeddb` local-only). See `apps/editor/.env.example`.
 - **Project schema**: defined with Zod in `packages/project-format/src/schema-v1.ts`. The schema handles migration from legacy `actions` arrays to structured `items` (if/repeat/forEach blocks).
 - **Environment tiers**: `npm run run:local` (local Supabase), `npm run run:remote` (remote Supabase), or plain `npm run editor:dev` (uses current `.env.local`).
@@ -124,3 +134,6 @@ import { createGscClient, getTopKeywords, getTopPages, getByCountry, getMonthlyT
 - [Principles](docs/PRINCIPLES.md) — product and engineering principles, tie-breaking criteria
 - [Architecture Boundaries](docs/ARCHITECTURE-BOUNDARIES.md) — package boundaries and naming conventions
 - [Roadmap](docs/ROADMAP.md) — MVP sequence, quarterly cycles, exit criteria
+- [Adding a Language](docs/ADDING-A-LANGUAGE.md) — step-by-step locale scaffold guide
+- [Project Sync Design](docs/PROJECT-SYNC-SUPABASE-FIRST.md) — offline-first merge and conflict-copy strategy
+- [Asset Storage](docs/ASSET-STORAGE.md) — storage provider abstraction (Supabase vs IndexedDB)
