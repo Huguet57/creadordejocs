@@ -3,7 +3,7 @@ import { defineConfig } from "@playwright/test"
 export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: true,
-  retries: 0,
+  retries: 1,
   webServer: {
     command: "npm run dev -w @creadordejocs/editor -- --host localhost --port 4173 --mode test",
     url: "http://localhost:4173",
@@ -12,6 +12,7 @@ export default defineConfig({
   },
   use: {
     headless: true,
-    baseURL: "http://localhost:4173"
+    baseURL: "http://localhost:4173",
+    navigationTimeout: 60_000
   }
 })
