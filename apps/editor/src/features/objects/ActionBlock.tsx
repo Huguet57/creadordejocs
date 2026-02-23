@@ -758,6 +758,7 @@ export function ActionBlock({
               <RightValuePicker
                 value={action.text}
                 expectedType="string"
+                filterByExpectedType={false}
                 globalVariables={globalVariables}
                 internalVariables={internalVariableOptions}
                 otherInternalVariables={otherInternalVariableOptions}

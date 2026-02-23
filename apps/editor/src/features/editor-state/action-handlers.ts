@@ -178,6 +178,12 @@ function resolveStringValue(expression: ValueExpressionOutput, result: RuntimeAc
   return typeof resolved === "string" ? resolved : undefined
 }
 
+function resolveDisplayText(expression: ValueExpressionOutput, result: RuntimeActionResult, ctx: ActionContext): string | undefined {
+  const resolved = resolveExpressionValue(expression, result, ctx)
+  if (resolved === undefined) return undefined
+  return String(resolved)
+}
+
 function isScalarValue(value: unknown): value is number | string | boolean {
   return typeof value === "number" || typeof value === "string" || typeof value === "boolean"
 }
@@ -705,7 +711,7 @@ function executeActionFallback(
     }
   }
   if (action.type === "setObjectText") {
-    const text = resolveStringValue(action.text, result, ctx)
+    const text = resolveDisplayText(action.text, result, ctx)
     if (text === undefined) {
       return { result }
     }
