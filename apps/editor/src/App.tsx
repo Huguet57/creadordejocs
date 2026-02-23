@@ -1,4 +1,4 @@
-import { t, getActiveLocale } from "@/i18n/index.js"
+import { t, getActiveLocale, LOCALE_ORIGINS } from "@/i18n/index.js"
 import { useEffect, useRef, useState } from "react"
 import { Redo2, Save, Undo2 } from "lucide-react"
 import { Button } from "./components/ui/button.js"
@@ -22,7 +22,7 @@ import {
   buildEditorAuthCallbackPath,
   type AppRoute
 } from "./route-utils.js"
-import { RUNTIME_SEO_BY_LOCALE, SITE_ORIGIN, X_DEFAULT_LOCALE } from "./seo/seo-locales.js"
+import { RUNTIME_SEO_BY_LOCALE, X_DEFAULT_LOCALE } from "./seo/seo-locales.js"
 import { setCanonicalHref, setMetaContent, syncHreflangTags } from "./seo/seo-runtime.js"
 
 const landingRobots = "index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1"
@@ -182,6 +182,7 @@ function EditorAppShell() {
 export function App() {
   const locale = getActiveLocale()
   const meta = RUNTIME_SEO_BY_LOCALE[locale]
+  const activeLocaleOrigin = LOCALE_ORIGINS[locale]
 
   const [route, setRoute] = useState<AppRoute>(() => {
     if (shouldRouteAuthCallbackToEditor(window.location.pathname, window.location.search, window.location.hash)) {
@@ -207,8 +208,8 @@ export function App() {
     if (route === "editor") {
       document.title = meta.editorTitle
       setMetaContent('meta[name="robots"]', editorRobots)
-      setCanonicalHref(`${SITE_ORIGIN}${buildLocalePath("/editor")}`)
-      syncHreflangTags("/editor", SITE_ORIGIN, X_DEFAULT_LOCALE)
+      setCanonicalHref(`${activeLocaleOrigin}${buildLocalePath("/editor")}`)
+      syncHreflangTags("/editor", X_DEFAULT_LOCALE)
       return
     }
     if (route === "play") {
@@ -219,9 +220,9 @@ export function App() {
 
     document.title = meta.landingTitle
     setMetaContent('meta[name="robots"]', landingRobots)
-    setCanonicalHref(`${SITE_ORIGIN}${buildLocalePath("/")}`)
-    syncHreflangTags("/", SITE_ORIGIN, X_DEFAULT_LOCALE)
-  }, [route, meta])
+    setCanonicalHref(`${activeLocaleOrigin}${buildLocalePath("/")}`)
+    syncHreflangTags("/", X_DEFAULT_LOCALE)
+  }, [route, meta, activeLocaleOrigin])
 
   const openEditor = () => {
     if (resolveAppRoute(window.location.pathname) !== "editor") {

@@ -5,17 +5,97 @@
   "buildCommand": "npm run editor:build",
   "outputDirectory": "apps/editor/dist",
   "framework": "vite",
+  "redirects": [
+    {
+      "source": "/es",
+      "has": [{ "type": "host", "value": "creadordejocs.cat" }],
+      "destination": "https://creadordejuegos.com",
+      "permanent": true
+    },
+    {
+      "source": "/es/:path*",
+      "has": [{ "type": "host", "value": "creadordejocs.cat" }],
+      "destination": "https://creadordejuegos.com/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/en",
+      "has": [{ "type": "host", "value": "creadordejocs.cat" }],
+      "destination": "https://simplegamecreator.com",
+      "permanent": true
+    },
+    {
+      "source": "/en/:path*",
+      "has": [{ "type": "host", "value": "creadordejocs.cat" }],
+      "destination": "https://simplegamecreator.com/:path*",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     { "source": "/ingest/static/:match(.*)", "destination": "https://us-assets.i.posthog.com/static/:match" },
     { "source": "/ingest/:match(.*)", "destination": "https://us.i.posthog.com/:match" },
-    { "source": "/:locale(es|en)/editor/:path*", "destination": "/:locale/index.html" },
-    { "source": "/:locale(es|en)/editor", "destination": "/:locale/index.html" },
-    { "source": "/:locale(es|en)/play/:id", "destination": "/:locale/index.html" },
-    { "source": "/:locale(es|en)/", "destination": "/:locale/index.html" },
-    { "source": "/:locale(es|en)", "destination": "/:locale/index.html" },
-    { "source": "/editor", "destination": "/" },
-    { "source": "/editor/", "destination": "/" },
-    { "source": "/editor/:path*", "destination": "/" },
-    { "source": "/play/:id", "destination": "/" }
+
+    { "source": "/", "has": [{ "type": "host", "value": "creadordejocs.cat" }], "destination": "/ca/index.html" },
+    {
+      "source": "/editor",
+      "has": [{ "type": "host", "value": "creadordejocs.cat" }],
+      "destination": "/ca/index.html"
+    },
+    {
+      "source": "/editor/:path*",
+      "has": [{ "type": "host", "value": "creadordejocs.cat" }],
+      "destination": "/ca/index.html"
+    },
+    {
+      "source": "/play/:id",
+      "has": [{ "type": "host", "value": "creadordejocs.cat" }],
+      "destination": "/ca/index.html"
+    },
+
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "creadordejuegos.com" }],
+      "destination": "/es/index.html"
+    },
+    {
+      "source": "/editor",
+      "has": [{ "type": "host", "value": "creadordejuegos.com" }],
+      "destination": "/es/index.html"
+    },
+    {
+      "source": "/editor/:path*",
+      "has": [{ "type": "host", "value": "creadordejuegos.com" }],
+      "destination": "/es/index.html"
+    },
+    {
+      "source": "/play/:id",
+      "has": [{ "type": "host", "value": "creadordejuegos.com" }],
+      "destination": "/es/index.html"
+    },
+
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "simplegamecreator.com" }],
+      "destination": "/en/index.html"
+    },
+    {
+      "source": "/editor",
+      "has": [{ "type": "host", "value": "simplegamecreator.com" }],
+      "destination": "/en/index.html"
+    },
+    {
+      "source": "/editor/:path*",
+      "has": [{ "type": "host", "value": "simplegamecreator.com" }],
+      "destination": "/en/index.html"
+    },
+    {
+      "source": "/play/:id",
+      "has": [{ "type": "host", "value": "simplegamecreator.com" }],
+      "destination": "/en/index.html"
+    },
+
+    { "source": "/editor", "destination": "/ca/index.html" },
+    { "source": "/editor/:path*", "destination": "/ca/index.html" },
+    { "source": "/play/:id", "destination": "/ca/index.html" }
   ]
 }

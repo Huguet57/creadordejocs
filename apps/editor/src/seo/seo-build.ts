@@ -1,10 +1,10 @@
 import {
-  DEFAULT_LOCALE,
   INDEXABLE_LOCALES,
+  LOCALE_ORIGINS,
   LOCALE_MANIFEST,
   type SupportedLocale
 } from "../i18n/locales.js"
-import { BUILD_SEO_BY_LOCALE, SITE_ORIGIN, X_DEFAULT_LOCALE } from "./seo-locales.js"
+import { BUILD_SEO_BY_LOCALE, X_DEFAULT_LOCALE } from "./seo-locales.js"
 
 function replaceOrThrow(
   html: string,
@@ -19,11 +19,8 @@ function replaceOrThrow(
 }
 
 export function localeUrl(locale: SupportedLocale, path = "/"): string {
-  if (locale === DEFAULT_LOCALE) {
-    return `${SITE_ORIGIN}${path}`
-  }
-  const suffix = path === "/" ? "" : path
-  return `${SITE_ORIGIN}/${locale}${suffix}`
+  const normalizedPath = path === "/" ? "/" : path.replace(/\/+$/, "")
+  return `${LOCALE_ORIGINS[locale]}${normalizedPath}`
 }
 
 export function buildHreflangLinks(routePath: string): string {

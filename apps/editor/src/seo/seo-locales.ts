@@ -6,7 +6,6 @@ import {
 } from "../i18n/locales.js"
 import type { BuildSeoMeta, RuntimeSeoMeta, SeoConfigByLocale } from "./seo-types.js"
 
-export const SITE_ORIGIN = "https://creadordejocs.com"
 export const X_DEFAULT_LOCALE: SupportedLocale = "en"
 
 export const RUNTIME_SEO_BY_LOCALE: Record<SupportedLocale, RuntimeSeoMeta> = {
@@ -16,14 +15,14 @@ export const RUNTIME_SEO_BY_LOCALE: Record<SupportedLocale, RuntimeSeoMeta> = {
     playTitle: "Joc compartit | CreadorDeJocs"
   },
   es: {
-    landingTitle: "Creador de videojuegos online | Cómo crear un juego gratis | CreadorDeJocs",
-    editorTitle: "Editor de videojuegos online | CreadorDeJocs",
-    playTitle: "Juego compartido | CreadorDeJocs"
+    landingTitle: "Creador de videojuegos online | Cómo crear un juego gratis | CreadorDeJuegos",
+    editorTitle: "Editor de videojuegos online | CreadorDeJuegos",
+    playTitle: "Juego compartido | CreadorDeJuegos"
   },
   en: {
-    landingTitle: "Online Game Creator | Create a Game for Free | GameCreator",
-    editorTitle: "Online Game Editor | GameCreator",
-    playTitle: "Shared Game | GameCreator"
+    landingTitle: "Simple Game Creator | Create a Game for Free Online | SimpleGameCreator",
+    editorTitle: "Online Game Editor | SimpleGameCreator",
+    playTitle: "Shared Game | SimpleGameCreator"
   }
 }
 
@@ -31,8 +30,9 @@ export const BUILD_SEO_BY_LOCALE: Record<SupportedLocale, BuildSeoMeta> = {
   ca: {
     title: "Creador de jocs online | Com crear un joc gratis | CreadorDeJocs",
     description:
-      "Creador de jocs online i gratuït. Defineix objectes, comportaments i regles amb un editor visual al navegador. Prova el joc al moment sense instal·lar res.",
-    keywords: "creador de jocs, com crear un joc, web per fer jocs, crear joc online",
+      "CreadorDeJocs és un creador de jocs online i gratuït. Defineix objectes, comportaments i regles amb un editor visual al navegador. Prova el joc al moment sense instal·lar res.",
+    keywords:
+      "creadordejocs, creador de jocs, com crear un joc, web per fer jocs, crear joc online, creador de jocs gratis",
     ogTitle: "Creador de jocs online: crea el teu joc en minuts",
     ogDescription:
       "Web per fer jocs amb acces directe a l'editor: sense login, sense instal-lacions i amb prova immediata.",
@@ -60,21 +60,21 @@ export const BUILD_SEO_BY_LOCALE: Record<SupportedLocale, BuildSeoMeta> = {
     ]
   },
   es: {
-    title: "Creador de videojuegos online | Cómo crear un juego gratis | CreadorDeJocs",
+    title: "Creador de videojuegos online | Cómo crear un juego gratis | CreadorDeJuegos",
     description:
-      "Creador de videojuegos online y gratuito. Define objetos, comportamientos y reglas con un editor visual en el navegador. Prueba el juego al instante sin instalar nada.",
+      "CreadorDeJuegos es un creador de videojuegos online y gratuito. Define objetos, comportamientos y reglas con un editor visual en el navegador. Prueba el juego al instante sin instalar nada.",
     keywords:
-      "creador de videojuegos, como crear un juego, web para hacer juegos, crear juego online, creador de juegos gratis",
+      "creadordejuegos, creador de videojuegos, creador de juegos, como crear un juego, web para hacer juegos, crear juego online",
     ogTitle: "Creador de videojuegos online: crea tu juego en minutos",
     ogDescription:
       "Web para hacer juegos con acceso directo al editor: sin login, sin instalaciones y con prueba inmediata.",
-    twitterTitle: "Creador de videojuegos online | CreadorDeJocs",
+    twitterTitle: "Creador de videojuegos online | CreadorDeJuegos",
     twitterDescription: "Cómo crear un juego rápido y gratis: abre el editor y empieza sin login.",
     schemaDescription:
-      "Creador de videojuegos online para crear y probar juegos en el navegador sin login.",
+      "CreadorDeJuegos es un creador de videojuegos online para crear y probar juegos en el navegador sin login.",
     faq: [
       {
-        q: "¿CreadorDeJocs es gratuito?",
+        q: "¿CreadorDeJuegos es gratuito?",
         a: "Sí. El editor es completamente gratuito y no pide registro. Abres la página y empiezas a crear directamente."
       },
       {
@@ -92,22 +92,22 @@ export const BUILD_SEO_BY_LOCALE: Record<SupportedLocale, BuildSeoMeta> = {
     ]
   },
   en: {
-    title: "Online Game Creator | Create a Game for Free | GameCreator",
+    title: "Simple Game Creator | Create a Game for Free Online | SimpleGameCreator",
     description:
-      "Free online game creator. Define objects, behaviors and rules with a visual editor in the browser. Test your game instantly without installing anything.",
+      "SimpleGameCreator is a free online game creator. Define objects, behaviors and rules with a visual editor in the browser. Test your game instantly without installing anything.",
     keywords:
-      "game creator, how to make a game, online game maker, free game creator, create a game online",
+      "simple game creator, simplegamecreator, game creator, how to make a game, online game maker, free game creator",
     ogTitle: "Online Game Creator: build your game in minutes",
     ogDescription:
-      "A website to make games with direct editor access: no login, no installations, instant testing.",
-    twitterTitle: "Online Game Creator | GameCreator",
+      "SimpleGameCreator is a website to make games with direct editor access: no login, no installations, instant testing.",
+    twitterTitle: "Simple Game Creator | SimpleGameCreator",
     twitterDescription:
       "How to create a game quickly and for free: open the editor and start without login.",
     schemaDescription:
-      "Online game creator to build and test video games in the browser without login.",
+      "SimpleGameCreator is an online game creator to build and test video games in the browser without login.",
     faq: [
       {
-        q: "Is GameCreator free?",
+        q: "Is SimpleGameCreator free?",
         a: "Yes. The editor is completely free and requires no sign-up. Just open the page and start creating."
       },
       {

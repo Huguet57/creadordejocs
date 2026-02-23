@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   normalizePathname,
-  resolveLocaleFromPathname,
+  resolveLocaleFromHostname,
   resolveAppRoute,
   resolveEditorSection,
   resolvePlayShareId,
@@ -57,35 +57,37 @@ describe("resolveAppRoute", () => {
   })
 })
 
-describe("resolveLocaleFromPathname", () => {
-  it("detects default locale when path has no prefix", () => {
-    expect(resolveLocaleFromPathname("/editor")).toEqual({ locale: "ca", rest: "/editor" })
+describe("resolveLocaleFromHostname", () => {
+  it("resolves locale from configured domain", () => {
+    expect(resolveLocaleFromHostname("creadordejocs.cat")).toBe("ca")
+    expect(resolveLocaleFromHostname("creadordejuegos.com")).toBe("es")
+    expect(resolveLocaleFromHostname("simplegamecreator.com")).toBe("en")
   })
 
-  it("extracts explicit locale prefix and remaining path", () => {
-    expect(resolveLocaleFromPathname("/es/editor/sprites")).toEqual({
-      locale: "es",
-      rest: "/editor/sprites"
-    })
+  it("handles www aliases", () => {
+    expect(resolveLocaleFromHostname("www.creadordejocs.cat")).toBe("ca")
+    expect(resolveLocaleFromHostname("www.creadordejuegos.com")).toBe("es")
+    expect(resolveLocaleFromHostname("www.simplegamecreator.com")).toBe("en")
   })
 
-  it("handles locale root path", () => {
-    expect(resolveLocaleFromPathname("/en")).toEqual({ locale: "en", rest: "/" })
+  it("falls back to default locale for unknown hosts", () => {
+    expect(resolveLocaleFromHostname("localhost")).toBe("ca")
+    expect(resolveLocaleFromHostname("preview.vercel.app")).toBe("ca")
   })
 })
 
 describe("buildLocalePath", () => {
-  it("returns unprefixed path for default locale", () => {
+  it("returns path unchanged for default locale", () => {
     expect(buildLocalePath("/editor", "ca")).toBe("/editor")
   })
 
-  it("prefixes path for non-default locales", () => {
-    expect(buildLocalePath("/editor", "es")).toBe("/es/editor")
+  it("returns path unchanged for non-default locales", () => {
+    expect(buildLocalePath("/editor", "es")).toBe("/editor")
   })
 
   it("uses active locale when locale argument is omitted", () => {
     setActiveLocale("en")
-    expect(buildLocalePath("/play/abc")).toBe("/en/play/abc")
+    expect(buildLocalePath("/play/abc")).toBe("/play/abc")
     setActiveLocale("ca")
   })
 })
@@ -216,7 +218,7 @@ describe("buildEditorAuthCallbackPath", () => {
 
   it("builds localized editor callback path when active locale is not default", () => {
     setActiveLocale("es")
-    expect(buildEditorAuthCallbackPath("?code=abc", "")).toBe("/es/editor?code=abc")
+    expect(buildEditorAuthCallbackPath("?code=abc", "")).toBe("/editor?code=abc")
     setActiveLocale("ca")
   })
 })

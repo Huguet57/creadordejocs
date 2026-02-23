@@ -1,10 +1,8 @@
 import type { EditorSection } from "./features/editor-state/types.js"
 import {
-  DEFAULT_LOCALE,
-  isSupportedLocale,
+  resolveLocaleFromHostname as resolveLocaleFromHostnameFromConfig,
   type SupportedLocale
 } from "./i18n/locales.js"
-import { getActiveLocale } from "./i18n/t.js"
 
 export type AppRoute = "landing" | "editor" | "play"
 
@@ -27,33 +25,21 @@ export function normalizePathname(pathname: string): string {
 
 // ── Locale helpers ──────────────────────────────────────────────
 
-export function resolveLocaleFromPathname(pathname: string): {
-  locale: SupportedLocale
-  rest: string
-} {
-  const normalized = normalizePathname(pathname)
-  const firstSegment = normalized.split("/")[1] ?? ""
-  if (firstSegment && firstSegment !== DEFAULT_LOCALE && isSupportedLocale(firstSegment)) {
-    const rest = normalized.slice(`/${firstSegment}`.length) || "/"
-    return { locale: firstSegment, rest }
-  }
-  return { locale: DEFAULT_LOCALE, rest: normalized }
+export function resolveLocaleFromHostname(hostname: string): SupportedLocale {
+  return resolveLocaleFromHostnameFromConfig(hostname)
 }
 
 export function buildLocalePath(path: string, locale?: SupportedLocale): string {
-  const loc = locale ?? getActiveLocale()
-  if (loc === DEFAULT_LOCALE) return path
-  return `/${loc}${path === "/" ? "" : path}`
-}
-
-function stripLocalePrefix(pathname: string): string {
-  return resolveLocaleFromPathname(pathname).rest
+  const _unusedLocale = locale
+  void _unusedLocale
+  const normalized = path.startsWith("/") ? path : `/${path}`
+  return normalizePathname(normalized)
 }
 
 // ── Route resolution ────────────────────────────────────────────
 
 export function resolveAppRoute(pathname: string): AppRoute {
-  const normalizedPathname = stripLocalePrefix(pathname)
+  const normalizedPathname = normalizePathname(pathname)
   if (normalizedPathname === "/editor" || normalizedPathname.startsWith("/editor/")) {
     return "editor"
   }
@@ -64,7 +50,7 @@ export function resolveAppRoute(pathname: string): AppRoute {
 }
 
 export function resolvePlayShareId(pathname: string): string | null {
-  const normalized = stripLocalePrefix(pathname)
+  const normalized = normalizePathname(pathname)
   const prefix = "/play/"
   if (!normalized.startsWith(prefix)) {
     return null
@@ -74,7 +60,7 @@ export function resolvePlayShareId(pathname: string): string | null {
 }
 
 export function resolveEditorSection(pathname: string): EditorSection | null {
-  const normalized = stripLocalePrefix(pathname)
+  const normalized = normalizePathname(pathname)
   const prefix = "/editor/"
   if (!normalized.startsWith(prefix)) {
     return null

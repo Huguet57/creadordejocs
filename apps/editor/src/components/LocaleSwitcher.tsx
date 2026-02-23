@@ -1,10 +1,10 @@
 import { Globe } from "lucide-react"
 import {
   getActiveLocale,
+  LOCALE_ORIGINS,
   SUPPORTED_LOCALES,
   type SupportedLocale
 } from "@/i18n/index.js"
-import { resolveLocaleFromPathname, buildLocalePath } from "@/route-utils.js"
 
 const LOCALE_LABELS: Record<SupportedLocale, string> = {
   ca: "CA",
@@ -21,8 +21,8 @@ export function LocaleSwitcher({ variant = "light" }: LocaleSwitcherProps) {
 
   function switchLocale(newLocale: SupportedLocale): void {
     if (newLocale === activeLocale) return
-    const { rest } = resolveLocaleFromPathname(window.location.pathname)
-    window.location.href = buildLocalePath(rest, newLocale)
+    const targetOrigin = LOCALE_ORIGINS[newLocale]
+    window.location.href = `${targetOrigin}${window.location.pathname}${window.location.search}${window.location.hash}`
   }
 
   const baseTextClass = variant === "dark" ? "text-slate-400" : "text-slate-500"

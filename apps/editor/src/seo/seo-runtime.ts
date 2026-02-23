@@ -1,4 +1,4 @@
-import { SUPPORTED_LOCALES, type SupportedLocale } from "../i18n/locales.js"
+import { LOCALE_ORIGINS, SUPPORTED_LOCALES, type SupportedLocale } from "../i18n/locales.js"
 import { buildLocalePath } from "../route-utils.js"
 
 export function setMetaContent(selector: string, content: string): void {
@@ -21,7 +21,6 @@ export function setCanonicalHref(href: string): void {
 
 export function syncHreflangTags(
   routePath: string,
-  siteOrigin: string,
   xDefaultLocale: SupportedLocale
 ): void {
   for (const locale of SUPPORTED_LOCALES) {
@@ -32,7 +31,7 @@ export function syncHreflangTags(
       link.setAttribute("hreflang", locale)
       document.head.appendChild(link)
     }
-    link.setAttribute("href", `${siteOrigin}${buildLocalePath(routePath, locale)}`)
+    link.setAttribute("href", `${LOCALE_ORIGINS[locale]}${buildLocalePath(routePath, locale)}`)
   }
 
   let xDefault = document.querySelector('link[hreflang="x-default"]')
@@ -42,5 +41,8 @@ export function syncHreflangTags(
     xDefault.setAttribute("hreflang", "x-default")
     document.head.appendChild(xDefault)
   }
-  xDefault.setAttribute("href", `${siteOrigin}${buildLocalePath(routePath, xDefaultLocale)}`)
+  xDefault.setAttribute(
+    "href",
+    `${LOCALE_ORIGINS[xDefaultLocale]}${buildLocalePath(routePath, xDefaultLocale)}`
+  )
 }
