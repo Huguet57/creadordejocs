@@ -6,7 +6,7 @@ export const ABSOLUTE_MAX_MAX_ZOOM = 40
 
 export const ABSOLUTE_MIN_MIN_ZOOM = 0.1
 
-/** At max zoom, canvas largest dimension ≈ this many CSS px (calibrated so 32px → max 24). */
+/** At max zoom, canvas smallest dimension ≈ this many CSS px (calibrated so 32px → max 24). */
 const REFERENCE_CANVAS_SIZE = 768
 
 /** Sprites whose largest dimension exceeds this get sub-1 min zoom. */
@@ -23,7 +23,7 @@ const TARGET_SLIDER_POSITIONS = 60
 
 export function computeMaxZoom(spriteWidth: number, spriteHeight: number): number {
   if (spriteWidth <= 0 || spriteHeight <= 0) return ABSOLUTE_MIN_MAX_ZOOM
-  const raw = Math.round(REFERENCE_CANVAS_SIZE / Math.max(spriteWidth, spriteHeight))
+  const raw = Math.round(REFERENCE_CANVAS_SIZE / Math.min(spriteWidth, spriteHeight))
   return Math.min(ABSOLUTE_MAX_MAX_ZOOM, Math.max(ABSOLUTE_MIN_MAX_ZOOM, raw))
 }
 

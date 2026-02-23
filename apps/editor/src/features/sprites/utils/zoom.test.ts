@@ -156,9 +156,10 @@ describe("computeMaxZoom", () => {
     expect(computeMaxZoom(8, 8)).toBe(ABSOLUTE_MAX_MAX_ZOOM)
   })
 
-  it("uses the largest dimension for non-square sprites", () => {
-    expect(computeMaxZoom(256, 32)).toBe(ABSOLUTE_MIN_MAX_ZOOM)
-    expect(computeMaxZoom(32, 256)).toBe(ABSOLUTE_MIN_MAX_ZOOM)
+  it("uses the smallest dimension for non-square sprites", () => {
+    expect(computeMaxZoom(256, 32)).toBe(24)
+    expect(computeMaxZoom(32, 256)).toBe(24)
+    expect(computeMaxZoom(128, 32)).toBe(24)
   })
 
   it("returns ABSOLUTE_MIN_MAX_ZOOM for zero or negative dimensions", () => {
