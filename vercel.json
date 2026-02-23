@@ -8,6 +8,11 @@
   "rewrites": [
     { "source": "/ingest/static/:match(.*)", "destination": "https://us-assets.i.posthog.com/static/:match" },
     { "source": "/ingest/:match(.*)", "destination": "https://us.i.posthog.com/:match" },
+    { "source": "/:locale(es|en)/editor/:path*", "destination": "/:locale/index.html" },
+    { "source": "/:locale(es|en)/editor", "destination": "/:locale/index.html" },
+    { "source": "/:locale(es|en)/play/:id", "destination": "/:locale/index.html" },
+    { "source": "/:locale(es|en)/", "destination": "/:locale/index.html" },
+    { "source": "/:locale(es|en)", "destination": "/:locale/index.html" },
     { "source": "/editor", "destination": "/" },
     { "source": "/editor/", "destination": "/" },
     { "source": "/editor/:path*", "destination": "/" },

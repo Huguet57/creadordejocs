@@ -1,5 +1,7 @@
 import { useState, type MouseEvent } from "react"
 import { t } from "@/i18n/index.js"
+import { LocaleSwitcher } from "@/components/LocaleSwitcher.js"
+import { buildLocalePath } from "@/route-utils.js"
 import {
   Paintbrush,
   Settings2,
@@ -33,60 +35,66 @@ type LandingFaq = {
   answer: string
 }
 
-const landingSteps: LandingStep[] = [
-  {
-    icon: Paintbrush,
-    title: t("landingStep1Title"),
-    description: t("landingStep1Desc")
-  },
-  {
-    icon: Settings2,
-    title: t("landingStep2Title"),
-    description: t("landingStep2Desc")
-  },
-  {
-    icon: Play,
-    title: t("landingStep3Title"),
-    description: t("landingStep3Desc")
-  }
-]
+function getLandingSteps(): LandingStep[] {
+  return [
+    {
+      icon: Paintbrush,
+      title: t("landingStep1Title"),
+      description: t("landingStep1Desc")
+    },
+    {
+      icon: Settings2,
+      title: t("landingStep2Title"),
+      description: t("landingStep2Desc")
+    },
+    {
+      icon: Play,
+      title: t("landingStep3Title"),
+      description: t("landingStep3Desc")
+    }
+  ]
+}
 
-const landingGameTypes: LandingGameType[] = [
-  {
-    icon: Zap,
-    title: t("landingGameType1Title"),
-    description: t("landingGameType1Desc")
-  },
-  {
-    icon: Layers,
-    title: t("landingGameType2Title"),
-    description: t("landingGameType2Desc")
-  },
-  {
-    icon: Sparkles,
-    title: t("landingGameType3Title"),
-    description: t("landingGameType3Desc")
-  }
-]
+function getLandingGameTypes(): LandingGameType[] {
+  return [
+    {
+      icon: Zap,
+      title: t("landingGameType1Title"),
+      description: t("landingGameType1Desc")
+    },
+    {
+      icon: Layers,
+      title: t("landingGameType2Title"),
+      description: t("landingGameType2Desc")
+    },
+    {
+      icon: Sparkles,
+      title: t("landingGameType3Title"),
+      description: t("landingGameType3Desc")
+    }
+  ]
+}
 
-const landingFaqs: LandingFaq[] = [
-  {
-    question: t("landingFaq1Q"),
-    answer: t("landingFaq1A")
-  },
-  {
-    question: t("landingFaq2Q"),
-    answer: t("landingFaq2A")
-  },
-  {
-    question: t("landingFaq3Q"),
-    answer: t("landingFaq3A")
-  },
-  {
-    question: t("landingFaq4Q"),
-    answer: t("landingFaq4A")
-  }
-]
+function getLandingFaqs(): LandingFaq[] {
+  return [
+    {
+      question: t("landingFaq1Q"),
+      answer: t("landingFaq1A")
+    },
+    {
+      question: t("landingFaq2Q"),
+      answer: t("landingFaq2A")
+    },
+    {
+      question: t("landingFaq3Q"),
+      answer: t("landingFaq3A")
+    },
+    {
+      question: t("landingFaq4Q"),
+      answer: t("landingFaq4A")
+    }
+  ]
+}
 
 function handleEditorCtaClick(event: MouseEvent<HTMLAnchorElement>, onStartEditor: () => void): void {
   event.preventDefault()
@@ -141,12 +149,17 @@ function LandingFaqItem({ faq }: { faq: LandingFaq }) {
 }
 
 export function LandingPage({ onStartEditor }: LandingPageProps) {
+  const landingSteps = getLandingSteps()
+  const landingGameTypes = getLandingGameTypes()
+  const landingFaqs = getLandingFaqs()
+  const editorHref = buildLocalePath("/editor")
+
   return (
     <div className="landing-page min-h-screen bg-white text-slate-900">
       {/* Header */}
       <header className="landing-header sticky top-0 z-50 border-b border-slate-200 bg-white/95 backdrop-blur-sm">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-3.5">
-          <a className="landing-logo flex items-center gap-2 font-semibold tracking-wide text-slate-900" href="/">
+          <a className="landing-logo flex items-center gap-2 font-semibold tracking-wide text-slate-900" href={buildLocalePath("/")}>
             <Gamepad2 className="h-5 w-5 text-sky-500" />
             {t("appBrandName")}
           </a>
@@ -163,10 +176,11 @@ export function LandingPage({ onStartEditor }: LandingPageProps) {
             <a className="transition hover:text-slate-900" href="#faq">
               {t("landingNavFaq")}
             </a>
+            <LocaleSwitcher />
           </nav>
           <a
             className="landing-header-cta rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
-            href="/editor"
+            href={editorHref}
             onClick={(event) => handleEditorCtaClick(event, onStartEditor)}
           >
             {t("landingHeaderCta")}
@@ -191,7 +205,7 @@ export function LandingPage({ onStartEditor }: LandingPageProps) {
             <a
               className="landing-cta-primary inline-flex items-center gap-2 rounded-lg bg-slate-900 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
               data-testid="landing-primary-cta"
-              href="/editor"
+              href={editorHref}
               onClick={(event) => handleEditorCtaClick(event, onStartEditor)}
             >
               {t("landingHeroCta")}
@@ -283,7 +297,7 @@ export function LandingPage({ onStartEditor }: LandingPageProps) {
             </p>
             <a
               className="landing-final-cta-button mt-7 inline-flex items-center gap-2 rounded-lg bg-slate-900 px-7 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
-              href="/editor"
+              href={editorHref}
               onClick={(event) => handleEditorCtaClick(event, onStartEditor)}
             >
               {t("landingFinalCtaButton")}
@@ -296,7 +310,7 @@ export function LandingPage({ onStartEditor }: LandingPageProps) {
       <footer className="landing-footer border-t border-slate-200 bg-slate-900">
         <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-6 px-6 py-10 md:flex-row md:justify-between">
           <div className="landing-footer-brand flex flex-col items-center gap-1 md:items-start">
-            <a className="flex items-center gap-2 font-semibold text-white" href="/">
+            <a className="flex items-center gap-2 font-semibold text-white" href={buildLocalePath("/")}>
               <Gamepad2 className="h-4 w-4 text-sky-400" />
               {t("appBrandName")}
             </a>
@@ -317,11 +331,12 @@ export function LandingPage({ onStartEditor }: LandingPageProps) {
             </a>
             <a
               className="transition hover:text-white"
-              href="/editor"
+              href={editorHref}
               onClick={(event) => handleEditorCtaClick(event, onStartEditor)}
             >
               {t("landingNavEditor")}
             </a>
+            <LocaleSwitcher variant="dark" />
           </nav>
         </div>
       </footer>

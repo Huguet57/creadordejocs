@@ -1,9 +1,14 @@
 import { posthog } from "posthog-js"
 import React from "react"
 import { createRoot } from "react-dom/client"
+import { setActiveLocale } from "./i18n/index.js"
+import { resolveLocaleFromPathname } from "./route-utils.js"
 import { App } from "./App.js"
 import { initKvStorageProvider } from "./features/storage/get-kv-storage-provider.js"
 import "./index.css"
+
+const { locale } = resolveLocaleFromPathname(window.location.pathname)
+setActiveLocale(locale)
 
 const posthogKey = import.meta.env.VITE_PUBLIC_POSTHOG_KEY?.trim()
 const posthogApiHost = import.meta.env.VITE_PUBLIC_POSTHOG_HOST?.trim()
