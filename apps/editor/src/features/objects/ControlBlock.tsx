@@ -878,29 +878,49 @@ export function ControlBlock({
           setContextMenu({ x: e.clientX, y: e.clientY })
         }}
         onDragOver={(e) => {
-          if (!onDropOnBlock) return
           e.preventDefault()
           e.stopPropagation()
           const targetRect = e.currentTarget.getBoundingClientRect()
           const relativeY = e.clientY - targetRect.top
           const position: "top" | "bottom" = relativeY < targetRect.height / 2 ? "top" : "bottom"
-          onDragOverBlock?.(item.id, position)
+          if (position === "top") {
+            onDragOverBlock?.(item.id, "top")
+          } else {
+            if (!draggedActionId || draggedActionId === item.id) return
+            const branchItems = item.type === "if" ? item.thenActions : item.actions
+            const first = branchItems[0]
+            if (first) {
+              const firstId = first.type === "action" ? first.action.id : first.id
+              onDragOverAction({ targetIfBlockId: item.id, targetBranch: "then", targetActionId: firstId, position: "top" })
+            } else {
+              onDragOverAction({ targetIfBlockId: item.id, targetBranch: "then" })
+            }
+          }
         }}
         onDrop={(e) => {
-          if (!onDropOnBlock) return
           e.preventDefault()
           e.stopPropagation()
           const targetRect = e.currentTarget.getBoundingClientRect()
           const relativeY = e.clientY - targetRect.top
           const position: "top" | "bottom" = relativeY < targetRect.height / 2 ? "top" : "bottom"
-          onDropOnBlock(item.id, position)
+          if (position === "top") {
+            if (!onDropOnBlock) return
+            onDropOnBlock(item.id, "top")
+          } else {
+            if (!draggedActionId) return
+            const branchItems = item.type === "if" ? item.thenActions : item.actions
+            const first = branchItems[0]
+            if (first) {
+              const firstId = first.type === "action" ? first.action.id : first.id
+              onDropOnAction({ targetIfBlockId: item.id, targetBranch: "then", targetActionId: firstId, position: "top" })
+            } else {
+              onDropOnAction({ targetIfBlockId: item.id, targetBranch: "then" })
+            }
+          }
         }}
       >
         {dropIndicator === "top" && (
           <div className="pointer-events-none absolute left-2 right-2 top-0 h-0.5 bg-blue-500 z-10" />
-        )}
-        {dropIndicator === "bottom" && (
-          <div className="pointer-events-none absolute left-2 right-2 bottom-0 h-0.5 bg-blue-500 z-10" />
         )}
         <button
           type="button"
