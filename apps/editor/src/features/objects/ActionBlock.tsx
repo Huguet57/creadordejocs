@@ -202,6 +202,25 @@ export function ActionBlock({
   const [isRoomTransitionSelectorOpen, setIsRoomTransitionSelectorOpen] = useState(false)
   const roomSelectorRef = useRef<HTMLDivElement>(null)
   const roomTransitionSelectorRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const firstObjectId = selectableObjects[0]?.id
+    if (!firstObjectId) return
+    if (
+      action.type === "spawnObject" &&
+      !selectableObjects.some((obj) => obj.id === action.objectId)
+    ) {
+      onUpdate({ ...action, objectId: firstObjectId })
+    }
+    if (
+      action.type === "moveToward" &&
+      action.targetType === "object" &&
+      action.targetObjectId &&
+      !selectableObjects.some((obj) => obj.id === action.targetObjectId)
+    ) {
+      onUpdate({ ...action, targetObjectId: firstObjectId })
+    }
+  }, [action.type, selectableObjects])
+
   const selectedRoom = action.type === "goToRoom" ? rooms.find((room) => room.id === action.roomId) ?? null : null
   const selectedRoomTransition: GoToRoomTransition = action.type === "goToRoom" ? (action.transition ?? "none") : "none"
   const SelectedRoomTransitionIcon = GO_TO_ROOM_TRANSITION_ICONS[selectedRoomTransition]
