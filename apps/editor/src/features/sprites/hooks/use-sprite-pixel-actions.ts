@@ -1,7 +1,7 @@
 import { useCallback } from "react"
 import type { SpriteEditorTool, SpriteToolOptionsState } from "../types/sprite-editor.js"
 import { normalizeHexRgba, TRANSPARENT_RGBA } from "../utils/pixel-rgba.js"
-import { getPixelIndicesInRadius, getSpritePixelIndex, normalizePixelGrid } from "../utils/sprite-grid.js"
+import { getAutoBrushRadius, getPixelIndicesInRadius, getSpritePixelIndex, normalizePixelGrid } from "../utils/sprite-grid.js"
 import { readPixelColor } from "../utils/sprite-tools/color-picker.js"
 import { floodFillPixels } from "../utils/sprite-tools/flood-fill.js"
 import { selectContiguousByColor } from "../utils/sprite-tools/magic-wand.js"
@@ -82,9 +82,13 @@ export function useSpritePixelActions({
       const pixelIndex = getSpritePixelIndex(x, y, width)
 
       if (tool === "pencil") {
-        if (selection.size > 0 && !selection.has(pixelIndex)) return
         const next = [...safePixels]
-        next[pixelIndex] = normalizeHexRgba(activeColor)
+        const pencilRadius = getAutoBrushRadius(width, height)
+        const indicesToPaint = getPixelIndicesInRadius(x, y, pencilRadius, width, height)
+        for (const idx of indicesToPaint) {
+          if (selection.size > 0 && !selection.has(idx)) continue
+          next[idx] = normalizeHexRgba(activeColor)
+        }
         onPixelsChange(next)
         return
       }

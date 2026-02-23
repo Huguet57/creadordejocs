@@ -25,6 +25,10 @@ export function getPixelIndicesInRadius(
   return indices
 }
 
+export function getAutoBrushRadius(width: number, height: number): number {
+  return Math.max(1, Math.floor(Math.min(height, width) / 32))
+}
+
 export function normalizePixelGrid(pixelsRgba: string[], width: number, height: number): string[] {
   const total = width * height
   if (pixelsRgba.length === total) {
