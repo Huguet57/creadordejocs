@@ -345,6 +345,7 @@ export const caMessages = {
   spriteToolbarRotateCCW: "Rotar 90° antihorari",
 
   // ── Right value picker ─────────────────────────────────────
+  rightValueValueSection: "Valor",
   rightValueAttributesSection: "Atributs",
   rightValueInternalSection: "Variables internes",
   rightValueRandomStep: "·pas",

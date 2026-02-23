@@ -326,7 +326,7 @@ export function RightValuePicker({
           {canPickLiteral && (
             <div className="right-value-picker-literal-section">
               <div className="right-value-picker-section-header px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-50 border-b border-slate-100">
-                Valor
+                {t("rightValueValueSection")}
               </div>
               <div className="right-value-picker-literal-row px-3 py-2">
                 {expectedType === "boolean" ? (

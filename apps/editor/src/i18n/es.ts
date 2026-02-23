@@ -347,6 +347,7 @@ export const esMessages: Record<keyof typeof caMessages, string> = {
   spriteToolbarRotateCCW: "Rotar 90° antihorario",
 
   // ── Right value picker ─────────────────────────────────────
+  rightValueValueSection: "Valor",
   rightValueAttributesSection: "Atributos",
   rightValueInternalSection: "Variables internas",
   rightValueRandomStep: "·paso",
