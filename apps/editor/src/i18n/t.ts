@@ -1,23 +1,14 @@
-import { caMessages } from "./ca.js"
-import { esMessages } from "./es.js"
-import { enMessages } from "./en.js"
-import { DEFAULT_LOCALE, type SupportedLocale } from "./locales.js"
+import { DEFAULT_LOCALE, MESSAGES_BY_LOCALE, type LocaleMessages, type SupportedLocale } from "./locales.js"
+import { type EditorMessageKey } from "./ca.js"
 
-type MessageKey = keyof typeof caMessages
-type Messages = Record<MessageKey, string>
-
-const messagesByLocale: Record<SupportedLocale, Messages> = {
-  ca: caMessages,
-  es: esMessages,
-  en: enMessages
-}
+type MessageKey = EditorMessageKey
 
 let activeLocale: SupportedLocale = DEFAULT_LOCALE
-let activeMessages: Messages = caMessages
+let activeMessages: LocaleMessages = MESSAGES_BY_LOCALE[DEFAULT_LOCALE]
 
 export function setActiveLocale(locale: SupportedLocale): void {
   activeLocale = locale
-  activeMessages = messagesByLocale[locale]
+  activeMessages = MESSAGES_BY_LOCALE[locale]
 }
 
 export function getActiveLocale(): SupportedLocale {

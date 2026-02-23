@@ -19,64 +19,33 @@ export const frMessages: Record<keyof typeof caMessages, string> = {
 
 TypeScript will error if any key is missing.
 
-### 2. Register the locale
+### 2. Register locale + SEO config in one place
 
-In `apps/editor/src/i18n/locales.ts`, add the code to `SUPPORTED_LOCALES`:
+Update these two central files:
 
-```diff
--export const SUPPORTED_LOCALES = ["ca", "es", "en"] as const
-+export const SUPPORTED_LOCALES = ["ca", "es", "en", "fr"] as const
-```
+- `apps/editor/src/i18n/locales.ts`
+  - Add locale code to `SUPPORTED_LOCALES`
+  - Add locale entry to `MESSAGES_BY_LOCALE`
+  - Add locale entry to `LOCALE_MANIFEST` (`htmlLang`, `ogLocale`, `brandName`, etc.)
 
-### 3. Wire messages into `t()`
+- `apps/editor/src/seo/seo-locales.ts`
+  - Add locale entry to `RUNTIME_SEO_BY_LOCALE` (landing/editor/play titles)
+  - Add locale entry to `BUILD_SEO_BY_LOCALE` (meta description, OG/Twitter, FAQ, schema)
 
-In `apps/editor/src/i18n/t.ts`, import and register:
+No other file needs manual locale wiring.
 
-```diff
- import { esMessages } from "./es.js"
- import { enMessages } from "./en.js"
-+import { frMessages } from "./fr.js"
-
- const messagesByLocale: Record<SupportedLocale, Messages> = {
-   ca: caMessages,
-   es: esMessages,
--  en: enMessages
-+  en: enMessages,
-+  fr: frMessages
- }
-```
-
-### 4. Add SEO meta tags
-
-In `apps/editor/src/App.tsx`, add an entry to `META_BY_LOCALE`:
-
-```typescript
-fr: {
-  landingTitle: "Créateur de jeux en ligne | Créez un jeu gratuitement",
-  editorTitle: "Éditeur de jeux en ligne | CréateurDeJeux",
-  playTitle: "Jeu partagé | CréateurDeJeux"
-}
-```
-
-### 5. Add build-time HTML config
-
-In `apps/editor/scripts/generate-locale-html.ts`, add a new entry to the `locales` array with all SEO fields (title, description, OG tags, FAQ translations, etc.).
-
-### 6. Update Vercel rewrites
-
-In `vercel.json`, add the locale code to the regex:
-
-```diff
--{ "source": "/:locale(es|en)/editor/:path*", ...}
-+{ "source": "/:locale(es|en|fr)/editor/:path*", ...}
-```
-
-Update all five locale rewrite rules.
-
-## Verification
+### 3. Verify
 
 ```bash
-npm run typecheck    # Missing keys → compile error
-npm run test:unit    # Existing tests still pass
-npm run editor:build # Check dist/fr/index.html exists with correct meta tags
+npm run typecheck      # Missing translation keys or wrong locale config fails
+npm run test:unit      # Route and SEO smoke tests
+npm run editor:build   # Generates locale HTML + sitemap
 ```
+
+Confirm outputs:
+
+- `apps/editor/dist/index.html`
+- `apps/editor/dist/<new-locale>/index.html`
+- `apps/editor/dist/sitemap.xml`
+
+If build fails with a locale completeness error, check `assertLocaleConfigComplete()` in `apps/editor/src/seo/seo-locales.ts`.

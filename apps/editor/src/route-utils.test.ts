@@ -1,14 +1,17 @@
 import { describe, expect, it } from "vitest"
 import {
   normalizePathname,
+  resolveLocaleFromPathname,
   resolveAppRoute,
   resolveEditorSection,
   resolvePlayShareId,
+  buildLocalePath,
   buildEditorSectionPath,
   hasAuthCallbackParams,
   shouldRouteAuthCallbackToEditor,
   buildEditorAuthCallbackPath
 } from "./route-utils.js"
+import { setActiveLocale } from "./i18n/index.js"
 
 describe("normalizePathname", () => {
   it("keeps root path unchanged", () => {
@@ -51,6 +54,39 @@ describe("resolveAppRoute", () => {
 
   it("falls back to landing for unknown routes", () => {
     expect(resolveAppRoute("/com-crear-un-joc")).toBe("landing")
+  })
+})
+
+describe("resolveLocaleFromPathname", () => {
+  it("detects default locale when path has no prefix", () => {
+    expect(resolveLocaleFromPathname("/editor")).toEqual({ locale: "ca", rest: "/editor" })
+  })
+
+  it("extracts explicit locale prefix and remaining path", () => {
+    expect(resolveLocaleFromPathname("/es/editor/sprites")).toEqual({
+      locale: "es",
+      rest: "/editor/sprites"
+    })
+  })
+
+  it("handles locale root path", () => {
+    expect(resolveLocaleFromPathname("/en")).toEqual({ locale: "en", rest: "/" })
+  })
+})
+
+describe("buildLocalePath", () => {
+  it("returns unprefixed path for default locale", () => {
+    expect(buildLocalePath("/editor", "ca")).toBe("/editor")
+  })
+
+  it("prefixes path for non-default locales", () => {
+    expect(buildLocalePath("/editor", "es")).toBe("/es/editor")
+  })
+
+  it("uses active locale when locale argument is omitted", () => {
+    setActiveLocale("en")
+    expect(buildLocalePath("/play/abc")).toBe("/en/play/abc")
+    setActiveLocale("ca")
   })
 })
 
@@ -176,5 +212,11 @@ describe("buildEditorAuthCallbackPath", () => {
 
   it("returns plain /editor when no callback params exist", () => {
     expect(buildEditorAuthCallbackPath("", "")).toBe("/editor")
+  })
+
+  it("builds localized editor callback path when active locale is not default", () => {
+    setActiveLocale("es")
+    expect(buildEditorAuthCallbackPath("?code=abc", "")).toBe("/es/editor?code=abc")
+    setActiveLocale("ca")
   })
 })

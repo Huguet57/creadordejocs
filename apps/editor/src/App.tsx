@@ -1,4 +1,4 @@
-import { t, getActiveLocale, SUPPORTED_LOCALES, type SupportedLocale } from "@/i18n/index.js"
+import { t, getActiveLocale } from "@/i18n/index.js"
 import { useEffect, useRef, useState } from "react"
 import { Redo2, Save, Undo2 } from "lucide-react"
 import { Button } from "./components/ui/button.js"
@@ -22,32 +22,8 @@ import {
   buildEditorAuthCallbackPath,
   type AppRoute
 } from "./route-utils.js"
-
-const SITE_ORIGIN = "https://creadordejocs.com"
-
-type LocaleMeta = {
-  landingTitle: string
-  editorTitle: string
-  playTitle: string
-}
-
-const META_BY_LOCALE: Record<SupportedLocale, LocaleMeta> = {
-  ca: {
-    landingTitle: "Creador de jocs online | Com crear un joc gratis | CreadorDeJocs",
-    editorTitle: "Editor de jocs online | CreadorDeJocs",
-    playTitle: "Joc compartit | CreadorDeJocs"
-  },
-  es: {
-    landingTitle: "Creador de videojuegos online | Cómo crear un juego gratis | CreadorDeJocs",
-    editorTitle: "Editor de videojuegos online | CreadorDeJocs",
-    playTitle: "Juego compartido | CreadorDeJocs"
-  },
-  en: {
-    landingTitle: "Online Game Creator | Create a Game for Free | GameCreator",
-    editorTitle: "Online Game Editor | GameCreator",
-    playTitle: "Shared Game | GameCreator"
-  }
-}
+import { RUNTIME_SEO_BY_LOCALE, SITE_ORIGIN, X_DEFAULT_LOCALE } from "./seo/seo-locales.js"
+import { setCanonicalHref, setMetaContent, syncHreflangTags } from "./seo/seo-runtime.js"
 
 const landingRobots = "index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1"
 const editorRobots = "noindex, nofollow"
@@ -58,45 +34,6 @@ function formatStatus(status: "idle" | "saved" | "saving" | "error"): string {
   if (status === "saved") return t("appSaved")
   if (status === "error") return t("appSaveError")
   return t("appSaved")
-}
-
-function setMetaContent(selector: string, content: string): void {
-  const metaTag = document.querySelector(selector)
-  if (!metaTag) {
-    return
-  }
-
-  metaTag.setAttribute("content", content)
-}
-
-function setCanonicalHref(href: string): void {
-  const canonicalTag = document.querySelector('link[rel="canonical"]')
-  if (!canonicalTag) {
-    return
-  }
-
-  canonicalTag.setAttribute("href", href)
-}
-
-function syncHreflangTags(routePath: string): void {
-  for (const loc of SUPPORTED_LOCALES) {
-    let link = document.querySelector(`link[hreflang="${loc}"]`)
-    if (!link) {
-      link = document.createElement("link")
-      link.setAttribute("rel", "alternate")
-      link.setAttribute("hreflang", loc)
-      document.head.appendChild(link)
-    }
-    link.setAttribute("href", `${SITE_ORIGIN}${buildLocalePath(routePath, loc)}`)
-  }
-  let xDefault = document.querySelector('link[hreflang="x-default"]')
-  if (!xDefault) {
-    xDefault = document.createElement("link")
-    xDefault.setAttribute("rel", "alternate")
-    xDefault.setAttribute("hreflang", "x-default")
-    document.head.appendChild(xDefault)
-  }
-  xDefault.setAttribute("href", `${SITE_ORIGIN}${buildLocalePath(routePath, "en")}`)
 }
 
 export function handleSidebarSectionChange(
@@ -244,7 +181,7 @@ function EditorAppShell() {
 
 export function App() {
   const locale = getActiveLocale()
-  const meta = META_BY_LOCALE[locale]
+  const meta = RUNTIME_SEO_BY_LOCALE[locale]
 
   const [route, setRoute] = useState<AppRoute>(() => {
     if (shouldRouteAuthCallbackToEditor(window.location.pathname, window.location.search, window.location.hash)) {
@@ -271,7 +208,7 @@ export function App() {
       document.title = meta.editorTitle
       setMetaContent('meta[name="robots"]', editorRobots)
       setCanonicalHref(`${SITE_ORIGIN}${buildLocalePath("/editor")}`)
-      syncHreflangTags("/editor")
+      syncHreflangTags("/editor", SITE_ORIGIN, X_DEFAULT_LOCALE)
       return
     }
     if (route === "play") {
@@ -283,7 +220,7 @@ export function App() {
     document.title = meta.landingTitle
     setMetaContent('meta[name="robots"]', landingRobots)
     setCanonicalHref(`${SITE_ORIGIN}${buildLocalePath("/")}`)
-    syncHreflangTags("/")
+    syncHreflangTags("/", SITE_ORIGIN, X_DEFAULT_LOCALE)
   }, [route, meta])
 
   const openEditor = () => {
