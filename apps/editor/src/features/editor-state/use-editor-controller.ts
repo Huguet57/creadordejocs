@@ -1636,7 +1636,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
     },
     moveObjectEventItem(
       eventId: string,
-      actionId: string,
+      itemId: string,
       target: {
         targetIfBlockId?: string
         targetBranch?: "then" | "else"
@@ -1649,13 +1649,13 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
         moveObjectEventItemModel(project, {
           objectId: selectedObject.id,
           eventId,
-          actionId,
+          itemId,
           ...(target.targetIfBlockId ? { targetIfBlockId: target.targetIfBlockId } : {}),
           ...(target.targetBranch ? { targetBranch: target.targetBranch } : {}),
           ...(target.targetActionId ? { targetActionId: target.targetActionId } : {}),
           ...(target.position ? { position: target.position } : {})
         }),
-        "Move event action"
+        "Move event item"
       )
     },
     insertObjectEventItem(eventId: string, item: ObjectEventItem, afterItemId?: string) {

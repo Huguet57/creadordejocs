@@ -29,7 +29,7 @@ import { ActionSelectorPanel } from "./ActionSelectorPanel.js"
 import { BlockSelectorPanel, type ControlBlockType } from "./BlockSelectorPanel.js"
 import type { ActionDropTarget } from "./action-dnd.js"
 import type { ProjectV1, ObjectControlBlockItem } from "@creadordejocs/project-format"
-import { generateUUID } from "@creadordejocs/project-format"
+import { generateUUID, isDescendantOfItem } from "@creadordejocs/project-format"
 import { buildDefaultIfCondition } from "./if-condition-utils.js"
 import { buildVariableUniverse } from "./variable-selection-model.js"
 
@@ -120,7 +120,7 @@ export function ActionEditorPanel({
   const footerBlockPickerRef = useRef<HTMLDivElement>(null)
   const [backgroundContextMenu, setBackgroundContextMenu] = useState<{ x: number; y: number } | null>(null)
   const [isCollisionTargetMenuOpen, setIsCollisionTargetMenuOpen] = useState(false)
-  const [draggedActionId, setDraggedActionId] = useState<string | null>(null)
+  const [draggedItemId, setDraggedItemId] = useState<string | null>(null)
   const [dropTarget, setDropTarget] = useState<ActionDropTarget | null>(null)
   const collisionTargetSelectorRef = useRef<HTMLDivElement | null>(null)
   const collisionTargetName = activeEvent?.type === "Collision" && activeEvent.targetObjectId
@@ -315,27 +315,26 @@ export function ActionEditorPanel({
 
   const defaultIfCondition = buildDefaultIfCondition(scalarGlobalVariables, scalarSelectedObjectVariables)
   const getCanonicalDropTarget = (
-    hoveredActionId: string,
+    hoveredItemId: string,
     hoveredPosition: "top" | "bottom"
   ): { actionId: string; position: "top" | "bottom" } => {
-    const actionIds = activeEvent.items
-      .filter((itemEntry) => itemEntry.type === "action")
-      .map((itemEntry) => itemEntry.action.id)
-    const hoveredIndex = actionIds.findIndex((actionId) => actionId === hoveredActionId)
+    const itemIds = activeEvent.items.map((itemEntry) =>
+      itemEntry.type === "action" ? itemEntry.action.id : itemEntry.id
+    )
+    const hoveredIndex = itemIds.findIndex((id) => id === hoveredItemId)
     if (hoveredIndex < 0) {
-      return { actionId: hoveredActionId, position: hoveredPosition }
+      return { actionId: hoveredItemId, position: hoveredPosition }
     }
     if (hoveredPosition === "bottom") {
-      const nextActionId = actionIds[hoveredIndex + 1]
-      if (nextActionId) {
-        // Normalize "between two actions" to one visual target: top of the next action.
-        return { actionId: nextActionId, position: "top" }
+      const nextItemId = itemIds[hoveredIndex + 1]
+      if (nextItemId) {
+        return { actionId: nextItemId, position: "top" }
       }
     }
-    return { actionId: hoveredActionId, position: hoveredPosition }
+    return { actionId: hoveredItemId, position: hoveredPosition }
   }
-  const moveActionToDropTarget = (sourceActionId: string, target: ActionDropTarget) => {
-    onMoveActionByDrop(sourceActionId, target)
+  const moveItemToDropTarget = (sourceItemId: string, target: ActionDropTarget) => {
+    onMoveActionByDrop(sourceItemId, target)
   }
 
   return (
@@ -534,7 +533,7 @@ export function ActionEditorPanel({
               {activeEvent.items.length === 0 && (
                 <div
                   className={`mvp22-empty-root-dropzone py-6 text-center ${
-                    draggedActionId &&
+                    draggedItemId &&
                     dropTarget &&
                     dropTarget.targetIfBlockId === undefined &&
                     dropTarget.targetBranch === undefined &&
@@ -543,19 +542,19 @@ export function ActionEditorPanel({
                       : ""
                   }`}
                   onDragOver={(event) => {
-                    if (!draggedActionId) {
+                    if (!draggedItemId) {
                       return
                     }
                     event.preventDefault()
                     setDropTarget({})
                   }}
                   onDrop={(event) => {
-                    if (!draggedActionId) {
+                    if (!draggedItemId) {
                       return
                     }
                     event.preventDefault()
-                    moveActionToDropTarget(draggedActionId, {})
-                    setDraggedActionId(null)
+                    moveItemToDropTarget(draggedItemId, {})
+                    setDraggedItemId(null)
                     setDropTarget(null)
                   }}
                 >
@@ -599,18 +598,18 @@ export function ActionEditorPanel({
                           otherObjectVariables={otherVariablesForCollision}
                           eventType={activeEvent.type}
                           collisionTargetName={collisionTargetName}
-                          isDragging={draggedActionId === item.action.id}
+                          isDragging={draggedItemId === item.action.id}
                           dropIndicator={
                             dropTarget?.targetIfBlockId === undefined && dropTarget?.targetActionId === item.action.id
                               ? (dropTarget.position ?? null)
                               : null
                           }
                           onDragStartAction={(actionId) => {
-                            setDraggedActionId(actionId)
+                            setDraggedItemId(actionId)
                             setDropTarget(null)
                           }}
                           onDragOverAction={(actionId, position) => {
-                            if (draggedActionId && draggedActionId !== actionId) {
+                            if (draggedItemId && draggedItemId !== actionId) {
                               const canonicalDropTarget = getCanonicalDropTarget(actionId, position)
                               setDropTarget({
                                 targetActionId: canonicalDropTarget.actionId,
@@ -619,19 +618,19 @@ export function ActionEditorPanel({
                             }
                           }}
                           onDropOnAction={(targetActionId, position) => {
-                            if (!draggedActionId) {
+                            if (!draggedItemId) {
                               return
                             }
                             const canonicalDropTarget = getCanonicalDropTarget(targetActionId, position)
-                            moveActionToDropTarget(draggedActionId, {
+                            moveItemToDropTarget(draggedItemId, {
                               targetActionId: canonicalDropTarget.actionId,
                               position: canonicalDropTarget.position
                             })
-                            setDraggedActionId(null)
+                            setDraggedItemId(null)
                             setDropTarget(null)
                           }}
                           onDragEndAction={() => {
-                            setDraggedActionId(null)
+                            setDraggedItemId(null)
                             setDropTarget(null)
                           }}
                         />
@@ -671,25 +670,60 @@ export function ActionEditorPanel({
                           onPasteAfterBlock={onPasteAfterIfBlock}
                           onUpdateBlockAction={onUpdateBlockAction}
                           onRemoveBlockAction={onRemoveBlockAction}
-                          draggedActionId={draggedActionId}
+                          draggedActionId={draggedItemId}
                           dropTarget={dropTarget}
                           onDragStartAction={(actionId) => {
-                            setDraggedActionId(actionId)
+                            setDraggedItemId(actionId)
                             setDropTarget(null)
                           }}
                           onDragOverAction={(target) => {
-                            if (!draggedActionId) return
-                            if (target.targetActionId && target.targetActionId === draggedActionId) return
+                            if (!draggedItemId) return
+                            if (target.targetActionId && target.targetActionId === draggedItemId) return
+                            if (target.targetIfBlockId && isDescendantOfItem(activeEvent.items, target.targetIfBlockId, draggedItemId)) return
                             setDropTarget(target)
                           }}
                           onDropOnAction={(target) => {
-                            if (!draggedActionId) return
-                            moveActionToDropTarget(draggedActionId, target)
-                            setDraggedActionId(null)
+                            if (!draggedItemId) return
+                            moveItemToDropTarget(draggedItemId, target)
+                            setDraggedItemId(null)
                             setDropTarget(null)
                           }}
                           onDragEndAction={() => {
-                            setDraggedActionId(null)
+                            setDraggedItemId(null)
+                            setDropTarget(null)
+                          }}
+                          isDragging={draggedItemId === item.id}
+                          dropIndicator={
+                            dropTarget?.targetIfBlockId === undefined && dropTarget?.targetActionId === item.id
+                              ? (dropTarget.position ?? null)
+                              : null
+                          }
+                          onDragStartBlock={(blockId) => {
+                            setDraggedItemId(blockId)
+                            setDropTarget(null)
+                          }}
+                          onDragOverBlock={(blockId, position) => {
+                            if (draggedItemId && draggedItemId !== blockId) {
+                              if (isDescendantOfItem(activeEvent.items, blockId, draggedItemId)) return
+                              const canonicalDropTarget = getCanonicalDropTarget(blockId, position)
+                              setDropTarget({
+                                targetActionId: canonicalDropTarget.actionId,
+                                position: canonicalDropTarget.position
+                              })
+                            }
+                          }}
+                          onDropOnBlock={(blockId, position) => {
+                            if (!draggedItemId) return
+                            const canonicalDropTarget = getCanonicalDropTarget(blockId, position)
+                            moveItemToDropTarget(draggedItemId, {
+                              targetActionId: canonicalDropTarget.actionId,
+                              position: canonicalDropTarget.position
+                            })
+                            setDraggedItemId(null)
+                            setDropTarget(null)
+                          }}
+                          onDragEndBlock={() => {
+                            setDraggedItemId(null)
                             setDropTarget(null)
                           }}
                         />

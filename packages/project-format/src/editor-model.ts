@@ -135,7 +135,7 @@ export type MoveObjectEventActionInput = {
 export type MoveObjectEventItemInput = {
   objectId: string
   eventId: string
-  actionId: string
+  itemId: string
   targetIfBlockId?: string
   targetBranch?: "then" | "else"
   targetActionId?: string
@@ -470,19 +470,79 @@ function removeActionItemFromItems(
   }
 }
 
-function insertActionItemInContainer(
+
+function removeItemFromItems(
   items: ObjectEventItem[],
-  item: Extract<ObjectEventItem, { type: "action" }>,
-  targetActionId?: string,
+  itemId: string
+): {
+  items: ObjectEventItem[]
+  removedItem: ObjectEventItem | null
+  removed: boolean
+} {
+  const actionResult = removeActionItemFromItems(items, itemId)
+  if (actionResult.removed) {
+    return {
+      items: actionResult.items,
+      removedItem: actionResult.removedItem,
+      removed: true
+    }
+  }
+  let removedItem: ObjectEventItem | null = null
+  const nextItems: ObjectEventItem[] = []
+  for (const itemEntry of items) {
+    if (!removedItem && isControlBlock(itemEntry) && itemEntry.id === itemId) {
+      removedItem = itemEntry
+      continue
+    }
+    if (!removedItem && isControlBlock(itemEntry)) {
+      const branches = getBlockBranches(itemEntry)
+      let found = false
+      const updatedBranches: ObjectEventItem[][] = []
+      for (const branch of branches) {
+        if (found) {
+          updatedBranches.push(branch)
+          continue
+        }
+        const branchResult = removeItemFromItems(branch, itemId)
+        if (branchResult.removed) {
+          removedItem = branchResult.removedItem
+          found = true
+          updatedBranches.push(branchResult.items)
+        } else {
+          updatedBranches.push(branch)
+        }
+      }
+      if (found) {
+        nextItems.push(withUpdatedBranches(itemEntry, updatedBranches))
+        continue
+      }
+    }
+    nextItems.push(itemEntry)
+  }
+  return {
+    items: removedItem ? nextItems : items,
+    removedItem,
+    removed: removedItem !== null
+  }
+}
+
+function insertItemInContainer(
+  items: ObjectEventItem[],
+  item: ObjectEventItem,
+  targetItemId?: string,
   position: "top" | "bottom" = "bottom"
 ): { items: ObjectEventItem[]; inserted: boolean } {
-  if (!targetActionId) {
+  if (!targetItemId) {
     return {
       items: [...items, item],
       inserted: true
     }
   }
-  const targetIndex = items.findIndex((entry) => entry.type === "action" && entry.action.id === targetActionId)
+  const targetIndex = items.findIndex(
+    (entry) =>
+      (entry.type === "action" && entry.action.id === targetItemId) ||
+      entry.id === targetItemId
+  )
   if (targetIndex < 0) {
     return { items, inserted: false }
   }
@@ -495,10 +555,10 @@ function insertActionItemInContainer(
   }
 }
 
-function insertActionItemIntoItems(
+function insertItemIntoItems(
   items: ObjectEventItem[],
   input: {
-    item: Extract<ObjectEventItem, { type: "action" }>
+    item: ObjectEventItem
     targetIfBlockId?: string
     targetBranch: "then" | "else"
     targetActionId?: string
@@ -506,7 +566,7 @@ function insertActionItemIntoItems(
   }
 ): { items: ObjectEventItem[]; inserted: boolean } {
   if (!input.targetIfBlockId) {
-    return insertActionItemInContainer(items, input.item, input.targetActionId, input.position)
+    return insertItemInContainer(items, input.item, input.targetActionId, input.position)
   }
   let inserted = false
   const nextItems = items.map((itemEntry) => {
@@ -518,7 +578,7 @@ function insertActionItemIntoItems(
       const branchIndex = input.targetBranch === "else" ? 1 : 0
       const targetContainer = branches[branchIndex]
       if (!targetContainer) return itemEntry
-      const insertionResult = insertActionItemInContainer(targetContainer, input.item, input.targetActionId, input.position)
+      const insertionResult = insertItemInContainer(targetContainer, input.item, input.targetActionId, input.position)
       if (!insertionResult.inserted) {
         return itemEntry
       }
@@ -528,7 +588,7 @@ function insertActionItemIntoItems(
     }
     const branches = getBlockBranches(itemEntry)
     for (let branchIdx = 0; branchIdx < branches.length; branchIdx++) {
-      const branchResult = insertActionItemIntoItems(branches[branchIdx]!, input)
+      const branchResult = insertItemIntoItems(branches[branchIdx]!, input)
       if (branchResult.inserted) {
         inserted = true
         const updatedBranches = branches.map((b, i) => (i === branchIdx ? branchResult.items : b))
@@ -538,6 +598,40 @@ function insertActionItemIntoItems(
     return itemEntry
   })
   return { items: inserted ? nextItems : items, inserted }
+}
+
+function containsItemId(items: ObjectEventItem[], itemId: string): boolean {
+  for (const item of items) {
+    if (item.id === itemId) return true
+    if (item.type === "action" && item.action.id === itemId) return true
+    if (isControlBlock(item)) {
+      const branches = getBlockBranches(item)
+      for (const branch of branches) {
+        if (containsItemId(branch, itemId)) return true
+      }
+    }
+  }
+  return false
+}
+
+export function isDescendantOfItem(
+  items: ObjectEventItem[],
+  descendantId: string,
+  ancestorId: string
+): boolean {
+  for (const item of items) {
+    if (!isControlBlock(item)) continue
+    if (item.id === ancestorId || (item.type === "action" && item.action.id === ancestorId)) {
+      return containsItemId(getBlockBranches(item).flat(), descendantId)
+    }
+    const branches = getBlockBranches(item)
+    for (const branch of branches) {
+      if (isDescendantOfItem(branch, descendantId, ancestorId)) {
+        return true
+      }
+    }
+  }
+  return false
 }
 
 function cloneIfCondition(condition: IfCondition): IfCondition {
@@ -1820,11 +1914,14 @@ export function moveObjectEventItem(project: ProjectV1, input: MoveObjectEventIt
           if (eventEntry.id !== input.eventId) {
             return eventEntry
           }
-          const removalResult = removeActionItemFromItems(eventEntry.items, input.actionId)
+          if (input.targetIfBlockId && isDescendantOfItem(eventEntry.items, input.targetIfBlockId, input.itemId)) {
+            return eventEntry
+          }
+          const removalResult = removeItemFromItems(eventEntry.items, input.itemId)
           if (!removalResult.removed || !removalResult.removedItem) {
             return eventEntry
           }
-          const insertionResult = insertActionItemIntoItems(removalResult.items, {
+          const insertionResult = insertItemIntoItems(removalResult.items, {
             item: removalResult.removedItem,
             targetBranch,
             position: targetPosition,

@@ -872,7 +872,7 @@ describe("editor model helpers", () => {
     const movedRootToThen = moveObjectEventItem(withIfB, {
       objectId: objectResult.objectId,
       eventId,
-      actionId: rootAction.action.id,
+      itemId: rootAction.action.id,
       targetIfBlockId: ifA.id,
       targetBranch: "then"
     })
@@ -889,7 +889,7 @@ describe("editor model helpers", () => {
     const movedThenToElse = moveObjectEventItem(movedRootToThen, {
       objectId: objectResult.objectId,
       eventId,
-      actionId: rootAction.action.id,
+      itemId: rootAction.action.id,
       targetIfBlockId: ifA.id,
       targetBranch: "else"
     })
@@ -921,7 +921,7 @@ describe("editor model helpers", () => {
     const movedElseToNestedThen = moveObjectEventItem(withNestedIf, {
       objectId: objectResult.objectId,
       eventId,
-      actionId: rootAction.action.id,
+      itemId: rootAction.action.id,
       targetIfBlockId: nestedIf.id,
       targetBranch: "then"
     })
@@ -944,7 +944,7 @@ describe("editor model helpers", () => {
     const movedNestedToRootBefore = moveObjectEventItem(movedElseToNestedThen, {
       objectId: objectResult.objectId,
       eventId,
-      actionId: rootAction.action.id,
+      itemId: rootAction.action.id,
       targetActionId: secondRootAction.action.id,
       position: "top"
     })
@@ -959,7 +959,7 @@ describe("editor model helpers", () => {
     const noOpInvalidTarget = moveObjectEventItem(movedNestedToRootBefore, {
       objectId: objectResult.objectId,
       eventId,
-      actionId: rootAction.action.id,
+      itemId: rootAction.action.id,
       targetIfBlockId: "if-missing",
       targetBranch: "then"
     })

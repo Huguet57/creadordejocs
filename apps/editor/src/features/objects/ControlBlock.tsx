@@ -1,4 +1,4 @@
-import { Plus, Trash, X, GitBranch, RotateCcw, List, Map } from "lucide-react"
+import { Plus, Trash, X, GitBranch, RotateCcw, List, Map, GripVertical } from "lucide-react"
 import { t } from "@/i18n/index.js"
 import { useEffect, useRef, useState } from "react"
 import { useContextMenuPosition } from "../../hooks/use-context-menu-position.js"
@@ -59,6 +59,12 @@ type ControlBlockProps = {
   onDragOverAction: (target: ActionDropTarget) => void
   onDropOnAction: (target: ActionDropTarget) => void
   onDragEndAction: () => void
+  isDragging?: boolean
+  dropIndicator?: "top" | "bottom" | null
+  onDragStartBlock?: (blockId: string) => void
+  onDragOverBlock?: (blockId: string, position: "top" | "bottom") => void
+  onDropOnBlock?: (blockId: string, position: "top" | "bottom") => void
+  onDragEndBlock?: () => void
   iterationVariables?: { name: string; type: "number" | "string" | "boolean" }[]
 }
 
@@ -153,6 +159,12 @@ export function ControlBlock({
   onDragOverAction,
   onDropOnAction,
   onDragEndAction,
+  isDragging = false,
+  dropIndicator = null,
+  onDragStartBlock,
+  onDragOverBlock,
+  onDropOnBlock,
+  onDragEndBlock,
   iterationVariables = []
 }: ControlBlockProps) {
   const color = getBlockColor(item.type)
@@ -294,19 +306,17 @@ export function ControlBlock({
 
   const getCanonicalBranchDropTarget = (
     items: ObjectEventItem[],
-    hoveredActionId: string,
+    hoveredItemId: string,
     hoveredPosition: "top" | "bottom"
   ): { actionId: string; position: "top" | "bottom" } => {
-    const actionIds = items
-      .filter((e) => e.type === "action")
-      .map((e) => e.type === "action" ? e.action.id : "")
-    const hoveredIndex = actionIds.findIndex((id) => id === hoveredActionId)
-    if (hoveredIndex < 0) return { actionId: hoveredActionId, position: hoveredPosition }
+    const itemIds = items.map((e) => e.type === "action" ? e.action.id : e.id)
+    const hoveredIndex = itemIds.findIndex((id) => id === hoveredItemId)
+    if (hoveredIndex < 0) return { actionId: hoveredItemId, position: hoveredPosition }
     if (hoveredPosition === "bottom") {
-      const nextActionId = actionIds[hoveredIndex + 1]
-      if (nextActionId) return { actionId: nextActionId, position: "top" }
+      const nextItemId = itemIds[hoveredIndex + 1]
+      if (nextItemId) return { actionId: nextItemId, position: "top" }
     }
-    return { actionId: hoveredActionId, position: hoveredPosition }
+    return { actionId: hoveredItemId, position: hoveredPosition }
   }
 
   const renderBranchItems = (branch: "then" | "else", items: ObjectEventItem[]) => {
@@ -405,6 +415,26 @@ export function ControlBlock({
               onDragOverAction={onDragOverAction}
               onDropOnAction={onDropOnAction}
               onDragEndAction={onDragEndAction}
+              isDragging={draggedActionId === branchItem.id}
+              dropIndicator={
+                dropTarget?.targetIfBlockId === item.id &&
+                dropTarget?.targetBranch === branch &&
+                dropTarget?.targetActionId === branchItem.id
+                  ? (dropTarget.position ?? null)
+                  : null
+              }
+              onDragStartBlock={onDragStartBlock ?? onDragStartAction}
+              onDragOverBlock={(blockId, position) => {
+                if (!draggedActionId || draggedActionId === blockId) return
+                const canonical = getCanonicalBranchDropTarget(items, blockId, position)
+                onDragOverAction({ targetIfBlockId: item.id, targetBranch: branch, targetActionId: canonical.actionId, position: canonical.position })
+              }}
+              onDropOnBlock={(blockId, position) => {
+                if (!draggedActionId) return
+                const canonical = getCanonicalBranchDropTarget(items, blockId, position)
+                onDropOnAction({ targetIfBlockId: item.id, targetBranch: branch, targetActionId: canonical.actionId, position: canonical.position })
+              }}
+              onDragEndBlock={onDragEndBlock ?? onDragEndAction}
               iterationVariables={isFlowBlockType(item.type) ? flowIterationVariables : iterationVariables}
             />
           </div>
@@ -840,14 +870,52 @@ export function ControlBlock({
   }
 
   return (
-    <div className="control-block-container relative shrink-0 bg-white">
+    <div className={`control-block-container relative shrink-0 bg-white ${isDragging ? "opacity-45" : ""}`}>
       <div
-        className={`control-block-header group flex flex-wrap items-center gap-2 py-2 px-3 ${color.bg} border-b ${color.border}`}
+        className={`control-block-header group relative flex flex-wrap items-center gap-2 py-2 px-3 ${color.bg} border-b ${color.border}`}
         onContextMenu={(e) => {
           e.preventDefault()
           setContextMenu({ x: e.clientX, y: e.clientY })
         }}
+        onDragOver={(e) => {
+          if (!onDropOnBlock) return
+          e.preventDefault()
+          e.stopPropagation()
+          const targetRect = e.currentTarget.getBoundingClientRect()
+          const relativeY = e.clientY - targetRect.top
+          const position: "top" | "bottom" = relativeY < targetRect.height / 2 ? "top" : "bottom"
+          onDragOverBlock?.(item.id, position)
+        }}
+        onDrop={(e) => {
+          if (!onDropOnBlock) return
+          e.preventDefault()
+          e.stopPropagation()
+          const targetRect = e.currentTarget.getBoundingClientRect()
+          const relativeY = e.clientY - targetRect.top
+          const position: "top" | "bottom" = relativeY < targetRect.height / 2 ? "top" : "bottom"
+          onDropOnBlock(item.id, position)
+        }}
       >
+        {dropIndicator === "top" && (
+          <div className="pointer-events-none absolute left-2 right-2 top-0 h-0.5 bg-blue-500 z-10" />
+        )}
+        {dropIndicator === "bottom" && (
+          <div className="pointer-events-none absolute left-2 right-2 bottom-0 h-0.5 bg-blue-500 z-10" />
+        )}
+        <button
+          type="button"
+          draggable
+          className="control-block-drag-handle flex h-6 w-6 shrink-0 items-center justify-center rounded text-slate-300 hover:bg-slate-200 hover:text-slate-600 active:cursor-grabbing cursor-grab"
+          title={t("actionBlockReorderTitle")}
+          onDragStart={(e) => {
+            e.dataTransfer.setData("text/plain", item.id)
+            e.dataTransfer.effectAllowed = "move"
+            onDragStartBlock?.(item.id)
+          }}
+          onDragEnd={() => onDragEndBlock?.()}
+        >
+          <GripVertical className="h-3.5 w-3.5" />
+        </button>
         <span className={`text-[11px] font-bold ${color.text} uppercase tracking-wider shrink-0`}>{label}</span>
         {renderIfHeader()}
         {renderRepeatHeader()}
