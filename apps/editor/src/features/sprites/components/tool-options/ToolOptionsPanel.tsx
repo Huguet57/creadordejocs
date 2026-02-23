@@ -39,10 +39,11 @@ type ToolOptionsPanelProps = {
 type ColorSectionProps = {
   normalizedActive: string
   spriteColors: string[]
+  showTransparent?: boolean
   onColorChange: (color: string) => void
 }
 
-function ColorSection({ normalizedActive, spriteColors, onColorChange }: ColorSectionProps) {
+function ColorSection({ normalizedActive, spriteColors, showTransparent = true, onColorChange }: ColorSectionProps) {
   const isTransparent = normalizedActive === TRANSPARENT_RGBA
   const alphaChannel = getAlphaChannel(normalizedActive)
   const alphaPercent = Math.round((alphaChannel / 255) * 100)
@@ -99,15 +100,17 @@ function ColorSection({ normalizedActive, spriteColors, onColorChange }: ColorSe
       <div className="mvp16-sprite-tool-options-palette flex flex-col gap-1.5">
         <p className="text-[10px] font-medium text-slate-600">{t("spriteToolPalette")}</p>
         <div className="mvp16-sprite-tool-options-palette-grid grid grid-cols-5 gap-0.5">
-          <button
-            type="button"
-            className={`mvp16-sprite-tool-options-palette-swatch h-5 w-full rounded-sm border ${
-              alphaChannel === 0 ? "border-indigo-500 ring-1 ring-indigo-300" : "border-slate-300"
-            }`}
-            style={CHECKERBOARD_BG_STYLE}
-            onClick={() => onColorChange(TRANSPARENT_RGBA)}
-            title={t("spriteToolTransparent")}
-          />
+          {showTransparent && (
+            <button
+              type="button"
+              className={`mvp16-sprite-tool-options-palette-swatch h-5 w-full rounded-sm border ${
+                alphaChannel === 0 ? "border-indigo-500 ring-1 ring-indigo-300" : "border-slate-300"
+              }`}
+              style={CHECKERBOARD_BG_STYLE}
+              onClick={() => onColorChange(TRANSPARENT_RGBA)}
+              title={t("spriteToolTransparent")}
+            />
+          )}
           {DEFAULT_PALETTE.map((color) => (
             <button
               key={color}
@@ -173,7 +176,7 @@ export function ToolOptionsPanel({
   if (activeTool === "pencil") {
     return (
       <div className="mvp16-sprite-tool-options-pencil flex flex-col gap-2">
-        <ColorSection normalizedActive={normalizedActive} spriteColors={spriteColors} onColorChange={onColorChange} />
+        <ColorSection normalizedActive={normalizedActive} spriteColors={spriteColors} showTransparent={false} onColorChange={onColorChange} />
       </div>
     )
   }
