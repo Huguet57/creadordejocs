@@ -1,5 +1,18 @@
 # Adding a new language
 
+## Scaffold command
+
+```bash
+npm run locale:add -- --code fr --name French
+```
+
+Optional flags:
+
+- `--html-lang fr`
+- `--og-locale fr_FR`
+- `--brand-name "GameCreator"`
+- `--dry-run`
+
 ## Steps
 
 ### 1. Create the translation file

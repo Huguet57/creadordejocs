@@ -7,6 +7,7 @@
     "dev": "vite",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "build": "vite build && tsc -p tsconfig.json --noEmit && npx tsx scripts/generate-locale-html.ts",
+    "locale:scaffold": "npx tsx scripts/scaffold-locale.ts",
     "preview": "vite preview"
   },
   "dependencies": {
