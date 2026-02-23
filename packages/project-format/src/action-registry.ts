@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { ACTION_LABELS } from "./action-labels.js"
 
 type ScalarVariableValue = number | string | boolean
 type VariableValueSchema = z.ZodType<ScalarVariableValue>
@@ -44,156 +45,54 @@ type ActionUiMeta = {
   editorVisible: boolean
 }
 
+const a = ACTION_LABELS.actions
+const c = ACTION_LABELS.categories
+
 export const ACTION_REGISTRY = [
-  {
-    type: "move",
-    ui: { label: "Moure", shortLabel: "Moure", categoryId: "movement", editorVisible: true }
-  },
-  {
-    type: "setVelocity",
-    ui: { label: "Velocitat", shortLabel: "Velocitat", categoryId: "movement", editorVisible: true }
-  },
-  {
-    type: "rotate",
-    ui: { label: "Rotar", shortLabel: "Rotar", categoryId: "movement", editorVisible: true }
-  },
-  {
-    type: "moveToward",
-    ui: { label: "Anar cap a", shortLabel: "Anar cap a", categoryId: "movement", editorVisible: true }
-  },
-  {
-    type: "clampToRoom",
-    ui: { label: "Limitar a sala", shortLabel: "Limitar", categoryId: "movement", editorVisible: true }
-  },
-  {
-    type: "teleport",
-    ui: { label: "Teleport", shortLabel: "Teleport", categoryId: "movement", editorVisible: true }
-  },
-  {
-    type: "destroySelf",
-    ui: { label: "Destruir-se", shortLabel: "Destruir-se", categoryId: "objects", editorVisible: true }
-  },
-  {
-    type: "destroyOther",
-    ui: { label: "Destruir altre", shortLabel: "Destruir altre", categoryId: "objects", editorVisible: true }
-  },
-  {
-    type: "spawnObject",
-    ui: { label: "Crear objecte", shortLabel: "Crear obj.", categoryId: "objects", editorVisible: true }
-  },
-  {
-    type: "changeSprite",
-    ui: { label: "Canviar sprite", shortLabel: "Sprite", categoryId: "objects", editorVisible: true }
-  },
-  {
-    type: "setSpriteSpeed",
-    ui: { label: "Velocitat sprite", shortLabel: "Vel. sprite", categoryId: "objects", editorVisible: true }
-  },
-  {
-    type: "setObjectText",
-    ui: { label: "Text objecte", shortLabel: "Text", categoryId: "objects", editorVisible: true }
-  },
-  {
-    type: "changeScore",
-    ui: { label: "Canviar punts", shortLabel: "Punts", categoryId: "game", editorVisible: true }
-  },
-  {
-    type: "endGame",
-    ui: { label: "Fi del joc", shortLabel: "Fi joc", categoryId: "game", editorVisible: true }
-  },
-  {
-    type: "message",
-    ui: { label: "Missatge", shortLabel: "Missatge", categoryId: "game", editorVisible: true }
-  },
-  {
-    type: "playSound",
-    ui: { label: "So", shortLabel: "So", categoryId: "game", editorVisible: false }
-  },
-  {
-    type: "changeVariable",
-    ui: { label: "Variable", shortLabel: "Variable", categoryId: "variables", editorVisible: true }
-  },
-  {
-    type: "randomizeVariable",
-    ui: { label: "Aleatori", shortLabel: "Aleatori", categoryId: "variables", editorVisible: true }
-  },
-  {
-    type: "copyVariable",
-    ui: { label: "Copiar variable", shortLabel: "Copiar var.", categoryId: "variables", editorVisible: true }
-  },
-  {
-    type: "listPush",
-    ui: { label: "Afegir al final", shortLabel: "Afegir al final", categoryId: "variables", editorVisible: true }
-  },
-  {
-    type: "listSetAt",
-    ui: { label: "Canviar valor", shortLabel: "Canviar valor", categoryId: "variables", editorVisible: true }
-  },
-  {
-    type: "listRemoveAt",
-    ui: { label: "Eliminar valor", shortLabel: "Eliminar valor", categoryId: "variables", editorVisible: true }
-  },
-  {
-    type: "listClear",
-    ui: { label: "Buidar llista", shortLabel: "Buidar llista", categoryId: "variables", editorVisible: true }
-  },
-  {
-    type: "mapSet",
-    ui: { label: "Afegir entrada", shortLabel: "Afegir entrada", categoryId: "variables", editorVisible: true }
-  },
-  {
-    type: "mapDelete",
-    ui: { label: "Eliminar entrada", shortLabel: "Eliminar entrada", categoryId: "variables", editorVisible: true }
-  },
-  {
-    type: "mapClear",
-    ui: { label: "Buidar mapa", shortLabel: "Buidar mapa", categoryId: "variables", editorVisible: true }
-  },
-  {
-    type: "goToRoom",
-    ui: { label: "Anar a sala", shortLabel: "Anar a sala", categoryId: "rooms", editorVisible: true }
-  },
-  {
-    type: "teleportWindow",
-    ui: { label: "Teleport window", shortLabel: "Teleport win", categoryId: "rooms", editorVisible: true }
-  },
-  {
-    type: "moveWindow",
-    ui: { label: "Moure window", shortLabel: "Moure win", categoryId: "rooms", editorVisible: true }
-  },
-  {
-    type: "restartRoom",
-    ui: { label: "Reiniciar sala", shortLabel: "Reiniciar", categoryId: "rooms", editorVisible: true }
-  },
-  {
-    type: "wait",
-    ui: { label: "Esperar", shortLabel: "Esperar", categoryId: "flow", editorVisible: true }
-  },
-  {
-    type: "repeat",
-    ui: { label: "Repetir", shortLabel: "Repetir", categoryId: "flow", editorVisible: false }
-  },
-  {
-    type: "forEachList",
-    ui: { label: "Per cada llista", shortLabel: "Each llista", categoryId: "flow", editorVisible: false }
-  },
-  {
-    type: "forEachMap",
-    ui: { label: "Per cada mapa", shortLabel: "Each mapa", categoryId: "flow", editorVisible: false }
-  },
-  {
-    type: "emitCustomEvent",
-    ui: { label: "Emetre event", shortLabel: "Emetre", categoryId: "game", editorVisible: true }
-  }
+  { type: "move",              ui: { ...a.move,              categoryId: "movement",  editorVisible: true } },
+  { type: "setVelocity",       ui: { ...a.setVelocity,       categoryId: "movement",  editorVisible: true } },
+  { type: "rotate",            ui: { ...a.rotate,            categoryId: "movement",  editorVisible: true } },
+  { type: "moveToward",        ui: { ...a.moveToward,        categoryId: "movement",  editorVisible: true } },
+  { type: "clampToRoom",       ui: { ...a.clampToRoom,       categoryId: "movement",  editorVisible: true } },
+  { type: "teleport",          ui: { ...a.teleport,          categoryId: "movement",  editorVisible: true } },
+  { type: "destroySelf",       ui: { ...a.destroySelf,       categoryId: "objects",   editorVisible: true } },
+  { type: "destroyOther",      ui: { ...a.destroyOther,      categoryId: "objects",   editorVisible: true } },
+  { type: "spawnObject",       ui: { ...a.spawnObject,       categoryId: "objects",   editorVisible: true } },
+  { type: "changeSprite",      ui: { ...a.changeSprite,      categoryId: "objects",   editorVisible: true } },
+  { type: "setSpriteSpeed",    ui: { ...a.setSpriteSpeed,    categoryId: "objects",   editorVisible: true } },
+  { type: "setObjectText",     ui: { ...a.setObjectText,     categoryId: "objects",   editorVisible: true } },
+  { type: "changeScore",       ui: { ...a.changeScore,       categoryId: "game",      editorVisible: true } },
+  { type: "endGame",           ui: { ...a.endGame,           categoryId: "game",      editorVisible: true } },
+  { type: "message",           ui: { ...a.message,           categoryId: "game",      editorVisible: true } },
+  { type: "playSound",         ui: { ...a.playSound,         categoryId: "game",      editorVisible: false } },
+  { type: "changeVariable",    ui: { ...a.changeVariable,    categoryId: "variables", editorVisible: true } },
+  { type: "randomizeVariable", ui: { ...a.randomizeVariable, categoryId: "variables", editorVisible: true } },
+  { type: "copyVariable",      ui: { ...a.copyVariable,      categoryId: "variables", editorVisible: true } },
+  { type: "listPush",          ui: { ...a.listPush,          categoryId: "variables", editorVisible: true } },
+  { type: "listSetAt",         ui: { ...a.listSetAt,         categoryId: "variables", editorVisible: true } },
+  { type: "listRemoveAt",      ui: { ...a.listRemoveAt,      categoryId: "variables", editorVisible: true } },
+  { type: "listClear",         ui: { ...a.listClear,         categoryId: "variables", editorVisible: true } },
+  { type: "mapSet",            ui: { ...a.mapSet,            categoryId: "variables", editorVisible: true } },
+  { type: "mapDelete",         ui: { ...a.mapDelete,         categoryId: "variables", editorVisible: true } },
+  { type: "mapClear",          ui: { ...a.mapClear,          categoryId: "variables", editorVisible: true } },
+  { type: "goToRoom",          ui: { ...a.goToRoom,          categoryId: "rooms",     editorVisible: true } },
+  { type: "teleportWindow",    ui: { ...a.teleportWindow,    categoryId: "rooms",     editorVisible: true } },
+  { type: "moveWindow",        ui: { ...a.moveWindow,        categoryId: "rooms",     editorVisible: true } },
+  { type: "restartRoom",       ui: { ...a.restartRoom,       categoryId: "rooms",     editorVisible: true } },
+  { type: "wait",              ui: { ...a.wait,              categoryId: "flow",      editorVisible: true } },
+  { type: "repeat",            ui: { ...a.repeat,            categoryId: "flow",      editorVisible: false } },
+  { type: "forEachList",       ui: { ...a.forEachList,       categoryId: "flow",      editorVisible: false } },
+  { type: "forEachMap",        ui: { ...a.forEachMap,        categoryId: "flow",      editorVisible: false } },
+  { type: "emitCustomEvent",   ui: { ...a.emitCustomEvent,   categoryId: "game",      editorVisible: true } }
 ] as const satisfies readonly { type: string; ui: ActionUiMeta }[]
 
 export const ACTION_CATEGORY_LABELS: Record<ActionCategoryId, string> = {
-  movement: "Moviment",
-  objects: "Objectes",
-  game: "Joc",
-  variables: "Variables",
-  rooms: "Sales",
-  flow: "Flux"
+  movement:  c.movement,
+  objects:   c.objects,
+  game:      c.game,
+  variables: c.variables,
+  rooms:     c.rooms,
+  flow:      c.flow
 }
 
 export type ActionSchemaDependencies<
@@ -783,7 +682,7 @@ export function createEditorDefaultAction(type: ActionType, ctx: ActionDefaultsC
   if (type === "setObjectText") return { type: "setObjectText", text: "Text", justification: "center", mode: "temporary", durationMs: 2000 }
   if (type === "changeScore") return { type: "changeScore", delta: 1 }
   if (type === "endGame") return { type: "endGame", message: "Game over" }
-  if (type === "message") return { type: "message", text: "Missatge", durationMs: 2000 }
+  if (type === "message") return { type: "message", text: "Message", durationMs: 2000 }
   if (type === "spawnObject") {
     const targetObjectId = ctx.selectableTargetObjectIds[0]
     if (!targetObjectId) return null

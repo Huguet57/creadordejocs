@@ -16,9 +16,9 @@ describe("ActionSelectorPanel", () => {
     expect(markup).toContain("if-action-selector-panel")
     expect(markup).toContain("if-action-selector-item")
     expect(markup).toContain("Afegir acció")
-    expect(markup).toContain("Moure")
+    expect(markup).toContain("Move")
     expect(markup).toContain("Variable")
-    expect(markup).toContain("Text objecte")
+    expect(markup).toContain("Object Text")
   })
 
   it("renders collection groups only when enabled", () => {
@@ -45,7 +45,7 @@ describe("ActionSelectorPanel", () => {
     )
     expect(withCollections).toContain("Llistes")
     expect(withCollections).toContain("Mapes")
-    expect(withCollections).toContain("Afegir al final")
-    expect(withCollections).toContain("Afegir entrada")
+    expect(withCollections).toContain("List Push")
+    expect(withCollections).toContain("Map Set")
   })
 })
