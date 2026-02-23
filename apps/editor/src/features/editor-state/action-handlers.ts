@@ -639,8 +639,8 @@ function executeActionFallback(
     }
   }
   if (action.type === "spawnObject") {
-    const targetObjectExists = ctx.project.objects.some((objectEntry) => objectEntry.id === action.objectId)
-    if (!targetObjectExists) {
+    const targetObject = ctx.project.objects.find((objectEntry) => objectEntry.id === action.objectId)
+    if (!targetObject) {
       return { result }
     }
     const isAbsolute = action.positionMode === "absolute"
@@ -660,7 +660,7 @@ function executeActionFallback(
             objectId: action.objectId,
             x: isAbsolute ? resolvedX : centerX + resolvedX,
             y: isAbsolute ? resolvedY : centerY + resolvedY,
-            layer: 0,
+            layer: targetObject.layer ?? 0,
             rotation: 0
           }
         ]
