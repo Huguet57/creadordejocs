@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react"
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react"
 import { t } from "@/i18n/index.js"
 import type { EditorController } from "../editor-state/use-editor-controller.js"
 import { buildSpriteAssignedObjectNamesIndex } from "../editor-state/use-editor-controller.js"
@@ -127,7 +127,6 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
   }, [activeSpriteId, sprites])
 
   const handleSelectSprite = (spriteId: string) => {
-    controller.setActiveSpriteId(spriteId)
     setOpenTabs((previous) => {
       const existing = previous.find((tabEntry) => tabEntry.id === spriteId)
       const pinnedTabs = previous.filter((tabEntry) => tabEntry.pinned)
@@ -135,6 +134,9 @@ export function SpriteEditorSection({ controller }: SpriteEditorSectionProps) {
         return [...pinnedTabs]
       }
       return [...pinnedTabs, { id: spriteId, pinned: false }]
+    })
+    startTransition(() => {
+      controller.setActiveSpriteId(spriteId)
     })
   }
 

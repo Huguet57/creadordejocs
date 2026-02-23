@@ -202,6 +202,22 @@ export function SpriteCanvasGrid({
     }
     return normalizePixelGrid(pixelsRgba, width, height)
   }, [pixelsRgba, width, height])
+
+  const pixelBytes = useMemo(() => {
+    const bytes = new Uint8ClampedArray(safePixels.length * 4)
+    const cache = colorChannelCacheRef.current
+    for (let i = 0; i < safePixels.length; i++) {
+      const color = safePixels[i] ?? "#00000000"
+      const [r, g, b, a] = getColorChannels(color, cache)
+      const offset = i * 4
+      bytes[offset] = r
+      bytes[offset + 1] = g
+      bytes[offset + 2] = b
+      bytes[offset + 3] = a
+    }
+    return bytes
+  }, [safePixels])
+
   const dragBounds = useMemo(() => resolveDragBounds(selectDragRect), [selectDragRect])
   const canvasSizing = useMemo(
     () => resolveCanvasSizing(width, height, zoom, devicePixelRatio),
@@ -275,15 +291,7 @@ export function SpriteCanvasGrid({
 
     const imageData = imageDataRef.current
     if (!imageData) return
-    for (let index = 0; index < safePixels.length; index += 1) {
-      const color = safePixels[index] ?? "#00000000"
-      const [r, g, b, a] = getColorChannels(color, colorChannelCacheRef.current)
-      const offset = index * 4
-      imageData.data[offset] = r
-      imageData.data[offset + 1] = g
-      imageData.data[offset + 2] = b
-      imageData.data[offset + 3] = a
-    }
+    imageData.data.set(pixelBytes)
     sourceCtx.putImageData(imageData, 0, 0)
 
     ctx.imageSmoothingEnabled = false
@@ -292,7 +300,7 @@ export function SpriteCanvasGrid({
     if (showGrid && zoom >= MIN_GRID_ZOOM) {
       drawGrid(ctx, width, height, zoom)
     }
-  }, [canvasSizing, height, safePixels, showGrid, width, zoom])
+  }, [canvasSizing, height, pixelBytes, showGrid, width, zoom])
 
   const drawOverlayCanvas = useCallback(() => {
     const canvas = overlayCanvasRef.current
