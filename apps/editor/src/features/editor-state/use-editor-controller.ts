@@ -2060,7 +2060,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       setProject(incrementMetric(result.project, "tutorialCompletion"))
       setActiveRoomId(result.roomId)
       setActiveObjectId(result.focusObjectId)
-      setActiveSection("objects")
+      setActiveSection("run")
       setIsRunning(false)
       setRoomTransition("none")
       setRunSnapshot(null)
