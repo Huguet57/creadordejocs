@@ -7,6 +7,30 @@
   "framework": "vite",
   "redirects": [
     {
+      "source": "/",
+      "has": [{ "type": "host", "value": "www.simplegamecreator.com" }],
+      "destination": "https://simplegamecreator.com",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "www.simplegamecreator.com" }],
+      "destination": "https://simplegamecreator.com/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "www.creadordejuegos.com" }],
+      "destination": "https://creadordejuegos.com",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "www.creadordejuegos.com" }],
+      "destination": "https://creadordejuegos.com/:path*",
+      "permanent": true
+    },
+    {
       "source": "/es",
       "has": [{ "type": "host", "value": "creadordejocs.cat" }],
       "destination": "https://creadordejuegos.com",

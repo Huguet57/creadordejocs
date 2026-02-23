@@ -5,10 +5,10 @@
  *   npx tsx apps/editor/scripts/generate-locale-html.ts
  */
 
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
-import { DEFAULT_LOCALE, INDEXABLE_LOCALES } from "../src/i18n/locales.js"
+import { INDEXABLE_LOCALES } from "../src/i18n/locales.js"
 import { buildSitemapXml, transformHtmlForLocale } from "../src/seo/seo-build.js"
 import { assertLocaleConfigComplete } from "../src/seo/seo-locales.js"
 
@@ -21,15 +21,15 @@ export function generateLocaleArtifacts(): void {
 
   for (const locale of INDEXABLE_LOCALES) {
     const html = transformHtmlForLocale(baseHtml, locale)
-    if (locale === DEFAULT_LOCALE) {
-      writeFileSync(resolve(distDir, "index.html"), html, "utf-8")
-      console.log(`  updated dist/index.html (${locale})`)
-    }
     const localeDir = resolve(distDir, locale)
     mkdirSync(localeDir, { recursive: true })
     writeFileSync(resolve(localeDir, "index.html"), html, "utf-8")
     console.log(`  created dist/${locale}/index.html`)
   }
+
+  // Force host-based rewrites to handle "/" by removing the root static HTML fallback.
+  rmSync(resolve(distDir, "index.html"), { force: true })
+  console.log("  removed dist/index.html (enforce host-based locale routing)")
 
   const sitemap = buildSitemapXml(["/"])
   writeFileSync(resolve(distDir, "sitemap.xml"), sitemap, "utf-8")
