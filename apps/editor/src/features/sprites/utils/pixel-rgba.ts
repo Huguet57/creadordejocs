@@ -37,4 +37,15 @@ export function withZeroAlpha(value: string): string {
   return `${normalized.slice(0, 7)}00`
 }
 
+export function getAlphaChannel(value: string): number {
+  const normalized = normalizeHexRgba(value)
+  return parseInt(normalized.slice(7, 9), 16)
+}
+
+export function withAlpha(value: string, alpha: number): string {
+  const normalized = normalizeHexRgba(value)
+  const clamped = Math.max(0, Math.min(255, Math.round(alpha)))
+  return `${normalized.slice(0, 7)}${toHex(clamped)}`
+}
+
 export const TRANSPARENT_RGBA = TRANSPARENT

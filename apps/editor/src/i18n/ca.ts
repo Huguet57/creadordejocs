@@ -48,6 +48,7 @@ export const caMessages = {
   spriteToolToleranceLabel: "Tolerància: {value}",
   spriteToolHoverPreview: "Hover preview",
   spriteToolEraserSize: "Mida",
+  spriteToolOpacity: "Opacitat: {value}%",
 
   // ── Sprite editor section ────────────────────────────────────
   spriteEditorGrid: "Grid",

@@ -1,7 +1,20 @@
 import type { ChangeEvent } from "react"
 import { t } from "@/i18n/index.js"
 import type { SpriteEditorTool, SpriteToolOptionsMap, SpriteToolOptionsState } from "../../types/sprite-editor.js"
-import { normalizeHexRgba, TRANSPARENT_RGBA } from "../../utils/pixel-rgba.js"
+import {
+  normalizeHexRgba,
+  hexRgbaToCss,
+  getAlphaChannel,
+  withAlpha,
+  TRANSPARENT_RGBA
+} from "../../utils/pixel-rgba.js"
+
+const CHECKERBOARD_BG_STYLE = {
+  backgroundImage:
+    "linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%), linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%)",
+  backgroundSize: "6px 6px",
+  backgroundPosition: "0 0, 3px 3px"
+} as const
 
 const DEFAULT_PALETTE = [
   "#000000FF", "#FFFFFFFF", "#FF0000FF", "#00FF00FF", "#0000FFFF",
@@ -30,6 +43,10 @@ type ColorSectionProps = {
 }
 
 function ColorSection({ normalizedActive, spriteColors, onColorChange }: ColorSectionProps) {
+  const isTransparent = normalizedActive === TRANSPARENT_RGBA
+  const alphaChannel = getAlphaChannel(normalizedActive)
+  const alphaPercent = Math.round((alphaChannel / 255) * 100)
+
   return (
     <>
       <div className="mvp16-sprite-tool-options-color flex flex-col gap-1.5">
@@ -37,16 +54,47 @@ function ColorSection({ normalizedActive, spriteColors, onColorChange }: ColorSe
         <div className="flex items-center gap-2">
           <div
             className="mvp16-sprite-tool-options-color-preview h-7 w-7 shrink-0 rounded border border-slate-300"
-            style={{ backgroundColor: normalizedActive.slice(0, 7) }}
-          />
+            style={CHECKERBOARD_BG_STYLE}
+          >
+            <div
+              className="h-full w-full rounded"
+              style={{ backgroundColor: hexRgbaToCss(normalizedActive) }}
+            />
+          </div>
           <input
             type="color"
             value={normalizedActive.slice(0, 7)}
             className="mvp16-sprite-tool-options-color-picker h-7 w-full cursor-pointer rounded border border-slate-300 bg-white p-0"
-            onChange={(event: ChangeEvent<HTMLInputElement>) => onColorChange(`${event.target.value.toUpperCase()}FF`)}
+            onChange={(event: ChangeEvent<HTMLInputElement>) => {
+              const rgb = `${event.target.value.toUpperCase()}FF`
+              onColorChange(isTransparent ? rgb : withAlpha(rgb, alphaChannel))
+            }}
           />
         </div>
       </div>
+
+      <label
+        className={`mvp16-sprite-tool-options-opacity flex flex-col gap-1 text-[10px] ${
+          isTransparent ? "text-slate-400" : "text-slate-600"
+        }`}
+      >
+        <span className="font-medium">
+          {t("spriteToolOpacity", { value: alphaPercent })}
+        </span>
+        <input
+          type="range"
+          min={0}
+          max={100}
+          value={alphaPercent}
+          disabled={isTransparent}
+          className="w-full"
+          onChange={(event: ChangeEvent<HTMLInputElement>) => {
+            const percent = Number(event.target.value)
+            const newAlpha = Math.round((percent / 100) * 255)
+            onColorChange(withAlpha(normalizedActive, newAlpha))
+          }}
+        />
+      </label>
 
       <div className="mvp16-sprite-tool-options-palette flex flex-col gap-1.5">
         <p className="text-[10px] font-medium text-slate-600">{t("spriteToolPalette")}</p>
@@ -54,13 +102,9 @@ function ColorSection({ normalizedActive, spriteColors, onColorChange }: ColorSe
           <button
             type="button"
             className={`mvp16-sprite-tool-options-palette-swatch h-5 w-full rounded-sm border ${
-              normalizedActive === TRANSPARENT_RGBA ? "border-indigo-500 ring-1 ring-indigo-300" : "border-slate-300"
+              alphaChannel === 0 ? "border-indigo-500 ring-1 ring-indigo-300" : "border-slate-300"
             }`}
-            style={{
-              backgroundImage: "linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%), linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%)",
-              backgroundSize: "6px 6px",
-              backgroundPosition: "0 0, 3px 3px"
-            }}
+            style={CHECKERBOARD_BG_STYLE}
             onClick={() => onColorChange(TRANSPARENT_RGBA)}
             title={t("spriteToolTransparent")}
           />
@@ -69,10 +113,14 @@ function ColorSection({ normalizedActive, spriteColors, onColorChange }: ColorSe
               key={color}
               type="button"
               className={`mvp16-sprite-tool-options-palette-swatch h-5 w-full rounded-sm border ${
-                normalizedActive === color ? "border-indigo-500 ring-1 ring-indigo-300" : "border-slate-300"
+                normalizedActive.slice(0, 7) === color.slice(0, 7)
+                  ? "border-indigo-500 ring-1 ring-indigo-300"
+                  : "border-slate-300"
               }`}
               style={{ backgroundColor: color.slice(0, 7) }}
-              onClick={() => onColorChange(color)}
+              onClick={() =>
+                onColorChange(isTransparent ? color : withAlpha(color, alphaChannel))
+              }
               title={color}
             />
           ))}
@@ -88,10 +136,14 @@ function ColorSection({ normalizedActive, spriteColors, onColorChange }: ColorSe
                 key={color}
                 type="button"
                 className={`mvp16-sprite-tool-options-image-color-swatch h-5 w-full rounded-sm border ${
-                  normalizedActive === color ? "border-indigo-500 ring-1 ring-indigo-300" : "border-slate-300"
+                  normalizedActive.slice(0, 7) === color.slice(0, 7)
+                    ? "border-indigo-500 ring-1 ring-indigo-300"
+                    : "border-slate-300"
                 }`}
                 style={{ backgroundColor: color.slice(0, 7) }}
-                onClick={() => onColorChange(color)}
+                onClick={() =>
+                  onColorChange(isTransparent ? color : withAlpha(color, alphaChannel))
+                }
                 title={color}
               />
             ))}

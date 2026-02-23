@@ -50,6 +50,7 @@ export const enMessages: Record<keyof typeof caMessages, string> = {
   spriteToolToleranceLabel: "Tolerance: {value}",
   spriteToolHoverPreview: "Hover preview",
   spriteToolEraserSize: "Size",
+  spriteToolOpacity: "Opacity: {value}%",
 
   // ── Sprite editor section ────────────────────────────────────
   spriteEditorGrid: "Grid",
