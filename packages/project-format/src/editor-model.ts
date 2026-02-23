@@ -61,6 +61,7 @@ export type ObjectEventType =
   | "Collision"
   | "Keyboard"
   | "Mouse"
+  | "MouseSelf"
   | "OnDestroy"
   | "OutsideRoom"
   | "MouseMove"
@@ -1755,7 +1756,9 @@ export function addObjectEvent(project: ProjectV1, input: AddObjectEventInput): 
                 keyboardMode: input.keyboardMode ?? (input.type === "Keyboard" ? "down" : null),
                 targetObjectId: input.targetObjectId ?? null,
                 intervalMs: input.intervalMs ?? null,
-                ...(input.type === "Mouse" ? { mouseMode: input.mouseMode ?? "down" } : {}),
+                ...(input.type === "Mouse" || input.type === "MouseSelf"
+                  ? { mouseMode: input.mouseMode ?? "down" }
+                  : {}),
                 ...(input.type === "CustomEvent" ? {
                   eventName: input.eventName ?? "event",
                   sourceObjectId: input.sourceObjectId ?? null

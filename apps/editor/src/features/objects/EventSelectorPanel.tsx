@@ -1,4 +1,4 @@
-import { Activity, Keyboard, Mouse, MousePointer2, Play, Plus, Radio, Scan, Swords, Timer, X } from "lucide-react"
+import { Activity, Keyboard, Mouse, MousePointer2, MousePointerClick, Play, Plus, Radio, Scan, Swords, Timer, X } from "lucide-react"
 import { useState } from "react"
 import { t } from "@/i18n/index.js"
 import {
@@ -34,10 +34,11 @@ const EVENT_ICON_MAP: Partial<Record<ObjectEventType, React.ElementType>> = {
   Timer,
   MouseMove: MousePointer2,
   Mouse,
+  MouseSelf: MousePointerClick,
   CustomEvent: Radio
 }
 
-const EVENT_TYPES_WITH_REQUIRED_CONFIG: ObjectEventType[] = ["Keyboard", "Mouse", "Timer", "CustomEvent"]
+const EVENT_TYPES_WITH_REQUIRED_CONFIG: ObjectEventType[] = ["Keyboard", "Mouse", "MouseSelf", "Timer", "CustomEvent"]
 
 export function EventSelectorPanel({ classNamePrefix, onSelectEvent, onClose }: EventSelectorPanelProps) {
   const [selectedType, setSelectedType] = useState<ObjectEventType | null>(null)
@@ -62,6 +63,10 @@ export function EventSelectorPanel({ classNamePrefix, onSelectEvent, onClose }: 
     }
     if (selectedType === "Mouse") {
       onSelectEvent("Mouse", null, null, mouseMode, null)
+      return
+    }
+    if (selectedType === "MouseSelf") {
+      onSelectEvent("MouseSelf", null, null, mouseMode, null)
       return
     }
     if (selectedType === "Timer") {
@@ -206,6 +211,36 @@ export function EventSelectorPanel({ classNamePrefix, onSelectEvent, onClose }: 
                 </span>
                 <select
                   className={`${classNamePrefix}-mouse-mode h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-none`}
+                  value={mouseMode}
+                  onChange={(event) => setMouseMode(event.target.value as ObjectMouseMode)}
+                >
+                  <option value="down">{t("eventSelectorHeld")}</option>
+                  <option value="press">{t("eventSelectorPressed")}</option>
+                </select>
+                <button
+                  type="button"
+                  className={`${classNamePrefix}-confirm h-8 rounded bg-slate-900 px-3 text-xs font-medium text-white transition-colors hover:bg-slate-700`}
+                  onClick={handleConfirmSelectedType}
+                  title={t("eventSelectorConfirmTitle")}
+                  aria-label={t("eventSelectorConfirmAriaLabel")}
+                >
+                  {t("eventSelectorAddConfirm")}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {selectedType === "MouseSelf" && (
+            <div className={`${classNamePrefix}-mouse-self-config flex flex-col gap-2`}>
+              <p className={`${classNamePrefix}-mouse-self-title text-xs font-semibold uppercase tracking-wide text-slate-500`}>
+                {t("eventSelectorAddMouseSelfTitle")}
+              </p>
+              <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
+                <span className={`${classNamePrefix}-mouse-self-mode-label text-xs font-medium text-slate-500`}>
+                  {t("eventSelectorModeLabel")}
+                </span>
+                <select
+                  className={`${classNamePrefix}-mouse-self-mode h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-none`}
                   value={mouseMode}
                   onChange={(event) => setMouseMode(event.target.value as ObjectMouseMode)}
                 >

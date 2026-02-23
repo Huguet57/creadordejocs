@@ -712,6 +712,24 @@ export function runRuntimeTick(
         }
         continue
       }
+      if (eventEntry.type === "MouseSelf") {
+        const mouseButtonActive = eventEntry.mouseMode === "press"
+          ? mouseInput.justPressedButtons.size > 0
+          : mouseInput.pressedButtons.size > 0
+        if (mouseButtonActive) {
+          const instWidth = getInstanceWidth(project, nextInstance)
+          const instHeight = getInstanceHeight(project, nextInstance)
+          const isHit =
+            mouseInput.x >= nextInstance.x &&
+            mouseInput.x < nextInstance.x + instWidth &&
+            mouseInput.y >= nextInstance.y &&
+            mouseInput.y < nextInstance.y + instHeight
+          if (isHit) {
+            matchingEvents.push(eventEntry)
+          }
+        }
+        continue
+      }
     }
 
     let destroySelf = false

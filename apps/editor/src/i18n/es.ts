@@ -485,6 +485,7 @@ export const esMessages: Record<keyof typeof caMessages, string> = {
   eventSelectorAddTimerTitle: "Añadir temporizador",
   eventSelectorIntervalLabel: "Intervalo (ms)",
   eventSelectorAddMouseTitle: "Añadir ratón",
+  eventSelectorAddMouseSelfTitle: "Añadir ratón sobre objeto",
   eventSelectorAddCustomEventTitle: "Añadir evento personalizado",
   eventSelectorAddConfirm: "Añadir",
   eventSelectorCancelTitle: "Cancelar",

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { t } from "@/i18n/index.js"
 import { useContextMenuPosition } from "../../hooks/use-context-menu-position.js"
-import { Activity, Box, Copy, Keyboard, Mouse, MousePointer2, Play, Plus, Radio, Scan, Swords, Timer, Trash2, X } from "lucide-react"
+import { Activity, Box, Copy, Keyboard, Mouse, MousePointer2, MousePointerClick, Play, Plus, Radio, Scan, Swords, Timer, Trash2, X } from "lucide-react"
 import { Button } from "../../components/ui/button.js"
 import {
   EVENT_DISPLAY_NAMES,
@@ -30,11 +30,12 @@ const EVENT_ICONS: Record<ObjectEventType, React.ElementType> = {
   OutsideRoom: Scan,
   Timer: Timer,
   Mouse: Mouse,
+  MouseSelf: MousePointerClick,
   MouseMove: MousePointer2,
   CustomEvent: Radio
 }
 
-const DUPLICATABLE_EVENT_TYPES = new Set<ObjectEventType>(["Keyboard", "Mouse", "Collision", "Timer", "CustomEvent"])
+const DUPLICATABLE_EVENT_TYPES = new Set<ObjectEventType>(["Keyboard", "Mouse", "MouseSelf", "Collision", "Timer", "CustomEvent"])
 
 type EventContextMenuState = {
   x: number
@@ -143,7 +144,7 @@ export function EventListPanel({
                         {event.keyboardMode === "release" ? "KeyRelease" : event.keyboardMode === "press" ? "KeyPress" : "KeyDown"}: {event.key === "<any>" ? "Any" : event.key}
                       </span>
                     )}
-                    {event.type === "Mouse" && (
+                    {(event.type === "Mouse" || event.type === "MouseSelf") && (
                       <span className="truncate text-[10px] text-slate-400">
                         {event.mouseMode === "press" ? "Pressed" : "Held"}
                       </span>

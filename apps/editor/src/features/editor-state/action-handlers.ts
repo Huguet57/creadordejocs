@@ -181,7 +181,9 @@ function resolveStringValue(expression: ValueExpressionOutput, result: RuntimeAc
 function resolveDisplayText(expression: ValueExpressionOutput, result: RuntimeActionResult, ctx: ActionContext): string | undefined {
   const resolved = resolveExpressionValue(expression, result, ctx)
   if (resolved === undefined) return undefined
-  return String(resolved)
+  if (typeof resolved === "string") return resolved
+  if (typeof resolved === "number" || typeof resolved === "boolean") return String(resolved)
+  return undefined
 }
 
 function isScalarValue(value: unknown): value is number | string | boolean {

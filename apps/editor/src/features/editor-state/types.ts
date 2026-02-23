@@ -16,6 +16,7 @@ export type ObjectEventType =
   | "Collision"
   | "Keyboard"
   | "Mouse"
+  | "MouseSelf"
   | "OnDestroy"
   | "OutsideRoom"
   | "Timer"
@@ -39,6 +40,7 @@ export const OBJECT_EVENT_TYPES: ObjectEventType[] = [
   "Collision",
   "Keyboard",
   "Mouse",
+  "MouseSelf",
   "OnDestroy",
   "OutsideRoom",
   "Timer",
@@ -52,6 +54,7 @@ export const EVENT_DISPLAY_NAMES: Record<ObjectEventType, string> = {
   Collision: "Collision",
   Keyboard: "Keyboard",
   Mouse: "Mouse",
+  MouseSelf: "Mouse self",
   OnDestroy: "On destroy",
   OutsideRoom: "Outside room",
   Timer: "Timer",
@@ -70,7 +73,7 @@ export const EVENT_CATEGORIES: { id: EventCategoryId; label: string; types: Obje
   {
     id: "input",
     label: "Input",
-    types: ["Keyboard", "Mouse", "MouseMove"]
+    types: ["Keyboard", "Mouse", "MouseSelf", "MouseMove"]
   },
   {
     id: "collision",

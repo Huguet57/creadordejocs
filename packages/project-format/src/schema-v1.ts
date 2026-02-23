@@ -453,11 +453,11 @@ const ObjectEventSchema = z
       "Collision",
       "Keyboard",
       "Mouse",
+      "MouseSelf",
       "OnDestroy",
       "OutsideRoom",
       "Timer",
       "MouseMove",
-      "Mouse",
       "CustomEvent"
     ]),
     key: z.enum(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space", "<any>"]).nullable().default(null),
@@ -481,7 +481,9 @@ const ObjectEventSchema = z
     const migratedItems = migrateFlowActionItems(rawItems)
     return {
       ...eventEntry,
-      ...(eventEntry.type === "Mouse" ? { mouseMode: mouseMode ?? "down" } : {}),
+      ...(eventEntry.type === "Mouse" || eventEntry.type === "MouseSelf"
+        ? { mouseMode: mouseMode ?? "down" }
+        : {}),
       ...(eventEntry.type === "CustomEvent" ? {
         eventName: eventEntry.eventName ?? "event",
         sourceObjectId: eventEntry.sourceObjectId ?? null

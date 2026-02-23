@@ -483,6 +483,7 @@ export const caMessages = {
   eventSelectorAddTimerTitle: "Afegir temporitzador",
   eventSelectorIntervalLabel: "Interval (ms)",
   eventSelectorAddMouseTitle: "Afegir ratolí",
+  eventSelectorAddMouseSelfTitle: "Afegir ratolí sobre objecte",
   eventSelectorAddCustomEventTitle: "Afegir event personalitzat",
   eventSelectorAddConfirm: "Afegir",
   eventSelectorCancelTitle: "Cancel·lar",

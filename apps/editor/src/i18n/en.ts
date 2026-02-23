@@ -485,6 +485,7 @@ export const enMessages: Record<keyof typeof caMessages, string> = {
   eventSelectorAddTimerTitle: "Add timer",
   eventSelectorIntervalLabel: "Interval (ms)",
   eventSelectorAddMouseTitle: "Add mouse",
+  eventSelectorAddMouseSelfTitle: "Add mouse on self",
   eventSelectorAddCustomEventTitle: "Add custom event",
   eventSelectorAddConfirm: "Add",
   eventSelectorCancelTitle: "Cancel",
