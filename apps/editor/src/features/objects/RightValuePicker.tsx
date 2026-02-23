@@ -435,7 +435,7 @@ export function RightValuePicker({
           {canPickAttributes && expectedType === "number" && (
             <div className="right-value-picker-attributes-section">
               <div className="right-value-picker-section-header px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-50 border-b border-slate-100 border-t flex items-center justify-between">
-                <span>Attributes</span>
+                <span>{t("rightValueAttributesSection")}</span>
                 <div className="flex items-center gap-1">
                   {targetOptions.map((targetOption) => (
                     <button
@@ -473,7 +473,7 @@ export function RightValuePicker({
           {canPickInternal && (filteredInternalSelf.length > 0 || filteredInternalOther.length > 0) && (
             <div className="right-value-picker-internal-section">
               <div className="right-value-picker-section-header px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-50 border-b border-slate-100 border-t flex items-center justify-between">
-                <span>Internal variables</span>
+                <span>{t("rightValueInternalSection")}</span>
                 <div className="flex items-center gap-1">
                   {targetOptions.map((targetOption) => (
                     <button

@@ -1,4 +1,5 @@
 import { BoxSelect, Eraser, FlipHorizontal2, FlipVertical2, Move, PaintBucket, Pencil, Pipette, RotateCcw, RotateCw, WandSparkles } from "lucide-react"
+import { t } from "@/i18n/index.js"
 import { useEffect, useState } from "react"
 import { ToolOptionsPanel } from "./tool-options/ToolOptionsPanel.js"
 import type { SpriteEditorTool, SpriteToolOptionsMap, SpriteToolOptionsState } from "../types/sprite-editor.js"
@@ -177,7 +178,7 @@ export function SpriteToolbar({
       </div>
 
       <div className="mvp16-sprite-tool-options-section flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto border-b border-slate-200 p-2">
-        <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-400">Tool options</p>
+        <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-400">{t("spriteToolbarToolOptions")}</p>
         <ToolOptionsPanel
           activeTool={activeTool}
           toolOptions={toolOptions}
@@ -190,13 +191,13 @@ export function SpriteToolbar({
       </div>
 
       <div className="mvp16-sprite-transform-section mt-auto flex shrink-0 flex-col gap-1 border-t border-slate-200 p-2">
-        <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-400">Transform</p>
+        <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-400">{t("spriteToolbarTransform")}</p>
         <div className="grid grid-cols-2 gap-1">
           <button
             type="button"
             className="mvp16-sprite-transform-btn flex flex-col items-center gap-0.5 rounded px-1 py-1.5 text-[9px] text-slate-500 hover:bg-slate-100"
             onClick={onFlipHorizontal}
-            title="Flip horizontal"
+            title={t("spriteToolbarFlipH")}
           >
             <FlipHorizontal2 className="h-4 w-4" />
             Flip H
@@ -205,7 +206,7 @@ export function SpriteToolbar({
             type="button"
             className="mvp16-sprite-transform-btn flex flex-col items-center gap-0.5 rounded px-1 py-1.5 text-[9px] text-slate-500 hover:bg-slate-100"
             onClick={onFlipVertical}
-            title="Flip vertical"
+            title={t("spriteToolbarFlipV")}
           >
             <FlipVertical2 className="h-4 w-4" />
             Flip V
@@ -214,7 +215,7 @@ export function SpriteToolbar({
             type="button"
             className="mvp16-sprite-transform-btn flex flex-col items-center gap-0.5 rounded px-1 py-1.5 text-[9px] text-slate-500 hover:bg-slate-100"
             onClick={onRotateCW}
-            title="Rotate clockwise"
+            title={t("spriteToolbarRotateCW")}
           >
             <RotateCw className="h-4 w-4" />
             Rot +90°
@@ -223,7 +224,7 @@ export function SpriteToolbar({
             type="button"
             className="mvp16-sprite-transform-btn flex flex-col items-center gap-0.5 rounded px-1 py-1.5 text-[9px] text-slate-500 hover:bg-slate-100"
             onClick={onRotateCCW}
-            title="Rotate counter-clockwise"
+            title={t("spriteToolbarRotateCCW")}
           >
             <RotateCcw className="h-4 w-4" />
             Rot -90°

@@ -1,6 +1,12 @@
 export const caMessages = {
   // ── App ──────────────────────────────────────────────────────
   appBrandName: "CreadorDeJocs",
+  appSaving: "Desant…",
+  appSaved: "Desat",
+  appSaveError: "Error",
+  appUndoTitle: "Desfer",
+  appRedoTitle: "Refer",
+  appSaveTitle: "Desar",
 
   // ── Editor sidebar ──────────────────────────────────────────
   sidebarTitle: "Editor sections",
@@ -122,6 +128,7 @@ export const caMessages = {
   importConfirmDelete: "Vols esborrar el projecte actiu?",
 
   // ── Share dropdown ───────────────────────────────────────────
+  shareDropdownTrigger: "Compartir",
   shareDropdownLabel: "Compartir joc",
   shareDropdownPublishing: "Publicant...",
   shareDropdownPublish: "Publicar joc",
@@ -295,6 +302,7 @@ export const caMessages = {
   spriteImportCropExpected: "Resultat esperat",
   spriteImportCropCancel: "Cancel·lar",
   spriteImportCropConfirm: "Confirmar i importar",
+  spriteImportCropReset: "Reiniciar retall",
 
   // ── Sprite picker modal ────────────────────────────────────
   spritePickerCloseAriaLabel: "Tancar modal de sprites",
@@ -317,7 +325,27 @@ export const caMessages = {
   // ── Variable pickers ─────────────────────────────────────
   variablePickerObjectSection: "Objecte",
 
+  // ── Object variables panel ────────────────────────────────
+  objectVarsAddItem: "Afegir element",
+  objectVarsAddEntry: "Afegir entrada",
+  objectVarsRemoveEntry: "Treure entrada",
+
+  // ── Global variables section ─────────────────────────────
+  globalVarsAddItem: "Afegir element",
+  globalVarsAddEntry: "Afegir entrada",
+  globalVarsRemoveEntry: "Treure entrada",
+
+  // ── Sprite toolbar ───────────────────────────────────────
+  spriteToolbarToolOptions: "Opcions d'eina",
+  spriteToolbarTransform: "Transformar",
+  spriteToolbarFlipH: "Invertir horitzontal",
+  spriteToolbarFlipV: "Invertir vertical",
+  spriteToolbarRotateCW: "Rotar 90° horari",
+  spriteToolbarRotateCCW: "Rotar 90° antihorari",
+
   // ── Right value picker ─────────────────────────────────────
+  rightValueAttributesSection: "Atributs",
+  rightValueInternalSection: "Variables internes",
   rightValueRandomStep: "·pas",
 
   // ── Landing page ─────────────────────────────────────────────

@@ -1,4 +1,5 @@
 import { Minus, Plus, X } from "lucide-react"
+import { t } from "@/i18n/index.js"
 import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from "react"
 import type { VariableItemType, VariableType, VariableValue } from "@creadordejocs/project-format"
 import type { EditorController } from "../editor-state/use-editor-controller.js"
@@ -211,7 +212,7 @@ function GlobalListValueEditor({
         onClick={() => onChange([...value, defaultForItemType(itemType)])}
       >
         <Plus className="h-3 w-3" />
-        <span>Add item</span>
+        <span>{t("globalVarsAddItem")}</span>
       </button>
     </div>
   )
@@ -300,7 +301,7 @@ function GlobalMapValueEditor({
             type="button"
             className="mvpv2-global-map-entry-remove shrink-0 rounded p-0.5 text-slate-300 transition-colors hover:bg-red-50 hover:text-red-500"
             onClick={() => handleRemove(key)}
-            title="Remove entry"
+            title={t("globalVarsRemoveEntry")}
           >
             <Minus className="h-3 w-3" />
           </button>
@@ -312,7 +313,7 @@ function GlobalMapValueEditor({
         onClick={handleAdd}
       >
         <Plus className="h-3 w-3" />
-        <span>Add entry</span>
+        <span>{t("globalVarsAddEntry")}</span>
       </button>
     </div>
   )

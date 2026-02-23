@@ -1,3 +1,4 @@
+import { t } from "@/i18n/index.js"
 import { useEffect, useRef, useState } from "react"
 import { Redo2, Save, Undo2 } from "lucide-react"
 import { Button } from "./components/ui/button.js"
@@ -29,10 +30,10 @@ const editorRobots = "noindex, nofollow"
 const playRobots = "noindex, nofollow"
 
 function formatStatus(status: "idle" | "saved" | "saving" | "error"): string {
-  if (status === "saving") return "Saving..."
-  if (status === "saved") return "Saved"
-  if (status === "error") return "Error"
-  return "Saved"
+  if (status === "saving") return t("appSaving")
+  if (status === "saved") return t("appSaved")
+  if (status === "error") return t("appSaveError")
+  return t("appSaved")
 }
 
 function setMetaContent(selector: string, content: string): void {
@@ -138,7 +139,7 @@ function EditorAppShell() {
               className="h-7 w-7 text-slate-400 hover:text-slate-700"
               disabled={!controller.undoAvailable}
               onClick={() => controller.undo()}
-              title="Undo"
+              title={t("appUndoTitle")}
             >
               <Undo2 className="h-4 w-4" />
             </Button>
@@ -149,7 +150,7 @@ function EditorAppShell() {
               className="h-7 w-7 text-slate-400 hover:text-slate-700"
               disabled={!controller.redoAvailable}
               onClick={() => controller.redo()}
-              title="Redo"
+              title={t("appRedoTitle")}
             >
               <Redo2 className="h-4 w-4" />
             </Button>
@@ -160,16 +161,16 @@ function EditorAppShell() {
               className="h-7 w-7 text-slate-400 hover:text-slate-700"
               onClick={() => {
                 if (manualSaveTimerRef.current) clearTimeout(manualSaveTimerRef.current)
-                setManualSaveLabel("Saving...")
+                setManualSaveLabel(t("appSaving"))
                 controller.saveNow()
                 manualSaveTimerRef.current = setTimeout(() => {
-                  setManualSaveLabel("Saved")
+                  setManualSaveLabel(t("appSaved"))
                   manualSaveTimerRef.current = setTimeout(() => {
                     setManualSaveLabel(null)
                   }, 1500)
                 }, 400)
               }}
-              title="Save"
+              title={t("appSaveTitle")}
             >
               <Save className="h-4 w-4" />
             </Button>

@@ -64,7 +64,7 @@ export function ShareDropdown({ controller }: ShareDropdownProps) {
           <span
             className={`mvp19-share-dot inline-block h-2 w-2 shrink-0 rounded-full ${isShared ? "bg-emerald-500" : "bg-slate-300"}`}
           />
-          Share
+          {t("shareDropdownTrigger")}
           <ChevronDown className="h-3.5 w-3.5" />
         </Button>
       </DropdownMenuTrigger>

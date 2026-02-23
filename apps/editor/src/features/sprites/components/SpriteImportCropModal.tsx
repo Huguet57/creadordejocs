@@ -484,7 +484,7 @@ export function SpriteImportCropModal({
         </div>
 
         <div className="mvp16-import-crop-footer flex items-center justify-between border-t border-slate-200 px-4 py-3">
-          <Button variant="outline" size="sm" className="h-8" disabled={isInitialCrop} onClick={resetCrop}>Reset crop</Button>
+          <Button variant="outline" size="sm" className="h-8" disabled={isInitialCrop} onClick={resetCrop}>{t("spriteImportCropReset")}</Button>
           <div className="mvp16-import-crop-footer-actions flex gap-2">
             <Button variant="outline" size="sm" className="h-8" onClick={onCancel}>{t("spriteImportCropCancel")}</Button>
             <Button size="sm" className="h-8" onClick={() => onConfirm(crop)}>{t("spriteImportCropConfirm")}</Button>
