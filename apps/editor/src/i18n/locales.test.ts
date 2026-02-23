@@ -37,8 +37,11 @@ describe("resolveLocaleFromHostname", () => {
     expect(resolveLocaleFromHostname("www.simplegamecreator.com")).toBe("en")
   })
 
+  it("resolves localhost alias to Catalan", () => {
+    expect(resolveLocaleFromHostname("localhost")).toBe("ca")
+  })
+
   it("falls back to english for unknown hosts", () => {
-    expect(resolveLocaleFromHostname("localhost")).toBe("en")
     expect(resolveLocaleFromHostname("preview.vercel.app")).toBe("en")
     expect(resolveLocaleFromHostname("unknown.example")).toBe("en")
   })

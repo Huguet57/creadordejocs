@@ -402,6 +402,7 @@ export function SpriteCanvasGrid({
     return () => {
       if (overlayRafRef.current !== null && typeof window !== "undefined") {
         window.cancelAnimationFrame(overlayRafRef.current)
+        overlayRafRef.current = null
       }
     }
   }, [])
