@@ -69,7 +69,7 @@ test("creates sprite, object and object listener", async ({ page }) => {
 
   // Open the action picker and add a "move" action
   await page.locator(".mvp3-action-picker-toggle").click()
-  await page.getByRole("button", { name: "Moure", exact: true }).click()
+  await page.getByRole("button", { name: "Move", exact: true }).click()
   await expect(page.locator(".action-block-container")).toBeVisible()
 })
 
