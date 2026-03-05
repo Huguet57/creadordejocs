@@ -1,5 +1,5 @@
 import { t, getActiveLocale, LOCALE_ORIGINS } from "@/i18n/index.js"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Redo2, Save, Undo2 } from "lucide-react"
 import { Button } from "./components/ui/button.js"
 import { shouldResetWhenSwitchingSection, useEditorController } from "./features/editor-state/use-editor-controller.js"
@@ -24,6 +24,22 @@ import {
 } from "./route-utils.js"
 import { RUNTIME_SEO_BY_LOCALE, X_DEFAULT_LOCALE } from "./seo/seo-locales.js"
 import { setCanonicalHref, setMetaContent, syncHreflangTags } from "./seo/seo-runtime.js"
+import { MobileGate } from "./layout/MobileGate.js"
+
+const MOBILE_QUERY = "(max-width: 768px)"
+
+function useIsMobile(): boolean {
+  const mql = useMemo(() => window.matchMedia(MOBILE_QUERY), [])
+  const [isMobile, setIsMobile] = useState(() => mql.matches)
+
+  useEffect(() => {
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches)
+    mql.addEventListener("change", handler)
+    return () => mql.removeEventListener("change", handler)
+  }, [mql])
+
+  return isMobile
+}
 
 const landingRobots = "index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1"
 const editorRobots = "noindex, nofollow"
@@ -180,6 +196,7 @@ function EditorAppShell() {
 }
 
 export function App() {
+  const isMobile = useIsMobile()
   const locale = getActiveLocale()
   const meta = RUNTIME_SEO_BY_LOCALE[locale]
   const activeLocaleOrigin = LOCALE_ORIGINS[locale]
@@ -242,6 +259,10 @@ export function App() {
 
   if (route === "landing") {
     return <LandingPage onStartEditor={openEditor} />
+  }
+
+  if (isMobile) {
+    return <MobileGate />
   }
 
   return <EditorAppShell />
