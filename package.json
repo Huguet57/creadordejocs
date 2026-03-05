@@ -7,7 +7,8 @@
     "packages/*"
   ],
   "scripts": {
-    "editor:dev": "npm run dev -w @creadordejocs/editor",
+    "editor:predev": "docker ps --format '{{.Names}}' | grep -q supabase_db_creadordejocs || npm run supabase:start",
+    "editor:dev": "npm run editor:predev && npm run dev -w @creadordejocs/editor",
     "editor:build": "npm run build -w @creadordejocs/project-format && npm run build -w @creadordejocs/editor",
     "locale:add": "npm run locale:scaffold -w @creadordejocs/editor --",
     "deploy": "npx vercel --prod --yes",
