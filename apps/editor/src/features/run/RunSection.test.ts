@@ -1,7 +1,8 @@
 import { createElement } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
-import { describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { ProjectV1 } from "@creadordejocs/project-format"
+import { setActiveLocale } from "@/i18n/index.js"
 import type { RuntimeState } from "../editor-state/runtime.js"
 import { RunSection, type RunSectionController } from "./RunSection.js"
 
@@ -101,6 +102,10 @@ function createController(justification: "left" | "center" | "right"): RunSectio
 }
 
 describe("RunSection object text overlay", () => {
+  beforeEach(() => {
+    setActiveLocale("ca")
+  })
+
   it("renders object text overlay inside instance bounds with wrapping classes", () => {
     const markup = renderToStaticMarkup(createElement(RunSection, { controller: createController("center") }))
 
@@ -117,5 +122,107 @@ describe("RunSection object text overlay", () => {
 
     expect(leftMarkup).toContain("text-align:left")
     expect(rightMarkup).toContain("text-align:right")
+  })
+
+  it("auto-detects keyboard and mouse controls from events in the active room", () => {
+    const controller = createController("center")
+    const activeObject = controller.project.objects[0]
+    if (!activeObject) {
+      throw new Error("Missing active object")
+    }
+    activeObject.events = [
+      {
+        id: "event-key-right",
+        type: "Keyboard",
+        key: "ArrowRight",
+        keyboardMode: "down",
+        targetObjectId: null,
+        intervalMs: null,
+        items: []
+      },
+      {
+        id: "event-key-up",
+        type: "Keyboard",
+        key: "ArrowUp",
+        keyboardMode: "down",
+        targetObjectId: null,
+        intervalMs: null,
+        items: []
+      },
+      {
+        id: "event-key-space",
+        type: "Keyboard",
+        key: "Space",
+        keyboardMode: "press",
+        targetObjectId: null,
+        intervalMs: null,
+        items: []
+      },
+      {
+        id: "event-key-any",
+        type: "Keyboard",
+        key: "<any>",
+        keyboardMode: "press",
+        targetObjectId: null,
+        intervalMs: null,
+        items: []
+      },
+      {
+        id: "event-mouse-click",
+        type: "Mouse",
+        key: null,
+        keyboardMode: null,
+        mouseMode: "press",
+        targetObjectId: null,
+        intervalMs: null,
+        items: []
+      },
+      {
+        id: "event-mouse-move",
+        type: "MouseMove",
+        key: null,
+        keyboardMode: null,
+        targetObjectId: null,
+        intervalMs: null,
+        items: []
+      }
+    ]
+    controller.project.objects.push({
+      id: "object-outside-room",
+      name: "Outside room object",
+      spriteId: null,
+      x: 0,
+      y: 0,
+      speed: 0,
+      direction: 0,
+      width: 32,
+      height: 32,
+      visible: true,
+      solid: false,
+      events: [
+        {
+          id: "event-key-escape",
+          type: "Keyboard",
+          key: "Escape",
+          keyboardMode: "down",
+          targetObjectId: null,
+          intervalMs: null,
+          items: []
+        }
+      ]
+    })
+
+    const markup = renderToStaticMarkup(createElement(RunSection, { controller }))
+    const controlLabels = [...markup.matchAll(/mvp25-run-controls-chip[^>]*>([^<]+)</g)].map((match) => match[1])
+
+    expect(controlLabels).toEqual([
+      "Up",
+      "Right",
+      "Space",
+      "Qualsevol tecla",
+      "Clic de mouse",
+      "Moviment de mouse"
+    ])
+    expect(markup).not.toContain(">Esc<")
   })
 })

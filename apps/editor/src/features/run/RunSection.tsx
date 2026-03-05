@@ -24,6 +24,27 @@ type RunSectionProps = {
   mode?: "editor" | "play"
 }
 
+type KeyboardControlKey = NonNullable<ProjectV1["objects"][number]["events"][number]["key"]>
+
+const KEYBOARD_CONTROL_ORDER: KeyboardControlKey[] = [
+  "ArrowUp",
+  "ArrowDown",
+  "ArrowLeft",
+  "ArrowRight",
+  "Space",
+  "Escape",
+  "<any>"
+]
+
+const KEYBOARD_CONTROL_LABEL_BY_KEY: Record<Exclude<KeyboardControlKey, "<any>">, string> = {
+  ArrowUp: "Up",
+  ArrowDown: "Down",
+  ArrowLeft: "Left",
+  ArrowRight: "Right",
+  Space: "Space",
+  Escape: "Esc"
+}
+
 export type RunSectionController = {
   project: ProjectV1
   runtimeState: RuntimeState
@@ -54,6 +75,13 @@ function formatRuntimeVariableValue(
     return String(value)
   }
   return JSON.stringify(value)
+}
+
+function formatKeyboardControlKeyLabel(key: KeyboardControlKey, anyKeyLabel: string): string {
+  if (key === "<any>") {
+    return anyKeyLabel
+  }
+  return KEYBOARD_CONTROL_LABEL_BY_KEY[key]
 }
 
 export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
@@ -100,10 +128,55 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
   )
 
   const sprites = controller.project.resources.sprites
+  const objectById = useMemo(
+    () => Object.fromEntries(controller.project.objects.map((objectEntry) => [objectEntry.id, objectEntry])),
+    [controller.project.objects]
+  )
   const spriteById = useMemo(
     () => Object.fromEntries(sprites.map((spriteEntry) => [spriteEntry.id, spriteEntry])),
     [sprites]
   )
+  const anyKeyLabel = t("eventSelectorAnyKey")
+  const mouseClickControlLabel = t("runMouseClickControl")
+  const mouseMoveControlLabel = t("runMouseMoveControl")
+  const activeRoomControlLabels = useMemo(() => {
+    if (!controller.activeRoom) {
+      return []
+    }
+
+    const activeRoomObjectIds = new Set(controller.activeRoom.instances.map((instanceEntry) => instanceEntry.objectId))
+    const detectedKeys = new Set<KeyboardControlKey>()
+    let hasMouseClickControl = false
+    let hasMouseMoveControl = false
+    for (const objectId of activeRoomObjectIds) {
+      const objectEntry = objectById[objectId]
+      if (!objectEntry) {
+        continue
+      }
+      for (const eventEntry of objectEntry.events) {
+        if (eventEntry.type === "Keyboard" && eventEntry.key) {
+          detectedKeys.add(eventEntry.key)
+          continue
+        }
+        if (eventEntry.type === "Mouse" || eventEntry.type === "MouseSelf") {
+          hasMouseClickControl = true
+          continue
+        }
+        if (eventEntry.type === "MouseMove") {
+          hasMouseMoveControl = true
+        }
+      }
+    }
+
+    const keyboardLabels = KEYBOARD_CONTROL_ORDER
+      .filter((key) => detectedKeys.has(key))
+      .map((key) => formatKeyboardControlKeyLabel(key, anyKeyLabel))
+    const pointerLabels = [
+      ...(hasMouseClickControl ? [mouseClickControlLabel] : []),
+      ...(hasMouseMoveControl ? [mouseMoveControlLabel] : [])
+    ]
+    return [...keyboardLabels, ...pointerLabels]
+  }, [anyKeyLabel, controller.activeRoom, mouseClickControlLabel, mouseMoveControlLabel, objectById])
   const activeRoomBackgroundSpriteId = controller.activeRoom?.backgroundSpriteId ?? null
   const activeRoomBackgroundSprite = activeRoomBackgroundSpriteId ? spriteById[activeRoomBackgroundSpriteId] : undefined
   const activeRoomBackgroundSource = activeRoomBackgroundSprite ? resolvedSpriteSources[activeRoomBackgroundSprite.id] : undefined
@@ -398,6 +471,23 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
                 ))}
               </div>
             </div>
+            <div className="mvp25-run-controls space-y-2">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{t("runControlsLabel")}</p>
+              {activeRoomControlLabels.length === 0 ? (
+                <p className="mvp25-run-controls-empty text-[11px] text-slate-400">{t("runNoControls")}</p>
+              ) : (
+                <div data-testid="run-controls-list" className="mvp25-run-controls-list flex flex-wrap gap-1.5">
+                  {activeRoomControlLabels.map((controlLabel) => (
+                    <span
+                      key={controlLabel}
+                      className="mvp25-run-controls-chip inline-flex items-center rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-slate-700"
+                    >
+                      {controlLabel}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
             <InstanceDebugPanel
               project={controller.project}
               runtimeState={runtimeState}
@@ -471,7 +561,7 @@ export function RunSection({ controller, mode = "editor" }: RunSectionProps) {
                   </div>
                 ))}
                 {sortedActiveRoomInstances.map((instanceEntry) => {
-                  const objectEntry = controller.project.objects.find((entry) => entry.id === instanceEntry.objectId)
+                  const objectEntry = objectById[instanceEntry.objectId]
                   const instanceWidth = objectEntry?.width ?? 32
                   const instanceHeight = objectEntry?.height ?? 32
                   if (
