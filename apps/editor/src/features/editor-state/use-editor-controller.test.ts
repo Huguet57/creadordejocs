@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
+  alignProjectWithId,
   buildSpriteAssignedObjectNamesIndex,
   getRuntimeKeyFromKeyboardEvent,
   isSpriteCompatibleWithObjectSize,
@@ -11,6 +12,26 @@ import {
   shouldResetWhenSwitchingSection
 } from "./use-editor-controller.js"
 import { createEmptyProjectV1, createRoom, quickCreateSprite, quickCreateObject } from "@creadordejocs/project-format"
+
+describe("alignProjectWithId", () => {
+  it("returns the same reference when the id already matches", () => {
+    const project = createEmptyProjectV1("Same id")
+    const result = alignProjectWithId(project, project.metadata.id)
+
+    expect(result).toBe(project)
+  })
+
+  it("updates metadata.id when it differs from the target id", () => {
+    const project = createEmptyProjectV1("Different id")
+    const targetProjectId = "11111111-2222-4333-8444-555555555555"
+
+    const result = alignProjectWithId(project, targetProjectId)
+
+    expect(result).not.toBe(project)
+    expect(result.metadata.id).toBe(targetProjectId)
+    expect(result.metadata.name).toBe(project.metadata.name)
+  })
+})
 
 describe("getRuntimeKeyFromKeyboardEvent", () => {
   it("uses KeyboardEvent.code for Space instead of KeyboardEvent.key", () => {
