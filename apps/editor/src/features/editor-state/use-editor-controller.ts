@@ -207,6 +207,20 @@ function ensureProjectHasRoom(project: ProjectV1): { project: ProjectV1; roomId:
   return createRoom(project, t("controllerDefaultRoomName"))
 }
 
+export function alignProjectWithId(project: ProjectV1, projectId: string): ProjectV1 {
+  if (project.metadata.id === projectId) {
+    return project
+  }
+
+  return {
+    ...project,
+    metadata: {
+      ...project.metadata,
+      id: projectId
+    }
+  }
+}
+
 export function resolveInitialSection(project: ProjectV1): EditorSection {
   const hasContent = project.objects.length > 0 || project.resources.sprites.length > 0
   return hasContent ? "objects" : "templates"
@@ -465,7 +479,8 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
   const resolveScopeUserId = (): string => storageScopeUserIdRef.current
 
   const applyProjectState = (projectId: string, sourceProject: ProjectV1, nextSection?: EditorSection): void => {
-    const normalized = ensureProjectHasRoom(sourceProject)
+    const alignedProject = alignProjectWithId(sourceProject, projectId)
+    const normalized = ensureProjectHasRoom(alignedProject)
     const runtime = createInitialRuntimeState(normalized.project)
     runtimeRef.current = runtime
     setRuntimeState(runtime)
@@ -537,13 +552,13 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
     copyProjectOutboxItems(sourceScopeUserId, targetScopeUserId)
   }
 
-  const enqueueProjectSync = (source: ProjectV1, updatedAtIso?: string): void => {
+  const enqueueProjectSync = (projectId: string, source: ProjectV1, updatedAtIso?: string): void => {
     const scopeUserId = resolveScopeUserId()
-    const projectId = source.metadata.id || activeProjectId
-    const projectSource = cachedSerializeProjectV1(source)
+    const projectForSync = alignProjectWithId(source, projectId)
+    const projectSource = cachedSerializeProjectV1(projectForSync)
     enqueueProjectUpsert(scopeUserId, {
       projectId,
-      name: source.metadata.name,
+      name: projectForSync.metadata.name,
       projectSource,
       updatedAtIso: updatedAtIso ?? new Date().toISOString()
     })
@@ -662,14 +677,15 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
     projectRef.current = nextProject
     setProject(nextProject)
     const summary = saveProjectByIdLocally(activeProjectId, nextProject, { setActive: true }, resolveScopeUserId())
-    enqueueProjectSync(nextProject, summary.updatedAtIso)
+    enqueueProjectSync(activeProjectId, nextProject, summary.updatedAtIso)
     refreshProjectSummaries()
   }
 
   const pushProjectChange = (next: ProjectV1, checkpointLabel?: string): void => {
+    const alignedNext = alignProjectWithId(next, activeProjectId)
     setPast((previous) => [...previous.slice(-39), project])
     setFuture([])
-    setProject(next)
+    setProject(alignedNext)
     setIsDirty(true)
     if (checkpointLabel) {
       const scheduleIdle =
@@ -677,7 +693,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       scheduleIdle(() => {
         try {
           setSnapshots(
-            saveCheckpointSnapshot(next, checkpointLabel, activeProjectId, resolveScopeUserId())
+            saveCheckpointSnapshot(alignedNext, checkpointLabel, activeProjectId, resolveScopeUserId())
           )
         } catch {
           // localStorage may be full or unavailable — skip snapshot silently
@@ -688,15 +704,20 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
 
   const persistProject = (source: ProjectV1, withSnapshotLabel?: string): void => {
     try {
+      const alignedSource = alignProjectWithId(source, activeProjectId)
+      if (alignedSource !== source) {
+        projectRef.current = alignedSource
+        setProject(alignedSource)
+      }
       setSaveStatus("saving")
-      const summary = saveProjectByIdLocally(activeProjectId, source, { setActive: true }, resolveScopeUserId())
+      const summary = saveProjectByIdLocally(activeProjectId, alignedSource, { setActive: true }, resolveScopeUserId())
       refreshProjectSummaries()
       setSaveStatus("saved")
       setIsDirty(false)
       if (withSnapshotLabel) {
-        setSnapshots(saveCheckpointSnapshot(source, withSnapshotLabel, activeProjectId, resolveScopeUserId()))
+        setSnapshots(saveCheckpointSnapshot(alignedSource, withSnapshotLabel, activeProjectId, resolveScopeUserId()))
       }
-      enqueueProjectSync(source, summary.updatedAtIso)
+      enqueueProjectSync(activeProjectId, alignedSource, summary.updatedAtIso)
     } catch (err) {
       console.error("[persistProject] Save failed:", err)
       if (isQuotaExceededError(err) && authUser !== null) {
@@ -710,7 +731,8 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
         void getSupabaseSessionUserId(supabase)
           .then((sessionUserId) => {
             const effectiveUserId = sessionUserId ?? authUser.id
-            return upsertUserProject(supabase, effectiveUserId, { project: source })
+            const alignedSource = alignProjectWithId(source, activeProjectId)
+            return upsertUserProject(supabase, effectiveUserId, { project: alignedSource })
           })
           .then(() => {
             setSaveStatus("saved")
@@ -2015,7 +2037,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       setProject(updatedProject)
       setSaveStatus("saved")
       refreshProjectSummaries()
-      enqueueProjectSync(updatedProject, renamed.updatedAtIso)
+      enqueueProjectSync(renamed.projectId, updatedProject, renamed.updatedAtIso)
       void syncNowRef.current()
       return true
     },
@@ -2060,9 +2082,10 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
     },
     async loadTemplate(templateId: GameTemplateId) {
       const result = await createTemplateProject(templateId)
+      const templateProject = alignProjectWithId(incrementMetric(result.project, "tutorialCompletion"), activeProjectId)
       setPast((value) => [...value.slice(-39), project])
       setFuture([])
-      setProject(incrementMetric(result.project, "tutorialCompletion"))
+      setProject(templateProject)
       setActiveRoomId(result.roomId)
       setActiveObjectId(result.focusObjectId)
       setActiveSection("run")
@@ -2112,9 +2135,10 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
           }
           const summary = createLocalProject(importedProject, scopeUserId)
           setActiveProjectIdInLocalStorage(summary.projectId, scopeUserId)
-          applyProjectState(summary.projectId, importedProject, resolveInitialSection(importedProject))
+          const syncedProject = alignProjectWithId(importedProject, summary.projectId)
+          applyProjectState(summary.projectId, syncedProject, resolveInitialSection(syncedProject))
           refreshProjectSummaries()
-          enqueueProjectSync(importedProject, summary.updatedAtIso)
+          enqueueProjectSync(summary.projectId, syncedProject, summary.updatedAtIso)
           void syncNowRef.current()
           setImportStatus("imported")
           return true
@@ -2131,7 +2155,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
         const summary = saveProjectByIdLocally(activeProjectId, replacedProject, { setActive: true }, scopeUserId)
         applyProjectState(activeProjectId, replacedProject, resolveInitialSection(replacedProject))
         refreshProjectSummaries()
-        enqueueProjectSync(replacedProject, summary.updatedAtIso)
+        enqueueProjectSync(activeProjectId, replacedProject, summary.updatedAtIso)
         void syncNowRef.current()
         setImportStatus("imported")
         return true
@@ -2147,10 +2171,11 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       const blankProject = ensureProjectHasRoom(createEmptyProjectV1(t("controllerBlankProjectName"))).project
       const scopeUserId = resolveScopeUserId()
       const summary = createLocalProject(blankProject, scopeUserId)
+      const syncedProject = alignProjectWithId(blankProject, summary.projectId)
       setActiveProjectIdInLocalStorage(summary.projectId, scopeUserId)
-      applyProjectState(summary.projectId, blankProject, resolveInitialSection(blankProject))
+      applyProjectState(summary.projectId, syncedProject, resolveInitialSection(syncedProject))
       refreshProjectSummaries()
-      enqueueProjectSync(blankProject, summary.updatedAtIso)
+      enqueueProjectSync(summary.projectId, syncedProject, summary.updatedAtIso)
       void syncNowRef.current()
     },
     restoreSnapshot(snapshotId: string) {
@@ -2164,7 +2189,7 @@ export function useEditorController(initialSectionOverride?: EditorSection) {
       const summary = saveProjectByIdLocally(activeProjectId, normalized, { setActive: true }, scopeUserId)
       applyProjectState(activeProjectId, normalized)
       refreshProjectSummaries()
-      enqueueProjectSync(normalized, summary.updatedAtIso)
+      enqueueProjectSync(activeProjectId, normalized, summary.updatedAtIso)
       void syncNowRef.current()
     },
     importLegacyLocalProjectsNow() {
