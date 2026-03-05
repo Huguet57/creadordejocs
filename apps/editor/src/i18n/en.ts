@@ -580,5 +580,11 @@ export const enMessages: Record<keyof typeof caMessages, string> = {
   landingFinalCtaDesc:
     "Open the editor and start with a template or a blank project. No account or installation needed.",
   landingFinalCtaButton: "Open the editor",
-  landingFooterTagline: "Online game editor — free and no sign-up required."
+  landingFooterTagline: "Online game editor — free and no sign-up required.",
+
+  // ── Mobile gate ─────────────────────────────────────────────────
+  mobileGateTitle: "Desktop only",
+  mobileGateDescription:
+    "The game editor is designed for desktop screens. Open this page from a PC or laptop to start creating.",
+  mobileGateBackButton: "Back to home"
 } as const

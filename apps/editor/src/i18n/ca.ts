@@ -578,7 +578,13 @@ export const caMessages = {
   landingFinalCtaDesc:
     "Obre l'editor i comença amb una plantilla o un projecte en blanc. Sense compte ni instal·lació.",
   landingFinalCtaButton: "Obrir l'editor",
-  landingFooterTagline: "Editor de jocs online — gratuït i sense registre."
+  landingFooterTagline: "Editor de jocs online — gratuït i sense registre.",
+
+  // ── Mobile gate ─────────────────────────────────────────────────
+  mobileGateTitle: "Només per a escriptori",
+  mobileGateDescription:
+    "L'editor de jocs està dissenyat per a pantalla d'ordinador. Obre aquesta pàgina des d'un PC o portàtil per començar a crear.",
+  mobileGateBackButton: "Tornar a l'inici"
 } as const
 
 export type EditorMessageKey = keyof typeof caMessages

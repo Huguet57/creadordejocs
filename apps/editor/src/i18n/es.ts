@@ -580,5 +580,11 @@ export const esMessages: Record<keyof typeof caMessages, string> = {
   landingFinalCtaDesc:
     "Abre el editor y empieza con una plantilla o un proyecto en blanco. Sin cuenta ni instalación.",
   landingFinalCtaButton: "Abrir el editor",
-  landingFooterTagline: "Editor de juegos online — gratuito y sin registro."
+  landingFooterTagline: "Editor de juegos online — gratuito y sin registro.",
+
+  // ── Mobile gate ─────────────────────────────────────────────────
+  mobileGateTitle: "Solo para escritorio",
+  mobileGateDescription:
+    "El editor de juegos está diseñado para pantalla de ordenador. Abre esta página desde un PC o portátil para empezar a crear.",
+  mobileGateBackButton: "Volver al inicio"
 } as const
