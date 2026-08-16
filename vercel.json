@@ -80,9 +80,6 @@
     }
   ],
   "rewrites": [
-    { "source": "/ingest/static/:match(.*)", "destination": "https://us-assets.i.posthog.com/static/:match" },
-    { "source": "/ingest/:match(.*)", "destination": "https://us.i.posthog.com/:match" },
-
     { "source": "/", "has": [{ "type": "host", "value": "creadordejocs.cat" }], "destination": "/ca/index.html" },
     {
       "source": "/",
