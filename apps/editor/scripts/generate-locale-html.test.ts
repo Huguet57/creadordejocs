@@ -31,6 +31,14 @@ describe("generate-locale-html SEO smoke", () => {
     }
   })
 
+  it("includes Microsoft Clarity without PostHog", () => {
+    const html = transformHtmlForLocale(baseHtml, "ca")
+
+    expect(html).toContain('https://www.clarity.ms/tag/" + i')
+    expect(html).toContain('"clarity", "script", "y3f32cgkjk"')
+    expect(html.toLowerCase()).not.toContain("posthog")
+  })
+
   it("builds sitemap with alternates and x-default", () => {
     const sitemap = buildSitemapXml(["/"])
     expect(sitemap).toContain("<loc>https://creadordejocs.cat/</loc>")
