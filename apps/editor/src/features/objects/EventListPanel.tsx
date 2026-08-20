@@ -213,7 +213,7 @@ export function EventListPanel({
             }}
           >
             <Plus className="h-3.5 w-3.5" />
-            Afegir event
+            {t("eventListAddEvent")}
           </button>
           {contextMenu.eventId && (() => {
             const contextEvent = events.find((e) => e.id === contextMenu.eventId)
@@ -231,7 +231,7 @@ export function EventListPanel({
                     }}
                   >
                     <Copy className="h-3.5 w-3.5" />
-                    Duplica event
+                    {t("eventListCtxDuplicate")}
                   </button>
                 )}
                 <div className="my-1 border-t border-slate-100" />
@@ -245,7 +245,7 @@ export function EventListPanel({
                   }}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
-                  Elimina event
+                  {t("eventListCtxDelete")}
                 </button>
               </>
             )

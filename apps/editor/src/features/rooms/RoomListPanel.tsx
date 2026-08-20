@@ -409,7 +409,7 @@ export function RoomListPanel({
 
         {parentId !== null && childFolders.length === 0 && childRooms.length === 0 && (
           <p className="py-1 text-[11px] text-slate-400" style={{ paddingLeft: `${depth * 16 + 20}px` }}>
-            Carpeta buida
+            {t("roomListEmptyFolder")}
           </p>
         )}
 

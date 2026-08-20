@@ -1,4 +1,9 @@
 import type { KeywordRow, PageRow, CountryRow, MonthlyRow } from "./types.js"
+import {
+  DEFAULT_SEO_ANALYTICS_LOCALE,
+  SEO_ANALYTICS_MESSAGES,
+  type SeoAnalyticsLocale
+} from "./i18n.js"
 
 const BOLD = "\x1b[1m"
 const DIM = "\x1b[2m"
@@ -24,12 +29,16 @@ function separator(len: number): string {
   return `${DIM}${"─".repeat(len)}${RESET}`
 }
 
-export function formatKeywordsTable(rows: KeywordRow[]): string {
-  if (rows.length === 0) return header("TOP KEYWORDS") + "  Cap dada disponible.\n"
+export function formatKeywordsTable(
+  rows: KeywordRow[],
+  locale: SeoAnalyticsLocale = DEFAULT_SEO_ANALYTICS_LOCALE
+): string {
+  const messages = SEO_ANALYTICS_MESSAGES[locale]
+  if (rows.length === 0) return header(messages.topKeywordsTitle) + `  ${messages.noData}\n`
 
-  const lines: string[] = [header("TOP KEYWORDS")]
+  const lines: string[] = [header(messages.topKeywordsTitle)]
   lines.push(
-    `  ${DIM}${pad("Keyword", 40)} ${padNum("Clics" as unknown as number, 8)} ${padNum("Impr." as unknown as number, 8)} ${padNum("CTR%" as unknown as number, 7)} ${padNum("Pos." as unknown as number, 6)}${RESET}`
+    `  ${DIM}${pad(messages.keywordColumn, 40)} ${padNum(messages.clicksColumn as unknown as number, 8)} ${padNum(messages.impressionsColumn as unknown as number, 8)} ${padNum(messages.ctrColumn as unknown as number, 7)} ${padNum(messages.positionColumn as unknown as number, 6)}${RESET}`
   )
   lines.push(`  ${separator(71)}`)
 
@@ -43,12 +52,16 @@ export function formatKeywordsTable(rows: KeywordRow[]): string {
   return lines.join("\n") + "\n"
 }
 
-export function formatPagesTable(rows: PageRow[]): string {
-  if (rows.length === 0) return header("TOP PÀGINES") + "  Cap dada disponible.\n"
+export function formatPagesTable(
+  rows: PageRow[],
+  locale: SeoAnalyticsLocale = DEFAULT_SEO_ANALYTICS_LOCALE
+): string {
+  const messages = SEO_ANALYTICS_MESSAGES[locale]
+  if (rows.length === 0) return header(messages.topPagesTitle) + `  ${messages.noData}\n`
 
-  const lines: string[] = [header("TOP PÀGINES")]
+  const lines: string[] = [header(messages.topPagesTitle)]
   lines.push(
-    `  ${DIM}${pad("Pàgina", 55)} ${padNum("Clics" as unknown as number, 8)} ${padNum("Impr." as unknown as number, 8)} ${padNum("CTR%" as unknown as number, 7)}${RESET}`
+    `  ${DIM}${pad(messages.pageColumn, 55)} ${padNum(messages.clicksColumn as unknown as number, 8)} ${padNum(messages.impressionsColumn as unknown as number, 8)} ${padNum(messages.ctrColumn as unknown as number, 7)}${RESET}`
   )
   lines.push(`  ${separator(80)}`)
 
@@ -62,12 +75,16 @@ export function formatPagesTable(rows: PageRow[]): string {
   return lines.join("\n") + "\n"
 }
 
-export function formatCountryTable(rows: CountryRow[]): string {
-  if (rows.length === 0) return header("PER PAÍS") + "  Cap dada disponible.\n"
+export function formatCountryTable(
+  rows: CountryRow[],
+  locale: SeoAnalyticsLocale = DEFAULT_SEO_ANALYTICS_LOCALE
+): string {
+  const messages = SEO_ANALYTICS_MESSAGES[locale]
+  if (rows.length === 0) return header(messages.byCountryTitle) + `  ${messages.noData}\n`
 
-  const lines: string[] = [header("PER PAÍS")]
+  const lines: string[] = [header(messages.byCountryTitle)]
   lines.push(
-    `  ${DIM}${pad("País", 20)} ${padNum("Clics" as unknown as number, 10)} ${padNum("Impressions" as unknown as number, 12)}${RESET}`
+    `  ${DIM}${pad(messages.countryColumn, 20)} ${padNum(messages.clicksColumn as unknown as number, 10)} ${padNum(messages.impressionsColumn as unknown as number, 12)}${RESET}`
   )
   lines.push(`  ${separator(44)}`)
 
@@ -79,12 +96,16 @@ export function formatCountryTable(rows: CountryRow[]): string {
   return lines.join("\n") + "\n"
 }
 
-export function formatMonthlyTable(rows: MonthlyRow[]): string {
-  if (rows.length === 0) return header("EVOLUCIÓ MENSUAL") + "  Cap dada disponible.\n"
+export function formatMonthlyTable(
+  rows: MonthlyRow[],
+  locale: SeoAnalyticsLocale = DEFAULT_SEO_ANALYTICS_LOCALE
+): string {
+  const messages = SEO_ANALYTICS_MESSAGES[locale]
+  if (rows.length === 0) return header(messages.monthlyTrendTitle) + `  ${messages.noData}\n`
 
-  const lines: string[] = [header("EVOLUCIÓ MENSUAL")]
+  const lines: string[] = [header(messages.monthlyTrendTitle)]
   lines.push(
-    `  ${DIM}${pad("Mes", 12)} ${padNum("Clics" as unknown as number, 10)} ${padNum("Impressions" as unknown as number, 12)}  Tendència${RESET}`
+    `  ${DIM}${pad(messages.monthColumn, 12)} ${padNum(messages.clicksColumn as unknown as number, 10)} ${padNum(messages.impressionsColumn as unknown as number, 12)}  ${messages.trendColumn}${RESET}`
   )
   lines.push(`  ${separator(55)}`)
 

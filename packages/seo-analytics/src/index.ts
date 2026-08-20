@@ -5,6 +5,15 @@ export {
   formatCountryTable,
   formatMonthlyTable
 } from "./formatters.js"
+export {
+  DEFAULT_SEO_ANALYTICS_LOCALE,
+  SEO_ANALYTICS_LOCALES,
+  SEO_ANALYTICS_MESSAGES,
+  isSeoAnalyticsLocale,
+  seoAnalyticsT,
+  type SeoAnalyticsLocale,
+  type SeoAnalyticsMessageKey
+} from "./i18n.js"
 export type {
   GscClient,
   GscQueryOptions,
