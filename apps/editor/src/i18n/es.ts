@@ -355,6 +355,7 @@ export const esMessages: Record<keyof typeof caMessages, string> = {
   rightValueValueSection: "Valor",
   rightValueAttributesSection: "Atributos",
   rightValueInternalSection: "Variables internas",
+  rightValueIterationSection: "Variables de bloque",
   rightValueRandomStep: "·paso",
 
   // ── Global Variables Section ─────────────────────────────────
@@ -433,6 +434,7 @@ export const esMessages: Record<keyof typeof caMessages, string> = {
   // ── Room List Panel ───────────────────────────────────────────
   roomListNewFolderPlaceholder: "Nueva carpeta",
   roomListNewRoomPlaceholder: "Nueva sala",
+  roomListEmptyFolder: "Carpeta vacía",
   roomListExpandTitle: "Expandir lista de salas",
   roomListAddRoomTitle: "Añadir sala",
   roomListNewFolderTitle: "Nueva carpeta",
@@ -475,6 +477,8 @@ export const esMessages: Record<keyof typeof caMessages, string> = {
   eventListConfiguringLabel: "Configurando...",
   eventListCancelTitle: "Cancelar",
   eventListCancelNewEventAria: "Cancelar nuevo evento",
+  eventListCtxDuplicate: "Duplicar evento",
+  eventListCtxDelete: "Eliminar evento",
 
   // ── Event Selector Panel ──────────────────────────────────────
   eventSelectorTitle: "Añadir evento",
@@ -501,6 +505,7 @@ export const esMessages: Record<keyof typeof caMessages, string> = {
   soundsTitle: "Sonidos",
   soundsNoSounds: "Aún no hay sonidos",
   soundsNoSource: "sin fuente",
+  soundsDefaultName: "Nuevo sonido",
   soundsNamePlaceholder: "Nombre...",
   soundsAddTitle: "Añadir sonido",
   soundsAddBtn: "Añadir sonido",

@@ -1,4 +1,5 @@
 import { generateUUID, loadProjectV1, parseProjectV1, serializeProjectV1, type ProjectV1 } from "@creadordejocs/project-format"
+import { t } from "@/i18n/index.js"
 import { getKvStorageProvider } from "./storage/get-kv-storage-provider.js"
 
 const DEFAULT_SCOPE_USER_ID = "__local__"
@@ -141,7 +142,7 @@ function isLocalProjectSummary(value: unknown): value is LocalProjectSummary {
 
 function normalizeProjectName(name: string): string {
   const trimmed = name.trim()
-  return trimmed || "Nou joc"
+  return trimmed || t("controllerBlankProjectName")
 }
 
 function normalizeProjectSummary(summary: LocalProjectSummary): LocalProjectSummary {

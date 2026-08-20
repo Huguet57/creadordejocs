@@ -77,7 +77,7 @@ export function ObjectListPanel({
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [isAdding, setIsAdding] = useState(false)
   const [addingInFolderId, setAddingInFolderId] = useState<string | null>(null)
-  const [newObjectName, setNewObjectName] = useState("Objecte nou")
+  const [newObjectName, setNewObjectName] = useState(t("objectListNewPlaceholder"))
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null)
   const contextMenuRef = useRef<HTMLDivElement>(null)
   useContextMenuPosition(contextMenuRef, contextMenu ? { x: contextMenu.x, y: contextMenu.y } : null)

@@ -11,7 +11,7 @@ type SoundEditorSectionProps = {
 
 export function SoundEditorSection({ controller }: SoundEditorSectionProps) {
   const [isAdding, setIsAdding] = useState(false)
-  const [soundName, setSoundName] = useState("So nou")
+  const [soundName, setSoundName] = useState(t("soundsDefaultName"))
   const [validationMessage, setValidationMessage] = useState("")
   const [uploadingSoundId, setUploadingSoundId] = useState<string | null>(null)
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -43,7 +43,7 @@ export function SoundEditorSection({ controller }: SoundEditorSectionProps) {
   const handleAddSound = () => {
     if (!soundName.trim()) return
     controller.addSound(soundName)
-    setSoundName("So nou")
+    setSoundName(t("soundsDefaultName"))
     setIsAdding(false)
   }
 

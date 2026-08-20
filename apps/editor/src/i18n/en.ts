@@ -355,6 +355,7 @@ export const enMessages: Record<keyof typeof caMessages, string> = {
   rightValueValueSection: "Value",
   rightValueAttributesSection: "Attributes",
   rightValueInternalSection: "Internal variables",
+  rightValueIterationSection: "Block variables",
   rightValueRandomStep: "·step",
 
   // ── Global Variables Section ─────────────────────────────────
@@ -433,6 +434,7 @@ export const enMessages: Record<keyof typeof caMessages, string> = {
   // ── Room List Panel ───────────────────────────────────────────
   roomListNewFolderPlaceholder: "New folder",
   roomListNewRoomPlaceholder: "New room",
+  roomListEmptyFolder: "Empty folder",
   roomListExpandTitle: "Expand room list",
   roomListAddRoomTitle: "Add room",
   roomListNewFolderTitle: "New folder",
@@ -475,6 +477,8 @@ export const enMessages: Record<keyof typeof caMessages, string> = {
   eventListConfiguringLabel: "Configuring...",
   eventListCancelTitle: "Cancel",
   eventListCancelNewEventAria: "Cancel new event",
+  eventListCtxDuplicate: "Duplicate event",
+  eventListCtxDelete: "Delete event",
 
   // ── Event Selector Panel ──────────────────────────────────────
   eventSelectorTitle: "Add event",
@@ -501,6 +505,7 @@ export const enMessages: Record<keyof typeof caMessages, string> = {
   soundsTitle: "Sounds",
   soundsNoSounds: "No sounds yet",
   soundsNoSource: "no source",
+  soundsDefaultName: "New sound",
   soundsNamePlaceholder: "Name...",
   soundsAddTitle: "Add sound",
   soundsAddBtn: "Add Sound",

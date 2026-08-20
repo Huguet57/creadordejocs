@@ -353,6 +353,7 @@ export const caMessages = {
   rightValueValueSection: "Valor",
   rightValueAttributesSection: "Atributs",
   rightValueInternalSection: "Variables internes",
+  rightValueIterationSection: "Variables de bloc",
   rightValueRandomStep: "·pas",
 
   // ── Global Variables Section ─────────────────────────────────
@@ -431,6 +432,7 @@ export const caMessages = {
   // ── Room List Panel ───────────────────────────────────────────
   roomListNewFolderPlaceholder: "Nova carpeta",
   roomListNewRoomPlaceholder: "Sala nova",
+  roomListEmptyFolder: "Carpeta buida",
   roomListExpandTitle: "Expandir llista de sales",
   roomListAddRoomTitle: "Afegir sala",
   roomListNewFolderTitle: "Nova carpeta",
@@ -473,6 +475,8 @@ export const caMessages = {
   eventListConfiguringLabel: "Configurant...",
   eventListCancelTitle: "Cancel·lar",
   eventListCancelNewEventAria: "Cancel·lar nou event",
+  eventListCtxDuplicate: "Duplica event",
+  eventListCtxDelete: "Elimina event",
 
   // ── Event Selector Panel ──────────────────────────────────────
   eventSelectorTitle: "Afegir event",
@@ -499,6 +503,7 @@ export const caMessages = {
   soundsTitle: "Sons",
   soundsNoSounds: "Encara no hi ha sons",
   soundsNoSource: "sense font",
+  soundsDefaultName: "So nou",
   soundsNamePlaceholder: "Nom...",
   soundsAddTitle: "Afegir so",
   soundsAddBtn: "Afegir so",

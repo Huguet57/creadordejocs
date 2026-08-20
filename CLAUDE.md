@@ -103,6 +103,7 @@ npx tsx packages/seo-analytics/bin/cli.ts              # defaults: 90 days, 20 r
 npx tsx packages/seo-analytics/bin/cli.ts --days 180   # custom range
 npx tsx packages/seo-analytics/bin/cli.ts --limit 50   # more results
 npx tsx packages/seo-analytics/bin/cli.ts --site "sc-domain:other.com"  # different domain
+npx tsx packages/seo-analytics/bin/cli.ts --locale en  # output locale: ca, es, or en
 ```
 
 **Library usage:**
